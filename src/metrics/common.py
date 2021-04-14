@@ -384,6 +384,7 @@ class Metric:
         self.target_fields = target_fields
         self.mean = np.zeros(1)
         self.n = 0
+        self.eps = 1e-9
         self.use_gpu = False
         self.use_torch = False
 

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 from numpy import ndarray
 
@@ -32,41 +34,45 @@ class AccuracyMeter(Metric):
 @METRICS.register_class
 class FbetaMeter(Metric):
 
-    def __init__(self, beta, num_classes=None, target_class=None, binary_mod=False,
-                 weighted=False, ignore_index=-100, reduce=True, name=None, target_fields=None):
-        if num_classes is None and target_class is None and not binary_mod:
-            raise TypeError('You must specify either `num_classes` or `target_class` or `binary_mod`')
-        if target_class is not None and binary_mod:
-            raise ValueError('`target_class` is not compatible with `binary_mod`')
-        if (target_class is not None or binary_mod) and weighted:
-            raise ValueError('`weighted` is not compatible with `binary_mod` and `target_class`')
+    def __init__(self, beta, num_classes=None, target_class=None, average='macro',
+                 ignore_index=-100, name=None, target_fields=None):
+        if average not in ['binary', 'macro', 'micro', 'weighted', 'none']:
+            raise ValueError('Supported averaging modes are: "binary", "macro", "micro", "weighted", "none". '
+                             'Got: {average}')
+
+        if num_classes is None and average != 'binary':
+            raise TypeError('You must specify "num_classes" for non-binary averaging')
+        if target_class is not None and average != 'binary':
+            raise ValueError('"target_class" is compatible with averaging mode "binary" only')
+        if target_class is not None and (num_classes is None or target_class >= num_classes):
+            raise ValueError('When "target_class" is specified, "num_classes" must also be given, '
+                             'so that "target_class" < "num_classes". '
+                             f'Got "target_class": {target_class}, "num_classes": {num_classes}')
+
         if name is None:
-            if target_class is None:
-                name = f'F_beta={beta}'
+            if average == 'binary':
+                if target_class is None:
+                    name = f'F_beta@{beta}'
+                else:
+                    name = f'F_beta@{beta}[target_class]'
             else:
-                name = f'F_beta={beta}_class={target_class}'
+                name = f'F_beta@{beta}_{average}'
 
         super().__init__(name=name, target_fields=target_fields)
 
+        self.average = average
         self.num_classes = num_classes
         self.target_class = target_class
-        self.binary_mod = binary_mod
-        self.weighted = weighted
-        self.ignore_index = ignore_index
-        self.reduce = reduce
-        self.beta_sq = beta ** 2
-        if self.binary_mod or self.target_class is not None:
-            self.true_pos = 0
-            self.false_pos = 0
-            self.false_neg = 0
-        else:
-            self._classes_idx = np.arange(self.num_classes)[:, None]
-            self.true_pos = np.zeros(self.num_classes)
-            self.false_pos = np.zeros(self.num_classes)
-            self.false_neg = np.zeros(self.num_classes)
+        self.valid_mask = np.arange(self.num_classes) != ignore_index
+        self.beta2 = beta ** 2
+        self.true_pos = None
+        self.false_pos = None
+        self.false_neg = None
+        self._classes_idx = np.arange(self.num_classes)[:, None]
+        self.reset()
 
     def reset(self):
-        if self.binary_mod or self.target_class is not None:
+        if self.average == 'binary' or self.target_class is not None:
             self.true_pos = 0
             self.false_pos = 0
             self.false_neg = 0
@@ -76,241 +82,206 @@ class FbetaMeter(Metric):
             self.false_neg = np.zeros(self.num_classes)
 
     def _unify_shapes(self, target, prediction):
-        if self.binary_mod:
+        if self.average == 'binary':
             if prediction.shape != target.shape:
                 raise ValueError('shapes of target and prediction do not match',
                                  target.shape, prediction.shape)
-            prediction = prediction > 0
+            # prediction and target will have shapes: (N,)
+            prediction = prediction > 0     # for logits this is 0.5 probability after applying sigmoid
         else:
             # Dimensions check
             if prediction.shape[0] != target.shape[0]:
                 raise ValueError('Batch size of target and prediction do not match',
                                  target.shape[0], prediction.shape[0])
-            if prediction.ndim == target.ndim + 1:
-                prediction = prediction.argmax(1)
 
-            # Dimensions check
-            if prediction.shape[1:] != target.shape[1:]:
-                raise ValueError('Spatial shapes of target and prediction do not match',
-                                 target.shape[1:], prediction.shape[1:])
+            if prediction.ndim != 2 or target.ndim != 1:
+                raise ValueError('prediction and target must be 2d and 1d matrices respectively')
 
+            prediction = prediction.argmax(1)
+
+            # if target class is given prediction and target will have shapes: (N,), dtype=np.bool
+            # otherwise prediction and target will have shapes: (N,), dtype=np.int
             if self.target_class is not None:
-                target = target == self.target_class
                 prediction = prediction == self.target_class
+                target = target == self.target_class
 
-        target = target.reshape(-1)
-        prediction = prediction.reshape(-1)
-        prediction = prediction[target != self.ignore_index]
-        target = target[target != self.ignore_index]
         return prediction, target
 
-    def _get_f1(self, tp, fn, fp):
-        tp_rate = (1 + self.beta_sq) * tp
-        denum = tp_rate + self.beta_sq * fn + fp
-        np.seterr(divide='ignore')
-        f1_scores = np.where(denum != 0.0, tp_rate / denum, 0)
+    def _get_metric(self, tp, fp, fn):
+        tp_rate = (1 + self.beta2) * tp
+        denum = tp_rate + self.beta2 * fn + fp + self.eps
+        f1_scores = tp_rate / denum
 
-        if self.reduce:
-            if self.weighted:
-                weights = (tp + fn) / (tp + fn).sum()
-                f1_scores = weights @ f1_scores
-            else:
-                f1_scores = np.mean(f1_scores)
         return f1_scores
 
-    def calculate(self, target: ndarray, prediction: ndarray) -> ndarray:
+    def _calc_with_reduce(self, tp: ndarray, fp: ndarray, fn: ndarray) -> np.ndarray:
+        tp, fp, fn = tp[self.valid_mask], fp[self.valid_mask], fn[self.valid_mask]
+
+        if self.average == 'macro':
+            metrics = self._get_metric(tp, fp, fn)
+            metrics = np.mean(metrics)
+        elif self.average == 'micro':
+            tp, fp, fn = tp.sum(), fp.sum(), fn.sum()
+            metrics = self._get_metric(tp, fp, fn)
+        elif self.average == 'weighted':
+            metrics = self._get_metric(tp, fp, fn)
+            weights = tp + fn
+            metrics = np.average(metrics, weights=weights)
+        else:
+            metrics = self._get_metric(tp, fp, fn)
+
+        return metrics
+
+    def _calc_tp_fp_fn(self, target: ndarray, prediction: ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         target, prediction = self._unify_shapes(target, prediction)
 
-        if self.binary_mod or self.target_class is not None:
+        if self.average == 'binary' or self.target_class is not None:
+            # true_n and pred_n will have shapes (N), dtype=np.bool
             pred_n = prediction
             true_n = target
         else:
+            # true_n and pred_n will have shapes (C, N), dtype=np.bool
             true_n: np.ndarray = target == self._classes_idx
             pred_n: np.ndarray = prediction == self._classes_idx
+
         tp = (pred_n & true_n).sum(-1)
         fp = (pred_n & ~true_n).sum(-1)
         fn = (~pred_n & true_n).sum(-1)
 
-        return self._get_f1(tp, fn, fp)
+        return tp, fp, fn
+
+    def calculate(self, target: ndarray, prediction: ndarray) -> ndarray:
+        tp, fp, fn = self._calc_tp_fp_fn(target, prediction)
+        f1 = self._calc_with_reduce(tp, fp, fn)
+
+        return f1
 
     def update(self, target, prediction, *args, **kwargs):
-        target, prediction = self._unify_shapes(target, prediction)
+        tp, fp, fn = self._calc_tp_fp_fn(target, prediction)
 
-        if self.binary_mod or self.target_class is not None:
-            pred_n = prediction
-            true_n = target
-        else:
-            true_n: np.ndarray = target == self._classes_idx
-            pred_n: np.ndarray = prediction == self._classes_idx
-        self.true_pos += (pred_n & true_n).sum(-1)
-        self.false_pos += (pred_n & ~true_n).sum(-1)
-        self.false_neg += (~pred_n & true_n).sum(-1)
+        self.true_pos += tp
+        self.false_pos += fp
+        self.false_neg += fn
 
     def on_epoch_end(self, do_reset=True):
-        tp = self.true_pos
-        fp = self.false_pos
-        fn = self.false_neg
+        f1 = self._calc_with_reduce(self.true_pos, self.false_pos, self.false_neg)
 
         if do_reset:
             self.reset()
-        return self._get_f1(tp, fn, fp)
+
+        return f1
 
 
 @METRICS.register_class
 class F1Meter(FbetaMeter):
 
-    def __init__(self, num_classes=None, target_class=None, binary_mod=False, weighted=False,
-                 ignore_index=-100, reduce=True, name=None, target_fields=None):
+    def __init__(self, num_classes=None, target_class=None, average='binary',
+                 ignore_index=-100, name=None, target_fields=None):
         if name is None:
-            if target_class is None:
-                name = f'F1'
+            if average == 'binary':
+                if target_class is None:
+                    name = f'F1'
+                else:
+                    name = f'F1[{target_class}]'
             else:
-                name = f'F1_class={target_class}'
+                name = f'F1_{average}'
 
         super().__init__(beta=1, num_classes=num_classes, target_class=target_class,
-                         binary_mod=binary_mod, weighted=weighted, ignore_index=ignore_index,
-                         reduce=reduce, name=name, target_fields=target_fields)
+                         average=average, ignore_index=ignore_index, name=name, target_fields=target_fields)
 
 
 @METRICS.register_class
 class MultiLabelFbetaMeter(FbetaMeter):
-    def __init__(self, beta, threshold=0.5, num_classes=None, target_class=None,
-                 weighted=False, reduce=True, name=None, target_fields=None):
-        if name is None:
-            if target_class is None:
-                name = f'MultiLabel_F_beta={beta}'
-            else:
-                name = f'F_beta={beta}_class={target_class}'
+    def __init__(self, beta, threshold=0.5, num_classes=None, target_class=None, average='macro',
+                 ignore_index=-100, name=None, target_fields=None):
+        if target_class is not None and average != 'binary':
+            raise ValueError('averaging mode "binary" is available only when "target_class" is specified')
 
-        self.eps = 1e-9
+        if name is None:
+            if average == 'binary':
+                name = f'MultiLabel_F_beta@{beta}[{target_class}]'
+            else:
+                name = f'MultiLabel_F_beta@{beta}_{average}'
+
+        super().__init__(beta=beta, num_classes=num_classes, target_class=target_class, average=average,
+                         ignore_index=ignore_index, name=name, target_fields=target_fields)
+
         self.threshold = float(-np.log(1. / (threshold + self.eps) - 1.))  # reversed function of sigmoid
 
-        super().__init__(beta=beta, num_classes=num_classes, target_class=target_class,
-                         weighted=weighted, reduce=reduce, name=name, target_fields=target_fields)
-
-    def calculate(self, target: ndarray, prediction: ndarray) -> ndarray:
+    def _calc_tp_fp_fn(self, target: ndarray, prediction: ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         prediction = prediction >= self.threshold
         target = target.astype(bool)
-        prediction = prediction.astype(bool)
 
         if self.target_class is not None:
             prediction = prediction[:, self.target_class]
             target = target[:, self.target_class]
+
         tp = (prediction & target).sum(0)
         fp = (prediction & ~target).sum(0)
         fn = (target & ~prediction).sum(0)
-        return self._get_f1(tp, fn, fp)
 
-    def update(self, target, prediction, *args, **kwargs):
-        prediction = prediction >= self.threshold
-        target = target.astype(bool)
-        prediction = prediction.astype(bool)
-
-        if self.target_class is not None:
-            prediction = prediction[:, self.target_class]
-            target = target[:, self.target_class]
-        self.true_pos += (prediction & target).sum(0)
-        self.false_pos += (prediction & ~target).sum(0)
-        self.false_neg += (target & ~prediction).sum(0)
+        return tp, fp, fn
 
 
 @METRICS.register_class
 class MultiLabelF1Meter(MultiLabelFbetaMeter):
-
-    def __init__(self, threshold=0.5, num_classes=None, target_class=None, weighted=False,
-                 reduce=True, name=None, target_fields=None):
+    def __init__(self, threshold=0.5, num_classes=None, target_class=None, average='macro',
+                 ignore_index=-100, name=None, target_fields=None):
         if name is None:
-            if target_class is None:
-                name = f'MultiLabel_F1'
+            if average == 'binary':
+                name = f'MultiLabel_F1[{target_class}]'
             else:
-                name = f'F1_class={target_class}'
+                name = f'MultiLabel_F1_{average}'
 
         super().__init__(beta=1, threshold=threshold, num_classes=num_classes, target_class=target_class,
-                         weighted=weighted, reduce=reduce, name=name, target_fields=target_fields)
+                         average=average, ignore_index=ignore_index, name=name, target_fields=target_fields)
 
 
 @METRICS.register_class
-class MultilabelRecall(Metric):
-
-    def __init__(self, name=None, target_fields=None, threshold=0.5):
+class MultiLabelRecallMeter(MultiLabelF1Meter):
+    def __init__(self, threshold=0.5, num_classes=None, target_class=None, average='macro',
+                 ignore_index=-100, name=None, target_fields=None):
         """
         param name: name of metric, if not stated threshold used as part of name
         param target_fields: fields that contain models predictions and targets
         param threshold: confidence threshold in terms of probabilities
         """
         if name is None:
-            name = f'MultilabelRecall_{threshold}_macro'
-        self.eps = 1e-9
-        self.threshold = float(-np.log(1. / (threshold + self.eps) - 1.))   # reversed function of sigmoid
-        super().__init__(name=name, target_fields=target_fields)
+            if average == 'binary':
+                name = f'MultiLabelRecall@{threshold}[{target_class}]'
+            else:
+                name = f'MultiLabelRecall@{threshold}_{average}'
 
-    def calculate(self, target, prediction):
-        """
-        param target: numpy array of shape (batch_size, n_classes), contains multihot vectors
-        param prediction: numpy array of shape (batch_size, n_classes), contains class logits predicted by model
-        """
-        # replace probabilities that are bigger than threshold by 1 and that are smaller than threshold by 0
-        prediction = prediction >= self.threshold
-        k = (prediction & (target == 1)).sum(axis=1)
-        n = target.sum(axis=1)
-        result_for_each_image = k / (n + self.eps)
-        # get mean of batch
-        return result_for_each_image.mean()
+        super().__init__(threshold=threshold, num_classes=num_classes, target_class=target_class,
+                         average=average, ignore_index=ignore_index, name=name, target_fields=target_fields)
+
+    def _get_metric(self, tp: ndarray, fp: ndarray, fn: ndarray) -> np.ndarray:
+        recall = tp / (tp + fn + self.eps)
+        print(recall)
+
+        return recall
 
 
 @METRICS.register_class
-class MultilabelNoise(Metric):
+class MultiLabelPrecisionMeter(MultiLabelF1Meter):
 
-    def __init__(self, name=None, target_fields=None, threshold=0.5):
+    def __init__(self, threshold=0.5, num_classes=None, target_class=None, average='macro',
+                 ignore_index=-100, name=None, target_fields=None):
         """
         param name: name of metric, if not stated threshold used as part of name
         param target_fields: fields that contain models predictions and targets
         param threshold: confidence threshold in terms of probabilities
         """
         if name is None:
-            name = f'MultilabelNoise_{threshold}_macro'
-        self.eps = 1e-9
-        self.threshold = float(-np.log(1. / (threshold + self.eps) - 1.))   # reversed function of sigmoid
-        super().__init__(name=name, target_fields=target_fields)
+            if average == 'binary':
+                name = f'MultiLabelPrecision@{threshold}[{target_class}]'
+            else:
+                name = f'MultiLabelPrecision@{threshold}_{average}'
 
-    def calculate(self, target, prediction):
-        """
-        param target: numpy array of shape (batch_size, n_classes), contains multihot vectors
-        param prediction: numpy array of shape (batch_size, n_classes), contains class logits predicted by model
-        """
-        # replace probabilities that are bigger than threshold by 1 and that are smaller than threshold by 0
-        prediction = prediction >= self.threshold
-        k = (prediction & (target == 1)).sum(axis=1)
-        s = prediction.sum(axis=1)
-        result_for_each_image = (s - k) / (s + self.eps)
-        # get mean of batch
-        return result_for_each_image.mean()
+        super().__init__(threshold=threshold, num_classes=num_classes, target_class=target_class,
+                         average=average, ignore_index=ignore_index, name=name, target_fields=target_fields)
 
+    def _get_metric(self, tp: ndarray, fp: ndarray, fn: ndarray) -> np.ndarray:
+        precision = tp / (tp + fp + self.eps)
 
-@METRICS.register_class
-class MultilabelPrecision(Metric):
-
-    def __init__(self, name=None, target_fields=None, threshold=0.5):
-        """
-        param name: name of metric, if not stated threshold used as part of name
-        param target_fields: fields that contain models predictions and targets
-        param threshold: confidence threshold in terms of probabilities
-        """
-        if name is None:
-            name = f'MultilabelPrecision_{threshold}_macro'
-        self.eps = 1e-9
-        self.threshold = float(-np.log(1. / (threshold + self.eps) - 1.))   # reversed function of sigmoid
-        super().__init__(name=name, target_fields=target_fields)
-
-    def calculate(self, target, prediction):
-        """
-        param target: numpy array of shape (batch_size, n_classes), contains multihot vectors
-        param prediction: numpy array of shape (batch_size, n_classes), contains class logits predicted by model
-        """
-        # replace probabilities that are bigger than threshold by 1 and that are smaller than threshold by 0
-        prediction = prediction >= self.threshold
-        k = (prediction & (target == 1)).sum(axis=1)
-        s = prediction.sum(axis=1)
-        result_for_each_image = k / (s + self.eps)
-        # get mean of batch
-        return result_for_each_image.mean()
+        return precision

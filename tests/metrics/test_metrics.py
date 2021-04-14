@@ -5,12 +5,12 @@ from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, fbeta_sc
 import torch
 
 from src.metrics import AccuracyMeter, f1, fbeta, precision, recall, \
-    SegmentationConfusionMeter, MeanIntersectionOverUnionMeter, far, frr, EERMeter, precision_k, map_k
+    MeanIntersectionOverUnionMeter, far, frr, EERMeter, precision_k, map_k
 
-from src.metrics.classification import MultilabelRecall, MultilabelNoise, MultilabelPrecision, MultiLabelF1Meter
+from src.metrics.classification import MultiLabelRecallMeter, MultiLabelPrecisionMeter, MultiLabelF1Meter
 
 __all__ = ["AccuracyTest", "F1ScoreTest", "FBetaScoreTest", "PrecisionTest", "RecallTest",
-           "SegmentationConfusionMeterTests", "MeanIntersectionOverUnionTests", "EERMeterTest", "PrecisionKTest"]
+           "MeanIntersectionOverUnionTests", "EERMeterTest", "PrecisionKTest"]
 
 
 class AccuracyTest(unittest.TestCase):
@@ -297,47 +297,6 @@ class RecallTest(unittest.TestCase):
         self.assertListEqual(scikit_learn_scores, recall_test)
 
 
-class SegmentationConfusionMeterTests(unittest.TestCase):
-    def setUp(self):
-        self._predictions = torch.load('./tests/metrics/configs/predictions_4classes.pt')
-        self._target = torch.load('./tests/metrics/configs/target_4classes.pt')
-
-    def test_confusion_matrix_sum_predictions_equals1or0(self):
-        segm_conf_meter = SegmentationConfusionMeter(4, normalized=True)
-
-        segm_conf_meter.add(self._predictions, self._target)
-        cm = segm_conf_meter.get_conf()
-
-        self.assertTrue(np.isclose(cm.sum(axis=1), np.array([1., 1., 0., 0.])).all(),
-                        'Sum of predictions in confusion matrix must be 1 or 0')
-
-    def test_confusion_matrix_is_same_when_same_added_second_time(self):
-        segm_conf_meter = SegmentationConfusionMeter(4, normalized=True)
-        segm_conf_meter.add(self._predictions, self._target)
-        cm1 = segm_conf_meter.get_conf()
-
-        segm_conf_meter.add(self._predictions, self._target)
-        cm2 = segm_conf_meter.get_conf()
-
-        self.assertTrue(np.isclose(cm1, cm2).all(),
-                        'Confusion matrix must be the same when the same data added twice')
-
-    def test_confusion_matrix_has_correct_value_in_intersected_class(self):
-        pos_pred = (self._predictions.argmax(1) == 1).numpy()
-        pos_gt = (self._target == 1).numpy()
-        tp = pos_pred & pos_gt
-        expected_val = float(np.divide(tp.sum(), pos_gt.sum()))
-
-        segm_conf_meter = SegmentationConfusionMeter(4, normalized=True)
-        segm_conf_meter.add(self._predictions, self._target)
-        cm = segm_conf_meter.get_conf()
-
-        actual_val = cm[1, 1]
-        self.assertAlmostEqual(expected_val, actual_val,
-                               msg='Value in confusion matrix for [1, 1] must be close to: {}'
-                               .format(expected_val))
-
-
 class MeanIntersectionOverUnionTests(unittest.TestCase):
     def setUp(self):
         self._predictions = torch.load('./tests/metrics/configs/predictions_4classes.pt')
@@ -490,164 +449,7 @@ class PrecisionKTest(unittest.TestCase):
         self.assertAlmostEqual(true_res, res)
 
 
-class MulticlassMetricsTest(unittest.TestCase):
-
-    def setUp(self) -> None:
-        self.scores = np.array([[0.2, 0.3, 0.4, 0.2, 0.1, 0.4, 0.6, 0.7, 0.8, 0.5],
-                                [0.1, 0.3, 0.4, 0.5, 0.9, 0.6, 0.4, 0.3, 0.3, 0.3],
-                                [0.5, 0.5, 0.3, 0.6, 0.7, 0.8, 0.2, 0.1, 0.6, 0.2]])
-
-        self.targets = np.array([[0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-                                 [1, 1, 0, 0, 0, 0, 1, 1, 1, 1],
-                                 [1, 1, 0, 1, 1, 0, 0, 0, 0, 1]])
-
-    def test_multilabel_recall(self):
-        # n = number of gt labels
-        # k = number of correctly predicted labels
-        # recall = k / n
-
-        # so in case 0.1 threshold:
-        # 1) n = 4, k = 4, recall = 1.
-        # 2) n = 6, k = 6, recall = 1.
-        # 3) n = 5, k = 5, recall = 1.
-        # 4) mean across batch = 1.
-        metric01 = MultilabelRecall(threshold=0.1)
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 0], self.scores[None, 0]), 1.)
-        metric01.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 1], self.scores[None, 1]), 1.)
-        metric01.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 2], self.scores[None, 2]), 1.)
-        metric01.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric01.mean[0], 1.)
-
-        # in case 0.5 threshold:
-        # 1) n = 4, k = 4, recall = 1.
-        # 2) n = 6, k = 0, recall = 0.
-        # 3) n = 5, k = 4, recall = 0.8
-        # 4) mean across batch = 0.6
-        metric05 = MultilabelRecall(threshold=0.5)
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 0], self.scores[None, 0]), 1.)
-        metric05.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 1], self.scores[None, 1]), 0.)
-        metric05.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 2], self.scores[None, 2]), 0.8)
-        metric05.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric05.mean[0], 0.6)
-
-        # in case 0.8 threshold:
-        # 1) n = 4, k = 1, recall = 0.25
-        # 2) n = 6, k = 0, recall = 0.
-        # 3) n = 5, k = 0, recall = 0.
-        # 4) mean across batch = 0.083333
-        metric08 = MultilabelRecall(threshold=0.8)
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 0], self.scores[None, 0]), 0.25)
-        metric08.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 1], self.scores[None, 1]), 0.)
-        metric08.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 2], self.scores[None, 2]), 0.)
-        metric08.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric08.mean[0], 0.0833333333)
-
-    def test_multilabel_noise(self):
-        # s = number of predicted labels
-        # k = number of correctly predicted labels
-        # noise = (s - k) / s
-
-        # so in case 0.1 threshold:
-        # 1) s = 10, k = 4, noise = 0.6
-        # 2) s = 10, k = 6, noise = 0.4
-        # 3) s = 10, k = 5, noise = 0.5
-        # 4) mean across batch = 0.5
-        metric01 = MultilabelNoise(threshold=0.1)
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 0], self.scores[None, 0]), 0.6)
-        metric01.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 1], self.scores[None, 1]), 0.4)
-        metric01.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 2], self.scores[None, 2]), 0.5)
-        metric01.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric01.mean[0], 0.5)
-
-        # in case 0.5 threshold:
-        # 1) s = 4, k = 4, noise = 0.
-        # 2) s = 3, k = 0, noise = 1.
-        # 3) s = 6, k = 4, noise = 0.333333
-        # 4) mean across batch = 0.44444
-        metric05 = MultilabelNoise(threshold=0.5)
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 0], self.scores[None, 0]), 0.)
-        metric05.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 1], self.scores[None, 1]), 1.)
-        metric05.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 2], self.scores[None, 2]), 0.333333333)
-        metric05.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric05.mean[0], 0.4444444)
-
-        # in case 0.8 threshold:
-        # 1) s = 1, k = 1, noise = 0.
-        # 2) s = 1, k = 0, noise = 1.
-        # 3) s = 1, k = 0, noise = 1.
-        # 4) mean across batch = 0.666666
-        metric08 = MultilabelNoise(threshold=0.8)
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 0], self.scores[None, 0]), 0.)
-        metric08.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 1], self.scores[None, 1]), 1.)
-        metric08.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 2], self.scores[None, 2]), 1.)
-        metric08.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric08.mean[0], 0.66666666)
-
-    def test_multilabel_precision(self):
-        # s = number of predicted labels
-        # k = number of correctly predicted labels
-        # precision = k / s
-
-        # so in case 0.1 threshold:
-        # 1) s = 10, k = 4, precision = 0.4
-        # 2) s = 10, k = 6, precision = 0.6
-        # 3) s = 10, k = 5, precision = 0.5
-        # 4) mean across batch = 0.5
-
-        metric01 = MultilabelPrecision(threshold=0.1)
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 0], self.scores[None, 0]), 0.4)
-        metric01.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 1], self.scores[None, 1]), 0.6)
-        metric01.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric01.calculate(self.targets[None, 2], self.scores[None, 2]), 0.5)
-        metric01.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric01.mean[0], 0.5)
-
-        # in case 0.5 threshold:
-        # 1) s = 4, k = 4, precision = 1.
-        # 2) s = 3, k = 0, precision = 0.
-        # 3) s = 6, k = 4, precision = 0.666666
-        # 4) mean across batch = 0.555555
-
-        metric05 = MultilabelPrecision(threshold=0.5)
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 0], self.scores[None, 0]), 1.)
-        metric05.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 1], self.scores[None, 1]), 0.)
-        metric05.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric05.calculate(self.targets[None, 2], self.scores[None, 2]), 0.666666666)
-        metric05.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric05.mean[0], 0.555555555)
-
-        # in case 0.8 threshold:
-        # 1) s = 1, k = 1, precision = 1.
-        # 2) s = 1, k = 0, precision = 0.
-        # 3) s = 1, k = 0, precision = 0.
-        # 4) mean across batch = 0.33333
-
-        metric08 = MultilabelPrecision(threshold=0.8)
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 0], self.scores[None, 0]), 1.)
-        metric08.update(self.targets[None, 0], self.scores[None, 0])
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 1], self.scores[None, 1]), 0.)
-        metric08.update(self.targets[None, 1], self.scores[None, 1])
-        self.assertAlmostEqual(metric08.calculate(self.targets[None, 2], self.scores[None, 2]), 0.)
-        metric08.update(self.targets[None, 2], self.scores[None, 2])
-        self.assertAlmostEqual(metric08.mean[0], 0.333333333)
-
-
-class F1MultilabelTest(unittest.TestCase):
-
+class MultiLabelTest(unittest.TestCase):
     def setUp(self) -> None:
         self.scores = np.array([[0.2, 0.3, 0.4, 0.2, 0.1, 0.4, 0.6, 0.7, 0.8, 0.5],
                                 [0.1, 0.3, 0.4, 0.5, 0.9, 0.6, 0.4, 0.3, 0.3, 0.3],
@@ -666,6 +468,7 @@ class F1MultilabelTest(unittest.TestCase):
         self.threshold = 0.5
         self.thresholds = [0.1, 0.5, 0.8]
 
+class MultiLabelF1MeterTest(MultiLabelTest):
     def test_calculate(self):
         metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10)
         for i in range(3):
@@ -678,14 +481,13 @@ class F1MultilabelTest(unittest.TestCase):
 
     def test_calculate_different_thresholds(self):
         for threshold in self.thresholds:
-            metric = MultiLabelF1Meter(threshold=threshold, num_classes=10)
-            for i in range(3):
-                y_pred = self.scores_logits[None, i]
-                y_pred_thresholded = y_pred >= self.inverse_sigmoid(threshold)
-                y_true = self.targets[None, i]
-                tested_metric_result = metric.calculate(y_true, y_pred)
-                gt_sklearn_result = f1_score(y_true=y_true, y_pred=y_pred_thresholded, average='macro')
-                self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+            metric = MultiLabelF1Meter(threshold=threshold, num_classes=10, average='macro')
+            y_pred = self.scores_logits
+            y_pred_thresholded = y_pred >= self.inverse_sigmoid(threshold)
+            y_true = self.targets
+            tested_metric_result = metric.calculate(y_true, y_pred)
+            gt_sklearn_result = f1_score(y_true=y_true, y_pred=y_pred_thresholded, average='macro')
+            self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
 
     def test_update(self):
         metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10)
@@ -698,7 +500,7 @@ class F1MultilabelTest(unittest.TestCase):
         np.testing.assert_almost_equal(metric.false_neg, self.false_neg)
 
     def test_on_epoch_end_macro(self):
-        metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10)
+        metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10, average='macro')
         metric.true_pos = self.true_pos
         metric.false_neg = self.false_neg
         metric.false_pos = self.false_pos
@@ -707,12 +509,112 @@ class F1MultilabelTest(unittest.TestCase):
         self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
 
     def test_on_epoch_end_weighted(self):
-        metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10, weighted=True)
+        metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10, average='weighted')
         metric.true_pos = self.true_pos
         metric.false_neg = self.false_neg
         metric.false_pos = self.false_pos
         y_pred_thresholded = self.scores_logits >= self.inverse_sigmoid(self.threshold)
         gt_sklearn_result = f1_score(self.targets, y_pred_thresholded, average='weighted')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+
+class MultiLabelRecallMeterTest(MultiLabelTest):
+    def test_calculate(self):
+        metric = MultiLabelRecallMeter(threshold=self.threshold, num_classes=10)
+        for i in range(3):
+            y_pred = self.scores_logits[None, i]
+            y_pred_thresholded = y_pred >= self.inverse_sigmoid(self.threshold)
+            y_true = self.targets[None, i]
+            tested_metric_result = metric.calculate(y_true, y_pred)
+            gt_sklearn_result = recall_score(y_true=y_true, y_pred=y_pred_thresholded, average='macro')
+            self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_calculate_different_thresholds(self):
+        for threshold in self.thresholds:
+            metric = MultiLabelRecallMeter(threshold=threshold, num_classes=10, average='macro')
+            y_pred = self.scores_logits
+            y_pred_thresholded = y_pred >= self.inverse_sigmoid(threshold)
+            y_true = self.targets
+            tested_metric_result = metric.calculate(y_true, y_pred)
+            gt_sklearn_result = recall_score(y_true=y_true, y_pred=y_pred_thresholded, average='macro')
+            self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_update(self):
+        metric = MultiLabelRecallMeter(threshold=self.threshold, num_classes=10)
+        for i in range(3):
+            y_pred = self.scores_logits[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg)
+
+    def test_on_epoch_end_macro(self):
+        metric = MultiLabelRecallMeter(threshold=self.threshold, num_classes=10, average='macro')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        y_pred_thresholded = self.scores_logits >= self.inverse_sigmoid(self.threshold)
+        gt_sklearn_result = recall_score(self.targets, y_pred_thresholded, average='macro')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_on_epoch_end_weighted(self):
+        metric = MultiLabelRecallMeter(threshold=self.threshold, num_classes=10, average='weighted')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        y_pred_thresholded = self.scores_logits >= self.inverse_sigmoid(self.threshold)
+        gt_sklearn_result = recall_score(self.targets, y_pred_thresholded, average='weighted')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+
+class MultiLabelPrecisionMeterTest(MultiLabelTest):
+    def test_calculate(self):
+        metric = MultiLabelPrecisionMeter(threshold=self.threshold, num_classes=10)
+        for i in range(3):
+            y_pred = self.scores_logits[None, i]
+            y_pred_thresholded = y_pred >= self.inverse_sigmoid(self.threshold)
+            y_true = self.targets[None, i]
+            tested_metric_result = metric.calculate(y_true, y_pred)
+            gt_sklearn_result = precision_score(y_true=y_true, y_pred=y_pred_thresholded, average='macro')
+            self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_calculate_different_thresholds(self):
+        for threshold in self.thresholds:
+            metric = MultiLabelPrecisionMeter(threshold=threshold, num_classes=10, average='macro')
+            y_pred = self.scores_logits
+            y_pred_thresholded = y_pred >= self.inverse_sigmoid(threshold)
+            y_true = self.targets
+            tested_metric_result = metric.calculate(y_true, y_pred)
+            gt_sklearn_result = precision_score(y_true=y_true, y_pred=y_pred_thresholded, average='macro')
+            self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_update(self):
+        metric = MultiLabelPrecisionMeter(threshold=self.threshold, num_classes=10)
+        for i in range(3):
+            y_pred = self.scores_logits[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg)
+
+    def test_on_epoch_end_macro(self):
+        metric = MultiLabelPrecisionMeter(threshold=self.threshold, num_classes=10, average='macro')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        y_pred_thresholded = self.scores_logits >= self.inverse_sigmoid(self.threshold)
+        gt_sklearn_result = precision_score(self.targets, y_pred_thresholded, average='macro')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_on_epoch_end_weighted(self):
+        metric = MultiLabelPrecisionMeter(threshold=self.threshold, num_classes=10, average='weighted')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        y_pred_thresholded = self.scores_logits >= self.inverse_sigmoid(self.threshold)
+        gt_sklearn_result = precision_score(self.targets, y_pred_thresholded, average='weighted')
         self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
 
 

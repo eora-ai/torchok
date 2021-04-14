@@ -133,9 +133,9 @@ logger:
   logger: mlflow
   experiment_name: *experiment_name
   tags:
-      mlflow.runName: "siloiz_contrastive_xbm_resnet50_512d"
+    mlflow.runName: "siloiz_contrastive_xbm_resnet50_512d"
   save_dir: "s3://sagemaker-mlflow-main/mlruns"
   secrets_manager:
-      region: "eu-west-1"
-      mlflow_secret: "acme/mlflow"
+    region: "eu-west-1"
+    mlflow_secret: "acme/mlflow"
 ```
