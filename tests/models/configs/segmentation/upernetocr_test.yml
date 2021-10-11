@@ -1,0 +1,124 @@
+task:
+  name: SegmentationTask
+  params:
+    segmenter_name: UPerNetOCR
+    segmenter_params:
+      num_classes: &num_classes_segm 5
+    backbone_name: hrnet_w18
+    backbone_params:
+      pretrained: true
+    input_size: [ 3, &height 512, &width 512 ]
+
+loss:
+  loss_list:
+    - name: DiceLoss
+      params:
+        mode: multiclass
+        target_fields:
+          target: target
+          input: logits
+    - name: LovaszLoss
+      params:
+        mode: multiclass
+        target_fields:
+          target: target
+          input: logits
+    - name: CrossEntropyLoss
+      params:
+        target_fields:
+          target: target
+          input: logits
+
+optimizers:
+  name: Adam
+  params:
+    lr: &initial_lr 0.03
+    weight_decay: 0.00005
+
+schedulers:
+  name: OneCycleLR
+  params:
+    epochs: 30
+    steps_per_epoch: 4619
+    max_lr: *initial_lr
+    pct_start: 0.1
+
+data:
+  common_params:
+    data_folder: "/data/people_segmentation"
+
+  train_params:
+    dataloader_params: &dl
+      batch_size: 8
+      num_workers: 8
+      shuffle: true
+      drop_last: false
+    name: ImageSegmentationDataset
+    params:
+      path_to_datalist: "LV-MHP-v2/train_data_full_path.csv"
+    transform:
+      - &normalize
+        name: Normalize
+        params:
+          mean: [ 0.5, 0.5, 0.5 ]
+          std: [ 0.5, 0.5, 0.5 ]
+      - &totensor
+        name: ToTensorV2
+    augment:
+      - &resize
+        name: LongestMaxSize
+        params:
+          max_size: *height
+      - &pad
+        name: PadIfNeeded
+        params:
+          min_height: *height
+          min_width: *width
+          border_mode: 0
+          value: 0
+          mask_value: 0
+
+  valid_params:
+    dataloader_params: *dl
+    name: ImageSegmentationDataset
+    params:
+      path_to_datalist: "LV-MHP-v2/val_data_full_path.csv"
+    transform:
+      - *resize
+      - *pad
+      - *normalize
+      - *totensor
+
+trainer:
+  gpus: 1
+  max_epochs: 1
+
+log_dir: &logdir 'logs/people_segmentation'
+experiment_name: &exp_name test_unet
+
+logger:
+  logger: tensorboard
+  save_dir: *logdir
+  name: *exp_name
+  log_graph: false
+
+checkpoint:
+  monitor: valid/loss
+  save_last: true
+  mode: min
+
+profiler:
+  name: 'simple'
+  save_profile: false
+
+restore:
+  checkpoint: None
+
+metrics:
+  - name: MeanIntersectionOverUnionMeter
+    params:
+      name: mIoU
+      num_classes: *num_classes_segm
+      target_fields:
+        target: target
+        prediction: prediction

@@ -1,0 +1,159 @@
+task:
+  name: ClassificationTask
+  params:
+    backbone_name: efficientnet_b0
+    backbone_params:
+      pretrained: true
+      in_chans: 3
+    pooling_name: Pooling
+    head_name: ClassificationHead
+    head_params:
+      num_classes: &num_classes 10
+    input_size: [3, &height 32, &width 32]
+
+loss:
+  log_separate_losses: true
+  loss_list:
+    - name: CrossEntropyLoss
+      params:
+        target_fields:
+          target: target
+          input: prediction
+
+optimizers:
+  name: SGD
+  params:
+    lr: &max_lr 0.1
+    weight_decay: 0.00005
+    momentum: 0.9
+    nesterov: false
+
+schedulers:
+  name: KneeLRScheduler
+  params:
+    max_lr: *max_lr
+    epochs: 100
+    steps_per_epoch: 200
+    pct_start: 0.3
+    pct_explore: 0.4
+  aux_params:
+    interval: step
+
+data:
+  common_params:
+    root: "${SM_CHANNEL_TRAINING}"
+    download: true
+  train_params:
+    name: CIFAR10
+    dataloader_params: &dataloader_params
+      batch_size: 250
+      num_workers: "${SM_NUM_CPUS}"
+      shuffle: true
+      drop_last: false
+    params:
+      train: true
+    transform:
+      - &resize
+          name: Resize
+          params:
+            height: *height
+            width: *width
+      - &normalize
+        name: Normalize
+        params:
+          mean: [ 0.485, 0.456, 0.406 ]
+          std: [ 0.229, 0.224, 0.225 ]
+      - &totensor
+        name: ToTensorV2
+    augment:
+      - name: Blur
+        params:
+          p: 0.1
+      - name: CLAHE
+        params:
+          p: 0.1
+          tile_grid_size: [4, 4]
+          clip_limit: 2
+      - name: Downscale
+        params:
+          p: 0.1
+          scale_min: 0.25
+          scale_max: 0.5
+          interpolation: 1
+      - name: GaussNoise
+        params:
+          p: 0.1
+      - name: GridDistortion
+        params:
+          p: 0.1
+      - name: ImageCompression
+        params:
+          p: 0.1
+          quality_lower: 95
+      - name: OpticalDistortion
+        params:
+          p: 0.1
+      - name: ColorJitter
+        params:
+          p: 0.1
+      - name: ElasticTransform
+        params:
+          p: 0.1
+      - name: ShiftScaleRotate
+        params:
+          p: 0.1
+          rotate_limit: 20
+
+  valid_params:
+    name: CIFAR10
+    dataloader_params: *dataloader_params
+    params:
+      train: false
+    transform:
+      - *resize
+      - *normalize
+      - *totensor
+
+trainer:
+  gpus: 1
+  max_epochs: 100
+#  limit_train_batches: 10
+#  limit_val_batches: 10
+  progress_bar_refresh_rate: 1
+  check_val_every_n_epoch: 1
+  precision: 32
+
+restore_path: '/opt/ml/checkpoints'
+do_restore: '${SM_USER_ENTRY_POINT}'
+
+experiment_name:  &exp_name cifar10-test
+log_dir: &logdir '/opt/ml/checkpoints'
+
+logger:
+#  logger: tensorboard  # for TensorBoard leave this line only
+  logger: mlflow
+  tags:
+    mlflow.runName: "test_run"
+  save_dir: "s3://test/mlruns"
+  secrets_manager:
+    region: "eu-west-1"
+    mlflow_secret: "acme/mlflow"
+
+checkpoint:
+  monitor: valid/loss
+  save_last: true
+  mode: min
+  every_n_val_epochs: 10
+#  every_n_train_steps: 100
+
+profiler:
+  name: 'simple'
+  save_profile: false
+
+metrics:
+  - name: AccuracyMeter
+    params:
+      name: accuracy
+      target_fields:
+        target: target
+        prediction: prediction

@@ -1,0 +1,222 @@
+task:
+  name: MoBYTask
+  params:
+    backbone_name: swin_small_patch4_window7_224
+    backbone_params:
+      in_chans: &num_channels 3
+      pretrained: true
+    pooling_name: PoolingLinear
+    pooling_params:
+      out_features: 512
+    memory_size: 4096
+    momentum: 0.99
+    temperature: 0.2
+    input_size: [*num_channels, &height 224, &width 224]
+    checkpoint: 's3://sagemaker-mlflow-main/8fe6e7a8-5c67-473a-887c-0d6f2af6125f/lamoda_vshults/2021-06-12_15-26-43/last.ckpt'
+
+
+loss:
+  loss_list:
+    - name: CrossEntropyLoss
+      params:
+        target_fields:
+          target: target
+          input: prediction
+
+optimizers:
+  name: AdamW
+  params:
+    lr: &max_lr 0.0001
+    weight_decay: 0.05
+
+schedulers:
+  name: KneeLRScheduler
+  params:
+    max_lr: *max_lr
+    epochs: 8
+    steps_per_epoch: 26533
+    pct_start: 0.1
+    pct_explore: 0.4
+    cycle_momentum: false
+  aux_params:
+    interval: step
+
+data:
+  common_params:
+    data_folder: "${SM_CHANNEL_TRAINING}"
+    input_dtype: float16
+
+
+  train_params:
+    name: ContrastiveDataset
+    dataloader_params: &dataloader_params
+      batch_size: 64
+      num_workers: 8
+      shuffle: true
+      drop_last: true
+    params:
+      path_to_datalist: "train.csv"
+    transform:
+      - &resize
+        name: LongestMaxSize
+        params:
+          max_size: *height
+      - &pad
+        name: PadIfNeeded
+        params:
+          min_width: *width
+          min_height: *height
+          border_mode: 0
+          value: [255, 255, 255]
+      - &normalize
+        name: Normalize
+      - &totensor
+        name: ToTensorV2
+    augment:
+      - name: OneOf
+        params:
+          transforms:
+            - name: RandomResizedCrop
+              params:
+                height: *height
+                width: *width
+                scale: [ 0.75, 1.0 ]
+                ratio: [ 0.75, 1.3 ]
+                p: 0.8
+            - name: Compose
+              params:
+                transforms:
+                  - *resize
+                  - *pad
+                p: 0.2
+          p: 1
+      - name: HorizontalFlip
+      - name: VerticalFlip
+      - name: ElasticTransform
+        params:
+          border_mode: 1
+          p: 0.2
+      - name: GridDistortion
+        params:
+          p: 0.2
+      - name: GaussNoise
+        params:
+          p: 0.2
+      - name: ColorJitter
+        params:
+          brightness: 0.4
+          contrast: 0.4
+          saturation: 0.4
+          hue: 0.1
+          p: 0.8
+      - name: RGBShift
+        params:
+          r_shift_limit: 20
+          g_shift_limit: 20
+          b_shift_limit: 20
+          p: 0.2
+      - name: Equalize
+        params:
+          p: 0.2
+      - name: ToGray
+        params:
+          p: 0.2
+
+  valid_params:
+    name: ImageDataset
+    dataloader_params: *dataloader_params
+    params:
+      path_to_datalist: "valid.csv"
+      target_column: product_label
+    transform:
+      - *resize
+      - *pad
+      - *normalize
+      - *totensor
+
+  test_params:
+    name: ImageDataset
+    dataloader_params: *dataloader_params
+    params:
+      path_to_datalist: "valid.csv"
+      target_column: product_label
+    transform:
+      - *resize
+      - *pad
+      - *normalize
+      - *totensor
+
+trainer:
+  gpus: 1
+#  gpus: 4
+  max_epochs: 8
+  gradient_clip_val: 5.0
+#  limit_train_batches: 8000
+#  limit_val_batches: 1
+#  progress_bar_refresh_rate: 100
+  precision: 16
+  amp_backend: apex
+  amp_level: 'O2'
+#  accelerator: ddp
+#  sync_batchnorm: true
+
+#log_dir: '${SM_OUTPUT_DATA_DIR}/logs'
+experiment_name: lamoda_vshults
+log_dir: &logdir '/opt/ml/checkpoints'
+
+restore_path: *logdir
+do_restore: true
+
+logger:
+#  logger: tensorboard  # for TensorBoard leave this line only
+  logger: mlflow
+  tags:
+    mlflow.runName: "swin_s_p4_w7_224_moby"
+  save_dir: "s3://test/mlruns"
+  secrets_manager:
+    region: "eu-west-1"
+    mlflow_secret: "acme/mlflow"
+
+checkpoint:
+  monitor: valid/recall_at5
+#  monitor: valid/accuracy
+#  monitor: valid/loss
+  save_last: true
+  mode: max
+#  every_n_val_epochs: 10
+  every_n_train_steps: 10000
+
+metrics:
+  - name: MeanAveragePrecisionAtKMeter
+    phases: ['valid', 'test']
+    params:
+      k: 5
+      batch_search: true
+      exact_index: true
+      metric: IP
+      normalize_input: true
+      target_fields:
+        target: target
+        vectors: embeddings
+  - name: PrecisionAtKMeter
+    phases: [ 'valid', 'test' ]
+    params:
+      k: 5
+      batch_search: true
+      exact_index: true
+      metric: IP
+      normalize_input: true
+      target_fields:
+        target: target
+        vectors: embeddings
+  - name: RecallAtKMeter
+    phases: [ 'valid', 'test' ]
+    params:
+      k: 5
+      batch_search: true
+      exact_index: true
+      metric: IP
+      normalize_input: true
+      target_fields:
+        target: target
+        vectors: embeddings
