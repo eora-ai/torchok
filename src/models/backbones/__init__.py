@@ -1,5 +1,6 @@
 # from .byoanet import *
 from .byobnet import *
+from .cait import *
 from .coat import *
 # from .cspnet import *
 # from .densenet import *
@@ -38,3 +39,4 @@ from .vision_transformer import *
 # from .vovnet import *
 # from .xception import *
 # from .xception_aligned import *
+from .xcit import *
