@@ -27,7 +27,7 @@ __all__ = [
     "coat_lite_mini",
     "coat_lite_small"
 ]
-floor_div = partial(torch.div, rounding_mode='floor')
+floor_div = partial(torch.div, rounding_mode='trunc')
 
 
 def _cfg_coat(url='', **kwargs):

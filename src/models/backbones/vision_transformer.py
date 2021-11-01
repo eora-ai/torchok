@@ -155,7 +155,7 @@ class Mlp(nn.Module):
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
         super().__init__()
-        self.num_heads = num_heads
+        self.num_heads = torch.tensor(num_heads)
         head_dim = dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
 
@@ -166,7 +166,8 @@ class Attention(nn.Module):
 
     def forward(self, x):
         B, N, C = x.shape
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        c_per_head = torch.div(C, self.num_heads, rounding_mode='trunc')
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, c_per_head).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
 
         attn = (q @ k.transpose(-2, -1)) * self.scale

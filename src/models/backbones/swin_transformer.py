@@ -30,7 +30,7 @@ from .utils.registry import register_model
 from .vision_transformer import checkpoint_filter_fn, Mlp, PatchEmbed, _init_vit_weights
 
 _logger = logging.getLogger(__name__)
-floor_div = partial(torch.div, rounding_mode='floor')
+floor_div = partial(torch.div, rounding_mode='trunc')
 
 
 def _cfg(url='', **kwargs):

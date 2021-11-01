@@ -20,7 +20,7 @@ from .utils.registry import register_model
 from .vision_transformer import PatchEmbed, Mlp
 
 __all__ = ['Cait', 'ClassAttn', 'LayerScaleBlockClassAttn', 'LayerScaleBlock', 'TalkingHeadAttn']
-floor_div = partial(torch.div, rounding_mode='floor')
+floor_div = partial(torch.div, rounding_mode='trunc')
 
 
 def _cfg(url='', **kwargs):
