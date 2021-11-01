@@ -27,6 +27,7 @@ __all__ = [
     "coat_lite_mini",
     "coat_lite_small"
 ]
+floor_div = partial(torch.div, rounding_mode='floor')
 
 
 def _cfg_coat(url='', **kwargs):
@@ -159,7 +160,8 @@ class FactorAtt_ConvRelPosEnc(nn.Module):
         B, N, C = x.shape
 
         # Generate Q, K, V.
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        c_per_head = floor_div(C, self.num_heads)
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, c_per_head).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # [B, h, N, Ch]
 
         # Factorized attention.
@@ -371,7 +373,8 @@ class PatchEmbed(nn.Module):
 
     def forward(self, x):
         _, _, H, W = x.shape
-        out_H, out_W = H // self.patch_size[0], W // self.patch_size[1]
+        out_H = floor_div(H, self.patch_size[0])
+        out_W = floor_div(W, self.patch_size[1])
 
         x = self.proj(x).flatten(2).transpose(1, 2)
         out = self.norm(x)
