@@ -115,11 +115,12 @@ class PositionalEncodingFourier(nn.Module):
 
     def forward(self, B: int, H: int, W: int):
         device = self.token_projection.weight.device
-        y_embed = torch.arange(1, H + 1, dtype=torch.float32, device=device).unsqueeze(1).repeat(1, 1, W)
-        x_embed = torch.arange(1, W + 1, dtype=torch.float32, device=device).repeat(1, H, 1)
+        dtype = self.token_projection.weight.dtype
+        y_embed = torch.arange(1, H + 1, dtype=dtype, device=device).unsqueeze(1).repeat(1, 1, W)
+        x_embed = torch.arange(1, W + 1, dtype=dtype, device=device).repeat(1, H, 1)
         y_embed = y_embed / (y_embed[:, -1:, :] + self.eps) * self.scale
         x_embed = x_embed / (x_embed[:, :, -1:] + self.eps) * self.scale
-        dim_t = torch.arange(self.hidden_dim, dtype=torch.float32, device=device)
+        dim_t = torch.arange(self.hidden_dim, dtype=dtype, device=device)
         dim_t = self.temperature ** (2 * torch.div(dim_t, 2, rounding_mode='floor') / self.hidden_dim)
         pos_x = x_embed[:, :, :, None] / dim_t
         pos_y = y_embed[:, :, :, None] / dim_t
