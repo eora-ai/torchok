@@ -20,6 +20,7 @@ from .utils.registry import register_model
 from .vision_transformer import PatchEmbed, Mlp
 
 __all__ = ['Cait', 'ClassAttn', 'LayerScaleBlockClassAttn', 'LayerScaleBlock', 'TalkingHeadAttn']
+floor_div = partial(torch.div, rounding_mode='floor')
 
 
 def _cfg(url='', **kwargs):
@@ -76,7 +77,7 @@ class ClassAttn(nn.Module):
     # with slight modifications to do CA
     def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0., proj_drop=0.):
         super().__init__()
-        self.num_heads = num_heads
+        self.num_heads = torch.tensor(num_heads)
         head_dim = dim // num_heads
         self.scale = head_dim ** -0.5
 
@@ -89,11 +90,12 @@ class ClassAttn(nn.Module):
 
     def forward(self, x):
         B, N, C = x.shape
-        q = self.q(x[:, 0]).unsqueeze(1).reshape(B, 1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
-        k = self.k(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        c_per_head = floor_div(C, self.num_heads)
+        q = self.q(x[:, 0]).unsqueeze(1).reshape(B, 1, self.num_heads, c_per_head).permute(0, 2, 1, 3)
+        k = self.k(x).reshape(B, N, self.num_heads, c_per_head).permute(0, 2, 1, 3)
 
         q = q * self.scale
-        v = self.v(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        v = self.v(x).reshape(B, N, self.num_heads, c_per_head).permute(0, 2, 1, 3)
 
         attn = (q @ k.transpose(-2, -1))
         attn = attn.softmax(dim=-1)
@@ -137,7 +139,7 @@ class TalkingHeadAttn(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, attn_drop=0., proj_drop=0.):
         super().__init__()
 
-        self.num_heads = num_heads
+        self.num_heads = torch.tensor(num_heads)
 
         head_dim = dim // num_heads
 
@@ -155,7 +157,8 @@ class TalkingHeadAttn(nn.Module):
 
     def forward(self, x):
         B, N, C = x.shape
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        c_per_head = floor_div(torch.tensor(C), self.num_heads)
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, c_per_head).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
 
         attn = (q @ k.transpose(-2, -1))
