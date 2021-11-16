@@ -13,7 +13,8 @@ Code/weights from https://github.com/microsoft/Swin-Transformer, original copyri
 # --------------------------------------------------------
 import logging
 from copy import deepcopy
-from typing import Optional
+from typing import Optional, Tuple
+from functools import partial
 
 import torch
 import torch.nn as nn
@@ -29,6 +30,7 @@ from .utils.registry import register_model
 from .vision_transformer import checkpoint_filter_fn, Mlp, PatchEmbed, _init_vit_weights
 
 _logger = logging.getLogger(__name__)
+floor_div = partial(torch.div, rounding_mode='trunc')
 
 
 def _cfg(url='', **kwargs):
@@ -97,7 +99,10 @@ def window_partition(x, window_size: int):
     Returns:
         windows: (num_windows*B, window_size, window_size, C)
     """
-    x = x.view(x.size(0), x.size(1) // window_size, window_size, x.size(2) // window_size, window_size, x.size(3))
+    window_size = torch.tensor(window_size)
+    h = floor_div(torch.tensor(x.size(1)), window_size)
+    w = floor_div(torch.tensor(x.size(2)), window_size)
+    x = x.view(x.size(0), h, window_size, w, window_size, x.size(3))
     windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, x.size(3))
     return windows
 
@@ -114,8 +119,12 @@ def window_reverse(windows, window_size: int, H: int, W: int):
     Returns:
         x: (B, H, W, C)
     """
-    B = windows.size(0) // (H * W // window_size // window_size)
-    x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
+
+    window_size = torch.tensor(window_size)
+    H = torch.tensor(H)
+    W = torch.tensor(W)
+    B = floor_div(torch.tensor(windows.size(0)), floor_div(H * W, window_size * window_size))
+    x = windows.view(B, floor_div(H, window_size), floor_div(W, window_size), window_size, window_size, -1)
     x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
     return x
 
@@ -195,7 +204,8 @@ class WindowAttention(nn.Module):
             mask: (0/-inf) mask with shape of (num_windows, Wh*Ww, Wh*Ww) or None
         """
         B, N, C = x.shape
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        c_per_head = floor_div(C, self.num_heads)
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, c_per_head).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple)
 
         q = q * self.scale
@@ -208,7 +218,7 @@ class WindowAttention(nn.Module):
 
         if mask is not None:
             nW = mask.shape[0]
-            attn = attn.view(B // nW, nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
+            attn = attn.view(floor_div(B, nW), nW, self.num_heads, N, N) + mask.unsqueeze(1).unsqueeze(0)
             attn = attn.view(-1, self.num_heads, N, N)
             attn = self.softmax(attn)
         else:
@@ -241,12 +251,12 @@ class SwinTransformerBlock(nn.Module):
         norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
     """
 
-    def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
+    def __init__(self, dim, input_resolution: Tuple[int], num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
                  act_layer=nn.GELU, norm_layer=nn.LayerNorm):
         super().__init__()
         self.dim = dim
-        self.input_resolution = torch.Size(input_resolution)
+        self.input_resolution = torch.tensor(input_resolution, dtype=torch.long)
         self.num_heads = num_heads
         self.window_size = torch.tensor(window_size, dtype=torch.long)
         self.shift_size = shift_size
@@ -254,7 +264,7 @@ class SwinTransformerBlock(nn.Module):
         if min(self.input_resolution) <= self.window_size:
             # if window size is larger than input resolution, we don't partition windows
             self.shift_size = 0
-            self.window_size = torch.tensor(min(self.input_resolution), dtype=torch.long)
+            self.window_size = self.input_resolution.min()
         assert 0 <= self.shift_size < self.window_size, "shift_size must in 0-window_size"
 
         self.norm1 = norm_layer(dim)
@@ -287,10 +297,11 @@ class SwinTransformerBlock(nn.Module):
         x = self.norm1(x)
 
         if self.input_resolution != x.shape[1:3]:
-            if min(h, w) <= self.window_size:
+            min_side = min(h, w)
+            if self.window_size.gt(min_side):
                 # if window size is larger than input resolution, we don't partition windows
                 shift_size = 0
-                window_size = min(h, w)
+                window_size = min_side
                 attn_mask = None
             else:
                 shift_size = self.shift_size
@@ -350,8 +361,8 @@ class PatchMerging(nn.Module):
         h = x.size(1)
         w = x.size(2)
         c = x.size(3)
-        if h % 2 or w % 2:
-            raise ValueError(f"x size ({h}*{w}) are not even.")
+        # if h % 2 or w % 2:
+        #     raise ValueError(f"x size ({h}*{w}) are not even.")
 
         x0 = x[:, 0::2, 0::2, :]  # B H/2 W/2 C
         x1 = x[:, 1::2, 0::2, :]  # B H/2 W/2 C
@@ -362,7 +373,7 @@ class PatchMerging(nn.Module):
 
         x = self.norm(x)
         x = self.reduction(x)
-        x = x.view(b, h // 2, w // 2, -1).contiguous()  # B H/2 W/2 2*C
+        x = x.view(b, floor_div(h, 2), floor_div(w, 2), -1).contiguous()  # B H/2 W/2 2*C
 
         return x
 
