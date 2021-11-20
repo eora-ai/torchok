@@ -314,3 +314,13 @@ class MultilabelPrecision(Metric):
         result_for_each_image = k / (s + self.eps)
         # get mean of batch
         return result_for_each_image.mean()
+
+@METRICS.register_class
+class MSE(Metric):
+
+    def calculate(self, target, prediction):
+        """
+        param target: numpy array of shape (batch_size, n_classes), contains multihot vectors
+        param prediction: numpy array of shape (batch_size, n_classes), contains class logits predicted by model
+        """
+        return np.mean((np.array(target) - np.array(prediction))**2)

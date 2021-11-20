@@ -1,0 +1,194 @@
+task:
+  name: StrawberryMultiHeadCLSTask
+  params:
+    backbone_name: efficientnet_b0
+    backbone_params:
+      in_chans: &num_channels 3
+      pretrained: true
+    pooling_name: PoolingLinear
+    pooling_params:
+      out_features: 512
+    heads:
+      - type: ClassificationHead
+        name: classification
+        params:
+          num_classes: &num_classes 9
+      - type: MLPHead
+        name: regression
+        params:
+          num_layers: 1
+          hidden_features: 64
+          out_features: 1
+      # - type: LinearHead
+      #   name: regression
+      #   params:
+      #     out_features: 1
+
+    input_size: [*num_channels, &height 512, &width 512]
+
+#restore_path: None
+
+loss:
+  loss_list:
+    - name: CrossEntropyLoss
+      params:
+        target_fields:
+          target: cls_target
+          input: cls_prediction
+    - name: MSELoss
+      params:
+        target_fields:
+          target: reg_target
+          input: reg_prediction
+  loss_weights: [1, 1]
+
+# optimizers:
+#   name: SGD
+#   params:
+#     lr: &initial_lr 0.1
+#     momentum: 0.9
+#     nesterov: true
+#     weight_decay: 0.00005
+
+optimizers:
+  name: Adam
+  params:
+    lr: &initial_lr 0.001
+    weight_decay: 0.00005
+
+# schedulers:
+#   name: OneCycleLR
+#   params:
+#     epochs: 20
+#     steps_per_epoch: 662
+#     max_lr: *initial_lr
+#     pct_start: 0.2
+#   aux_params:
+#     interval: 'step'
+
+schedulers:
+  name: ExponentialLR
+  params:
+    gamma: 0.95
+
+data:
+  common_params:
+    data_folder: "/workdir/strawberry_hack/"
+    input_dtype: float16
+
+  train_params:
+    name: StrawberryMultiHEADCLSDataset
+    dataloader_params: &dataloader_params
+      batch_size: 8
+      num_workers: 8
+      shuffle: true
+      drop_last: false
+    params:
+      path_to_datalist: "train.csv"
+
+    transform:
+      - &resize
+        name: Resize
+        params:
+          height: *height
+          width: *width
+      - &normalize
+        name: Normalize
+        params:
+          mean: [0.485, 0.456, 0.406]
+          std: [0.229, 0.224, 0.225]
+      - &totensor
+        name: ToTensorV2
+    augment:
+      - name: ShiftScaleRotate
+        params:
+          border_mode: 4
+          rotate_limit: 30
+      - name: HorizontalFlip
+      - name: RandomResizedCrop
+        params:
+          height: *height
+          width: *width
+          scale: [0.4, 1.0]
+      - name: OneOf
+        params:
+          transforms:
+            - name: JpegCompression
+              params:
+                quality_lower: 90
+            - name: GaussNoise
+      - name: RandomBrightnessContrast
+        params:
+          brightness_limit: [-0.2, 0.2]
+          contrast_limit: [-0.2, 0.2]
+      - name: HueSaturationValue
+      - name: ToGray
+        params:
+          p: 0.1
+
+  valid_params:
+    name: StrawberryMultiHEADCLSDataset
+    dataloader_params: *dataloader_params
+    params:
+      path_to_datalist: "valid.csv"
+    transform:
+      - &longest_resize
+        name: LongestMaxSize
+        params:
+          max_size: *height
+          interpolation: 2
+      - &pad
+        name: PadIfNeeded
+        params:
+          min_height: *height
+          min_width: *width
+          border_mode: 0
+          value: 255
+          p: 1.0
+      - *normalize
+      - *totensor
+
+trainer:
+  gpus: [0]
+  max_epochs: 50
+  progress_bar_refresh_rate: 1
+  check_val_every_n_epoch: 1
+  precision: 16
+  amp_level: 'O2'
+  amp_backend: 'apex'
+
+experiment_name: &exp_name strawberry_cls
+log_dir: &logdir '.logs'
+
+logger:
+#  logger: tensorboard  # for TensorBoard leave this line only
+  logger: mlflow
+  tags:
+    mlflow.runName: "300 data, exponential bs=8"
+  save_dir: "s3://sagemaker-mlflow-main/mlruns"
+  secrets_manager:
+    region: "eu-west-1"
+    mlflow_secret: "acme/mlflow"
+
+
+checkpoint:
+  monitor: valid/loss
+  save_last: true
+  mode: min
+  every_n_val_epochs: 1
+  save_top_k: 5
+
+metrics:
+  - name: AccuracyMeter
+    params:
+      name: accuracy
+      target_fields:
+        target: cls_target
+        prediction: cls_prediction
+
+  - name: MSE
+    params:
+      name: mse
+      target_fields:
+        target: reg_target
+        prediction: reg_prediction
