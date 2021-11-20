@@ -1,0 +1,225 @@
+task:
+  name: SegmentationTask
+  params:
+    segmenter_name: HRNetOCR
+    segmenter_params:
+      num_classes: 1
+    backbone_name: hrnet_w18_small
+    backbone_params:
+      in_chans: &num_channels 3
+      pretrained: true
+    input_size: [*num_channels, &height 512, &width 512]
+
+loss:
+  loss_list:
+#    - name: DiceLoss
+#      params:
+#        mode: binary
+#        target_fields:
+#          target: target
+#          input: logits
+#    - name: LovaszLoss
+#      params:
+#        mode: binary
+#        target_fields:
+#          target: target
+#          input: logits
+    - name: BCEWithLogitsLoss
+      params:
+        target_fields:
+          target: target
+          input: prediction
+
+optimizers:
+  name: SGD
+  params:
+    lr: &initial_lr 0.01
+    weight_decay: 0.00005
+    momentum: 0.9
+    nesterov: true
+
+schedulers:
+  name: CosineAnnealingWarmRestarts
+  params:
+    T_0: 5
+    T_mult: 2
+
+data:
+  common_params:
+    data_folder: "/workdir/strawberry_hack"
+    target_column: mask_path
+    input_dtype: float16
+
+  train_params:
+    name: ImageSegmentationDataset
+    dataloader_params: &dataloader_params
+      batch_size: 64
+      num_workers: 4
+      shuffle: true
+      drop_last: false
+    params:
+      path_to_datalist: "leaves_720p_train.csv"
+    transform:
+      - &normalize
+        name: Normalize
+        params:
+          mean: [ 0.485, 0.456, 0.406 ]
+          std: [ 0.229, 0.224, 0.225 ]
+      - &totensor
+        name: ToTensorV2
+    augment:
+      - name: OneOf
+        params:
+          transforms:
+            - name: RandomResizedCrop
+              params:
+                height: *height
+                width: *width
+#            - name: Compose
+#              params:
+#                transforms:
+#                  - name: RandomCropNearInterestArea
+#                    params:
+#                      max_part_shift: 1
+#                      min_part_shift: 0.0
+#                      p: 1.0
+#                  - name: ShiftScaleRotate
+#                    params:
+#                      p: 1.0
+#                      scale_limit: 0.3
+#                      rotate_limit: [-180, 180]
+#                      shift_limit: 0.0625
+#                      border_mode: 0
+            - name: ShiftScaleRotate
+              params:
+                p: 1.0
+                scale_limit: 0.3
+                rotate_limit: [-45, 45]
+                shift_limit: 0.0625
+                border_mode: 0
+#            - name: AlignCropNearInterestArea
+#              params:
+#                classes_of_interest: [1]
+#                max_pad: 0.2
+#                min_pad: 0.0
+#                p: 1.0
+          p: 0.6
+      - &resize
+        name: LongestMaxSize
+        params:
+          max_size: *height
+          interpolation: 2
+          p: 1
+      - name: OneOf
+        params:
+          transforms:
+            - name: Blur
+            - name: GaussianBlur
+            - name: MedianBlur
+            - name: MotionBlur
+          p: 0.2
+      - name: RandomFog
+        params:
+          p: 0.2
+      - name: RandomShadow
+        params:
+          p: 0.2
+      - name: RandomSunFlare
+        params:
+          p: 0.2
+#      - name: ChannelDropout
+#        params:
+#          p: 0.2
+#      - name: ChannelShuffle
+#        params:
+#          p: 0.2
+      - name: ColorJitter
+        params:
+          p: 0.2
+      - name: OneOf
+        params:
+          transforms:
+            - name: ImageCompression
+              params:
+                quality_lower: 90
+            - name: GaussNoise
+      - name: OpticalDistortion
+        params:
+          p: 0.3
+      - name: Equalize
+        params:
+          p: 0.3
+#      - name: ToGray
+#        params:
+#          p: 0.3
+      - &pad
+        name: PadIfNeeded
+        params:
+          min_height: *height
+          min_width: *width
+          border_mode: 0
+          p: 1.0
+
+  valid_params:
+    name: ImageSegmentationDataset
+    dataloader_params: *dataloader_params
+    params:
+      path_to_datalist: "leaves_720p_valid.csv"
+    transform:
+      - *normalize
+      - *totensor
+    augment:
+      - *resize
+      - *pad
+
+trainer:
+  gpus: 1
+  max_epochs: 30
+  progress_bar_refresh_rate: 1
+  check_val_every_n_epoch: 1
+  precision: 16
+  amp_level: 'O3'
+  amp_backend: 'apex'
+
+log_dir: '/workdir/logs/'
+experiment_name: &experiment_name comp-vladvin
+
+logger:
+#  logger: tensorboard
+  logger: mlflow
+  experiment_name: *experiment_name
+  tags:
+    mlflow.runName: "leaves_hrnet_w18_small"
+    save_dir: "s3://ml-hacks/mlruns"
+  secrets_manager:
+    region: "eu-west-1"
+    mlflow_secret: "acme/mlflow"
+
+checkpoint:
+  monitor: valid/IoU
+#  monitor: valid/loss
+  save_last: true
+  mode: max
+  every_n_epochs: 1
+
+profiler:
+  name: simple
+  save_profile: false
+
+metrics:
+  - name: MeanIntersectionOverUnionMeter
+    params:
+      name: IoU
+      target_classes: 1
+      binary_mode: true
+      target_fields:
+        target: target
+        prediction: prediction
+  - name: MeanDiceMeter
+    params:
+      name: Dice
+      target_classes: 1
+      binary_mode: true
+      target_fields:
+        target: target
+        prediction: prediction
