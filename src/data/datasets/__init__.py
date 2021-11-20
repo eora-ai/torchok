@@ -5,3 +5,4 @@ from . import contrastive
 from . import torchvision
 from . import sampling
 from . import retrieval
+from . import strawberry_dataset
