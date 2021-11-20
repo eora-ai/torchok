@@ -123,7 +123,7 @@ class CheckpointParams(BaseModel):
     mode: str = "min"
     auto_insert_metric_name: bool = False
     every_n_train_steps: Optional[int] = None
-    every_n_val_epochs: Optional[int] = None
+    every_n_epochs: Optional[int] = None
 
 
 class ProfilerParams(BaseModel):

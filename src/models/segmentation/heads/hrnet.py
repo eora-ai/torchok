@@ -207,6 +207,9 @@ class HRNetOCR(nn.Module):
         feats = F.interpolate(feats, input_image.shape[2:], mode='bilinear', align_corners=True)
         out = self.cls_head(feats)
 
+        if self.training:
+            out_aux = F.interpolate(out_aux, input_image.shape[2:], mode='bilinear', align_corners=True)
+
         if self.num_classes == 1:
             out = out[:, 0]
             out_aux = out_aux[:, 0]
