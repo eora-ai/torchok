@@ -8,6 +8,18 @@ from ..layers.create_act import create_act_layer
 
 
 @POOLINGS.register_class
+class IdentityPooling(nn.Module):
+    def __init__(self, in_features, global_pool='fast'):
+        super().__init__()
+        self.identity = nn.Identity()
+        self.out_features = in_features
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.identity(x)
+        return x
+
+
+@POOLINGS.register_class
 class Pooling(nn.Module):
     def __init__(self, in_features, global_pool='fast'):
         super().__init__()
