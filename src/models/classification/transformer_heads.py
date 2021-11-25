@@ -25,7 +25,9 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, x):
         x = x + self.pe[:x.size(0), :]
-        return self.dropout(x)
+        x = self.dropout(x)
+
+        return x
 
 
 @HEADS.register_class
@@ -41,6 +43,7 @@ class TransformerHead(AbstractHead):
         x = self.fc(x)  # bsz, src_seq_len * d_model -> bsz, tgt_seq_len * d_model
         if self.normalize:
             x = F.normalize(x, p=2, dim=-1)
+
         return x
 
     def init_weights(self):
@@ -72,37 +75,58 @@ class CVTransformer(AbstractHead):
         memory = self.transformer.encoder.forward(src)  # -> src_seq_len, bsz, d_model
         memory = memory.permute(1, 0, 2)  # ->  bsz, src_seq_len, d_model
         y = self.head(memory)  # -> bsz, tgt_seq_len, d_model
+
         return y
 
 
 @HEADS.register_class
 class CVTransformerEncoder(AbstractHead):
     def __init__(self, in_features, out_features=None, d_model=512, max_src_len=7,
-                 nhead=8, num_encoder_layers=6, normalize=True):
-        super().__init__(in_features, out_features)
-        self.src_pe = PositionalEncoding(d_model, max_src_len)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead)
-        self.encoder = TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
-        self.normalize = normalize
+                 nhead=8, num_encoder_layers=6, normalize=True, use_cls_token=False, use_whiten=False):
         if not out_features:
             out_features = d_model
-        self.out_features = out_features
+        super().__init__(in_features, out_features)
+        self.use_cls_token = use_cls_token
+        self.use_whiten = use_whiten
+        if use_cls_token:
+            self.cls_token = nn.Parameter(torch.zeros(1, 1, self.out_features))
+            self.src_pe = PositionalEncoding(d_model,
+                                             max_src_len + 1)  # to encode all `max_src_len` items and `cls_token`
+        else:
+            self.src_pe = PositionalEncoding(d_model, max_src_len)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead)
+        self.encoder = TransformerEncoder(encoder_layer, num_layers=num_encoder_layers)
+        if self.use_whiten:
+            self.whiten = nn.Linear(self.out_features, self.out_features)
+        self.normalize = normalize
 
     def forward(self, x: Tensor, targets: Tensor = None) -> Tensor:
-        src = x.permute(1, 0, 2)  # bsz, src_seq_len, d_model -> src_seq_len, bsz, d_model
-        src = self.src_pe.forward(src)
+        if self.use_cls_token:
+            B = x.shape[0]  # get batch size
+            # add cls token as the first item in the `src` sequence
+            cls_tokens = self.cls_token.expand(B, -1, -1)
+            x = torch.cat((cls_tokens, x), dim=1)  # bsz, src_seq_len, d_model -> bsz, src_seq_len+1, d_model
 
+        src = x.permute(1, 0, 2)  # bsz, src_seq_len(+1), d_model -> src_seq_len(+1), bsz, d_model
+        # positional encoding
+        src = self.src_pe.forward(src)
+        # encode sequence, the encoding of the whole sequence is in the last encoded token
         memory = self.encoder.forward(src)  # -> src_seq_len, bsz, d_model
         y = memory[-1]  # -> bsz, d_model
+        # PCA whitening layer
+        if self.use_whiten:
+            y = self.whiten(y)
         if self.normalize:
             y = F.normalize(y, p=2, dim=-1)
+
         return y
 
 
 @HEADS.register_class
 class LSTMHead(AbstractHead):
-    def __init__(self, in_features=512, out_features=None, hidden_size=512, num_layers=3,
-                 batch_first=False, bias=False, dropout=0, bidirectional=False):
+    def __init__(self, in_features=512, out_features=None, hidden_size=512, num_layers=3, batch_first=False, bias=False,
+                 dropout=0,
+                 bidirectional=False):
         """
 
         :param in_features: number of expected features in the input x
@@ -113,6 +137,7 @@ class LSTMHead(AbstractHead):
         :param bias: if true, add bias weights b_ih and b_hh
         :param dropout: probability of dropout, dropout added after each LSTM layer
         :param bidirectional: true if bidirectional
+        :param proj_size: if > 0, will use LSTM with projections of corresponding size
         """
         super().__init__(in_features, out_features)
         self.lstm = torch.nn.LSTM(input_size=in_features, hidden_size=hidden_size, num_layers=num_layers,
@@ -128,6 +153,7 @@ class LSTMHead(AbstractHead):
         # c_n of shape (num_layers * num_directions, batch, hidden_size), initial cell state
         output, (h_n, c_n) = self.lstm(x)
         output = F.normalize(output[-1], p=2, dim=-1)
+
         return output
 
 
@@ -155,4 +181,5 @@ class LAttQE_Head(AbstractHead):
         y = y.view(-1, self.in_features)
         if self.normalize:
             y = F.normalize(y, p=2, dim=-1)
+
         return y

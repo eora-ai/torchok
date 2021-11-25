@@ -40,3 +40,4 @@ from .vision_transformer import *
 # from .xception import *
 # from .xception_aligned import *
 from .xcit import *
+from .identity import *
