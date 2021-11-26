@@ -34,8 +34,8 @@ class DatasetParams(BaseModel):
 
 class DataParams(BaseModel):
     common_params: Optional[dict] = {}
-    train_params: DatasetParams
-    valid_params: DatasetParams
+    train_params: Optional[DatasetParams]
+    valid_params: Optional[DatasetParams]
     test_params: Optional[DatasetParams]
 
 
@@ -86,7 +86,7 @@ class TrainerParams(BaseModel):
     plugins: Optional[Union[List[Union[Plugin, ClusterEnvironment, str]], Plugin, ClusterEnvironment, str]] = None
     amp_backend: str = 'native'
     amp_level: str = 'O2'
-    distributed_backend: Optional[str] = None
+    accelerator: Optional[str] = None
     move_metrics_to_cpu: bool = False
     multiple_trainloader_mode: str = 'max_size_cycle'
     stochastic_weight_avg: bool = False

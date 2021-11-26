@@ -30,18 +30,21 @@ def _prepare_transforms_recursive(transforms):
 def prepare_compose(transforms, p=1.0):
     transforms_list = _prepare_transforms_recursive(transforms)
     transform = module_transforms.Compose(transforms_list, p=p)
+
     return transform
 
 
 def prepare_oneof(transforms, p=0.5):
     transforms_list = _prepare_transforms_recursive(transforms)
     transform = module_transforms.OneOf(transforms_list, p=p)
+
     return transform
 
 
 def create_transforms(transforms_params):
     if transforms_params is None:
         return None
+
     return prepare_compose(transforms_params)
 
 
@@ -67,7 +70,9 @@ def create_dataset(dataset_name: str, common_dataset_params: dict, params: Datas
     transform = create_transforms(params.transform)
     augment = create_transforms(params.augment)
 
-    params.params.update(common_dataset_params)
+    dataset_params = common_dataset_params.copy()
+    dataset_params.update(params.params)
 
     dataset_class = DATASETS.get(dataset_name)
-    return dataset_class(transform=transform, augment=augment, **params.params)
+
+    return dataset_class(transform=transform, augment=augment, **dataset_params)
