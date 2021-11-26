@@ -30,18 +30,17 @@ class QueryToRelevantDataset(ABCDataset):
         """
         super().__init__(transform, augment)
         self._data_folder = Path(data_folder)
-        self._matches_csv_path = Path(matches_csv_path)
-        self._matches = pd.read_csv(matches_csv_path, dtype={"query": str, "relevant": str})
+        self._matches = pd.read_csv(Path(data_folder) / matches_csv_path, dtype={"query": str, "relevant": str})
         self.input_dtype = input_dtype
         self.grayscale = grayscale
         if retrieval_level == 'image':
-            self._img_paths = pd.read_csv(img_paths_csv_path, usecols=["id", "path"],
+            self._img_paths = pd.read_csv(Path(data_folder) / img_paths_csv_path, usecols=["id", "path"],
                                           dtype={"id": str, "path": str}, header=0)
         elif retrieval_level == 'object':
             if seq_len is None:
                 raise ValueError(f"if retrieval_level is 'object', needed to provide 'seq_len'. Got: {seq_len}")
 
-            self._img_paths = pd.read_csv(img_paths_csv_path, usecols=["id", "is_mainview", "path"],
+            self._img_paths = pd.read_csv(Path(data_folder) / img_paths_csv_path, usecols=["id", "is_mainview", "path"],
                                           dtype={"id": str, "path": str, "is_mainview": int}, header=0)
         else:
             raise ValueError(f"retrieval_level must be either 'object' or 'image'. Got: {retrieval_level}")
@@ -201,13 +200,13 @@ class FullDbRetrievalDataset(QueryToRelevantDataset):
         self._db_folder = Path(db_folder)
 
         if retrieval_level == 'image':
-            include_only = pd.read_csv(include_only_path, usecols=["id", "path"],
+            include_only = pd.read_csv(Path(db_folder) / include_only_path, usecols=["id", "path"],
                                           dtype={"id": str, "path": str}, header=0)
         elif retrieval_level == 'object':
             if seq_len is None:
                 raise ValueError(f"if retrieval_level is 'object', needed to provide 'seq_len'. Got: {seq_len}")
 
-            include_only = pd.read_csv(include_only_path, usecols=["id", "is_mainview", "path"],
+            include_only = pd.read_csv(Path(db_folder) / include_only_path, usecols=["id", "is_mainview", "path"],
                                           dtype={"id": str, "path": str, "is_mainview": int}, header=0)
         else:
             raise ValueError(f"retrieval_level must be either 'object' or 'image'. Got: {retrieval_level}")
