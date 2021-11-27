@@ -83,7 +83,7 @@ data:
           border_mode: 0
           value: 0
       - name: GaussNoise
-      - name: JpegCompression
+      - name: ImageCompression
         params:
           quality_lower: 90
       - name: ChannelShuffle
