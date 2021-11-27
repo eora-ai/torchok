@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.ops.nms import batched_nms
+from src.registry import DETECTION_INFER_MODULES
 
 from point_generator import MlvlPointGenerator
 from assigner import SimOTAAssigner
@@ -45,8 +46,8 @@ def bbox_xyxy_to_cxcywh(bbox):
     bbox_new = [(x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1), (y2 - y1)]
     return torch.cat(bbox_new, dim=-1)
 
-
-class YoloxBbox():
+@DETECTION_INFER_MODULES.register_class
+class YoloxInfer:
     def __init__(self,
                 strides=[8, 16, 32],
                 train_cfg=None,
@@ -58,10 +59,11 @@ class YoloxBbox():
         self.train_cfg = train_cfg
 
         self.sampling = False
-        if self.train_cfg:
-            self.assigner = SimOTAAssigner(self.train_cfg.assigner)
-            # sampling=False so use PseudoSampler
-            self.sampler = PseudoSampler()
+        self.assigner = SimOTAAssigner(center_radius=2.5)
+        # sampling=False so use PseudoSampler
+        self.sampler = PseudoSampler()
+        # if self.train_cfg:
+            
         
     def _get_flatten_output(self,
                             cls_scores,
@@ -125,7 +127,7 @@ class YoloxBbox():
             dets, keep = batched_nms(bboxes, scores, labels, cfg.nms)
             return dets, labels[keep]
 
-    def get_output_for_test(self,
+    def forward_infer(self,
                    cls_scores,
                    bbox_preds,
                    objectnesses,
@@ -173,7 +175,7 @@ class YoloxBbox():
                 self._bboxes_nms(cls_scores, bboxes, score_factor, cfg))
         return result_list
  
-    def get_loss_input(self,
+    def forward_train(self,
                 cls_scores,
                 bbox_preds,
                 objectnesses,

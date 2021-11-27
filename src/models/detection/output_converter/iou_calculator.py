@@ -1,9 +1,5 @@
-
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
-import torch.nn as nn
-from src.registry import LOSSES
-import warnings
 
 
 def cast_tensor_type(x, scale=1., dtype=None):
@@ -19,6 +15,57 @@ def fp16_clamp(x, min=None, max=None):
         return x.float().clamp(min, max).half()
 
     return x.clamp(min, max)
+
+
+class BboxOverlaps2D:
+    """2D Overlaps (e.g. IoUs, GIoUs) Calculator."""
+
+    def __init__(self, scale=1., dtype=None):
+        self.scale = scale
+        self.dtype = dtype
+
+    def __call__(self, bboxes1, bboxes2, mode='iou', is_aligned=False):
+        """Calculate IoU between 2D bboxes.
+        Args:
+            bboxes1 (Tensor): bboxes have shape (m, 4) in <x1, y1, x2, y2>
+                format, or shape (m, 5) in <x1, y1, x2, y2, score> format.
+            bboxes2 (Tensor): bboxes have shape (m, 4) in <x1, y1, x2, y2>
+                format, shape (m, 5) in <x1, y1, x2, y2, score> format, or be
+                empty. If ``is_aligned `` is ``True``, then m and n must be
+                equal.
+            mode (str): "iou" (intersection over union), "iof" (intersection
+                over foreground), or "giou" (generalized intersection over
+                union).
+            is_aligned (bool, optional): If True, then m and n must be equal.
+                Default False.
+        Returns:
+            Tensor: shape (m, n) if ``is_aligned `` is False else shape (m,)
+        """
+        assert bboxes1.size(-1) in [0, 4, 5]
+        assert bboxes2.size(-1) in [0, 4, 5]
+        if bboxes2.size(-1) == 5:
+            bboxes2 = bboxes2[..., :4]
+        if bboxes1.size(-1) == 5:
+            bboxes1 = bboxes1[..., :4]
+
+        if self.dtype == 'fp16':
+            # change tensor type to save cpu and cuda memory and keep speed
+            bboxes1 = cast_tensor_type(bboxes1, self.scale, self.dtype)
+            bboxes2 = cast_tensor_type(bboxes2, self.scale, self.dtype)
+            overlaps = bbox_overlaps(bboxes1, bboxes2, mode, is_aligned)
+            if not overlaps.is_cuda and overlaps.dtype == torch.float16:
+                # resume cpu float32
+                overlaps = overlaps.float()
+            return overlaps
+
+        return bbox_overlaps(bboxes1, bboxes2, mode, is_aligned)
+
+    def __repr__(self):
+        """str: a string describing the module"""
+        repr_str = self.__class__.__name__ + f'(' \
+            f'scale={self.scale}, dtype={self.dtype})'
+        return repr_str
+
 
 def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     """Calculate overlap between two set of bboxes.
@@ -186,45 +233,3 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     enclose_area = torch.max(enclose_area, eps)
     gious = ious - (enclose_area - union) / enclose_area
     return gious
-
-
-@LOSSES.register_class
-class DetectionIoU(nn.Module):
-    def __init__(self, linear=False, mode='log', eps=1e-6) -> None:
-        super().__init__()
-        self.linear = False
-        self.mode = mode
-        self.eps = eps
-
-    def forward(self, pred, target):
-        """IoU loss.
-        Computing the IoU loss between a set of predicted bboxes and target bboxes.
-        The loss is calculated as negative log of IoU.
-        Args:
-            pred (torch.Tensor): Predicted bboxes of format (x1, y1, x2, y2),
-                shape (n, 4).
-            target (torch.Tensor): Corresponding gt bboxes, shape (n, 4).
-            linear (bool, optional): If True, use linear scale of loss instead of
-                log scale. Default: False.
-            mode (str): Loss scaling mode, including "linear", "square", and "log".
-                Default: 'log'
-            eps (float): Eps to avoid log(0).
-        Return:
-            torch.Tensor: Loss tensor.
-        """
-        assert self.mode in ['linear', 'square', 'log']
-        if self.linear:
-            mode = 'linear'
-            warnings.warn('DeprecationWarning: Setting "linear=True" in '
-                        'iou_loss is deprecated, please use "mode=`linear`" '
-                        'instead.')
-        ious = bbox_overlaps(pred, target, is_aligned=True).clamp(min=self.eps)
-        if mode == 'linear':
-            loss = 1 - ious
-        elif mode == 'square':
-            loss = 1 - ious**2
-        elif mode == 'log':
-            loss = -ious.log()
-        else:
-            raise NotImplementedError
-        return loss

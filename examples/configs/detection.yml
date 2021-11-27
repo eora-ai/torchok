@@ -8,27 +8,26 @@ task:
     input_size: [ *num_channels, &height 640, &width 640]
     neck_name: YOLOXPAFPN
     head_name: YOLOXHead
-
+    infer_name: YoloxInfer
 
 loss:
   loss_list:
-    - name: DiceLoss
+    - name: CrossEntropyLoss
       params:
-        mode: binary
         target_fields:
-          target: target
-          input: logits
-    - name: LovaszLoss
+          target: cls_targets
+          input: cls_pred
+    - name: DetectionIoU
       params:
-        mode: binary
+        mode: square
         target_fields:
-          target: target
-          input: logits
+          target: bbox_target
+          input: bbox_pred
     - name: BCEWithLogitsLoss
       params:
         target_fields:
-          target: target
-          input: logits
+          target: obj_target
+          input: obj_pred
 
 optimizers:
   name: SGD
@@ -46,19 +45,18 @@ schedulers:
 
 data:
   common_params:
-    data_folder: "/workdir"
-    target_column: mask_path
+    data_folder: "/workdir/rbayazitov/torchok_detector/train/"
     input_dtype: float16
 
   train_params:
-    name: ImageSegmentationDataset
+    name: ImageDetectionDataset
     dataloader_params: &dataloader_params
-      batch_size: 64
+      batch_size: 4
       num_workers: 12
       shuffle: true
       drop_last: false
     params:
-      path_to_datalist: "train.csv"
+      path_to_datalist: "../train.csv"
     transform:
       - &normalize
         name: Normalize
@@ -68,97 +66,16 @@ data:
       - &totensor
         name: ToTensorV2
     augment:
-      - name: OneOf
-        params:
-          transforms:
-            - name: RandomResizedCrop
-              params:
-                height: *height
-                width: *width
-            - name: Compose
-              params:
-                transforms:
-                  - name: RandomCropNearInterestArea
-                    params:
-                      max_part_shift: 1
-                      min_part_shift: 0.0
-                      p: 1.0
-                  - name: ShiftScaleRotate
-                    params:
-                      p: 1.0
-                      scale_limit: 0.3
-                      rotate_limit: [-180, 180]
-                      shift_limit: 0.0625
-                      border_mode: 0
-            - name: ShiftScaleRotate
-              params:
-                p: 1.0
-                scale_limit: 0.3
-                rotate_limit: [-180, 180]
-                shift_limit: 0.0625
-                border_mode: 0
-            - name: AlignCropNearInterestArea
-              params:
-                classes_of_interest: [1]
-                max_pad: 0.2
-                min_pad: 0.0
-                p: 1.0
-          p: 0.6
-      - &resize
-        name: LongestMaxSize
-        params:
-          max_size: *height
-          interpolation: 2
-          p: 1
-      - name: OneOf
-        params:
-          transforms:
-            - name: Blur
-            - name: GaussianBlur
-            - name: MedianBlur
-            - name: MotionBlur
-          p: 0.2
-      - name: RandomFog
-        params:
-          p: 0.2
-      - name: RandomShadow
-        params:
-          p: 0.2
-      - name: RandomSunFlare
-        params:
-          p: 0.2
-      - name: ChannelDropout
-        params:
-          p: 0.2
-      - name: ChannelShuffle
-        params:
-          p: 0.2
       - name: ColorJitter
         params:
           p: 0.2
-      - name: OneOf
+    bbox_augment:
+      - &resize
+        name: Resize
         params:
-          transforms:
-            - name: ImageCompression
-              params:
-                quality_lower: 90
-            - name: GaussNoise
-      - name: OpticalDistortion
-        params:
-          p: 0.3
-      - name: Equalize
-        params:
-          p: 0.3
-      - name: ToGray
-        params:
-          p: 0.3
-      - &pad
-        name: PadIfNeeded
-        params:
-          min_height: *height
-          min_width: *width
-          border_mode: 0
-          p: 1.0
+            height: *height
+            width: *width
+     
 
   valid_params:
     name: ImageSegmentationDataset
@@ -168,21 +85,21 @@ data:
     transform:
       - *normalize
       - *totensor
-    augment:
-      - *resize
-      - *pad
+    # augment:
+    #   - *resize
+    #   - *pad
 
 trainer:
-  gpus: [3]
-  max_epochs: 150
+  gpus: [0]
+  max_epochs: 10
   progress_bar_refresh_rate: 1
   check_val_every_n_epoch: 1
   precision: 16
   amp_level: 'O3'
   amp_backend: 'apex'
 
-log_dir: '/workdir/logs/segmentator'
-experiment_name: unet_effnet_b0_lowres
+log_dir: '/workdir/logs/detectors'
+experiment_name: yolox
 
 logger:
   logger: tensorboard
@@ -204,5 +121,5 @@ metrics:
     params:
       name: accuracy
       target_fields:
-        target: target
-        prediction: logits
+        target: obj_target
+        prediction: obj_pred

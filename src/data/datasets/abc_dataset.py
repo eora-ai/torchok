@@ -6,9 +6,10 @@ from torch.utils.data import Dataset
 class ABCDataset(Dataset, ABC):
     """An abstract dataset for image classification task"""
 
-    def __init__(self, transform, augment=None):
+    def __init__(self, transform, augment=None, bbox_augment=None):
         self.transform = transform
         self.augment = augment
+        self.bbox_augment = bbox_augment
         self.transform_targets = {}
 
     def update_transform_targets(self, transform_targets):
