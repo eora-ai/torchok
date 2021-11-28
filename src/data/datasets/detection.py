@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 import torch
 from typing import List
+
 from src.data import transforms as module_transforms
+from torch.utils.data._utils.collate import default_collate
 
 from src.registry import DATASETS
 from .classification import ImageDataset
@@ -11,77 +13,124 @@ from .classification import ImageDataset
 
 
 @DATASETS.register_class
-class ImageDetectionDataset(ImageDataset):
-    def __init__(self, 
-                target_cls_column='class_label',
-                target_bbox_columns=['x_c', 'y_c', 'w', 'h'],
-                input_bbox_format = 'yolo',
-                output_bbox_format = 'pascal_voc',
-                **dataset_params
-     ):
-        super().__init__(**dataset_params)
-     
-        # bbox format from Albumentations 
-        # https://albumentations.ai/docs/getting_started/bounding_boxes_augmentation/
-        assert input_bbox_format in ['pascal_voc', 'albumentations', 'coco', 'yolo'], \
-            'Not correct bbox format'
-        assert output_bbox_format in ['pascal_voc', 'albumentations', 'coco', 'yolo'], \
-            'Not correct bbox format'
+class DetectionDataset(ImageDataset):
+    """
+    DetectionDataset class annotation_format:
+    [x_min, y_min, x_max, y_max, label] - pascal_voc format in albumentation see the link
+    https://albumentations.ai/docs/getting_started/bounding_boxes_augmentation/
 
-        if self.bbox_augment is not None:
-            self.bbox_augment = module_transforms.Compose(
-                self.bbox_augment,
+    Example:
+    [{'x_min': 520, 'y_min': 148, 'x_max': 600, 'y_max': 201, 'label': 20},
+     {'x_min': 598, 'y_min': 206, 'x_max': 675, 'y_max': 240, 'label': 1}]
+
+    :param target_column: Column name in csv file, with bboxes and labels in format wrote above
+    :param min_area: Value in pixels. If the area of a bounding box after 
+     augmentation becomes smaller than min_area, Albumentations will drop that box
+    :param min_visibility: Value between 0 and 1. If the ratio of the bounding box area after augmentation 
+     to the area of the bounding box before augmentation becomes smaller than min_visibility, 
+     Albumentations will drop that box.
+    """
+    def __init__(self, 
+                    target_column: str = 'annotation',
+                    min_area: float = 0.0,
+                    min_visibility: float = 0.0,
+                    **dataset_params
+    ):
+        super().__init__(**dataset_params)
+        
+        self.target_column = target_column
+        if self.augment is not None:
+            self.augment = module_transforms.Compose(
+                self.augment,
                 bbox_params=module_transforms.BboxParams(
-                    format=input_bbox_format,
-                    label_fields=['category_ids']
+                    format='pascal_voc',
+                    label_fields=['category_ids'],
+                    min_area=min_area,
+                    min_visibility=min_visibility
                     )
             )
-     
-        self.target_cls_column = target_cls_column
-        self.target_bbox_columns = target_bbox_columns
-        self.name2label = {'fawn': 0, 'reindeer': 1}
-    
+
+        self.transform = module_transforms.Compose(
+                self.transform,
+                bbox_params=module_transforms.BboxParams(
+                    format='pascal_voc',
+                    label_fields=['category_ids'],
+                    min_area=min_area,
+                    min_visibility=min_visibility
+                    )
+            )
+
+        self.csv[target_column] = self.csv[target_column].apply(eval)
 
     def __getitem__(self, idx: int):
         sample = self.get_raw(idx // self.expand_rate)
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
-        # if not self.test_mode:
-        #     sample['class_labels'] = sample['class_labels'].type(torch.__dict__[self.target_dtype])
         
         output = {
             'input': sample['image'],
-            'gt_bboxes': sample['bboxes'],
-            'gt_labels': sample['category_ids']
+            'target_bboxes': torch.tensor(sample['bboxes']).type(torch.__dict__[self.target_dtype]),
+            'target_labels': torch.tensor(sample['category_ids']).type(torch.__dict__[self.target_dtype]),
+            'bbox_count': torch.tensor(sample['bbox_count'])
         }
+
         return output
         
     def get_raw(self, idx: int):
         record = self.csv.iloc[idx]
         image = self.read_image(record)
-        all_bboxes_df = self.csv.loc[self.csv['image_path'] == record.image_path]
+        row_annotations = record[self.target_column]
 
         bboxes = []
         labels = []
-
-        for i in all_bboxes_df.index:
-            row = all_bboxes_df.iloc[i]
-            bbox = [row[el_name] for el_name in self.target_bbox_columns] 
-            label = self.name2label[row[self.target_cls_column]]
+        for annotation in row_annotations:
+            bbox = [annotation['x_min'], annotation['y_min'], annotation['x_max'], annotation['y_max']]
+            label = annotation['label']
             bboxes.append(bbox)
             labels.append(label)
-        
-        image = self.augment(image=image)['image']
 
+        bbox_count = len(bboxes)
 
         sample = {
             'image': image,
             'bboxes': bboxes,
             'category_ids': labels
             }
-        if self.bbox_augment is not None:
-            sample = self.bbox_augment(**sample)
 
-        sample['image'] = self.transform(image=sample['image'])['image']
+        if self.augment is not None:
+            sample = self.augment(**sample)
+
+        sample = self.transform(**sample)
+        sample['bbox_count'] = bbox_count
+        
         return sample
 
-    
+    @staticmethod
+    def collate_fn(batch: dict) -> dict:
+        """
+        Add empty bbox and label into batch with different size of bboxes
+        empty bbox = [0, 0, 0, 0]
+        empty label = -1
+        """
+        # get sequence lengths
+        max_length = 0
+        for t in batch:
+            max_length = max(max_length, t['bbox_count'])
+       
+        empty_box = [0]*4
+        for t in batch:
+            bbox_count = t['bbox_count']
+            count_diff = max_length - bbox_count
+            if count_diff != 0:
+                append_bboxes = torch.tensor([empty_box for _ in range(count_diff)]).type(torch.long)
+                append_label = torch.tensor([-1 for _ in range(count_diff)]).type(torch.long)
+                if bbox_count != 0:
+                    t['target_bboxes'] = torch.cat([t['target_bboxes'], append_bboxes])
+                    t['target_labels'] = torch.cat([t['target_labels'], append_label])
+                else:
+                    t['target_bboxes'] = append_bboxes
+                    t['target_labels'] = append_label
+                
+        batch = default_collate(batch)
+        
+        return batch
+       

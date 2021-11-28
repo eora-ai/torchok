@@ -23,7 +23,6 @@ class ImageDataset(ABCDataset):
                  path_to_datalist: str,
                  transform: Union[BasicTransform, BaseCompose],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 bbox_augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
                  target_dtype: str = 'long',
                  target_column: str = 'label',
@@ -47,7 +46,7 @@ class ImageDataset(ABCDataset):
                 Useful for small datasets.
             test_mode: If True, only image without labels will be returned.
         """
-        super().__init__(transform, augment, bbox_augment)
+        super().__init__(transform, augment)
         
         self.data_folder = Path(data_folder)
         self.csv = pd.read_csv(self.data_folder / path_to_datalist)

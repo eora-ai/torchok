@@ -45,40 +45,38 @@ schedulers:
 
 data:
   common_params:
-    data_folder: "/workdir/rbayazitov/torchok_detector/train/"
+    data_folder: "/workdir/rbayazitov/torchok_detector/"
     input_dtype: float16
 
   train_params:
-    name: ImageDetectionDataset
+    name: DetectionDataset
     dataloader_params: &dataloader_params
       batch_size: 4
       num_workers: 12
       shuffle: true
       drop_last: false
     params:
-      path_to_datalist: "../train.csv"
+      path_to_datalist: "train.csv"
     transform:
       - &normalize
         name: Normalize
         params:
           mean: [0.5, 0.5, 0.5]
           std: [0.5, 0.5, 0.5]
+      - &resize
+        name: Resize
+        params:
+            height: *height
+            width: *width
       - &totensor
         name: ToTensorV2
     augment:
       - name: ColorJitter
         params:
           p: 0.2
-    bbox_augment:
-      - &resize
-        name: Resize
-        params:
-            height: *height
-            width: *width
-     
-
+      
   valid_params:
-    name: ImageSegmentationDataset
+    name: DetectionDataset
     dataloader_params: *dataloader_params
     params:
       path_to_datalist: "valid.csv"

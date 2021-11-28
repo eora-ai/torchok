@@ -49,19 +49,15 @@ def prepare_dataset(dataset_name, common_dataset_params, dataset_params):
     if dataset_name not in datasets.__dict__:
         raise ValueError("No such dataset in the library: {}".format(dataset_name))
 
-
     transform = create_transforms(dataset_params.transform)
     augment = create_transforms(dataset_params.augment)
-    bbox_augment = create_transforms(dataset_params.bbox_augment)
 
     other_params = dataset_params.kwargs.copy()
     if common_dataset_params:
         other_params.update(common_dataset_params)
 
-
     dataset = datasets.__dict__[dataset_name](
         labels=dataset_params.labels, transform=transform, augment=augment,
-        bbox_augment=bbox_augment,
         test_mode=dataset_params.test_mode, **other_params)
 
     return dataset
@@ -70,14 +66,8 @@ def prepare_dataset(dataset_name, common_dataset_params, dataset_params):
 def create_dataset(dataset_name: str, common_dataset_params: dict, params: DatasetParams):
     transform = create_transforms(params.transform)
     augment = create_transforms(params.augment)
-    bbox_augment = create_transforms(params.bbox_augment)
 
     params.params.update(common_dataset_params)
 
     dataset_class = DATASETS.get(dataset_name)
-    return dataset_class(
-        transform=transform, 
-        augment=augment, 
-        bbox_augment=bbox_augment, 
-        **params.params
-        )
+    return dataset_class(transform=transform, augment=augment, **params.params)

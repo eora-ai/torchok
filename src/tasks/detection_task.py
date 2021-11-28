@@ -17,6 +17,8 @@ class DetectionTaskParams(BaseModel):
     neck_params: dict = {}
     head_name: str
     head_params: dict = {}
+    infer_name: str
+    infer_params: dict = {}
 
 
 @TASKS.register_class

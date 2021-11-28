@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.ops.nms import batched_nms
-from src.registry import DETECTION_INFER_MODULES
+from src.registry import DETECTOR_INFER_MODULES
 
 from point_generator import MlvlPointGenerator
 from assigner import SimOTAAssigner
@@ -46,7 +46,7 @@ def bbox_xyxy_to_cxcywh(bbox):
     bbox_new = [(x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1), (y2 - y1)]
     return torch.cat(bbox_new, dim=-1)
 
-@DETECTION_INFER_MODULES.register_class
+@DETECTOR_INFER_MODULES.register_class
 class YoloxInfer:
     def __init__(self,
                 strides=[8, 16, 32],
