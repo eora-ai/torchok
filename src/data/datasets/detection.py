@@ -88,8 +88,6 @@ class DetectionDataset(ImageDataset):
             bboxes.append(bbox)
             labels.append(label)
 
-        bbox_count = len(bboxes)
-
         sample = {
             'image': image,
             'bboxes': bboxes,
@@ -100,35 +98,33 @@ class DetectionDataset(ImageDataset):
             sample = self.augment(**sample)
 
         sample = self.transform(**sample)
-        sample['bbox_count'] = bbox_count
+        sample['bbox_count'] = len(sample['bboxes'])
         
         return sample
 
     @staticmethod
     def collate_fn(batch: dict) -> dict:
         """
-        Add empty bbox and label into batch with different size of bboxes
+        Pad bboxes and labels tensors with empty data to form a fix shaped output tensors. 
+        Size of the corresponding dimension is equal to the maximum number of bboxes in the given batch.
         empty bbox = [0, 0, 0, 0]
         empty label = -1
         """
-        # get sequence lengths
+        # get maximum sequence length
         max_length = 0
         for t in batch:
             max_length = max(max_length, t['bbox_count'])
-       
-        empty_box = [0]*4
-        for t in batch:
-            bbox_count = t['bbox_count']
-            count_diff = max_length - bbox_count
-            if count_diff != 0:
-                append_bboxes = torch.tensor([empty_box for _ in range(count_diff)]).type(torch.long)
-                append_label = torch.tensor([-1 for _ in range(count_diff)]).type(torch.long)
+
+        if max_length != 0:
+            for t in batch:
+                bboxes = torch.zeros(max_length, 4, dtype=torch.long)
+                labels = torch.full((max_length,), -1, dtype=torch.long)
+                bbox_count = t['bbox_count']
                 if bbox_count != 0:
-                    t['target_bboxes'] = torch.cat([t['target_bboxes'], append_bboxes])
-                    t['target_labels'] = torch.cat([t['target_labels'], append_label])
-                else:
-                    t['target_bboxes'] = append_bboxes
-                    t['target_labels'] = append_label
+                    bboxes[:bbox_count] = t['target_bboxes']
+                    labels[:bbox_count] = t['target_labels']
+                t['target_bboxes'] = bboxes
+                t['target_labels'] = labels
                 
         batch = default_collate(batch)
         
