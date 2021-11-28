@@ -22,8 +22,20 @@ class DetectionDataset(ImageDataset):
     Example:
     [{'x_min': 520, 'y_min': 148, 'x_max': 600, 'y_max': 201, 'label': 20},
      {'x_min': 598, 'y_min': 206, 'x_max': 675, 'y_max': 240, 'label': 1}]
+
+    :param target_column: Column name in csv file, with bboxes and labels in format wrote above
+    :param min_area: Value in pixels. If the area of a bounding box after 
+     augmentation becomes smaller than min_area, Albumentations will drop that box
+    :param min_visibility: Value between 0 and 1. If the ratio of the bounding box area after augmentation 
+     to the area of the bounding box before augmentation becomes smaller than min_visibility, 
+     Albumentations will drop that box.
     """
-    def __init__(self, target_column='annotation', **dataset_params):
+    def __init__(self, 
+                    target_column: str = 'annotation',
+                    min_area: float = 0.0,
+                    min_visibility: float = 0.0,
+                    **dataset_params
+    ):
         super().__init__(**dataset_params)
         
         self.target_column = target_column
@@ -32,7 +44,9 @@ class DetectionDataset(ImageDataset):
                 self.augment,
                 bbox_params=module_transforms.BboxParams(
                     format='pascal_voc',
-                    label_fields=['category_ids']
+                    label_fields=['category_ids'],
+                    min_area=min_area,
+                    min_visibility=min_visibility
                     )
             )
 
@@ -40,7 +54,9 @@ class DetectionDataset(ImageDataset):
                 self.transform,
                 bbox_params=module_transforms.BboxParams(
                     format='pascal_voc',
-                    label_fields=['category_ids']
+                    label_fields=['category_ids'],
+                    min_area=min_area,
+                    min_visibility=min_visibility
                     )
             )
 
@@ -54,7 +70,7 @@ class DetectionDataset(ImageDataset):
             'input': sample['image'],
             'target_bboxes': torch.tensor(sample['bboxes']).type(torch.__dict__[self.target_dtype]),
             'target_labels': torch.tensor(sample['category_ids']).type(torch.__dict__[self.target_dtype]),
-            'bbox_count': sample['bbox_count']
+            'bbox_count': torch.tensor(sample['bbox_count'])
         }
 
         return output
