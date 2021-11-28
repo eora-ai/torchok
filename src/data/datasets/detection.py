@@ -68,7 +68,7 @@ class DetectionDataset(ImageDataset):
         
         output = {
             'input': sample['image'],
-            'target_bboxes': torch.tensor(sample['bboxes']).type(torch.__dict__[self.target_dtype]),
+            'target_bboxes': torch.tensor(sample['bboxes']).type(torch.float16),
             'target_labels': torch.tensor(sample['category_ids']).type(torch.__dict__[self.target_dtype]),
             'bbox_count': torch.tensor(sample['bbox_count'])
         }
@@ -117,7 +117,7 @@ class DetectionDataset(ImageDataset):
 
         if max_length != 0:
             for t in batch:
-                bboxes = torch.zeros(max_length, 4, dtype=torch.long)
+                bboxes = torch.zeros(max_length, 4, dtype=torch.float16)
                 labels = torch.full((max_length,), -1, dtype=torch.long)
                 bbox_count = t['bbox_count']
                 if bbox_count != 0:
