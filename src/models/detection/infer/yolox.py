@@ -10,7 +10,7 @@ from src.registry import DETECTOR_INFER_MODULES
 
 from .point_generator import MlvlPointGenerator
 from .assigner import SimOTAAssigner
-from .sampler import PseudoSampler
+
 
 def multi_apply(func, *args, **kwargs):
     """Apply function to a list of arguments.
@@ -51,20 +51,21 @@ class YoloxInfer(nn.Module):
     def __init__(self,
                 num_classes,
                 strides=[8, 16, 32],
+                input_size = (640, 640),
                 train_cfg=None,
                 test_cfg=None,):
         super(YoloxInfer, self).__init__()
-        self.prior_generator = MlvlPointGenerator(strides, offset=0)
+
+        featmap_sizes = [torch.Size([int(input_size[0]/stride), int(input_size[1]/stride)]) for stride in strides]
+        self.prior_generator = MlvlPointGenerator(strides, featmap_sizes, offset=0, with_stride=True)
+        
         self.cls_out_channels = num_classes
+        self.num_classes = num_classes
         self.test_cfg = test_cfg
         self.train_cfg = train_cfg
 
         self.sampling = False
         self.assigner = SimOTAAssigner(center_radius=2.5)
-        # sampling=False so use PseudoSampler
-        self.sampler = PseudoSampler()
-        # if self.train_cfg:
-            
         
     def _get_flatten_output(self,
                             cls_scores,
@@ -72,16 +73,9 @@ class YoloxInfer(nn.Module):
                             objectnesses,
                             ):
         num_imgs = bbox_preds[0].shape[0]
-        featmap_sizes = [cls_score.shape[2:] for cls_score in cls_scores]
-        mlvl_priors = self.prior_generator.grid_priors(
-            featmap_sizes,
-            dtype=cls_scores[0].dtype,
-            device=cls_scores[0].device,
-            with_stride=True)
-
-        # print('multi level priors = ' + str(mlvl_priors))
-        # print('multi lvl priors shape = ' + str([priors.shape for priors in mlvl_priors]))
-
+        
+        flatten_priors = self.prior_generator.flatten_priors
+        
         flatten_cls_preds = [
             cls_pred.permute(0, 2, 3, 1).reshape(num_imgs, -1,
                                                  self.cls_out_channels)
@@ -100,9 +94,6 @@ class YoloxInfer(nn.Module):
         flatten_cls_preds = torch.cat(flatten_cls_preds, dim=1)
         flatten_bbox_preds = torch.cat(flatten_bbox_preds, dim=1)
         flatten_objectness = torch.cat(flatten_objectness, dim=1)
-        # print('flatten_cls_preds shape = ' + str(flatten_cls_preds.shape))
-        flatten_priors = torch.cat(mlvl_priors)
-        # print('flatten_priors shape = ' + str(flatten_priors.shape))
 
         flatten_bboxes = self._bbox_decode(flatten_priors, flatten_bbox_preds)
         
@@ -110,25 +101,16 @@ class YoloxInfer(nn.Module):
             flatten_priors, flatten_bboxes, flatten_bbox_preds
         
     def _bbox_decode(self, priors, bbox_preds):
-        # print('bbox_preds = ' + str(bbox_preds))
         xys = (bbox_preds[..., :2] * priors[:, 2:]) + priors[:, :2]
-        # print('xys = ' + str(xys))
         whs = bbox_preds[..., 2:].exp() * priors[:, 2:]
-        # print('whs = ' + str(whs))
+
         tl_x = (xys[..., 0] - whs[..., 0] / 2)
         tl_y = (xys[..., 1] - whs[..., 1] / 2)
         br_x = (xys[..., 0] + whs[..., 0] / 2)
         br_y = (xys[..., 1] + whs[..., 1] / 2)
 
-        # print('tl_x = ' + str(tl_x))
-        # print('tl_y = ' + str(tl_y))
-        # print('br_x = ' + str(br_x))
-        # print('br_y = ' + str(br_y))
-
         decoded_bboxes = torch.stack([tl_x, tl_y, br_x, br_y], -1)
 
-        # print('decoded_bboxes = ' + str(decoded_bboxes))
-        # print('decoded_bboxes = ' + str(decoded_bboxes.shape))
         return decoded_bboxes
 
     def _bboxes_nms(self, cls_scores, bboxes, score_factor, cfg):
@@ -273,12 +255,11 @@ class YoloxInfer(nn.Module):
         num_gts = gt_labels.size(0)
         # print('gt_bboxes num gts = ' + str(gt_bboxes.size(0)))
         gt_bboxes = gt_bboxes.to(decoded_bboxes.dtype)
-        # print('gt_bboxes num gts after = ' + str(gt_bboxes.size(0)))
         # No target
         if num_gts == 0:
-            cls_target = cls_preds.new_zeros((0, self.num_classes))
+            cls_target = cls_preds.new_zeros((0, self.num_classes)).long()
             bbox_target = cls_preds.new_zeros((0, 4))
-            obj_target = cls_preds.new_zeros((num_priors, 1))
+            obj_target = cls_preds.new_zeros((num_priors, 1)).long()
             foreground_mask = cls_preds.new_zeros(num_priors).bool()
             return (foreground_mask, cls_target, obj_target, bbox_target,
                     0)
@@ -288,21 +269,33 @@ class YoloxInfer(nn.Module):
         offset_priors = torch.cat(
             [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1)
 
+        # print(offset_priors)
         assign_result = self.assigner.assign(
             cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid(),
             offset_priors, decoded_bboxes, gt_bboxes, gt_labels)
 
-        sampling_result = self.sampler.sample(assign_result, priors, gt_bboxes)
-        pos_inds = sampling_result.pos_inds
+        #Sampler
+        pos_inds = torch.nonzero(
+                assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
+        pos_assigned_gt_inds = assign_result.gt_inds[pos_inds] - 1
         num_pos_per_img = pos_inds.size(0)
-
+        if gt_bboxes.numel() == 0:
+            # hack for index error case
+            assert pos_assigned_gt_inds.numel() == 0
+            pos_gt_bboxes = torch.empty_like(gt_bboxes).view(-1, 4)
+        else:
+            if len(gt_bboxes.shape) < 2:
+                gt_bboxes = gt_bboxes.view(-1, 4)
+            pos_gt_bboxes = gt_bboxes[pos_assigned_gt_inds, :]
+        pos_gt_labels = assign_result.labels[pos_inds]
         pos_ious = assign_result.max_overlaps[pos_inds]
+
         # IOU aware classification score
-        cls_target = F.one_hot(sampling_result.pos_gt_labels,
-                               self.num_classes) * pos_ious.unsqueeze(-1)
-        obj_target = torch.zeros_like(objectness).unsqueeze(-1)
+        cls_target = F.one_hot(pos_gt_labels,
+                               self.num_classes) * pos_ious.unsqueeze(-1).long()
+        obj_target = torch.zeros_like(objectness).unsqueeze(-1).long()
         obj_target[pos_inds] = 1
-        bbox_target = sampling_result.pos_gt_bboxes
+        bbox_target = pos_gt_bboxes
 
         foreground_mask = torch.zeros_like(objectness).to(torch.bool)
         foreground_mask[pos_inds] = 1

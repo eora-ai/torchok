@@ -1,3 +1,4 @@
+from typing import DefaultDict
 import torch
 from pydantic import BaseModel
 
@@ -6,6 +7,7 @@ from src.constructor.config_structure import TrainConfigParams
 from src.registry import TASKS, DETECTION_NECKS, \
     DETECTION_HEADS, DETECTOR_INFER_MODULES
 from .base_task import BaseTask
+import torch.nn as nn
 
 class DetectionTaskParams(BaseModel):
     checkpoint: str = None
@@ -22,14 +24,15 @@ class DetectionTaskParams(BaseModel):
 
 
 @TASKS.register_class
-class DetectionTask(BaseTask):
+class DetectionTask(BaseTask, nn.Module):
     config_parser = DetectionTaskParams
 
     def __init__(self, hparams: TrainConfigParams):
-        super().__init__(hparams)
+        super(DetectionTask, self).__init__(hparams)
+        # super().__init__(hparams)
         self.backbone = create_backbone(model_name=self.params.backbone_name,
                                         **self.params.backbone_params)
-
+        
         neck_class = DETECTION_NECKS.get(self.params.neck_name)
         self.neck = neck_class(
                             in_channels=[128, 256, 512],
@@ -51,30 +54,43 @@ class DetectionTask(BaseTask):
     def forward(self, x):
         backbone_features = self.backbone(x)
         neck_features = self.neck(backbone_features)
-        output = self.head(neck_features)
-        return output
+        cls_score, bbox_pred, objectness = self.head(neck_features)
+        return cls_score, bbox_pred, objectness
 
     def forward_with_gt(self, batch):
         input_data = batch['input']
 
-        gt_bboxes = batch['gt_bboxes']
-        gt_labels = batch['gt_labels']
+        gt_bboxes = batch['target_bboxes']
+        gt_labels = batch['target_labels']
 
+        # print('gt_bboxes = ' + str(gt_bboxes.shape))
+        # print(gt_bboxes)
+        # print('gt_labels = ' + str(gt_labels.shape))
+        # print('intput = ' + str(input_data.shape))
 
-        heaed_prediction = self.forward(input_data)
+        cls_score, bbox_pred, objectness = self.forward(input_data)
         um_total_samples, \
             bbox_pred, bbox_targets,\
                  obj_pred, obj_targets,\
                       cls_pred, cls_targets = self.infer_module.forward_train(
-                                                        heaed_prediction, 
-                                                        gt_bboxe =gt_bboxes,
+                                                        cls_score,
+                                                        bbox_pred,
+                                                        objectness, 
+                                                        gt_bboxes=gt_bboxes,
                                                         gt_labels=gt_labels
                                                         )
+        
+        # print('obj_pred = ' + str(obj_pred))
+        # print(type(obj_pred))
+        # print(obj_pred.shape)
+        # print('obj_targets = ' + str(obj_targets))
+        # print(type(obj_targets))
+        # print(obj_targets.shape)
         output = {
             'bbox_pred': bbox_pred, 
             'bbox_target': bbox_targets, 
-            'obj_pred': obj_pred, 
-            'obj_target': obj_targets,
+            'obj_pred': obj_pred.double(), 
+            'obj_target': obj_targets.float(),
             'cls_pred': cls_pred, 
             'cls_targets': cls_targets            
             }
@@ -86,11 +102,11 @@ class DetectionTask(BaseTask):
         self.metric_manager.update('train', **output)
         return loss
 
-    # def validation_step(self, batch, batch_idx):
-    #     output = self.forward_with_gt(batch)
-    #     loss = self.criterion(**output)
-    #     self.metric_manager.update('valid', **output)
-    #     return loss
+    def validation_step(self, batch, batch_idx):
+        output = self.forward_with_gt(batch)
+        loss = self.criterion(**output)
+        self.metric_manager.update('valid', **output)
+        return loss
 
     # def test_step(self, batch, batch_idx):
     #     output = self.forward_with_gt(batch)

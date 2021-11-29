@@ -3,6 +3,7 @@ import warnings
 
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 from .iou_calculator import bbox_overlaps
 
 
@@ -52,7 +53,7 @@ class AssignResult():
    
 
 
-class SimOTAAssigner():
+class SimOTAAssigner(nn.Module):
     """Computes matching between predictions and ground truth.
 
     Args:
@@ -71,6 +72,7 @@ class SimOTAAssigner():
                  candidate_topk=10,
                  iou_weight=3.0,
                  cls_weight=1.0):
+        super(SimOTAAssigner, self).__init__()
         self.center_radius = center_radius
         self.candidate_topk = candidate_topk
         self.iou_weight = iou_weight
@@ -104,39 +106,13 @@ class SimOTAAssigner():
         Returns:
             assign_result (obj:`AssignResult`): The assigned result.
         """
-        # print('priors ' + str(priors))
-        # print('decoded_bboxes ' + str(decoded_bboxes))
-        # print('gt_bboxes ' + str(gt_bboxes))
-        # print('gr_labels ' + str(gt_labels))
 
-        try:
-            assign_result = self._assign(pred_scores, priors, decoded_bboxes,
-                                         gt_bboxes, gt_labels,
-                                         gt_bboxes_ignore, eps)
-            return assign_result
-        except RuntimeError:
-            origin_device = pred_scores.device
-            warnings.warn('OOM RuntimeError is raised due to the huge memory '
-                          'cost during label assignment. CPU mode is applied '
-                          'in this batch. If you want to avoid this issue, '
-                          'try to reduce the batch size or image size.')
-            torch.cuda.empty_cache()
+        assign_result = self._assign(pred_scores, priors, decoded_bboxes,
+                                        gt_bboxes, gt_labels,
+                                        gt_bboxes_ignore, eps)
+        return assign_result
+     
 
-            pred_scores = pred_scores.cpu()
-            priors = priors.cpu()
-            decoded_bboxes = decoded_bboxes.cpu()
-            gt_bboxes = gt_bboxes.cpu().float()
-            gt_labels = gt_labels.cpu()
-
-            assign_result = self._assign(pred_scores, priors, decoded_bboxes,
-                                         gt_bboxes, gt_labels,
-                                         gt_bboxes_ignore, eps)
-            assign_result.gt_inds = assign_result.gt_inds.to(origin_device)
-            assign_result.max_overlaps = assign_result.max_overlaps.to(
-                origin_device)
-            assign_result.labels = assign_result.labels.to(origin_device)
-
-            return assign_result
 
     def _assign(self,
                 pred_scores,
@@ -165,10 +141,17 @@ class SimOTAAssigner():
         Returns:
             :obj:`AssignResult`: The assigned result.
         """
+
+        # print('gt_bboxes = ' + str(gt_bboxes))
+        # print('gt_labels = ' + str(gt_labels))
+        indexes = torch.where(gt_labels >= 0)[0]
+        gt_labels = gt_labels[indexes]
+        gt_bboxes = gt_bboxes[indexes]
+
         INF = 100000000
         num_gt = gt_bboxes.size(0)
         num_bboxes = decoded_bboxes.size(0)
-
+        
         # assign 0 by default
         assigned_gt_inds = decoded_bboxes.new_full((num_bboxes, ),
                                                    0,
@@ -194,21 +177,16 @@ class SimOTAAssigner():
         valid_decoded_bbox = decoded_bboxes[valid_mask]
         valid_pred_scores = pred_scores[valid_mask]
         num_valid = valid_decoded_bbox.size(0)
-
         pairwise_ious = bbox_overlaps(valid_decoded_bbox, gt_bboxes)
         iou_cost = -torch.log(pairwise_ious + eps)
-
-        # gt_onehot_label = (
-        #     F.one_hot(gt_labels.to(torch.int64),
-        #               pred_scores.shape[-1]).float().unsqueeze(0).repeat(
-        #                   num_valid, 1, 1))
 
         gt_onehot_label = (
             F.one_hot(gt_labels.to(torch.int64),
                       pred_scores.shape[-1]).unsqueeze(0).repeat(
-                          num_valid, 1, 1)).double()
+                          num_valid, 1, 1)).float()
 
-        valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
+        valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1).float()
+    
         cls_cost = F.binary_cross_entropy(
             valid_pred_scores.sqrt_(), gt_onehot_label,
             reduction='none').sum(-1)
@@ -224,6 +202,7 @@ class SimOTAAssigner():
         # convert to AssignResult format
         assigned_gt_inds[valid_mask] = matched_gt_inds + 1
         assigned_labels = assigned_gt_inds.new_full((num_bboxes, ), -1)
+        
         assigned_labels[valid_mask] = gt_labels[matched_gt_inds].long()
         max_overlaps = assigned_gt_inds.new_full((num_bboxes, ),
                                                  -INF,
@@ -288,12 +267,12 @@ class SimOTAAssigner():
         matching_matrix = torch.zeros_like(cost)
         # select candidate topk ious for dynamic-k calculation
         topk_ious, _ = torch.topk(pairwise_ious, self.candidate_topk, dim=0)
-        print('topk_ious = ' + str(topk_ious))
+        # print('topk_ious = ' + str(topk_ious))
         # calculate dynamic k for each gt
         dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1)
-        print('dynamic_ks =' + str(dynamic_ks))
-        print('cost = ' + str(cost))
-        print('cost shape = ' + str(cost.shape))
+        # print('dynamic_ks =' + str(dynamic_ks))
+        # print('cost = ' + str(cost))
+        # print('cost shape = ' + str(cost.shape))
         for gt_idx in range(num_gt):
             _, pos_idx = torch.topk(
                 cost[:, gt_idx], k=dynamic_ks[gt_idx].item(), largest=False)

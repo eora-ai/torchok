@@ -125,7 +125,7 @@ class DetectionDataset(ImageDataset):
                     labels[:bbox_count] = t['target_labels']
                 t['target_bboxes'] = bboxes
                 t['target_labels'] = labels
-                
+
         batch = default_collate(batch)
         
         return batch
