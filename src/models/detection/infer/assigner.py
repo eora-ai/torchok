@@ -104,6 +104,11 @@ class SimOTAAssigner():
         Returns:
             assign_result (obj:`AssignResult`): The assigned result.
         """
+        # print('priors ' + str(priors))
+        # print('decoded_bboxes ' + str(decoded_bboxes))
+        # print('gt_bboxes ' + str(gt_bboxes))
+        # print('gr_labels ' + str(gt_labels))
+
         try:
             assign_result = self._assign(pred_scores, priors, decoded_bboxes,
                                          gt_bboxes, gt_labels,
@@ -193,10 +198,15 @@ class SimOTAAssigner():
         pairwise_ious = bbox_overlaps(valid_decoded_bbox, gt_bboxes)
         iou_cost = -torch.log(pairwise_ious + eps)
 
+        # gt_onehot_label = (
+        #     F.one_hot(gt_labels.to(torch.int64),
+        #               pred_scores.shape[-1]).float().unsqueeze(0).repeat(
+        #                   num_valid, 1, 1))
+
         gt_onehot_label = (
             F.one_hot(gt_labels.to(torch.int64),
-                      pred_scores.shape[-1]).float().unsqueeze(0).repeat(
-                          num_valid, 1, 1))
+                      pred_scores.shape[-1]).unsqueeze(0).repeat(
+                          num_valid, 1, 1)).double()
 
         valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
         cls_cost = F.binary_cross_entropy(
@@ -223,9 +233,12 @@ class SimOTAAssigner():
             num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
     def get_in_gt_and_in_center_info(self, priors, gt_bboxes):
+        # print('priors = ' + str(priors))
         num_gt = gt_bboxes.size(0)
-
+        # print('num_gt = ' + str(num_gt))
         repeated_x = priors[:, 0].unsqueeze(1).repeat(1, num_gt)
+        # print('repeated_x = ' + str(repeated_x))
+        # print('repeated_x shape = ' + str(repeated_x.shape))
         repeated_y = priors[:, 1].unsqueeze(1).repeat(1, num_gt)
         repeated_stride_x = priors[:, 2].unsqueeze(1).repeat(1, num_gt)
         repeated_stride_y = priors[:, 3].unsqueeze(1).repeat(1, num_gt)
@@ -237,6 +250,7 @@ class SimOTAAssigner():
         b_ = gt_bboxes[:, 3] - repeated_y
 
         deltas = torch.stack([l_, t_, r_, b_], dim=1)
+        # print('deltas = ' + str(deltas))
         is_in_gts = deltas.min(dim=1).values > 0
         is_in_gts_all = is_in_gts.sum(dim=1) > 0
 
@@ -253,9 +267,13 @@ class SimOTAAssigner():
         cr_ = ct_box_r - repeated_x
         cb_ = ct_box_b - repeated_y
 
+        # print('cl_ = ' + str(cl_))
         ct_deltas = torch.stack([cl_, ct_, cr_, cb_], dim=1)
+        # print('ct_deltas = ' + str(ct_deltas))
         is_in_cts = ct_deltas.min(dim=1).values > 0
+        # print('is_in_cts = ' + str(is_in_cts))
         is_in_cts_all = is_in_cts.sum(dim=1) > 0
+        # print('is_int_cts_all = ' + str(is_in_cts_all))
 
         # in boxes or in centers, shape: [num_priors]
         is_in_gts_or_centers = is_in_gts_all | is_in_cts_all
@@ -270,8 +288,12 @@ class SimOTAAssigner():
         matching_matrix = torch.zeros_like(cost)
         # select candidate topk ious for dynamic-k calculation
         topk_ious, _ = torch.topk(pairwise_ious, self.candidate_topk, dim=0)
+        print('topk_ious = ' + str(topk_ious))
         # calculate dynamic k for each gt
         dynamic_ks = torch.clamp(topk_ious.sum(0).int(), min=1)
+        print('dynamic_ks =' + str(dynamic_ks))
+        print('cost = ' + str(cost))
+        print('cost shape = ' + str(cost.shape))
         for gt_idx in range(num_gt):
             _, pos_idx = torch.topk(
                 cost[:, gt_idx], k=dynamic_ks[gt_idx].item(), largest=False)

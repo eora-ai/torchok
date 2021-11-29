@@ -8,9 +8,9 @@ import torch.nn.functional as F
 from mmcv.ops.nms import batched_nms
 from src.registry import DETECTOR_INFER_MODULES
 
-from point_generator import MlvlPointGenerator
-from assigner import SimOTAAssigner
-from sampler import PseudoSampler
+from .point_generator import MlvlPointGenerator
+from .assigner import SimOTAAssigner
+from .sampler import PseudoSampler
 
 def multi_apply(func, *args, **kwargs):
     """Apply function to a list of arguments.
@@ -47,14 +47,15 @@ def bbox_xyxy_to_cxcywh(bbox):
     return torch.cat(bbox_new, dim=-1)
 
 @DETECTOR_INFER_MODULES.register_class
-class YoloxInfer:
+class YoloxInfer(nn.Module):
     def __init__(self,
+                num_classes,
                 strides=[8, 16, 32],
                 train_cfg=None,
                 test_cfg=None,):
-
+        super(YoloxInfer, self).__init__()
         self.prior_generator = MlvlPointGenerator(strides, offset=0)
-
+        self.cls_out_channels = num_classes
         self.test_cfg = test_cfg
         self.train_cfg = train_cfg
 
@@ -78,11 +79,15 @@ class YoloxInfer:
             device=cls_scores[0].device,
             with_stride=True)
 
+        # print('multi level priors = ' + str(mlvl_priors))
+        # print('multi lvl priors shape = ' + str([priors.shape for priors in mlvl_priors]))
+
         flatten_cls_preds = [
             cls_pred.permute(0, 2, 3, 1).reshape(num_imgs, -1,
                                                  self.cls_out_channels)
             for cls_pred in cls_scores
         ]
+        # print('flatten_cls_preds shape = ' + str(flatten_cls_preds[0].shape))
         flatten_bbox_preds = [
             bbox_pred.permute(0, 2, 3, 1).reshape(num_imgs, -1, 4)
             for bbox_pred in bbox_preds
@@ -95,22 +100,35 @@ class YoloxInfer:
         flatten_cls_preds = torch.cat(flatten_cls_preds, dim=1)
         flatten_bbox_preds = torch.cat(flatten_bbox_preds, dim=1)
         flatten_objectness = torch.cat(flatten_objectness, dim=1)
+        # print('flatten_cls_preds shape = ' + str(flatten_cls_preds.shape))
         flatten_priors = torch.cat(mlvl_priors)
+        # print('flatten_priors shape = ' + str(flatten_priors.shape))
+
         flatten_bboxes = self._bbox_decode(flatten_priors, flatten_bbox_preds)
         
         return flatten_cls_preds, flatten_objectness, \
             flatten_priors, flatten_bboxes, flatten_bbox_preds
         
     def _bbox_decode(self, priors, bbox_preds):
+        # print('bbox_preds = ' + str(bbox_preds))
         xys = (bbox_preds[..., :2] * priors[:, 2:]) + priors[:, :2]
+        # print('xys = ' + str(xys))
         whs = bbox_preds[..., 2:].exp() * priors[:, 2:]
-
+        # print('whs = ' + str(whs))
         tl_x = (xys[..., 0] - whs[..., 0] / 2)
         tl_y = (xys[..., 1] - whs[..., 1] / 2)
         br_x = (xys[..., 0] + whs[..., 0] / 2)
         br_y = (xys[..., 1] + whs[..., 1] / 2)
 
+        # print('tl_x = ' + str(tl_x))
+        # print('tl_y = ' + str(tl_y))
+        # print('br_x = ' + str(br_x))
+        # print('br_y = ' + str(br_y))
+
         decoded_bboxes = torch.stack([tl_x, tl_y, br_x, br_y], -1)
+
+        # print('decoded_bboxes = ' + str(decoded_bboxes))
+        # print('decoded_bboxes = ' + str(decoded_bboxes.shape))
         return decoded_bboxes
 
     def _bboxes_nms(self, cls_scores, bboxes, score_factor, cfg):
@@ -249,10 +267,13 @@ class YoloxInfer:
             gt_labels (Tensor): Ground truth labels of one image, a Tensor
                 with shape [num_gts].
         """
-
+        # print('gt_bboxes = ' + str(gt_bboxes))
+        # print('gt_bboxes shape = ' + str(gt_bboxes.shape))
         num_priors = priors.size(0)
         num_gts = gt_labels.size(0)
+        # print('gt_bboxes num gts = ' + str(gt_bboxes.size(0)))
         gt_bboxes = gt_bboxes.to(decoded_bboxes.dtype)
+        # print('gt_bboxes num gts after = ' + str(gt_bboxes.size(0)))
         # No target
         if num_gts == 0:
             cls_target = cls_preds.new_zeros((0, self.num_classes))

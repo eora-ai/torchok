@@ -45,7 +45,7 @@ class DetectionTask(BaseTask):
         )
 
         infer_class = DETECTOR_INFER_MODULES.get(self.params.infer_name)
-        self.infer_module = infer_class()
+        self.infer_module = infer_class(num_classes=2)
 
 
     def forward(self, x):
