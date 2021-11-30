@@ -12,22 +12,31 @@ task:
 
 loss:
   loss_list:
-    - name: BCEWithLogitsLoss
+    - name: CrossEntropyDetectionLoss
       params:
+        use_sigmoid: true
+        reduction: 'mean'
+        loss_weight: 1.0
         target_fields:
           target: cls_targets
           input: cls_pred
+          num_total_samples: num_total_samples
     - name: DetectionIoU
       params:
         mode: square
         target_fields:
           target: bbox_target
           input: bbox_pred
-    - name: BCEWithLogitsLoss
+          num_total_samples: num_total_samples
+    - name: CrossEntropyDetectionLoss
       params:
+        use_sigmoid: true
+        reduction: 'mean'
+        loss_weight: 1.0
         target_fields:
           target: obj_target
           input: obj_pred
+          num_total_samples: num_total_samples
 
 optimizers:
   name: SGD

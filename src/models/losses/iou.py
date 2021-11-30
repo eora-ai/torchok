@@ -190,13 +190,14 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
 
 @LOSSES.register_class
 class DetectionIoU(nn.Module):
-    def __init__(self, linear=False, mode='log', eps=1e-6) -> None:
+    def __init__(self, linear=False, mode='log', eps=1e-6, loss_weight=1.0,) -> None:
         super().__init__()
         self.linear = False
         self.mode = mode
         self.eps = eps
+        self.loss_weight = loss_weight
 
-    def forward(self, input, target):
+    def forward(self, input, target, num_total_samples):
         """IoU loss.
         Computing the IoU loss between a set of predicted bboxes and target bboxes.
         The loss is calculated as negative log of IoU.
@@ -212,6 +213,8 @@ class DetectionIoU(nn.Module):
         Return:
             torch.Tensor: Loss tensor.
         """
+        if input.nelement() == 0:
+            return 0
         assert self.mode in ['linear', 'square', 'log']
         if self.linear:
             self.mode = 'linear'
@@ -221,10 +224,13 @@ class DetectionIoU(nn.Module):
         ious = bbox_overlaps(input, target, is_aligned=True).clamp(min=self.eps)
         if self.mode == 'linear':
             loss = 1 - ious
+            loss = self.loss_weight*loss / num_total_samples
         elif self.mode == 'square':
             loss = 1 - ious**2
+            loss = self.loss_weight*loss / num_total_samples
         elif self.mode == 'log':
             loss = -ious.log()
+            loss = self.loss_weight*loss / num_total_samples
         else:
             raise NotImplementedError
         return loss

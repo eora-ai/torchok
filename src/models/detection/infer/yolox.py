@@ -223,8 +223,9 @@ class YoloxInfer(nn.Module):
         obj_pred = flatten_objectness.view(-1, 1)
         cls_pred = flatten_cls_preds.view(-1, self.num_classes)[pos_masks]
 
-        return num_total_samples, \
-            bbox_pred, bbox_targets,\
+        # print('cls_pred = ' + str(cls_pred.shape))
+        # print('cls_target shape = ' + str(cls_targets.shape))
+        return num_total_samples, bbox_pred, bbox_targets,\
                  obj_pred, obj_targets,\
                       cls_pred, cls_targets
 
@@ -257,19 +258,30 @@ class YoloxInfer(nn.Module):
         gt_bboxes = gt_bboxes.to(decoded_bboxes.dtype)
         # No target
         if num_gts == 0:
-            cls_target = cls_preds.new_zeros((0, self.num_classes)).long()
+            cls_target = cls_preds.new_zeros((0, self.num_classes))
             bbox_target = cls_preds.new_zeros((0, 4))
-            obj_target = cls_preds.new_zeros((num_priors, 1)).long()
+            l1_target = cls_preds.new_zeros((0, 4))
+            obj_target = cls_preds.new_zeros((num_priors, 1))
             foreground_mask = cls_preds.new_zeros(num_priors).bool()
-            return (foreground_mask, cls_target, obj_target, bbox_target,
-                    0)
-
+            return (foreground_mask, cls_target, obj_target, bbox_target, 0)
+            # print('num gts = 0')
+            # cls_target = cls_preds.new_zeros(0).long()
+            # bbox_target = cls_preds.new_zeros((0, 4))
+            # obj_target = cls_preds.new_zeros((num_priors, 1)).long()
+            # foreground_mask = cls_preds.new_zeros(num_priors).bool()
+            # return (foreground_mask, cls_target, obj_target, bbox_target,
+            #         0)
+        # print('not gts != 0')
         # YOLOX uses center priors with 0.5 offset to assign targets,
         # but use center priors without offset to regress bboxes.
         offset_priors = torch.cat(
             [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1)
 
         # print(offset_priors)
+        print('cls_preds = ' + str(cls_preds))
+        print('objectness = ' + str(objectness))
+
+        # print(cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid())
         assign_result = self.assigner.assign(
             cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid(),
             offset_priors, decoded_bboxes, gt_bboxes, gt_labels)
@@ -291,9 +303,14 @@ class YoloxInfer(nn.Module):
         pos_ious = assign_result.max_overlaps[pos_inds]
 
         # IOU aware classification score
+        # print('pos_gt_labels = ' + str(pos_gt_labels))
+        # print('pos_ious = ' + str(pos_ious))
+
+        # print('result = ' + str(pos_gt_labels * pos_ious.unsqueeze(-1).long()))
         cls_target = F.one_hot(pos_gt_labels,
-                               self.num_classes) * pos_ious.unsqueeze(-1).long()
-        obj_target = torch.zeros_like(objectness).unsqueeze(-1).long()
+                               self.num_classes) * pos_ious.unsqueeze(-1)
+        # print('cls target = ' + str(cls_target))
+        obj_target = torch.zeros_like(objectness).unsqueeze(-1)
         obj_target[pos_inds] = 1
         bbox_target = pos_gt_bboxes
 

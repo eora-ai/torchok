@@ -61,7 +61,7 @@ class DetectionTask(BaseTask, nn.Module):
         input_data = batch['input']
 
         gt_bboxes = batch['target_bboxes']
-        gt_labels = batch['target_labels']
+        gt_labels = batch['target_labels'].long()
 
         # print('gt_bboxes = ' + str(gt_bboxes.shape))
         # print(gt_bboxes)
@@ -69,16 +69,16 @@ class DetectionTask(BaseTask, nn.Module):
         # print('intput = ' + str(input_data.shape))
 
         cls_score, bbox_pred, objectness = self.forward(input_data)
-        um_total_samples, \
+        num_total_samples, \
             bbox_pred, bbox_targets,\
-                 obj_pred, obj_targets,\
-                      cls_pred, cls_targets = self.infer_module.forward_train(
-                                                        cls_score,
-                                                        bbox_pred,
-                                                        objectness, 
-                                                        gt_bboxes=gt_bboxes,
-                                                        gt_labels=gt_labels
-                                                        )
+                obj_pred, obj_targets,\
+                    cls_pred, cls_targets = self.infer_module.forward_train(
+                                                            cls_score,
+                                                            bbox_pred,
+                                                            objectness, 
+                                                            gt_bboxes=gt_bboxes,
+                                                            gt_labels=gt_labels
+                                                            )
         
         # print('obj_pred = ' + str(obj_pred))
         # print(type(obj_pred))
@@ -86,13 +86,16 @@ class DetectionTask(BaseTask, nn.Module):
         # print('obj_targets = ' + str(obj_targets))
         # print(type(obj_targets))
         # print(obj_targets.shape)
+        # print('cls_preds = ' + str(cls_pred))
+        # print('cls_targets = ' + str(cls_targets))
         output = {
             'bbox_pred': bbox_pred, 
             'bbox_target': bbox_targets, 
             'obj_pred': obj_pred, 
             'obj_target': obj_targets,
             'cls_pred': cls_pred, 
-            'cls_targets': cls_targets            
+            'cls_targets': cls_targets,
+            'num_total_samples': num_total_samples            
             }
         return output
 
