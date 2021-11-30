@@ -224,13 +224,13 @@ class DetectionIoU(nn.Module):
         ious = bbox_overlaps(input, target, is_aligned=True).clamp(min=self.eps)
         if self.mode == 'linear':
             loss = 1 - ious
-            loss = self.loss_weight*loss / num_total_samples
+            loss = self.loss_weight*loss #/ num_total_samples
         elif self.mode == 'square':
             loss = 1 - ious**2
-            loss = self.loss_weight*loss / num_total_samples
+            loss = self.loss_weight*loss #/ num_total_samples
         elif self.mode == 'log':
             loss = -ious.log()
-            loss = self.loss_weight*loss / num_total_samples
+            loss = self.loss_weight*loss #/ num_total_samples
         else:
             raise NotImplementedError
         return loss

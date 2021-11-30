@@ -41,16 +41,16 @@ loss:
 optimizers:
   name: SGD
   params:
-    lr: &initial_lr 0.01
+    lr: &initial_lr 0.001
     weight_decay: 0.00005
     momentum: 0.9
     nesterov: true
 
 schedulers:
-  name: CosineAnnealingWarmRestarts
+  name: ExponentialLR
   params:
-    T_0: 5
-    T_mult: 2
+    gamma: 0.9
+
 
 data:
   common_params:

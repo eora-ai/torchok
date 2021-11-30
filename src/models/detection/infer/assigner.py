@@ -174,23 +174,33 @@ class SimOTAAssigner(nn.Module):
         valid_mask, is_in_boxes_and_center = self.get_in_gt_and_in_center_info(
             priors, gt_bboxes)
 
-        print('pred_scores = ' + str(pred_scores))
+        # print('pred_scores = ' + str(pred_scores))
         valid_decoded_bbox = decoded_bboxes[valid_mask]
         valid_pred_scores = pred_scores[valid_mask]
         num_valid = valid_decoded_bbox.size(0)
         pairwise_ious = bbox_overlaps(valid_decoded_bbox, gt_bboxes)
         iou_cost = -torch.log(pairwise_ious + eps)
 
-        gt_onehot_label = (
-            F.one_hot(gt_labels.to(torch.int64),
-                      pred_scores.shape[-1]).float().unsqueeze(0).repeat(
-                          num_valid, 1, 1))
+        # print('shape = ' + str(pred_scores.shape))
+        if pred_scores.shape[-1] != 1:
+            gt_onehot_label = (
+                F.one_hot(gt_labels.to(torch.int64),
+                        pred_scores.shape[-1]).float().unsqueeze(0).repeat(
+                            num_valid, 1, 1))
+        else:
+            gt_onehot_label = gt_labels.float().repeat(num_valid, 1).unsqueeze(-1)
+                            # num_valid, 1, 1))
+                # F.one_hot(gt_labels.to(torch.int64),
+                #         pred_scores.shape[-1]).float().unsqueeze(0).repeat(
+                #             num_valid, 1, 1))
 
         valid_pred_scores = valid_pred_scores.unsqueeze(1).repeat(1, num_gt, 1)
     
         # print('gt_onehot_label = ' + str(gt_onehot_label))
         # print('valid_pred_scores = ' + str(valid_pred_scores))
         # print('scores = ' + str(valid_pred_scores.sqrt_()))
+        # print('valid_pred shape = ' + str(valid_pred_scores.shape))
+        # print('gt_onehot_label shape = ' + str(gt_onehot_label.shape))
         cls_cost = F.binary_cross_entropy(
             valid_pred_scores.sqrt_(), gt_onehot_label,
             reduction='none').sum(-1)

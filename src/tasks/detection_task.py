@@ -37,7 +37,7 @@ class DetectionTask(BaseTask, nn.Module):
         self.neck = neck_class(
                             in_channels=[128, 256, 512],
                             out_channels=128,
-                            num_csp_blocks=1
+                            num_csp_blocks=2
         )
         
         head_class = DETECTION_HEADS.get(self.params.head_name)
@@ -61,7 +61,7 @@ class DetectionTask(BaseTask, nn.Module):
         input_data = batch['input']
 
         gt_bboxes = batch['target_bboxes']
-        gt_labels = batch['target_labels'].long()
+        gt_labels = batch['target_labels']
 
         # print('gt_bboxes = ' + str(gt_bboxes.shape))
         # print(gt_bboxes)
@@ -69,6 +69,9 @@ class DetectionTask(BaseTask, nn.Module):
         # print('intput = ' + str(input_data.shape))
 
         cls_score, bbox_pred, objectness = self.forward(input_data)
+        # print('cls shape ' + str(cls_score[0].shape))
+        # print('objectness shape ' + str(objectness[0].shape))
+
         num_total_samples, \
             bbox_pred, bbox_targets,\
                 obj_pred, obj_targets,\

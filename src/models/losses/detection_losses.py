@@ -329,4 +329,5 @@ class CrossEntropyDetectionLoss(nn.Module):
             avg_factor=avg_factor,
             ignore_index=ignore_index,
             **kwargs)
-        return loss_cls / num_total_samples
+        # return loss_cls / num_total_samples
+        return loss_cls

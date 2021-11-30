@@ -278,8 +278,8 @@ class YoloxInfer(nn.Module):
             [priors[:, :2] + priors[:, 2:] * 0.5, priors[:, 2:]], dim=-1)
 
         # print(offset_priors)
-        print('cls_preds = ' + str(cls_preds))
-        print('objectness = ' + str(objectness))
+        # print('cls_preds = ' + str(cls_preds))
+        # print('objectness = ' + str(objectness))
 
         # print(cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid())
         assign_result = self.assigner.assign(
@@ -307,11 +307,17 @@ class YoloxInfer(nn.Module):
         # print('pos_ious = ' + str(pos_ious))
 
         # print('result = ' + str(pos_gt_labels * pos_ious.unsqueeze(-1).long()))
-        cls_target = F.one_hot(pos_gt_labels,
+        if self.num_classes != 1:
+            cls_target = F.one_hot(pos_gt_labels,
                                self.num_classes) * pos_ious.unsqueeze(-1)
+        else:
+            cls_target = pos_gt_labels.unsqueeze(-1) * pos_ious.unsqueeze(-1)     
+
+        # print('cls_target shape = ' + str(cls_target.shape))
         # print('cls target = ' + str(cls_target))
         obj_target = torch.zeros_like(objectness).unsqueeze(-1)
         obj_target[pos_inds] = 1
+        # print('obj_target shape = ' + str(cls_target.shape))
         bbox_target = pos_gt_bboxes
 
         foreground_mask = torch.zeros_like(objectness).to(torch.bool)
