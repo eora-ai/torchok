@@ -12,17 +12,17 @@ task:
 
 loss:
   loss_list:
-    # - name: CrossEntropyLoss
-    #   params:
-    #     target_fields:
-    #       target: cls_targets
-    #       input: cls_pred
-    # - name: DetectionIoU
-    #   params:
-    #     mode: square
-    #     target_fields:
-    #       target: bbox_target
-    #       input: bbox_pred
+    - name: BCEWithLogitsLoss
+      params:
+        target_fields:
+          target: cls_targets
+          input: cls_pred
+    - name: DetectionIoU
+      params:
+        mode: square
+        target_fields:
+          target: bbox_target
+          input: bbox_pred
     - name: BCEWithLogitsLoss
       params:
         target_fields:

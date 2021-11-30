@@ -83,7 +83,7 @@ class DetectionDataset(ImageDataset):
         bboxes = []
         labels = []
         for annotation in row_annotations:
-            bbox = [annotation['x_min'], annotation['y_min'], annotation['x_max'], annotation['y_max']]
+            bbox = [int(annotation['x_min']), int(annotation['y_min']), int(annotation['x_max']), int(annotation['y_max'])]
             label = annotation['label']
             bboxes.append(bbox)
             labels.append(label)

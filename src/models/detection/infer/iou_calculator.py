@@ -5,8 +5,6 @@ import torch
 
 
 def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
-    print('overlaps bbox1 = ' + str(bboxes1.shape))
-    print('overlaps bboxes2 = ' + str(bboxes2.shape))
     """Calculate overlap between two set of bboxes.
     FP16 Contributed by https://github.com/open-mmlab/mmdetection/pull/4889
     If ``is_aligned`` is ``False``, then calculate the overlaps between each

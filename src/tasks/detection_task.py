@@ -89,8 +89,8 @@ class DetectionTask(BaseTask, nn.Module):
         output = {
             'bbox_pred': bbox_pred, 
             'bbox_target': bbox_targets, 
-            'obj_pred': obj_pred.double(), 
-            'obj_target': obj_targets.float(),
+            'obj_pred': obj_pred, 
+            'obj_target': obj_targets,
             'cls_pred': cls_pred, 
             'cls_targets': cls_targets            
             }

@@ -196,12 +196,12 @@ class DetectionIoU(nn.Module):
         self.mode = mode
         self.eps = eps
 
-    def forward(self, pred, target):
+    def forward(self, input, target):
         """IoU loss.
         Computing the IoU loss between a set of predicted bboxes and target bboxes.
         The loss is calculated as negative log of IoU.
         Args:
-            pred (torch.Tensor): Predicted bboxes of format (x1, y1, x2, y2),
+            input (torch.Tensor): Predicted bboxes of format (x1, y1, x2, y2),
                 shape (n, 4).
             target (torch.Tensor): Corresponding gt bboxes, shape (n, 4).
             linear (bool, optional): If True, use linear scale of loss instead of
@@ -214,16 +214,16 @@ class DetectionIoU(nn.Module):
         """
         assert self.mode in ['linear', 'square', 'log']
         if self.linear:
-            mode = 'linear'
+            self.mode = 'linear'
             warnings.warn('DeprecationWarning: Setting "linear=True" in '
                         'iou_loss is deprecated, please use "mode=`linear`" '
                         'instead.')
-        ious = bbox_overlaps(pred, target, is_aligned=True).clamp(min=self.eps)
-        if mode == 'linear':
+        ious = bbox_overlaps(input, target, is_aligned=True).clamp(min=self.eps)
+        if self.mode == 'linear':
             loss = 1 - ious
-        elif mode == 'square':
+        elif self.mode == 'square':
             loss = 1 - ious**2
-        elif mode == 'log':
+        elif self.mode == 'log':
             loss = -ious.log()
         else:
             raise NotImplementedError
