@@ -96,7 +96,7 @@ class YoloxInfer(nn.Module):
         flatten_objectness = torch.cat(flatten_objectness, dim=1)
 
         flatten_bboxes = self._bbox_decode(flatten_priors, flatten_bbox_preds)
-        
+        # print('flatten_bboxes shape =' + str(flatten_bboxes.shape))
         return flatten_cls_preds, flatten_objectness, \
             flatten_priors, flatten_bboxes, flatten_bbox_preds
         
@@ -207,27 +207,39 @@ class YoloxInfer(nn.Module):
                                     )
         num_imgs = bbox_preds[0].shape[0]
         (pos_masks, cls_targets, obj_targets, bbox_targets,
-         num_fg_imgs) = multi_apply(
+         num_fg_imgs, pos_ious, pos_scores) = multi_apply(
              self._get_target_single, flatten_cls_preds.detach(),
              flatten_objectness.detach(),
              flatten_priors.unsqueeze(0).repeat(num_imgs, 1, 1),
              flatten_bboxes.detach(), gt_bboxes, gt_labels)
-
+       
         num_total_samples = max(sum(num_fg_imgs), 1)
         pos_masks = torch.cat(pos_masks, 0)
         cls_targets = torch.cat(cls_targets, 0)
         obj_targets = torch.cat(obj_targets, 0)
         bbox_targets = torch.cat(bbox_targets, 0)
+        ious = torch.cat(pos_ious, 0)
+        scores = torch.cat(pos_scores, 0)
+
+        # print('ious = ' + str(ious))
+        # print('cls_targets = ' + str(cls_targets))
+        # print('obj_targets = ' + str(obj_targets.shape))
+        # print('bbox_targets = ' + str(bbox_targets))
 
         bbox_pred = flatten_bboxes.view(-1, 4)[pos_masks]
         obj_pred = flatten_objectness.view(-1, 1)
         cls_pred = flatten_cls_preds.view(-1, self.num_classes)[pos_masks]
 
-        # print('cls_pred = ' + str(cls_pred.shape))
+        # print('cls_pred = ' + str(cls_pred))
+        # print('bbox pred = ' + str(bbox_pred))
+
+        # print('cls_pred shape = ' + str(cls_pred.shape))
+        # print('bbox_pred shape = ' + str(bbox_pred.shape))
+        # print('obj_pred shape = ' + str(obj_pred.shape))
         # print('cls_target shape = ' + str(cls_targets.shape))
         return num_total_samples, bbox_pred, bbox_targets,\
                  obj_pred, obj_targets,\
-                      cls_pred, cls_targets
+                      cls_pred, cls_targets, ious, scores
 
 
     @torch.no_grad()
@@ -260,10 +272,11 @@ class YoloxInfer(nn.Module):
         if num_gts == 0:
             cls_target = cls_preds.new_zeros((0, self.num_classes))
             bbox_target = cls_preds.new_zeros((0, 4))
-            l1_target = cls_preds.new_zeros((0, 4))
             obj_target = cls_preds.new_zeros((num_priors, 1))
             foreground_mask = cls_preds.new_zeros(num_priors).bool()
-            return (foreground_mask, cls_target, obj_target, bbox_target, 0)
+            pos_ious = cls_preds.new_zeros((0, 1))
+            pos_scores = cls_preds.new_zeros((0, 1))
+            return (foreground_mask, cls_target, obj_target, bbox_target, 0, pos_ious, pos_scores)
             # print('num gts = 0')
             # cls_target = cls_preds.new_zeros(0).long()
             # bbox_target = cls_preds.new_zeros((0, 4))
@@ -287,9 +300,13 @@ class YoloxInfer(nn.Module):
             offset_priors, decoded_bboxes, gt_bboxes, gt_labels)
 
         #Sampler
+        #pos_inds - индексы в которых нашли пересечение
         pos_inds = torch.nonzero(
                 assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
+        # print('pos_inds = ' + str(pos_inds.shape))
+        # print('pos_ind = ' + str(pos_inds))
         pos_assigned_gt_inds = assign_result.gt_inds[pos_inds] - 1
+        # print('pos_assigned_gt_inds = ' + str(pos_assigned_gt_inds))
         num_pos_per_img = pos_inds.size(0)
         if gt_bboxes.numel() == 0:
             # hack for index error case
@@ -301,20 +318,25 @@ class YoloxInfer(nn.Module):
             pos_gt_bboxes = gt_bboxes[pos_assigned_gt_inds, :]
         pos_gt_labels = assign_result.labels[pos_inds]
         pos_ious = assign_result.max_overlaps[pos_inds]
-
+        pos_ious = pos_ious.unsqueeze(-1)
         # IOU aware classification score
         # print('pos_gt_labels = ' + str(pos_gt_labels))
         # print('pos_ious = ' + str(pos_ious))
 
         # print('result = ' + str(pos_gt_labels * pos_ious.unsqueeze(-1).long()))
+        # print('pos_ious.unsqueeze(-1) = ' + str(pos_ious.unsqueeze(-1)))
+        # print('one hot = ' + str(F.one_hot(pos_gt_labels, self.num_classes)))
         if self.num_classes != 1:
             cls_target = F.one_hot(pos_gt_labels,
-                               self.num_classes) * pos_ious.unsqueeze(-1)
+                               self.num_classes) * pos_ious
         else:
-            cls_target = pos_gt_labels.unsqueeze(-1) * pos_ious.unsqueeze(-1)     
+            cls_target = pos_gt_labels.unsqueeze(-1) * pos_ious   
 
         # print('cls_target shape = ' + str(cls_target.shape))
         # print('cls target = ' + str(cls_target))
+        score = cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid()
+        pos_scores = score[pos_inds]
+        # print('score = ' + str(score[pos_inds]))
         obj_target = torch.zeros_like(objectness).unsqueeze(-1)
         obj_target[pos_inds] = 1
         # print('obj_target shape = ' + str(cls_target.shape))
@@ -322,6 +344,6 @@ class YoloxInfer(nn.Module):
 
         foreground_mask = torch.zeros_like(objectness).to(torch.bool)
         foreground_mask[pos_inds] = 1
-        return (foreground_mask, cls_target, obj_target, bbox_target,
-                num_pos_per_img)
+        return (foreground_mask, cls_target, obj_target, \
+            bbox_target, num_pos_per_img, pos_ious, pos_scores)
  

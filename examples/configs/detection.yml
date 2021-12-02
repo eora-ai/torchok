@@ -8,6 +8,8 @@ task:
     input_size: [ *num_channels, &height 640, &width 640]
     neck_name: YOLOXPAFPN
     head_name: YOLOXHead
+    head_params:
+      num_classes: &num_classes 1
     infer_name: YoloxInfer
 
 loss:
@@ -125,9 +127,10 @@ profiler:
   save_profile: false
 
 metrics:
-  - name: AccuracyMeter
+  - name: MeanAveragePrecision
     params:
-      name: accuracy
+      name: mAP50
+      metric_name: map_50
       target_fields:
-        target: obj_target
-        prediction: obj_pred
+        target: metric_target
+        prediction: metric_prediction

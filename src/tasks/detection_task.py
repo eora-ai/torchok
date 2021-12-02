@@ -42,14 +42,14 @@ class DetectionTask(BaseTask, nn.Module):
         
         head_class = DETECTION_HEADS.get(self.params.head_name)
         self.head = head_class(
-                            num_classes=2, 
+                            num_classes=self.params.head_params['num_classes'], 
                             in_channels=128, 
                             feat_channels=128
         )
 
         infer_class = DETECTOR_INFER_MODULES.get(self.params.infer_name)
-        self.infer_module = infer_class(num_classes=2)
-
+        self.infer_module = infer_class(num_classes=self.params.head_params['num_classes'])
+        self.num_classes = self.params.head_params['num_classes']
 
     def forward(self, x):
         backbone_features = self.backbone(x)
@@ -70,12 +70,13 @@ class DetectionTask(BaseTask, nn.Module):
 
         cls_score, bbox_pred, objectness = self.forward(input_data)
         # print('cls shape ' + str(cls_score[0].shape))
+        # print('bbox_pred shape = ' + str(bbox_pred[0].shape))
         # print('objectness shape ' + str(objectness[0].shape))
 
         num_total_samples, \
             bbox_pred, bbox_targets,\
                 obj_pred, obj_targets,\
-                    cls_pred, cls_targets = self.infer_module.forward_train(
+                    cls_pred, cls_targets, ious, scores = self.infer_module.forward_train(
                                                             cls_score,
                                                             bbox_pred,
                                                             objectness, 
@@ -83,14 +84,43 @@ class DetectionTask(BaseTask, nn.Module):
                                                             gt_labels=gt_labels
                                                             )
         
-        # print('obj_pred = ' + str(obj_pred))
-        # print(type(obj_pred))
-        # print(obj_pred.shape)
-        # print('obj_targets = ' + str(obj_targets))
-        # print(type(obj_targets))
-        # print(obj_targets.shape)
-        # print('cls_preds = ' + str(cls_pred))
-        # print('cls_targets = ' + str(cls_targets))
+        # print('bbox target = ' + str(bbox_targets))
+        # print('bbox_pred = ' + str(bbox_pred))
+
+        # print('target_labels = ' + str(cls_targets))
+        # print('pred_labels = ' + str(cls_pred))
+
+        print('ious = ' + str(ious))
+        print('scores = ' + str(scores))
+
+        metric_cls_targets = cls_targets.clone()
+        metric_cls_pred = cls_pred.clone().detach()
+
+        
+
+        if metric_cls_pred.nelement() != 0 and metric_cls_targets.nelement() != 0:
+            if self.num_classes != 1:
+                metric_cls_targets = torch.argmax(metric_cls_targets, axis = -1)
+                metric_cls_pred = torch.argmax(metric_cls_pred, axis = -1)
+            else:
+                metric_cls_targets = metric_cls_targets.squeeze(-1)
+                metric_cls_targets = torch.ones_like(metric_cls_targets,  dtype=torch.int64)
+
+                metric_cls_pred = metric_cls_pred.squeeze(-1)
+                # print(' metric_cls_pred ' + str(metric_cls_pred))
+                backgroudn_indexes = torch.where(metric_cls_pred < 0)[0]
+                metric_cls_pred = torch.ones_like(metric_cls_pred,  dtype=torch.int64)
+                metric_cls_pred[backgroudn_indexes] = 0
+
+            scores = scores.squeeze(-1)
+        else:
+            metric_cls_targets = torch.tensor([])
+            metric_cls_pred = torch.tensor([])
+            scores = torch.tensor([])
+        # print('metric cls target = ' + str(metric_cls_targets))
+        # print('metric cls pred = ' + str(metric_cls_pred))
+        # print('scores = ' + str(scores))
+
         output = {
             'bbox_pred': bbox_pred, 
             'bbox_target': bbox_targets, 
@@ -98,7 +128,9 @@ class DetectionTask(BaseTask, nn.Module):
             'obj_target': obj_targets,
             'cls_pred': cls_pred, 
             'cls_targets': cls_targets,
-            'num_total_samples': num_total_samples            
+            'num_total_samples': num_total_samples,    
+            'metric_target': dict(boxes=bbox_targets, labels=metric_cls_targets),
+            'metric_prediction': dict(boxes=bbox_pred, scores=scores, labels=metric_cls_pred)    
             }
         return output
 

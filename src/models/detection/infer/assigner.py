@@ -174,11 +174,13 @@ class SimOTAAssigner(nn.Module):
         valid_mask, is_in_boxes_and_center = self.get_in_gt_and_in_center_info(
             priors, gt_bboxes)
 
+        # print('valid mask shape = ' + str(valid_mask.shape))
         # print('pred_scores = ' + str(pred_scores))
         valid_decoded_bbox = decoded_bboxes[valid_mask]
         valid_pred_scores = pred_scores[valid_mask]
         num_valid = valid_decoded_bbox.size(0)
         pairwise_ious = bbox_overlaps(valid_decoded_bbox, gt_bboxes)
+        # print('pairwase ious = ' + str(pairwise_ious.shape))
         iou_cost = -torch.log(pairwise_ious + eps)
 
         # print('shape = ' + str(pred_scores.shape))
@@ -215,13 +217,18 @@ class SimOTAAssigner(nn.Module):
 
         # convert to AssignResult format
         assigned_gt_inds[valid_mask] = matched_gt_inds + 1
+        # print('assigned_gt_inds ' + str(assigned_gt_inds.shape))
+        # print('assigned_gt_inds = ' + str(assigned_gt_inds))
         assigned_labels = assigned_gt_inds.new_full((num_bboxes, ), -1)
-        
         assigned_labels[valid_mask] = gt_labels[matched_gt_inds].long()
+        # print('assigned_labels ' + str(assigned_labels.shape))
+        # print('assigned_labels = ' + str(assigned_labels))
         max_overlaps = assigned_gt_inds.new_full((num_bboxes, ),
                                                  -INF,
                                                  dtype=torch.float32)
         max_overlaps[valid_mask] = matched_pred_ious
+        # print('max_overlaps ' + str(max_overlaps.shape))
+        # print('max_overlaps = ' + str(max_overlaps))
         return AssignResult(
             num_gt, assigned_gt_inds, max_overlaps, labels=assigned_labels)
 
@@ -247,9 +254,13 @@ class SimOTAAssigner(nn.Module):
         is_in_gts = deltas.min(dim=1).values > 0
         is_in_gts_all = is_in_gts.sum(dim=1) > 0
 
+        # print('is_in_gts_all = ' + str(is_in_gts_all.shape))
+        # print('is_in_gts_all sum = ' + str(is_in_gts_all.sum()))
+
         # is prior centers in gt centers
         gt_cxs = (gt_bboxes[:, 0] + gt_bboxes[:, 2]) / 2.0
         gt_cys = (gt_bboxes[:, 1] + gt_bboxes[:, 3]) / 2.0
+        # Multi positives concept of YOLOX, we extend the center by radius
         ct_box_l = gt_cxs - self.center_radius * repeated_stride_x
         ct_box_t = gt_cys - self.center_radius * repeated_stride_y
         ct_box_r = gt_cxs + self.center_radius * repeated_stride_x
@@ -267,7 +278,7 @@ class SimOTAAssigner(nn.Module):
         # print('is_in_cts = ' + str(is_in_cts))
         is_in_cts_all = is_in_cts.sum(dim=1) > 0
         # print('is_int_cts_all = ' + str(is_in_cts_all))
-
+        # print('is_in_cts_all sum = ' + str(is_in_cts_all.sum()))
         # in boxes or in centers, shape: [num_priors]
         is_in_gts_or_centers = is_in_gts_all | is_in_cts_all
 
