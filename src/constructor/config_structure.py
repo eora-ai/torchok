@@ -29,7 +29,6 @@ class DatasetParams(BaseModel):
     params: dict = {}
     transform: List[StructureParams]
     augment: List[StructureParams] = None
-    bbox_augment: List[StructureParams] = None
     dataloader_params: DataLoaderParams
 
 
