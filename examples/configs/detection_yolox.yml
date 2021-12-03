@@ -67,7 +67,7 @@ data:
       shuffle: true
       drop_last: false
     params:
-      path_to_datalist: "train.csv"
+      path_to_datalist: "samll_train.csv"
     transform:
       - &normalize
         name: Normalize
@@ -130,7 +130,7 @@ metrics:
   - name: MeanAveragePrecision
     phases: ['valid', 'test']
     params:
-      nproc: 4
+      nproc: 1
       num_classes: *num_classes
       iou_thr: 0.5
       target_fields:

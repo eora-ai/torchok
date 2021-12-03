@@ -41,13 +41,13 @@ def bbox_overlaps(bboxes1,
     bboxes2 = bboxes2.astype(np.float32)
     rows = bboxes1.shape[0]
     cols = bboxes2.shape[0]
-    ious = np.zeros((rows, cols), dtype=np.float32)
+    ious = np.zeros((rows, cols), dtype=np.float16)
     if rows * cols == 0:
         return ious
     exchange = False
     if bboxes1.shape[0] > bboxes2.shape[0]:
         bboxes1, bboxes2 = bboxes2, bboxes1
-        ious = np.zeros((cols, rows), dtype=np.float32)
+        ious = np.zeros((cols, rows), dtype=np.float16)
         exchange = True
     area1 = (bboxes1[:, 2] - bboxes1[:, 0] + extra_length) * (
         bboxes1[:, 3] - bboxes1[:, 1] + extra_length)
@@ -161,8 +161,8 @@ def tpfp_default(det_bboxes,
     num_scales = len(area_ranges)
     # tp and fp are of shape (num_scales, num_gts), each row is tp or fp of
     # a certain scale
-    tp = np.zeros((num_scales, num_dets), dtype=np.float32)
-    fp = np.zeros((num_scales, num_dets), dtype=np.float32)
+    tp = np.zeros((num_scales, num_dets), dtype=np.float16)
+    fp = np.zeros((num_scales, num_dets), dtype=np.float16)
 
     # if there is no gt bboxes in this image, then all det bboxes
     # within area range are false positives
@@ -304,7 +304,7 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
     for i in range(num_classes):
         # get gt and det bboxes of this class
         cls_dets, cls_gts = get_cls_results(pred_bboxes, clear_target_bboxes, i)
-        cls_gts_ignore = [np.empty((0, 4), dtype=np.float32) for _ in range(len(cls_gts))]
+        cls_gts_ignore = [np.empty((0, 4), dtype=np.float16) for _ in range(len(cls_gts))]
 
         tpfp = pool.starmap(
             tpfp_default,
@@ -326,7 +326,7 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
         # calculate recall and precision with tp and fp
         tp = np.cumsum(tp, axis=1)
         fp = np.cumsum(fp, axis=1)
-        eps = np.finfo(np.float32).eps
+        eps = np.finfo(np.float16).eps
         recalls = tp / np.maximum(num_gts[:, np.newaxis], eps)
         precisions = tp / np.maximum((tp + fp), eps)
 
