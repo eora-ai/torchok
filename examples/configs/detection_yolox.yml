@@ -10,19 +10,15 @@ task:
     head_name: YOLOXHead
     head_params:
       num_classes: &num_classes 1
-    hat_name: YoloxInfer
+    hat_name: YOLOXHat
 
 loss:
   loss_list:
-    - name: CrossEntropyDetectionLoss
+    - name: BCEWithLogitsLoss
       params:
-        use_sigmoid: true
-        reduction: 'mean'
-        loss_weight: 1.0
         target_fields:
           target: cls_targets
           input: cls_pred
-          num_total_samples: num_total_samples
     - name: DetectionIoU
       params:
         mode: square
@@ -30,16 +26,12 @@ loss:
           target: bbox_target
           input: bbox_pred
           num_total_samples: num_total_samples
-    - name: CrossEntropyDetectionLoss
+    - name: BCEWithLogitsLoss
       params:
-        use_sigmoid: true
-        reduction: 'mean'
-        loss_weight: 1.0
         target_fields:
           target: obj_target
           input: obj_pred
-          num_total_samples: num_total_samples
-
+    
 optimizers:
   name: SGD
   params:
@@ -73,8 +65,8 @@ data:
       - &normalize
         name: Normalize
         params:
-          mean: [0.5, 0.5, 0.5]
-          std: [0.5, 0.5, 0.5]
+          mean: [0.485, 0.456, 0.406]
+          std: [0.229, 0.224, 0.225]
       - &resize
         name: Resize
         params:
@@ -85,7 +77,7 @@ data:
     augment:
       - name: ColorJitter
         params:
-          p: 0.2
+          p: 0.5
       
   valid_params:
     name: DetectionDataset

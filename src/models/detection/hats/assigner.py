@@ -4,7 +4,7 @@ import warnings
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from .iou_calculator import bbox_overlaps
+from src.models.losses.iou import bbox_overlaps
 
 
 class AssignResult():
