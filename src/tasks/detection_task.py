@@ -59,7 +59,6 @@ class DetectionTask(BaseTask, nn.Module):
 
     def forward_with_gt(self, batch):
         input_data = batch['input']
-
         gt_bboxes = batch['target_bboxes']
         gt_labels = batch['target_labels']
 
@@ -76,9 +75,6 @@ class DetectionTask(BaseTask, nn.Module):
                                                             gt_labels=gt_labels
                                                             )
         
-        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
-        target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
-
         output = {
             'bbox_pred': loss_bbox_pred, 
             'bbox_target': loss_bbox_targets, 
@@ -86,22 +82,41 @@ class DetectionTask(BaseTask, nn.Module):
             'obj_target': loss_obj_targets,
             'cls_pred': loss_cls_pred, 
             'cls_targets': loss_cls_targets,
-            'num_total_samples': num_total_samples,    
-            'target': target,
-            'prediction': prediction
             }
         return output
 
     def training_step(self, batch, batch_idx):
         output = self.forward_with_gt(batch)
         loss = self.criterion(**output)
-        self.metric_manager.update('train', **output)
+
+        input_data = batch['input']
+        gt_bboxes = batch['target_bboxes']
+        gt_labels = batch['target_labels']
+        cls_score, bbox_pred, objectness = self.forward(input_data)
+        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
+        target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
+        valid_output = {
+            'target': target,
+            'prediction': prediction
+        }
+        self.metric_manager.update('train', **valid_output)
         return loss
 
     def validation_step(self, batch, batch_idx):
         output = self.forward_with_gt(batch)
         loss = self.criterion(**output)
-        self.metric_manager.update('valid', **output)
+
+        input_data = batch['input']
+        gt_bboxes = batch['target_bboxes']
+        gt_labels = batch['target_labels']
+        cls_score, bbox_pred, objectness = self.forward(input_data)
+        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
+        target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
+        valid_output = {
+            'target': target,
+            'prediction': prediction
+        }
+        self.metric_manager.update('valid', **valid_output)
         return loss
 
     # def test_step(self, batch, batch_idx):

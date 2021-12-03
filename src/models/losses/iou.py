@@ -136,7 +136,7 @@ class DetectionIoU(nn.Module):
         self.eps = eps
         self.loss_weight = loss_weight
 
-    def forward(self, input, target, num_total_samples):
+    def forward(self, input, target):
         """IoU loss.
         Computing the IoU loss between a set of predicted bboxes and target bboxes.
         The loss is calculated as negative log of IoU.
@@ -152,7 +152,7 @@ class DetectionIoU(nn.Module):
         Return:
             torch.Tensor: Loss tensor.
         """
-        if input.nelement() == 0:
+        if input.numel() == 0:
             return 0
         assert self.mode in ['linear', 'square', 'log']
         if self.linear:
@@ -172,4 +172,6 @@ class DetectionIoU(nn.Module):
             loss = self.loss_weight*loss #/ num_total_samples
         else:
             raise NotImplementedError
-        return loss
+        # print('iou loss = ' + str(loss))
+        # return loss.mean()
+        return loss.mean()

@@ -16,7 +16,6 @@ from . import unsupervised
 from . import cross_entropy
 from . import hierarchical_classification
 from . import iou
-from . import detection_losses
 
 LOSSES.register_class(L1Loss)
 LOSSES.register_class(BCELoss)

@@ -54,8 +54,8 @@ class YOLOXHat(nn.Module):
         # get priors points
         featmap_sizes = [torch.Size([int(input_size[0]/stride), int(input_size[1]/stride)]) for stride in strides]
         prior_generator = MlvlPointGenerator(strides, featmap_sizes, offset=0, with_stride=True)
-        self.flatten_priors = prior_generator.flatten_priors
-
+        self.register_buffer("flatten_priors", prior_generator.flatten_priors)
+      
         # create assigner
         self.assigner = SimOTAAssigner(center_radius=2.5)
 
@@ -91,7 +91,6 @@ class YOLOXHat(nn.Module):
         flatten_cls_preds = torch.cat(flatten_cls_preds, dim=1)
         flatten_bbox_preds = torch.cat(flatten_bbox_preds, dim=1)
         flatten_objectness = torch.cat(flatten_objectness, dim=1)
-
         flatten_bboxes = self._bbox_decode(self.flatten_priors, flatten_bbox_preds)
 
         return flatten_cls_preds, flatten_objectness, flatten_bboxes, flatten_bbox_preds

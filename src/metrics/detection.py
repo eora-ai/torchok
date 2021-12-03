@@ -278,14 +278,14 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
     """
 
     for i in range(len(pred_bboxes)):
-        pred_bboxes[i][0] = pred_bboxes[i][0].detach().numpy()
-        pred_bboxes[i][1] = pred_bboxes[i][1].detach().numpy()
+        pred_bboxes[i][0] = pred_bboxes[i][0].detach().cpu().numpy()
+        pred_bboxes[i][1] = pred_bboxes[i][1].detach().cpu().numpy()
     # print(pred_bboxes)
 
     clear_target_bboxes = []
     for i in range(len(target_bboxes)):
-        t_bboxes = target_bboxes[i][0].detach().numpy()
-        t_labels = target_bboxes[i][1].detach().numpy()
+        t_bboxes = target_bboxes[i][0].detach().cpu().numpy()
+        t_labels = target_bboxes[i][1].detach().cpu().numpy()
         clear_bboxes = []
         clear_target = []
         for j in range(len(t_labels)):

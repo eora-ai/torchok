@@ -56,8 +56,8 @@ class MlvlPointGenerator(nn.Module):
                 with_stride=with_stride)
             multi_level_priors.append(priors)
 
-        multi_level_priors = torch.cat(multi_level_priors).float()
-        self.register_buffer("flatten_priors", multi_level_priors)
+        flatten_priors = torch.cat(multi_level_priors).float()
+        self.register_buffer("flatten_priors", flatten_priors)
         
 
     @property
@@ -77,11 +77,8 @@ class MlvlPointGenerator(nn.Module):
             # warning .flatten() would cause error in ONNX exporting
             # have to use reshape here
             return xx.reshape(-1), yy.reshape(-1)
-
         else:
             return yy.reshape(-1), xx.reshape(-1)
-
-        
 
     def single_level_grid_priors(self,
                                  featmap_size,
