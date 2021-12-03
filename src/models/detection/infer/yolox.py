@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.ops.nms import batched_nms
-from src.registry import DETECTOR_INFER_MODULES
+from src.registry import DETECTION_HAT
 
 from .point_generator import MlvlPointGenerator
 from .assigner import SimOTAAssigner
@@ -33,21 +33,15 @@ def multi_apply(func, *args, **kwargs):
     map_results = map(pfunc, *args)
     return tuple(map(list, zip(*map_results)))
 
-def bbox_xyxy_to_cxcywh(bbox):
-    """Convert bbox coordinates from (x1, y1, x2, y2) to (cx, cy, w, h).
 
-    Args:
-        bbox (Tensor): Shape (n, 4) for bboxes.
-
-    Returns:
-        Tensor: Converted bboxes.
-    """
-    x1, y1, x2, y2 = bbox.split((1, 1, 1, 1), dim=-1)
-    bbox_new = [(x1 + x2) / 2, (y1 + y2) / 2, (x2 - x1), (y2 - y1)]
-    return torch.cat(bbox_new, dim=-1)
-
-@DETECTOR_INFER_MODULES.register_class
+@DETECTION_HAT.register_class
 class YoloxInfer(nn.Module):
+    """
+    Args:
+        num_classes (int): Number of categories excluding the background
+            category.
+        if num_classes=1, then label in csv file must be = 0 
+    """
     def __init__(self,
                 num_classes,
                 strides=[8, 16, 32],
@@ -72,6 +66,7 @@ class YoloxInfer(nn.Module):
                             bbox_preds,
                             objectnesses,
                             ):
+        # print('bbox_preds = ' + str(bbox_preds))
         num_imgs = bbox_preds[0].shape[0]
         
         flatten_priors = self.prior_generator.flatten_priors
@@ -113,9 +108,9 @@ class YoloxInfer(nn.Module):
 
         return decoded_bboxes
 
-    def _bboxes_nms(self, cls_scores, bboxes, score_factor, cfg):
+    def _bboxes_nms(self, cls_scores, bboxes, score_factor, conf_thr = 0.65):
         max_scores, labels = torch.max(cls_scores, 1)
-        valid_mask = score_factor * max_scores >= cfg.score_thr
+        valid_mask = score_factor * max_scores >= conf_thr
 
         bboxes = bboxes[valid_mask]
         scores = max_scores[valid_mask] * score_factor[valid_mask]
@@ -124,7 +119,7 @@ class YoloxInfer(nn.Module):
         if labels.numel() == 0:
             return bboxes, labels
         else:
-            dets, keep = batched_nms(bboxes, scores, labels, cfg.nms)
+            dets, keep = batched_nms(bboxes, scores, labels, dict(type='nms', iou_threshold=0.65))
             return dets, labels[keep]
 
     def forward_infer(self,
@@ -164,15 +159,21 @@ class YoloxInfer(nn.Module):
                                     bbox_preds=bbox_preds,
                                     objectnesses=objectnesses
                                     )
-        cfg = self.test_cfg if cfg is None else cfg
         result_list = []
+        flatten_cls_preds = flatten_cls_preds.sigmoid()
+        flatten_objectness = flatten_objectness.sigmoid()
+     
         for img_id in range(len(flatten_cls_preds)):
             cls_scores = flatten_cls_preds[img_id]
             score_factor = flatten_objectness[img_id]
             bboxes = flatten_bboxes[img_id]
 
             result_list.append(
-                self._bboxes_nms(cls_scores, bboxes, score_factor, cfg))
+                self._bboxes_nms(cls_scores, bboxes, score_factor, conf_thr=0.65))
+
+        #change tuple to list        
+        result_list = [list(elem) for elem in result_list]
+        
         return result_list
  
     def forward_train(self,
@@ -326,11 +327,14 @@ class YoloxInfer(nn.Module):
         # print('result = ' + str(pos_gt_labels * pos_ious.unsqueeze(-1).long()))
         # print('pos_ious.unsqueeze(-1) = ' + str(pos_ious.unsqueeze(-1)))
         # print('one hot = ' + str(F.one_hot(pos_gt_labels, self.num_classes)))
-        if self.num_classes != 1:
-            cls_target = F.one_hot(pos_gt_labels,
-                               self.num_classes) * pos_ious
-        else:
-            cls_target = pos_gt_labels.unsqueeze(-1) * pos_ious   
+        # print('pos_gt_labels = ' + str(pos_gt_labels))
+        # if self.num_classes != 1:
+        #     cls_target = F.one_hot(pos_gt_labels,
+        #                        self.num_classes) * pos_ious
+        # else:
+        #     cls_target = pos_gt_labels.unsqueeze(-1) * pos_ious   
+
+        cls_target = F.one_hot(pos_gt_labels, self.num_classes) * pos_ious
 
         # print('cls_target shape = ' + str(cls_target.shape))
         # print('cls target = ' + str(cls_target))

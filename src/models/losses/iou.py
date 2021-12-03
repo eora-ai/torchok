@@ -6,13 +6,6 @@ from src.registry import LOSSES
 import warnings
 
 
-def cast_tensor_type(x, scale=1., dtype=None):
-    if dtype == 'fp16':
-        # scale is for preventing overflows
-        x = (x / scale).half()
-    return x
-
-
 def fp16_clamp(x, min=None, max=None):
     if not x.is_cuda and x.dtype == torch.float16:
         # clamp for cpu float16, tensor fp16 has no clamp implementation

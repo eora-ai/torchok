@@ -10,7 +10,7 @@ task:
     head_name: YOLOXHead
     head_params:
       num_classes: &num_classes 1
-    infer_name: YoloxInfer
+    hat_name: YoloxInfer
 
 loss:
   loss_list:
@@ -129,8 +129,9 @@ profiler:
 metrics:
   - name: MeanAveragePrecision
     params:
-      name: mAP50
-      metric_name: map_50
+      nproc: 4
+      num_classes: *num_classes
+      iou_thr: 0.5
       target_fields:
-        target: metric_target
-        prediction: metric_prediction
+        target: target
+        prediction: prediction
