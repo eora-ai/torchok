@@ -46,7 +46,7 @@ class YOLOXHat(nn.Module):
                 num_classes,
                 strides=[8, 16, 32],
                 input_size = (640, 640),
-                conf_thr=0.65,
+                conf_thr=0.01,
                 nms_cfg=dict(type='nms', iou_threshold=0.65)
                 ):
         super(YOLOXHat, self).__init__()
@@ -108,18 +108,18 @@ class YOLOXHat(nn.Module):
 
         return decoded_bboxes
 
-    def _bboxes_nms(self, cls_scores, bboxes, score_factor, conf_thr = 0.65):
+    def _bboxes_nms(self, cls_scores, bboxes, score_factor):
         max_scores, labels = torch.max(cls_scores, 1)
-        valid_mask = score_factor * max_scores >= conf_thr
+        valid_mask = score_factor * max_scores >= self.conf_thr
 
-        bboxes = bboxes[valid_mask]
+        bboxes = bboxes[valid_mask].float()
         scores = max_scores[valid_mask] * score_factor[valid_mask]
         labels = labels[valid_mask]
 
         if labels.numel() == 0:
             return bboxes, labels
         else:
-            dets, keep = batched_nms(bboxes, scores, labels, dict(type='nms', iou_threshold=0.65))
+            dets, keep = batched_nms(bboxes, scores, labels, self.nms_cfg)
             return dets, labels[keep]
 
     def forward_infer(self,
@@ -160,7 +160,7 @@ class YOLOXHat(nn.Module):
             score_factor = flatten_objectness[img_id]
             bboxes = flatten_bboxes[img_id]
 
-            result_list.append(self._bboxes_nms(cls_scores, bboxes, score_factor, conf_thr=0.65))
+            result_list.append(self._bboxes_nms(cls_scores, bboxes, score_factor))
 
         #change tuple to list        
         result_list = [list(elem) for elem in result_list]

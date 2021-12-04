@@ -121,7 +121,7 @@ def tpfp_default(det_bboxes,
                  gt_bboxes_ignore=None,
                  iou_thr=0.5,
                  area_ranges=None,
-                 use_legacy_coordinate=False):
+                 use_legacy_coordinate=True):
     """Check if detected bboxes are true positive or false positive.
     Args:
         det_bbox (ndarray): Detected bboxes of this image, of shape (m, 5).
@@ -280,7 +280,7 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
     for i in range(len(pred_bboxes)):
         pred_bboxes[i][0] = pred_bboxes[i][0].detach().cpu().numpy()
         pred_bboxes[i][1] = pred_bboxes[i][1].detach().cpu().numpy()
-    # print(pred_bboxes)
+    
 
     clear_target_bboxes = []
     for i in range(len(target_bboxes)):
@@ -299,18 +299,22 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
 
     num_imgs = len(pred_bboxes)
     
-    pool = Pool(nproc)
+    # pool = Pool(nproc)
     eval_results = []
     for i in range(num_classes):
         # get gt and det bboxes of this class
         cls_dets, cls_gts = get_cls_results(pred_bboxes, clear_target_bboxes, i)
         cls_gts_ignore = [np.empty((0, 4), dtype=np.float16) for _ in range(len(cls_gts))]
 
-        tpfp = pool.starmap(
-            tpfp_default,
-            zip(cls_dets, cls_gts, cls_gts_ignore, [iou_thr for _ in range(num_imgs)]))
+        # tpfp = pool.starmap(
+        #     tpfp_default,
+        #     zip(cls_dets, cls_gts, cls_gts_ignore, [iou_thr for _ in range(num_imgs)]))
+        # tp, fp = tuple(zip(*tpfp))
+        tpfp = []
+        for img_num in range(num_imgs):
+            tp, fp = tpfp_default(cls_dets[img_num], cls_gts[img_num], cls_gts_ignore[img_num], iou_thr)
+            tpfp.append([tp, fp])
         tp, fp = tuple(zip(*tpfp))
-       
         # calculate gt number of each scale
         # ignored gts or gts beyond the specific scale are not counted
         num_gts = np.zeros(1, dtype=int)
@@ -343,14 +347,18 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
             'precision': precisions,
             'ap': ap
         })
- 
+
     aps = []
     for cls_result in eval_results:
         if cls_result['num_gts'] > 0:
             aps.append(cls_result['ap'])
+
     mean_ap = np.array(aps).mean().item() if aps else 0.0
 
-    return mean_ap, eval_results
+    del (clear_target_bboxes[:], eval_results[:], aps[:], pred_bboxes[:])
+    del (clear_target_bboxes, eval_results, aps, pred_bboxes, tp, fp)
+
+    return mean_ap
 
 @METRICS.register_class
 class MeanAveragePrecision(Metric):
@@ -365,7 +373,7 @@ class MeanAveragePrecision(Metric):
         self.use_torch = True
 
     def calculate(self, target, prediction):
-        mean_ap, eval_results = eval_map(pred_bboxes=prediction, target_bboxes=target, \
+        mean_ap = eval_map(pred_bboxes=prediction, target_bboxes=target, \
                                             num_classes=self.num_classes, nproc=self.nproc, iou_thr=self.iou_thr)
         return mean_ap
 

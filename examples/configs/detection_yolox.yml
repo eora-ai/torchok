@@ -30,27 +30,27 @@ loss:
         target_fields:
           target: obj_target
           input: obj_pred
-  weight: [1, 5, 1] 
+  weight: [1, 10, 1] 
 
-
-# optimizers:
-#   name: SGD
-#   params:
-#     lr: &initial_lr 0.01
-#     weight_decay: 0.0005
-#     momentum: 0.9
-#     nesterov: true
 
 optimizers:
-  name: Adam
+  name: SGD
   params:
-    lr: &initial_lr 0.001
+    lr: &initial_lr 0.01
     weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+
+# optimizers:
+#   name: Adam
+#   params:
+#     lr: &initial_lr 0.001
+#     weight_decay: 0.0005
 
 schedulers:
   name: ExponentialLR
   params:
-    gamma: 0.9
+    gamma: 0.98
 
 
 data:
@@ -62,12 +62,14 @@ data:
     name: DetectionDataset
     dataloader_params: &dataloader_params
       use_custom_collate_fn: true
-      batch_size: 4
+      batch_size: 8
       num_workers: 12
       shuffle: true
       drop_last: false
     params:
-      path_to_datalist: "samll_train.csv"
+      # path_to_datalist: "small_train.csv"
+      # path_to_datalist: "train.csv"
+      path_to_datalist: "train_without_negative.csv"
     transform:
       - &normalize
         name: Normalize
@@ -83,9 +85,47 @@ data:
       - &totensor
         name: ToTensorV2
     augment:
+      - name: HorizontalFlip
+      - name: VerticalFlip
+      - name: OneOf
+        params:
+          transforms:
+            - name: Blur
+            - name: GaussianBlur
+            - name: MedianBlur
+            - name: MotionBlur
+          p: 0.2
+      - name: RandomFog
+        params:
+          p: 0.2
+      - name: RandomShadow
+        params:
+          p: 0.2
+      - name: RandomSunFlare
+        params:
+          p: 0.2
+      - name: ChannelDropout
+        params:
+          p: 0.2
+      - name: ChannelShuffle
+        params:
+          p: 0.2
       - name: ColorJitter
         params:
-          p: 0.5
+          p: 0.2
+      - name: OneOf
+        params:
+          transforms:
+            - name: ImageCompression
+              params:
+                quality_lower: 90
+            - name: GaussNoise
+      - name: Equalize
+        params:
+          p: 0.3
+      - name: ToGray
+        params:
+          p: 0.3
       
   valid_params:
     name: DetectionDataset
@@ -101,14 +141,14 @@ data:
 
 trainer:
   gpus: [0]
-  max_epochs: 10
+  max_epochs: 100
   progress_bar_refresh_rate: 1
   check_val_every_n_epoch: 1
   precision: 16
   amp_level: 'O2'
   amp_backend: 'apex'
 
-log_dir: '/workdir/logs/detectors'
+log_dir: '/workdir/logs/detectors/'
 experiment_name: yolox
 
 logger:
@@ -116,10 +156,10 @@ logger:
   log_graph: false
 
 checkpoint:
-  monitor: valid/loss
+  monitor: valid/mAP50
   save_last: true
-  mode: min
-  every_n_val_epochs: 10
+  mode: max
+  every_n_val_epochs: 1
 #  every_n_train_steps: 100
 
 profiler:
@@ -128,7 +168,7 @@ profiler:
 
 metrics:
   - name: MeanAveragePrecision
-    phases: ['valid', 'test']
+    phases: ['train', 'valid', 'test']
     params:
       nproc: 1
       num_classes: *num_classes

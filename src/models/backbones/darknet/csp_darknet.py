@@ -264,14 +264,6 @@ class CSPDarknet(BaseModule):
                 for param in m.parameters():
                     param.requires_grad = False
 
-    # def train(self, mode=True):
-    #     super(CSPDarknet, self).train(mode)
-    #     self._freeze_stages()
-    #     if mode and self.norm_eval:
-    #         for m in self.modules():
-    #             if isinstance(m, _BatchNorm):
-    #                 m.eval()
-
     def forward(self, x):
         outs = []
         for i, layer_name in enumerate(self.layers):
@@ -281,19 +273,6 @@ class CSPDarknet(BaseModule):
                 outs.append(x)
         return tuple(outs)
 
-# cfg_cls = dict(
-#     csp_darknet_p5 = dict(arch = 'p5'),
-#     csp_darknet_p6 = dict(arch = 'p6')
-# )   
-
-# def _create_CSPDarknet(variant, pretrained, **model_kwargs):
-#     model_cls = CSPDarknet
-
-#     return build_model_with_cfg(
-#         model_cls, variant, pretrained, default_cfg=None,
-#         model_cfg=cfg_cls[variant], pretrained_strict=False, **model_kwargs
-#     )
-
 
 @register_model
 def csp_darknet_p5(**kwargs):
@@ -302,4 +281,4 @@ def csp_darknet_p5(**kwargs):
 
 @register_model
 def csp_darknet_p6(**kwargs):
-    return CSPDarknet(arch='p5')
+    return CSPDarknet(arch='P6', deepen_factor=0.33, widen_factor=0.5)

@@ -6,12 +6,6 @@ from src.registry import LOSSES
 import warnings
 
 
-# Copyright (c) OpenMMLab. All rights reserved.
-import torch
-
-
-
-
 def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     """Calculate overlap between two set of bboxes.
     FP16 Contributed by https://github.com/open-mmlab/mmdetection/pull/4889
@@ -163,15 +157,14 @@ class DetectionIoU(nn.Module):
         ious = bbox_overlaps(input, target, is_aligned=True).clamp(min=self.eps)
         if self.mode == 'linear':
             loss = 1 - ious
-            loss = self.loss_weight*loss #/ num_total_samples
+            loss = self.loss_weight*loss
         elif self.mode == 'square':
             loss = 1 - ious**2
-            loss = self.loss_weight*loss #/ num_total_samples
+            loss = self.loss_weight*loss
         elif self.mode == 'log':
             loss = -ious.log()
-            loss = self.loss_weight*loss #/ num_total_samples
+            loss = self.loss_weight*loss
         else:
             raise NotImplementedError
-        # print('iou loss = ' + str(loss))
-        # return loss.mean()
+        
         return loss.mean()

@@ -8,6 +8,7 @@ from src.registry import TASKS, DETECTION_NECKS, \
     DETECTION_HEADS, DETECTION_HAT
 from .base_task import BaseTask
 import torch.nn as nn
+from src.models.backbones.utils.hub import download_cached_file
 
 class DetectionTaskParams(BaseModel):
     checkpoint: str = None
@@ -37,7 +38,7 @@ class DetectionTask(BaseTask, nn.Module):
         self.neck = neck_class(
                             in_channels=[128, 256, 512],
                             out_channels=128,
-                            num_csp_blocks=2
+                            num_csp_blocks=1
         )
         
         head_class = DETECTION_HEADS.get(self.params.head_name)
@@ -51,11 +52,41 @@ class DetectionTask(BaseTask, nn.Module):
         self.infer_module = infer_class(num_classes=self.params.head_params['num_classes'])
         self.num_classes = self.params.head_params['num_classes']
 
+        self._set_pretrained_weights()
+
+    def _set_pretrained_weights(self, url = 'https://download.openmmlab.com/mmdetection/v2.0/yolox/yolox_s_8x8_300e_coco/yolox_s_8x8_300e_coco_20211121_095711-4592a793.pth'):
+        file = download_cached_file(url)
+        loaded_state_dict = torch.load(file)['state_dict']
+        model_state_dict = self.state_dict()
+        loaded_keys = list(loaded_state_dict.keys())
+        model_state_dict
+        lol = 0
+        for key, value in model_state_dict.items():
+            index = key.find('.')
+            module_name = key[:index]
+            weight_name = key[index+1:]
+            load_value = None
+            for loaded_key in loaded_keys:
+                index = loaded_key.find('.')
+                loaded_module_name = loaded_key[:index]
+                if module_name in loaded_module_name and loaded_key.endswith(weight_name):
+                    load_value = loaded_state_dict[loaded_key]
+                    break
+            if load_value is not None and load_value.shape == value.shape:
+                lol += 1
+                model_state_dict[key] = load_value
+        self.load_state_dict(model_state_dict)
+
     def forward(self, x):
         backbone_features = self.backbone(x)
         neck_features = self.neck(backbone_features)
         cls_score, bbox_pred, objectness = self.head(neck_features)
         return cls_score, bbox_pred, objectness
+
+    def forward_valid(self, x):
+        cls_score, bbox_pred, objectness = self.forward(x)
+        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
+        return prediction
 
     def forward_with_gt(self, batch):
         input_data = batch['input']
@@ -88,12 +119,10 @@ class DetectionTask(BaseTask, nn.Module):
     def training_step(self, batch, batch_idx):
         output = self.forward_with_gt(batch)
         loss = self.criterion(**output)
-
         input_data = batch['input']
         gt_bboxes = batch['target_bboxes']
         gt_labels = batch['target_labels']
-        cls_score, bbox_pred, objectness = self.forward(input_data)
-        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
+        prediction = self.forward_valid(input_data)
         target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
         valid_output = {
             'target': target,
@@ -105,12 +134,10 @@ class DetectionTask(BaseTask, nn.Module):
     def validation_step(self, batch, batch_idx):
         output = self.forward_with_gt(batch)
         loss = self.criterion(**output)
-
         input_data = batch['input']
         gt_bboxes = batch['target_bboxes']
         gt_labels = batch['target_labels']
-        cls_score, bbox_pred, objectness = self.forward(input_data)
-        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
+        prediction = self.forward_valid(input_data)
         target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
         valid_output = {
             'target': target,

@@ -141,7 +141,7 @@ class SimOTAAssigner(nn.Module):
         Returns:
             :obj:`AssignResult`: The assigned result.
         """
-        indexes = torch.where(gt_labels >= 0)[0]
+        indexes = torch.where(gt_labels > -0.5)[0]
         gt_labels = gt_labels[indexes]
         gt_bboxes = gt_bboxes[indexes]
 
