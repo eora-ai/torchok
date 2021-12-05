@@ -15,20 +15,26 @@ __all__ = ["AccuracyTest", "F1ScoreTest", "FBetaScoreTest", "PrecisionTest", "Re
 
 class AccuracyTest(unittest.TestCase):
     def setUp(self):
-        self._Y_PRED_MULTICLASS = [[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1], [0, 0, 1], [0, 0, 1],
-                                   [0, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [1, 0, 0], [1, 0, 0],
-                                   [0, 0, 1], [0, 0, 1], [0, 0, 1], [1, 0, 0], [1, 0, 0], [0, 1, 0]]
-        self._Y_TRUE_MULTICLASS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]
+        self._Y_PRED_MULTICLASS = np.array(
+            [[1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1], [0, 0, 1], [0, 0, 1],
+            [0, 1, 0], [0, 1, 0], [0, 0, 1], [1, 0, 0], [1, 0, 0], [1, 0, 0],
+            [0, 0, 1], [0, 0, 1], [0, 0, 1], [1, 0, 0], [1, 0, 0], [0, 1, 0]],
+            dtype=np.float32
+        )
+        self._Y_TRUE_MULTICLASS = np.array(
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
+            dtype=np.float32
+        )
 
     def test_one_iteration(self):
         y_pred_sklearn = np.argmax(self._Y_PRED_MULTICLASS, axis=1)
         scikit_learn_score = accuracy_score(self._Y_TRUE_MULTICLASS, y_pred_sklearn)
 
-        accuracy_test = AccuracyMeter(k=3)
+        accuracy_test = AccuracyMeter()
 
-        accuracy_test.add(torch.IntTensor(self._Y_PRED_MULTICLASS), torch.IntTensor(self._Y_TRUE_MULTICLASS))
+        accuracy_test.update(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
 
-        self.assertEqual(scikit_learn_score, accuracy_test.value())
+        self.assertEqual(scikit_learn_score, accuracy_test.on_epoch_end())
 
     def test_multiple_iterations(self):
         half = len(self._Y_TRUE_MULTICLASS) // 2
@@ -36,13 +42,13 @@ class AccuracyTest(unittest.TestCase):
         y_pred_sklearn = np.argmax(self._Y_PRED_MULTICLASS, axis=1)
         scikit_learn_score = accuracy_score(self._Y_TRUE_MULTICLASS, y_pred_sklearn)
 
-        accuracy_test = AccuracyMeter(k=3)
-        accuracy_test.add(torch.IntTensor(self._Y_PRED_MULTICLASS[:half]),
-                          torch.IntTensor(self._Y_TRUE_MULTICLASS[:half]))
-        accuracy_test.add(torch.IntTensor(self._Y_PRED_MULTICLASS[half:]),
-                          torch.IntTensor(self._Y_TRUE_MULTICLASS[half:]))
+        accuracy_test = AccuracyMeter()
+        accuracy_test.update(self._Y_TRUE_MULTICLASS[:half],
+                             self._Y_PRED_MULTICLASS[:half])
+        accuracy_test.update(self._Y_TRUE_MULTICLASS[half:],
+                             self._Y_PRED_MULTICLASS[half:])
 
-        self.assertEqual(scikit_learn_score, accuracy_test.value())
+        self.assertEqual(scikit_learn_score, accuracy_test.on_epoch_end())
 
 
 class F1ScoreTest(unittest.TestCase):
@@ -299,8 +305,8 @@ class RecallTest(unittest.TestCase):
 
 class MeanIntersectionOverUnionTests(unittest.TestCase):
     def setUp(self):
-        self._predictions = torch.load('./tests/metrics/configs/predictions_4classes.pt')
-        self._target = torch.load('./tests/metrics/configs/target_4classes.pt')
+        self._predictions = torch.load('./tests/metrics/test_data/predictions_4classes.pt')
+        self._target = torch.load('./tests/metrics/test_data/target_4classes.pt')
 
     def test_miou_averaged_compared_to_straight_calculations(self):
         preds = self._predictions.argmax(1).squeeze()
@@ -313,9 +319,9 @@ class MeanIntersectionOverUnionTests(unittest.TestCase):
 
         miou_expected = np.mean([tp1 / union1, tp0 / union0])
 
-        miou_meter = MeanIntersectionOverUnionMeter(k=4, weighted=False)
-        miou_meter.add(self._predictions, self._target)
-        miou_actual = miou_meter.value()
+        miou_meter = MeanIntersectionOverUnionMeter(num_classes=4, weighted=False)
+        miou_meter.update(self._target, self._predictions)
+        miou_actual = miou_meter.on_epoch_end()
 
         self.assertAlmostEqual(miou_expected, miou_actual,
                                msg='MIOU calculated from confusion matrix must match'
@@ -334,9 +340,9 @@ class MeanIntersectionOverUnionTests(unittest.TestCase):
         weights = np.array([gt1 / total, gt0 / total])
         miou_expected = np.sum(np.array([tp1 / union1, tp0 / union0]) * weights)
 
-        miou_meter = MeanIntersectionOverUnionMeter(k=4, weighted=True)
-        miou_meter.add(self._predictions, self._target)
-        miou_actual = miou_meter.value()
+        miou_meter = MeanIntersectionOverUnionMeter(num_classes=4, weighted=True)
+        miou_meter.update(self._target, self._predictions)
+        miou_actual = miou_meter.on_epoch_end()
 
         self.assertAlmostEqual(miou_expected, miou_actual,
                                msg='MIOU calculated from confusion matrix must match'
@@ -348,17 +354,17 @@ class EERMeterTest(unittest.TestCase):
     def setUp(self) -> None:
         # shape of descs is (13233, 512)
         # shape of triplets is (242257, 3)
-        descs = np.load('tests/metrics/configs/descriptors.npy')
-        self.triplets = np.load('tests/metrics/configs/descriptors_triplets.npy')
+        descs = np.load('tests/metrics/test_data/descriptors.npy')
+        self.triplets = np.load('tests/metrics/test_data/descriptors_triplets.npy')
         self.descs = torch.from_numpy(descs)
         t1, t2, t3 = self.triplets.T
         anchors, positives, negatives = self.descs[t1], self.descs[t2], self.descs[t3]
 
-        eer_meter_c = EERMeter(dist='cosine', e=1e-8)
-        eer_meter_c.add(anchor=anchors, positive=positives, negative=negatives)
+        eer_meter_c = EERMeter(distance='cosine')
+        eer_meter_c.update(anchor=anchors, positive=positives, negative=negatives)
 
-        eer_meter_e = EERMeter(dist='euclidean', e=1e-8)
-        eer_meter_e.add(anchor=anchors, positive=positives, negative=negatives)
+        eer_meter_e = EERMeter(distance='euclidean')
+        eer_meter_e.update(anchor=anchors, positive=positives, negative=negatives)
 
         def calculate_conf(threshold, distances, labels):
             not_labels = labels == 0
@@ -375,7 +381,7 @@ class EERMeterTest(unittest.TestCase):
         self.eer_meter = {'cosine': eer_meter_c, 'euclidean': eer_meter_e}
 
     def test_eer_calculator_cosine(self):
-        distances, labels = self.eer_meter['cosine']._merge_data()
+        distances, labels = self.eer_meter['cosine'].distances, self.eer_meter['cosine'].labels
         res_eer, res_threshold = self.eer_meter['cosine'].calculate_eer()
 
         calculate_conf = self.functions[0]
@@ -384,7 +390,7 @@ class EERMeterTest(unittest.TestCase):
         self.assertAlmostEqual(far(conf), frr(conf), places=5)
 
     def test_eer_calculator_euclidean(self):
-        distances, labels = self.eer_meter['euclidean']._merge_data()
+        distances, labels = self.eer_meter['cosine'].distances, self.eer_meter['cosine'].labels
         res_eer, res_threshold = self.eer_meter['euclidean'].calculate_eer()
 
         calculate_conf = self.functions[0]
@@ -393,11 +399,13 @@ class EERMeterTest(unittest.TestCase):
         self.assertAlmostEqual(far(conf), frr(conf), places=4)
 
     def test_adder_differ_batch(self):
-        eer_meter = EERMeter(dist='cosine')
+        eer_meter = EERMeter(distance='cosine')
         for triplet in self.triplets:
-            eer_meter.add(anchor=torch.FloatTensor(self.descs[triplet[0]]).unsqueeze(0),
-                          positive=torch.FloatTensor(self.descs[triplet[1]]).unsqueeze(0),
-                          negative=torch.FloatTensor(self.descs[triplet[2]]).unsqueeze(0))
+            eer_meter.update(
+                anchor=torch.FloatTensor(self.descs[triplet[0]]).unsqueeze(0),
+                positive=torch.FloatTensor(self.descs[triplet[1]]).unsqueeze(0),
+                negative=torch.FloatTensor(self.descs[triplet[2]]).unsqueeze(0)
+            )
         eer, thresh = eer_meter.calculate_eer()
         eer_batch, thresh_batch = self.eer_meter['cosine'].calculate_eer()
 
