@@ -109,6 +109,17 @@ class MLPHead(AbstractHead):
 @HEADS.register_class
 @CLASSIFICATION_HEADS.register_class
 class IdentityHead(AbstractHead):
+    def __init__(self, in_features, **kwargs):
+        super().__init__(in_features, in_features)
+
+    def forward(self, x: Tensor, targets: Tensor = None) -> Tensor:
+
+        return x
+
+
+@HEADS.register_class
+@CLASSIFICATION_HEADS.register_class
+class NormalizationHead(AbstractHead):
     def __init__(self, in_features, normalize=True, **kwargs):
         super().__init__(in_features, in_features)
         self.normalize = normalize
@@ -116,4 +127,5 @@ class IdentityHead(AbstractHead):
     def forward(self, x: Tensor, targets: Tensor = None) -> Tensor:
         if self.normalize:
             x = F.normalize(x, p=2, dim=-1)
+
         return x
