@@ -34,7 +34,7 @@ class AccuracyMeter(Metric):
 @METRICS.register_class
 class FbetaMeter(Metric):
 
-    def __init__(self, beta, num_classes=None, target_class=None, average='macro',
+    def __init__(self, beta, num_classes=None, target_class=None, average='binary',
                  ignore_index=-100, name=None, target_fields=None):
         if average not in ['binary', 'macro', 'micro', 'weighted', 'none']:
             raise ValueError('Supported averaging modes are: "binary", "macro", "micro", "weighted", "none". '
@@ -42,6 +42,9 @@ class FbetaMeter(Metric):
 
         if num_classes is None and average != 'binary':
             raise TypeError('You must specify "num_classes" for non-binary averaging')
+        if num_classes is not None and target_class is None and average == 'binary':
+            raise TypeError('You must leave "num_classes" not specified or specify "target_class" '
+                            'for average mode "binary"')
         if target_class is not None and average != 'binary':
             raise ValueError('"target_class" is compatible with averaging mode "binary" only')
         if target_class is not None and (num_classes is None or target_class >= num_classes):
@@ -63,12 +66,15 @@ class FbetaMeter(Metric):
         self.average = average
         self.num_classes = num_classes
         self.target_class = target_class
-        self.valid_mask = np.arange(self.num_classes) != ignore_index
+        if num_classes is not None and self.target_class is None:
+            self.valid_mask = np.arange(self.num_classes) != ignore_index
+        else:
+            self.valid_mask = None
         self.beta2 = beta ** 2
         self.true_pos = None
         self.false_pos = None
         self.false_neg = None
-        self._classes_idx = np.arange(self.num_classes)[:, None]
+        self._classes_idx = np.arange(self.num_classes)[:, None] if num_classes is not None else None
         self.reset()
 
     def reset(self):
@@ -82,30 +88,33 @@ class FbetaMeter(Metric):
             self.false_neg = np.zeros(self.num_classes)
 
     def _unify_shapes(self, target, prediction):
-        if self.average == 'binary':
+        if prediction.shape[0] != target.shape[0]:
+            raise ValueError('Batch size of target and prediction do not match',
+                             target.shape[0], prediction.shape[0])
+
+        if self.average == 'binary' and self.target_class is None:
             if prediction.shape != target.shape:
                 raise ValueError('shapes of target and prediction do not match',
                                  target.shape, prediction.shape)
             # prediction and target will have shapes: (N,)
             prediction = prediction > 0     # for logits this is 0.5 probability after applying sigmoid
-        else:
+        elif self.average == 'binary' and self.target_class is not None:
             # Dimensions check
-            if prediction.shape[0] != target.shape[0]:
-                raise ValueError('Batch size of target and prediction do not match',
-                                 target.shape[0], prediction.shape[0])
-
             if prediction.ndim != 2 or target.ndim != 1:
                 raise ValueError('prediction and target must be 2d and 1d matrices respectively')
 
+            # if target class is given prediction and target will have shapes: (N,), dtype=np.bool
+            prediction = prediction.argmax(1) == self.target_class
+            target = target == self.target_class
+        else:
+            # Dimensions check
+            if prediction.ndim != 2 or target.ndim != 1:
+                raise ValueError('prediction and target must be 2d and 1d matrices respectively')
+
+            # if target class isn't given prediction and target will have shapes: (N,), dtype=np.int
             prediction = prediction.argmax(1)
 
-            # if target class is given prediction and target will have shapes: (N,), dtype=np.bool
-            # otherwise prediction and target will have shapes: (N,), dtype=np.int
-            if self.target_class is not None:
-                prediction = prediction == self.target_class
-                target = target == self.target_class
-
-        return prediction, target
+        return target, prediction
 
     def _get_metric(self, tp, fp, fn):
         tp_rate = (1 + self.beta2) * tp
@@ -115,7 +124,8 @@ class FbetaMeter(Metric):
         return f1_scores
 
     def _calc_with_reduce(self, tp: ndarray, fp: ndarray, fn: ndarray) -> np.ndarray:
-        tp, fp, fn = tp[self.valid_mask], fp[self.valid_mask], fn[self.valid_mask]
+        if self.valid_mask is not None:
+            tp, fp, fn = tp[self.valid_mask], fp[self.valid_mask], fn[self.valid_mask]
 
         if self.average == 'macro':
             metrics = self._get_metric(tp, fp, fn)
