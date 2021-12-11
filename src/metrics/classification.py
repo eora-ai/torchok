@@ -32,9 +32,9 @@ class AccuracyMeter(Metric):
 
 
 @METRICS.register_class
-class FbetaMeter(Metric):
+class TPFPFNMeter(Metric):
 
-    def __init__(self, beta, num_classes=None, target_class=None, average='binary',
+    def __init__(self, num_classes=None, target_class=None, average='binary',
                  ignore_index=-100, name=None, target_fields=None):
         if average not in ['binary', 'macro', 'micro', 'weighted', 'none']:
             raise ValueError('Supported averaging modes are: "binary", "macro", "micro", "weighted", "none". '
@@ -55,11 +55,11 @@ class FbetaMeter(Metric):
         if name is None:
             if average == 'binary':
                 if target_class is None:
-                    name = f'F_beta@{beta}'
+                    name = f'TPFPFN'
                 else:
-                    name = f'F_beta@{beta}[target_class]'
+                    name = f'TPFPFN[{target_class}]'
             else:
-                name = f'F_beta@{beta}_{average}'
+                name = f'TPFPFN_{average}'
 
         super().__init__(name=name, target_fields=target_fields)
 
@@ -70,7 +70,6 @@ class FbetaMeter(Metric):
             self.valid_mask = np.arange(self.num_classes) != ignore_index
         else:
             self.valid_mask = None
-        self.beta2 = beta ** 2
         self.true_pos = None
         self.false_pos = None
         self.false_neg = None
@@ -117,11 +116,7 @@ class FbetaMeter(Metric):
         return target, prediction
 
     def _get_metric(self, tp, fp, fn):
-        tp_rate = (1 + self.beta2) * tp
-        denum = tp_rate + self.beta2 * fn + fp + self.eps
-        f1_scores = tp_rate / denum
-
-        return f1_scores
+        raise NotImplementedError()
 
     def _calc_with_reduce(self, tp: ndarray, fp: ndarray, fn: ndarray) -> np.ndarray:
         if self.valid_mask is not None:
@@ -162,9 +157,9 @@ class FbetaMeter(Metric):
 
     def calculate(self, target: ndarray, prediction: ndarray) -> ndarray:
         tp, fp, fn = self._calc_tp_fp_fn(target, prediction)
-        f1 = self._calc_with_reduce(tp, fp, fn)
+        value = self._calc_with_reduce(tp, fp, fn)
 
-        return f1
+        return value
 
     def update(self, target, prediction, *args, **kwargs):
         tp, fp, fn = self._calc_tp_fp_fn(target, prediction)
@@ -174,12 +169,39 @@ class FbetaMeter(Metric):
         self.false_neg += fn
 
     def on_epoch_end(self, do_reset=True):
-        f1 = self._calc_with_reduce(self.true_pos, self.false_pos, self.false_neg)
+        value = self._calc_with_reduce(self.true_pos, self.false_pos, self.false_neg)
 
         if do_reset:
             self.reset()
 
-        return f1
+        return value
+
+
+@METRICS.register_class
+class FbetaMeter(TPFPFNMeter):
+
+    def __init__(self, beta, num_classes=None, target_class=None, average='binary',
+                 ignore_index=-100, name=None, target_fields=None):
+        if name is None:
+            if average == 'binary':
+                if target_class is None:
+                    name = f'F{beta}'
+                else:
+                    name = f'F{beta}[{target_class}]'
+            else:
+                name = f'F{beta}_{average}'
+
+        super().__init__(name=name, num_classes=num_classes, target_class=target_class, average=average,
+                         ignore_index=ignore_index, target_fields=target_fields)
+        self.beta2 = beta ** 2
+        self.reset()
+
+    def _get_metric(self, tp, fp, fn):
+        tp_rate = (1 + self.beta2) * tp
+        denum = tp_rate + self.beta2 * fn + fp + self.eps
+        f1_scores = tp_rate / denum
+
+        return f1_scores
 
 
 @METRICS.register_class
@@ -198,6 +220,52 @@ class F1Meter(FbetaMeter):
 
         super().__init__(beta=1, num_classes=num_classes, target_class=target_class,
                          average=average, ignore_index=ignore_index, name=name, target_fields=target_fields)
+
+
+@METRICS.register_class
+class PrecisionMeter(TPFPFNMeter):
+
+    def __init__(self, num_classes=None, target_class=None, average='binary',
+                 ignore_index=-100, name=None, target_fields=None):
+        if name is None:
+            if average == 'binary':
+                if target_class is None:
+                    name = f'Precision'
+                else:
+                    name = f'Precision[{target_class}]'
+            else:
+                name = f'Precision_{average}'
+
+        super().__init__(name=name, num_classes=num_classes, target_class=target_class, average=average,
+                         ignore_index=ignore_index, target_fields=target_fields)
+
+    def _get_metric(self, tp, fp, fn):
+        precisions = tp / (tp + fp + self.eps)
+
+        return precisions
+
+
+@METRICS.register_class
+class RecallMeter(TPFPFNMeter):
+
+    def __init__(self, num_classes=None, target_class=None, average='binary',
+                 ignore_index=-100, name=None, target_fields=None):
+        if name is None:
+            if average == 'binary':
+                if target_class is None:
+                    name = f'Recall'
+                else:
+                    name = f'Recall[{target_class}]'
+            else:
+                name = f'Recall_{average}'
+
+        super().__init__(name=name, num_classes=num_classes, target_class=target_class, average=average,
+                         ignore_index=ignore_index, target_fields=target_fields)
+
+    def _get_metric(self, tp, fp, fn):
+        recalls = tp / (tp + fn + self.eps)
+
+        return recalls
 
 
 @METRICS.register_class
