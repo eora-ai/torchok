@@ -4,12 +4,12 @@ import numpy as np
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, fbeta_score, precision_score, recall_score
 import torch
 
-from src.metrics import AccuracyMeter, f1, fbeta, precision, recall, \
+from src.metrics import AccuracyMeter, F1Meter, FbetaMeter, \
     MeanIntersectionOverUnionMeter, far, frr, EERMeter, precision_k, map_k
 
 from src.metrics.classification import MultiLabelRecallMeter, MultiLabelPrecisionMeter, MultiLabelF1Meter
 
-__all__ = ["AccuracyTest", "F1ScoreTest", "FBetaScoreTest", "PrecisionTest", "RecallTest",
+__all__ = ["AccuracyTest", "F1ScoreTest", "FBetaScoreTest",
            "MeanIntersectionOverUnionTests", "EERMeterTest", "PrecisionKTest"]
 
 
@@ -51,256 +51,319 @@ class AccuracyTest(unittest.TestCase):
         self.assertEqual(scikit_learn_score, accuracy_test.on_epoch_end())
 
 
-class F1ScoreTest(unittest.TestCase):
-    def setUp(self):
-        self._Y_PRED_BINARY = [0, 0, 0, 1, 1, 1, 1, 1]
-        self._Y_TRUE_BINARY = [0, 1, 1, 0, 1, 1, 1, 1]
-
-        self._Y_PRED_MULTICLASS = [0, 1, 1, 2, 2, 2, 1, 1, 2, 0, 0, 0, 2, 2, 2, 0, 0, 1]
-        self._Y_TRUE_MULTICLASS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]
-
-    def test_f1_score_with_binary_average(self):
-        scikit_learn_score = f1_score(self._Y_TRUE_BINARY, self._Y_PRED_BINARY,
-                                      average='binary')
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_PRED_BINARY)
-        f1_score_calculated = f1(cf, 'binary')
-
-        self.assertAlmostEqual(scikit_learn_score, f1_score_calculated)
-
-    def test_f1_score_with_micro_average(self):
-        scikit_learn_score = f1_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                      average='micro')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        f1_score_calculated = f1(cf, 'micro')
-
-        self.assertAlmostEqual(scikit_learn_score, f1_score_calculated)
-
-    def test_f1_score_with_macro_average(self):
-        scikit_learn_score = f1_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                      average='macro')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        f1_score_calculated = f1(cf, 'macro')
-
-        self.assertAlmostEqual(scikit_learn_score, f1_score_calculated)
-
-    def test_f1_score_with_weighted_average_for_binary_classification(self):
-        scikit_learn_score = f1_score(self._Y_TRUE_BINARY, self._Y_TRUE_BINARY,
-                                      average='weighted')
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_TRUE_BINARY)
-        f1_score_calculated = f1(cf, 'weighted')
-
-        self.assertAlmostEqual(scikit_learn_score, f1_score_calculated)
-
-    def test_f1_score_with_weighted_average_for_multiclass_classification(self):
-        scikit_learn_score = f1_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                      average='weighted')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        f1_score_calculated = f1(cf, 'weighted')
-
-        self.assertAlmostEqual(scikit_learn_score, f1_score_calculated)
-
-    def test_f1_score_for_each_class_of_multiclass_classification(self):
-        scikit_learn_scores = list(f1_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                            average=None))
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        f1_score_calculateds = f1(cf, None)
-
-        self.assertListEqual(scikit_learn_scores, f1_score_calculateds)
-
-
-class FBetaScoreTest(unittest.TestCase):
-    def setUp(self):
-        self._Y_PRED_BINARY = [0, 0, 0, 1, 1, 1, 1, 1]
-        self._Y_TRUE_BINARY = [0, 1, 1, 0, 1, 1, 1, 1]
-
-        self._Y_PRED_MULTICLASS = [0, 1, 1, 2, 2, 2, 1, 1, 2, 0, 0, 0, 2, 2, 2, 0, 0, 1]
-        self._Y_TRUE_MULTICLASS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]
-
-        self._FBETA = 0.5
-
-    def test_fbeta_score_with_binary_average(self):
-        scikit_learn_score = fbeta_score(self._Y_TRUE_BINARY, self._Y_PRED_BINARY,
-                                         average='binary', beta=self._FBETA)
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_PRED_BINARY)
-        fbeta_score_calculated = fbeta(cf, 'binary', self._FBETA)
-
-        self.assertAlmostEqual(scikit_learn_score, fbeta_score_calculated)
-
-    def test_fbeta_score_with_micro_average(self):
-        scikit_learn_score = fbeta_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                         average='micro', beta=self._FBETA)
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        fbeta_score_calculated = fbeta(cf, 'micro', self._FBETA)
-
-        self.assertAlmostEqual(scikit_learn_score, fbeta_score_calculated)
-
-    def test_fbeta_score_with_macro_average(self):
-        scikit_learn_score = fbeta_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                         average='macro', beta=self._FBETA)
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        fbeta_score_calculated = fbeta(cf, 'macro', self._FBETA)
-
-        self.assertAlmostEqual(scikit_learn_score, fbeta_score_calculated)
-
-    def test_fbeta_score_with_weighted_average_for_binary_classification(self):
-        scikit_learn_score = fbeta_score(self._Y_TRUE_BINARY, self._Y_TRUE_BINARY,
-                                         average='weighted', beta=self._FBETA)
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_TRUE_BINARY)
-        fbeta_score_calculated = fbeta(cf, 'weighted', self._FBETA)
-
-        self.assertAlmostEqual(scikit_learn_score, fbeta_score_calculated)
-
-    def test_fbeta_score_with_weighted_average_for_multiclass_classification(self):
-        scikit_learn_score = fbeta_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                         average='weighted', beta=self._FBETA)
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        fbeta_score_calculated = fbeta(cf, 'weighted', self._FBETA)
-
-        self.assertAlmostEqual(scikit_learn_score, fbeta_score_calculated)
-
-    def test_fbeta_score_for_each_class_of_multiclass_classification(self):
-        scikit_learn_scores = list(fbeta_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                               average=None, beta=self._FBETA))
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        fbeta_scores_calculated = fbeta(cf, None, self._FBETA)
-
-        self.assertListEqual(list(np.round(scikit_learn_scores, 7)), list(np.round(fbeta_scores_calculated, 7)))
-
-
-class PrecisionTest(unittest.TestCase):
-    def setUp(self):
-        self._Y_PRED_BINARY = [0, 0, 0, 1, 1, 1, 1, 1]
-        self._Y_TRUE_BINARY = [0, 1, 1, 0, 1, 1, 1, 1]
-
-        self._Y_PRED_MULTICLASS = [0, 1, 1, 2, 2, 2, 1, 1, 2, 0, 0, 0, 2, 2, 2, 0, 0, 1]
-        self._Y_TRUE_MULTICLASS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]
-
-    def test_precision_score_with_binary_average(self):
-        scikit_learn_score = precision_score(self._Y_TRUE_BINARY, self._Y_PRED_BINARY,
-                                             average='binary')
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_PRED_BINARY)
-        precision_test = precision(cf, 'binary')
-
-        self.assertAlmostEqual(scikit_learn_score, precision_test)
-
-    def test_precision_score_with_micro_average(self):
-        scikit_learn_score = precision_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                             average='micro')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        precision_test = precision(cf, 'micro')
-
-        self.assertAlmostEqual(scikit_learn_score, precision_test)
-
-    def test_precision_score_with_macro_average(self):
-        scikit_learn_score = precision_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                             average='macro')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        precision_test = precision(cf, 'macro')
-
-        self.assertAlmostEqual(scikit_learn_score, precision_test)
-
-    def test_precision_score_with_weighted_average_for_binary_classification(self):
-        scikit_learn_scores = precision_score(self._Y_TRUE_BINARY, self._Y_PRED_BINARY,
-                                              average='weighted')
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_PRED_BINARY)
-        precision_test = precision(cf, 'weighted')
-
-        self.assertAlmostEqual(scikit_learn_scores, precision_test)
-
-    def test_precision_score_with_weighted_average_for_multiclass_classification(self):
-        scikit_learn_scores = precision_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                              average='weighted')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        precision_test = precision(cf, 'weighted')
-
-        self.assertAlmostEqual(scikit_learn_scores, precision_test)
-
-    def test_precision_score_for_each_class_of_multiclass_classification(self):
-        scikit_learn_scores = list(precision_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                                   average=None))
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        precision_test = precision(cf, None)
-
-        self.assertListEqual(scikit_learn_scores, precision_test)
-
-
-class RecallTest(unittest.TestCase):
-    def setUp(self):
-        self._Y_PRED_BINARY = [0, 0, 0, 1, 1, 1, 1, 1]
-        self._Y_TRUE_BINARY = [0, 1, 1, 0, 1, 1, 1, 1]
-
-        self._Y_PRED_MULTICLASS = [0, 1, 1, 2, 2, 2, 1, 1, 2, 0, 0, 0, 2, 2, 2, 0, 0, 1]
-        self._Y_TRUE_MULTICLASS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]
-
-    def test_recall_score_with_binary_average(self):
-        scikit_learn_score = recall_score(self._Y_TRUE_BINARY, self._Y_PRED_BINARY, average='binary')
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_PRED_BINARY)
-        recall_test = recall(cf, 'binary')
-
-        self.assertAlmostEqual(scikit_learn_score, recall_test)
-
-    def test_recall_score_with_micro_average(self):
-        scikit_learn_score = recall_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS, average='micro')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        recall_test = recall(cf, 'micro')
-
-        self.assertAlmostEqual(scikit_learn_score, recall_test)
-
-    def test_recall_score_with_macro_average(self):
-        scikit_learn_score = recall_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                          average='macro')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        recall_test = recall(cf, 'macro')
-
-        self.assertAlmostEqual(scikit_learn_score, recall_test)
-
-    def test_recall_score_with_weighted_average_for_binary_classification(self):
-        scikit_learn_scores = recall_score(self._Y_TRUE_BINARY, self._Y_PRED_BINARY,
-                                           average='weighted')
-
-        cf = confusion_matrix(self._Y_TRUE_BINARY, self._Y_PRED_BINARY)
-        precision_test = recall(cf, 'weighted')
-
-        self.assertAlmostEqual(scikit_learn_scores, precision_test)
-
-    def test_recall_score_with_weighted_average_for_multiclass_classification(self):
-        scikit_learn_scores = recall_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                           average='weighted')
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        precision_test = recall(cf, 'weighted')
-
-        self.assertAlmostEqual(scikit_learn_scores, precision_test)
-
-    def test_recall_score_for_each_class_of_multiclass_classification(self):
-        scikit_learn_scores = list(recall_score(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS,
-                                                average=None))
-
-        cf = confusion_matrix(self._Y_TRUE_MULTICLASS, self._Y_PRED_MULTICLASS)
-        recall_test = recall(cf, None)
-
-        self.assertListEqual(scikit_learn_scores, recall_test)
+class MulticlassTest(unittest.TestCase):
+    def setUp(self) -> None:
+        # Multi-class classification
+        self.scores = np.array(
+            [[0.0783, 0.0866, 0.0957, 0.0783, 0.0709, 0.0957, 0.1169, 0.1292, 0.1427, 0.1057],
+             [0.0717, 0.0875, 0.0968, 0.1069, 0.1595, 0.1182, 0.0968, 0.0875, 0.0875, 0.0875],
+             [0.1025, 0.1025, 0.0840, 0.1133, 0.1252, 0.1384, 0.0760, 0.0687, 0.1133, 0.0760]]
+        )
+        self.targets = np.array([7, 4, 5])
+        self.true_pos = np.array([0., 0., 0., 0., 1., 1., 0., 0., 0., 0.])
+        self.false_pos = np.array([0., 0., 0., 0., 0., 0., 0., 0., 1., 0.])
+        self.false_neg = np.array([0., 0., 0., 0., 0., 0., 0., 1., 0., 0.])
+
+        # Binary classification
+        self.scores_binary = np.array([0, 0, 0, 1, 1, 1, 1, 1])
+        self.targets_binary = np.array([0, 1, 1, 0, 1, 1, 1, 1])
+        self.true_pos_binary = 4
+        self.false_pos_binary = 1
+        self.false_neg_binary = 2
+
+        # Target class classification
+        self.target_class = 4
+        self.scores_target_class = self.scores.argmax(1) == self.target_class
+        self.targets_target_class = self.targets == self.target_class
+        self.true_pos_target_class = 1
+        self.false_pos_target_class = 0
+        self.false_neg_target_class = 0
+
+
+class F1ScoreTest(MulticlassTest):
+    def test_calculate(self):
+        metric = F1Meter(num_classes=10, average='macro')
+        tested_metric_result = metric.calculate(self.targets, self.scores)
+        gt_sklearn_result = f1_score(y_true=self.targets, y_pred=self.scores.argmax(1),
+                                     average='macro', labels=np.arange(10))
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_update(self):
+        metric = F1Meter(num_classes=10, average='macro')
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg)
+
+    def test_update_binary(self):
+        metric = F1Meter(average='binary')
+        for i in range(len(self.targets_binary)):
+            y_pred = self.scores_binary[None, i]
+            y_true = self.targets_binary[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos_binary)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos_binary)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg_binary)
+
+    def test_update_target_class(self):
+        metric = F1Meter(num_classes=10, target_class=self.target_class, average='binary')
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos_target_class)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos_target_class)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg_target_class)
+
+    def test_on_epoch_end_macro(self):
+        metric = F1Meter(num_classes=10, average='macro')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        gt_sklearn_result = f1_score(self.targets, self.scores.argmax(1),
+                                     average='macro', labels=np.arange(10))
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_macro(self):
+        metric = F1Meter(num_classes=10, average='macro')
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = f1_score(y_true=self.targets, y_pred=self.scores.argmax(1),
+                                     average='macro', labels=np.arange(10))
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_micro(self):
+        metric = F1Meter(num_classes=10, average='micro')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        gt_sklearn_result = f1_score(self.targets, self.scores.argmax(1), average='micro')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_micro(self):
+        metric = F1Meter(num_classes=10, average='micro')
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = f1_score(y_true=self.targets, y_pred=self.scores.argmax(1), average='micro')
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_weighted(self):
+        metric = F1Meter(num_classes=10, average='weighted')
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        gt_sklearn_result = f1_score(self.targets, self.scores.argmax(1), average='weighted')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_weighted(self):
+        metric = F1Meter(num_classes=10, average='weighted')
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = f1_score(y_true=self.targets, y_pred=self.scores.argmax(1), average='weighted')
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_binary(self):
+        metric = F1Meter(average='binary')
+        metric.true_pos = self.true_pos_binary
+        metric.false_neg = self.false_neg_binary
+        metric.false_pos = self.false_pos_binary
+        gt_sklearn_result = f1_score(self.targets_binary, self.scores_binary, average='binary')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_binary(self):
+        metric = F1Meter(average='binary')
+        for i in range(len(self.targets_binary)):
+            y_pred = self.scores_binary[None, i]
+            y_true = self.targets_binary[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = f1_score(y_true=self.targets_binary, y_pred=self.scores_binary, average='binary')
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_target_class(self):
+        metric = F1Meter(num_classes=10, target_class=self.target_class, average='binary')
+        metric.true_pos = self.true_pos_target_class
+        metric.false_neg = self.false_neg_target_class
+        metric.false_pos = self.false_pos_target_class
+        gt_sklearn_result = f1_score(y_true=self.targets_target_class, y_pred=self.scores_target_class,
+                                     average='binary')
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_target_class(self):
+        metric = F1Meter(num_classes=10, target_class=self.target_class, average='binary')
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = f1_score(y_true=self.targets_target_class, y_pred=self.scores_target_class,
+                                     average='binary')
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+
+class FBetaScoreTest(MulticlassTest):
+    def setUp(self) -> None:
+        super().setUp()
+        self.beta = 2.
+
+    def test_calculate(self):
+        metric = FbetaMeter(num_classes=10, average='macro', beta=self.beta)
+        tested_metric_result = metric.calculate(self.targets, self.scores)
+        gt_sklearn_result = fbeta_score(y_true=self.targets, y_pred=self.scores.argmax(1),
+                                        beta=self.beta, average='macro', labels=np.arange(10))
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_update(self):
+        metric = FbetaMeter(num_classes=10, average='macro', beta=self.beta)
+        for i in range(3):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg)
+
+    def test_update_binary(self):
+        metric = FbetaMeter(average='binary', beta=self.beta)
+        for i in range(len(self.targets_binary)):
+            y_pred = self.scores_binary[None, i]
+            y_true = self.targets_binary[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos_binary)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos_binary)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg_binary)
+
+    def test_update_target_class(self):
+        metric = FbetaMeter(num_classes=10, target_class=self.target_class, average='binary', beta=self.beta)
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+        np.testing.assert_almost_equal(metric.true_pos, self.true_pos_target_class)
+        np.testing.assert_almost_equal(metric.false_pos, self.false_pos_target_class)
+        np.testing.assert_almost_equal(metric.false_neg, self.false_neg_target_class)
+
+    def test_on_epoch_end_macro(self):
+        metric = FbetaMeter(num_classes=10, average='macro', beta=self.beta)
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        gt_sklearn_result = fbeta_score(self.targets, self.scores.argmax(1),
+                                        beta=self.beta, average='macro', labels=np.arange(10))
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_macro(self):
+        metric = FbetaMeter(num_classes=10, average='macro', beta=self.beta)
+        for i in range(3):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = fbeta_score(y_true=self.targets, y_pred=self.scores.argmax(1),
+                                        beta=self.beta, average='macro', labels=np.arange(10))
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_micro(self):
+        metric = FbetaMeter(num_classes=10, average='micro', beta=self.beta)
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        gt_sklearn_result = fbeta_score(self.targets, self.scores.argmax(1), average='micro',
+                                        beta=self.beta)
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_micro(self):
+        metric = FbetaMeter(num_classes=10, average='micro', beta=self.beta)
+        for i in range(3):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = fbeta_score(y_true=self.targets, y_pred=self.scores.argmax(1), average='micro',
+                                        beta=self.beta)
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_weighted(self):
+        metric = FbetaMeter(num_classes=10, average='weighted', beta=self.beta)
+        metric.true_pos = self.true_pos
+        metric.false_neg = self.false_neg
+        metric.false_pos = self.false_pos
+        gt_sklearn_result = fbeta_score(self.targets, self.scores.argmax(1), average='weighted',
+                                        beta=self.beta)
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_weighted(self):
+        metric = FbetaMeter(num_classes=10, average='weighted', beta=self.beta)
+        for i in range(3):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = fbeta_score(y_true=self.targets, y_pred=self.scores.argmax(1), average='weighted',
+                                        beta=self.beta)
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_binary(self):
+        metric = FbetaMeter(average='binary', beta=self.beta)
+        metric.true_pos = self.true_pos_binary
+        metric.false_neg = self.false_neg_binary
+        metric.false_pos = self.false_pos_binary
+        gt_sklearn_result = fbeta_score(self.targets_binary, self.scores_binary,
+                                        average='binary', beta=self.beta)
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_binary(self):
+        metric = FbetaMeter(average='binary', beta=self.beta)
+        for i in range(len(self.targets_binary)):
+            y_pred = self.scores_binary[None, i]
+            y_true = self.targets_binary[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = fbeta_score(y_true=self.targets_binary, y_pred=self.scores_binary,
+                                        average='binary', beta=self.beta)
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
+
+    def test_on_epoch_end_target_class(self):
+        metric = FbetaMeter(num_classes=10, target_class=self.target_class, average='binary', beta=self.beta)
+        metric.true_pos = self.true_pos_target_class
+        metric.false_neg = self.false_neg_target_class
+        metric.false_pos = self.false_pos_target_class
+        gt_sklearn_result = fbeta_score(y_true=self.targets_target_class, y_pred=self.scores_target_class,
+                                     average='binary', beta=self.beta)
+        self.assertAlmostEqual(metric.on_epoch_end(), gt_sklearn_result)
+
+    def test_update_on_epoch_end_target_class(self):
+        metric = FbetaMeter(num_classes=10, target_class=self.target_class, average='binary', beta=self.beta)
+        for i in range(len(self.targets)):
+            y_pred = self.scores[None, i]
+            y_true = self.targets[None, i]
+            metric.update(y_true, y_pred)
+
+        tested_metric_result = metric.on_epoch_end()
+        gt_sklearn_result = fbeta_score(y_true=self.targets_target_class, y_pred=self.scores_target_class,
+                                     average='binary', beta=self.beta)
+        self.assertAlmostEqual(tested_metric_result.item(), gt_sklearn_result.item())
 
 
 class MeanIntersectionOverUnionTests(unittest.TestCase):
