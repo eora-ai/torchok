@@ -7,6 +7,7 @@ from .coat import *
 # from .dla import *
 # from .dpn import *
 from .efficientnet import *
+from .darknet import *
 # from .ghostnet import *
 from .gluon_resnet import *
 # from .gluon_xception import *

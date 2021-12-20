@@ -43,6 +43,8 @@ class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
         self.ignore_all_zeros = ignore_all_zeros
 
     def forward(self, input, target):
+        if input.numel() == 0:
+            return 0
         if self.ignore_all_zeros and target.ndim == 4:
             non_zeros = target.sum(dim=1) > 0
             target = target[non_zeros]

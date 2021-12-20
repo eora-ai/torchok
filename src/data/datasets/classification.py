@@ -47,6 +47,7 @@ class ImageDataset(ABCDataset):
             test_mode: If True, only image without labels will be returned.
         """
         super().__init__(transform, augment)
+        
         self.data_folder = Path(data_folder)
         self.csv = pd.read_csv(self.data_folder / path_to_datalist)
 
