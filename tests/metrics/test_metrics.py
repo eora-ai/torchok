@@ -771,6 +771,7 @@ class MultiLabelTest(unittest.TestCase):
         self.threshold = 0.5
         self.thresholds = [0.1, 0.5, 0.8]
 
+
 class MultiLabelF1MeterTest(MultiLabelTest):
     def test_calculate(self):
         metric = MultiLabelF1Meter(threshold=self.threshold, num_classes=10)

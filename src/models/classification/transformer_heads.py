@@ -90,8 +90,8 @@ class CVTransformerEncoder(AbstractHead):
         self.use_whiten = use_whiten
         if use_cls_token:
             self.cls_token = nn.Parameter(torch.zeros(1, 1, self.out_features))
-            self.src_pe = PositionalEncoding(d_model,
-                                             max_src_len + 1)  # to encode all `max_src_len` items and `cls_token`
+            # to encode all `max_src_len` items and `cls_token`
+            self.src_pe = PositionalEncoding(d_model, max_src_len + 1)
         else:
             self.src_pe = PositionalEncoding(d_model, max_src_len)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead)
@@ -124,9 +124,8 @@ class CVTransformerEncoder(AbstractHead):
 
 @HEADS.register_class
 class LSTMHead(AbstractHead):
-    def __init__(self, in_features=512, out_features=None, hidden_size=512, num_layers=3, batch_first=False, bias=False,
-                 dropout=0,
-                 bidirectional=False):
+    def __init__(self, in_features=512, out_features=None, hidden_size=512, num_layers=3,
+                 batch_first=False, bias=False, dropout=0, bidirectional=False):
         """
 
         :param in_features: number of expected features in the input x

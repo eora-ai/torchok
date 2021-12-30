@@ -31,8 +31,7 @@ class AccuracyMeter(Metric):
         return (target == prediction).mean()
 
 
-@METRICS.register_class
-class TPFPFNMeter(Metric):
+class _TPFPFNMeter(Metric):
 
     def __init__(self, num_classes=None, target_class=None, average='binary',
                  ignore_index=-100, name=None, target_fields=None):
@@ -178,7 +177,7 @@ class TPFPFNMeter(Metric):
 
 
 @METRICS.register_class
-class FbetaMeter(TPFPFNMeter):
+class FbetaMeter(_TPFPFNMeter):
 
     def __init__(self, beta, num_classes=None, target_class=None, average='binary',
                  ignore_index=-100, name=None, target_fields=None):
@@ -223,7 +222,7 @@ class F1Meter(FbetaMeter):
 
 
 @METRICS.register_class
-class PrecisionMeter(TPFPFNMeter):
+class PrecisionMeter(_TPFPFNMeter):
 
     def __init__(self, num_classes=None, target_class=None, average='binary',
                  ignore_index=-100, name=None, target_fields=None):
@@ -246,7 +245,7 @@ class PrecisionMeter(TPFPFNMeter):
 
 
 @METRICS.register_class
-class RecallMeter(TPFPFNMeter):
+class RecallMeter(_TPFPFNMeter):
 
     def __init__(self, num_classes=None, target_class=None, average='binary',
                  ignore_index=-100, name=None, target_fields=None):
