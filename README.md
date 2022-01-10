@@ -81,14 +81,14 @@ python -m unittest discover -s tests/ -p "test_*.py"
 
 ## Differences in configs sagemaker vs local machine
 ### 1. Path to data folder
-#### sagemaker
+#### Sagemaker
 ```yml
 data:
   dataset_name: ExampleDataset
   common_params:
     data_folder: "${SM_CHANNEL_TRAINING}"
 ```
-#### local machine
+#### Local machine
 ```yml
 data:
   dataset_name: ExampleDataset
@@ -97,12 +97,12 @@ data:
 ```
 
 ### 2. Path to artifacts dir
-#### sagemaker
+#### Sagemaker
 ```yml
 log_dir: '/opt/ml/checkpoints'
 ```
 
-#### local machine
+#### Local machine
 ```yml
 log_dir: '/tmp/logs'
 ```
@@ -110,22 +110,22 @@ log_dir: '/tmp/logs'
 `do_restore` is a special indicator which was designed to be used for SageMaker spot instances training. 
 With this indicator you can debug your model locally and be free to leave the `restore_path` pointing to some
 common directory like `/opt/ml/checkpoints`, where TorchOk will search the checkpoints for.
-#### sagemaker
+#### Sagemaker
 ```yml
 restore_path: '/opt/ml/checkpoints'
 do_restore: '${SM_USER_ENTRY_POINT}'
 ```
 
-#### local machine
+#### Local machine
 ```yml
 restore_path: '/opt/ml/checkpoints'
-do_restore: '${SM_USER_ENTRY_POINT}'
+do_restore: '<true-if-continue-training>'
 ```
 
 ## Mlflow
 To have more convenient logs it is recommended to name your experiment as ```project_name-developer_name```, so that all your experiments related to this project will be under one tag in mlflow
 ```yml
-experiment_name: &experiment_name fips-roman
+experiment_name: &experiment_name test-yourname
 ```
 State all the model parameters in ```mlflow.runName``` in logger params
 ```yml
@@ -133,9 +133,9 @@ logger:
   logger: mlflow
   experiment_name: *experiment_name
   tags:
-      mlflow.runName: "siloiz_contrastive_xbm_resnet50_512d"
+    mlflow.runName: "simclr_swinb_512d"
   save_dir: "s3://sagemaker-mlflow-main/mlruns"
   secrets_manager:
-      region: "eu-west-1"
-      mlflow_secret: "acme/mlflow"
+    region: "eu-west-1"
+    mlflow_secret: "acme/mlflow"
 ```

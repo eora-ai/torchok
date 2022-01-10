@@ -106,7 +106,7 @@ data:
       - name: OneOf
         params:
           transforms:
-            - name: JpegCompression
+            - name: ImageCompression
               params:
                 quality_lower: 90
             - name: GaussNoise

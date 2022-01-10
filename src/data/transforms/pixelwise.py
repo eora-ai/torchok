@@ -3,8 +3,9 @@ import numpy as np
 
 import albumentations.augmentations.functional as F
 from albumentations.core.transforms_interface import ImageOnlyTransform, to_tuple
+from albumentations.augmentations import CoarseDropout
 
-__all__ = ["InstanceNormalize", "ToGrayCustom", "MotionBlur", "OtsuBinarize", "AdaptiveBinarize"]
+__all__ = ["InstanceNormalize", "ToGrayCustom", "MotionBlur", "OtsuBinarize", "AdaptiveBinarize", "RandomErasing"]
 
 
 class InstanceNormalize(ImageOnlyTransform):
@@ -212,3 +213,17 @@ class AdaptiveBinarize(ImageOnlyTransform):
 
     def get_transform_init_args_names(self):
         return ()
+
+
+# https://arxiv.org/abs/1708.04896
+class RandomErasing(CoarseDropout):
+    def apply(self, image, fill_value=0, holes=(), **params):
+        # Make a copy of the input image since we don't want to modify it directly
+        img = image.copy()
+        for x1, y1, x2, y2 in holes:
+            if np.random.rand() > 0.5:
+                img[y1:y2, x1:x2] = fill_value
+            else:
+                img[y1:y2, x1:x2] = np.random.randint(0, 256, size=(y2 - y1, x2 - x1, 3), dtype=np.uint8)
+
+        return img

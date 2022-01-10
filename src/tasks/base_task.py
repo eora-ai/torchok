@@ -20,8 +20,6 @@ class BaseTask(LightningModule):
         self.criterion = JointLoss(self, self.hparams.loss)
         self.example_input_array = torch.rand(1, *self.params.input_size)
 
-        self.dataset_train, self.dataset_valid, self.dataset_test = None, None, None
-
     def forward(self, *args, **kwargs):
         raise NotImplementedError()
 
@@ -67,55 +65,65 @@ class BaseTask(LightningModule):
         else:
             return [optimizer]
 
-    def setup(self, stage: str = None):
-        data_params = self.hparams.data
-        common_params = data_params.common_params
-
-        train_params = data_params.train_params
-        valid_params = data_params.valid_params
-        test_params = data_params.test_params
-
-        self.dataset_train = create_dataset(train_params.name, common_params, train_params)
-        self.dataset_valid = create_dataset(valid_params.name, common_params, valid_params)
-
-        if test_params is None:
-            self.dataset_test = None
-        else:
-            self.dataset_test = create_dataset(test_params.name, common_params, test_params)
-
     @staticmethod
-    def prepare_dataloader(dataset, params):
-        use_custom_collate_fn = params.use_custom_collate_fn and hasattr(dataset, 'collate_fn')
+    def prepare_dataloader(dataset_params, common_dataset_params, dataloader_params):
+        dataset = create_dataset(dataset_params.name, common_dataset_params, dataset_params)
+
+        use_custom_collate_fn = dataloader_params.use_custom_collate_fn and hasattr(dataset, 'collate_fn')
         collate_fn = dataset.collate_fn if use_custom_collate_fn else None
-        if params.use_custom_batch_sampler:
-            batch_sampler = dataset.batch_sampler(batch_size=params.batch_size,
-                                                  shuffle=params.shuffle,
-                                                  drop_last=params.drop_last)
+        if dataloader_params.use_custom_batch_sampler:
+            batch_sampler = dataset.batch_sampler(batch_size=dataloader_params.batch_size,
+                                                  shuffle=dataloader_params.shuffle,
+                                                  drop_last=dataloader_params.drop_last)
             Loader = partial(DataLoader, batch_sampler=batch_sampler)
         else:
-            Loader = partial(DataLoader, batch_size=params.batch_size,
-                             shuffle=params.shuffle, drop_last=params.drop_last)
+            Loader = partial(DataLoader, batch_size=dataloader_params.batch_size,
+                             shuffle=dataloader_params.shuffle, drop_last=dataloader_params.drop_last)
         loader = Loader(dataset=dataset,
-                        num_workers=params.num_workers,
+                        num_workers=dataloader_params.num_workers,
                         collate_fn=collate_fn)
         return loader
 
     def train_dataloader(self):
-        return self.prepare_dataloader(self.dataset_train, self.hparams.data.train_params.dataloader_params)
+        data_params = self.hparams.data
+
+        if data_params.train_params is None:
+            return None
+
+        data_loader = self.prepare_dataloader(data_params.train_params, data_params.common_params,
+                                              data_params.train_params.dataloader_params)
+
+        return data_loader
 
     def val_dataloader(self):
-        dataloader_params = self.hparams.data.valid_params.dataloader_params
+        data_params = self.hparams.data
+
+        if data_params.valid_params is None:
+            return None
+
+        dataloader_params = data_params.valid_params.dataloader_params.copy()
         dataloader_params.shuffle = False
         dataloader_params.drop_last = False
-        return self.prepare_dataloader(self.dataset_valid, dataloader_params)
+
+        data_loader = self.prepare_dataloader(data_params.valid_params, data_params.common_params,
+                                              dataloader_params)
+
+        return data_loader
 
     def test_dataloader(self):
-        dataset = self.dataset_test
-        if dataset:
-            dataloader_params = self.hparams.data.test_params.dataloader_params
-            dataloader_params.shuffle = False
-            dataloader_params.drop_last = False
-            return self.prepare_dataloader(dataset, dataloader_params)
+        data_params = self.hparams.data
+
+        if data_params.test_params is None:
+            return None
+
+        dataloader_params = data_params.test_params.dataloader_params.copy()
+        dataloader_params.shuffle = False
+        dataloader_params.drop_last = False
+
+        data_loader = self.prepare_dataloader(data_params.test_params, data_params.common_params,
+                                              dataloader_params)
+
+        return data_loader
 
     def training_step_end(self, batch_parts_outputs):
         return batch_parts_outputs.mean(dim=0, keepdim=True)

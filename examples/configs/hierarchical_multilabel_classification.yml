@@ -83,7 +83,7 @@ data:
           border_mode: 0
           value: 0
       - name: GaussNoise
-      - name: JpegCompression
+      - name: ImageCompression
         params:
           quality_lower: 90
       - name: ChannelShuffle
@@ -116,7 +116,7 @@ trainer:
 #  limit_val_batches: 10
   progress_bar_refresh_rate: 1
   check_val_every_n_epoch: 1
-  distributed_backend: dp
+  accelerator: dp
   precision: 32
 
 experiment_name: &experiment_name test

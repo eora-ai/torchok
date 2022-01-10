@@ -113,7 +113,7 @@ trainer:
   precision: 32
   reload_dataloaders_every_epoch: false
 
-experiment_name: &experiment_name test #for example: fips-your_name
+experiment_name: &experiment_name test #for example: test-your_name
 log_dir: '${SM_OUTPUT_DATA_DIR}/logs'
 
 logger:

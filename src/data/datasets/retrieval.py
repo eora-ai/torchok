@@ -4,6 +4,7 @@ from typing import Union, List, Dict, Any, Optional
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
+import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -29,27 +30,27 @@ class QueryToRelevantDataset(ABCDataset):
         """
         super().__init__(transform, augment)
         self._data_folder = Path(data_folder)
-        self._matches_csv_path = Path(matches_csv_path)
-        self._matches = pd.read_csv(matches_csv_path, dtype={"query": int, "relevant": str})
+        self._matches = pd.read_csv(self._data_folder / matches_csv_path, dtype={"query": str, "relevant": str})
         self.input_dtype = input_dtype
         self.grayscale = grayscale
         if retrieval_level == 'image':
-            self._img_paths = pd.read_csv(img_paths_csv_path, names=["id", "path"],
-                                          dtype={"id": int, "path": str}, header=0)
+            self._img_paths = pd.read_csv(self._data_folder / img_paths_csv_path, usecols=["id", "path"],
+                                          dtype={"id": str, "path": str}, header=0)
         elif retrieval_level == 'object':
             if seq_len is None:
                 raise ValueError(f"if retrieval_level is 'object', needed to provide 'seq_len'. Got: {seq_len}")
 
-            self._img_paths = pd.read_csv(img_paths_csv_path, names=["id", "is_mainview", "path"],
-                                          dtype={"id": int, "path": str, "is_mainview": int}, header=0)
+            self._img_paths = pd.read_csv(self._data_folder / img_paths_csv_path, usecols=["id", "is_mainview", "path"],
+                                          dtype={"id": str, "path": str, "is_mainview": int}, header=0)
         else:
             raise ValueError(f"retrieval_level must be either 'object' or 'image'. Got: {retrieval_level}")
+        self._img_paths['path'] = self._img_paths['path'].map(lambda p: self._data_folder / p)
 
         self.seq_len = seq_len
         self.retrieval_level = retrieval_level
         self.update_transform_targets({'input': 'image'})
 
-        self._query_arr = np.asarray(self._matches.loc[:, "query"])
+        self._query_arr = self._matches.loc[:, "query"].tolist()
         self._index2objid = dict(enumerate(self._query_arr))
         self._n_queries = len(self._index2objid)
 
@@ -67,9 +68,12 @@ class QueryToRelevantDataset(ABCDataset):
                 self._relevance_scores[-1].append(obj_score)
         self._n_relevant = n_relevant
 
-        self._objid2paths = {obj_id: self._getitembyid(obj_id) for obj_id in self._index2objid.values()}
+        objid2paths = self._img_paths.groupby("id")["path"].apply(list).to_dict()
+        self._objid2paths = {obj_id: objid2paths[obj_id] for obj_id in self._index2objid.values()}
         if self.retrieval_level == 'object':
-            self._objid2mainviewpaths = {obj_id: self._getmainitembyid(obj_id) for obj_id in self._index2objid.values()}
+            mainviews = self._img_paths[self._img_paths["is_mainview"] == 1]
+            objid2mainviewpath = mainviews.groupby("id")["path"].first().to_dict()
+            self._objid2mainviewpath = {obj_id: objid2mainviewpath[obj_id] for obj_id in self._index2objid.values()}
         self._data_len = self._n_queries + self._n_relevant
 
     def read_image(self, image_path) -> np.ndarray:
@@ -81,33 +85,19 @@ class QueryToRelevantDataset(ABCDataset):
         if image.dtype == np.bool8:
             image = (image * 255).astype(np.uint8)
 
-        return image
+        if image.ndim > 2 and image.shape[2] == 4:
+            img = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+        elif image.ndim == 2:
+            img = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        else:
+            img = image
 
-    def _getitembyid(self, img_id: int) -> List[Path]:
-        """
-        Get the dataset item by image_id
-        :param img_id: image id
-        :return: images paths
-        """
-        img_paths = self._img_paths[self._img_paths["id"] == img_id]['path']
-        img_paths = [self._data_folder / p for p in img_paths]
+        return img
 
-        return img_paths
-
-    def _getmainitembyid(self, img_id: int) -> Path:
-        """
-        Get the dataset mainwiew item by image_id
-        :param img_id: image id
-        :return: image path
-        """
-        id_cond = self._img_paths["id"] == img_id
-        mainview_cond = self._img_paths["is_mainview"] == 1
-        return self._data_folder / self._img_paths[mainview_cond & id_cond]['path'].iloc[0]
-
-    def get_raw(self, obj_id: int):
+    def get_raw(self, obj_id: str):
         """
         Get initial image as is from database
-        :param obj_id: index of item (row of dataset)
+        :param obj_id: object id
         :return: image of shape (H, W, 3) in RGB order
         """
         item_paths = self._objid2paths[obj_id]
@@ -120,7 +110,7 @@ class QueryToRelevantDataset(ABCDataset):
 
             return sample
         else:
-            mainview_path = self._objid2mainviewpaths[obj_id]
+            mainview_path = self._objid2mainviewpath[obj_id]
             item_paths = [path for path in item_paths if path != mainview_path]
             images = [self.read_image(mainview_path)]
             images.extend([self.read_image(path) for path in item_paths[:min(self.seq_len - 1, len(item_paths))]])
@@ -208,20 +198,32 @@ class FullDbRetrievalDataset(QueryToRelevantDataset):
                          img_paths_csv_path=img_paths_csv_path, retrieval_level=retrieval_level,
                          transform=transform, augment=augment, input_dtype=input_dtype, seq_len=seq_len)
         self._db_folder = Path(db_folder)
-        self._include_only_path = Path(include_only_path)
-        include_only = pd.read_csv(include_only_path)
+
+        if retrieval_level == 'image':
+            include_only = pd.read_csv(Path(db_folder) / include_only_path, usecols=["id", "path"],
+                                          dtype={"id": str, "path": str}, header=0)
+        elif retrieval_level == 'object':
+            if seq_len is None:
+                raise ValueError(f"if retrieval_level is 'object', needed to provide 'seq_len'. Got: {seq_len}")
+
+            include_only = pd.read_csv(Path(db_folder) / include_only_path, usecols=["id", "is_mainview", "path"],
+                                          dtype={"id": str, "path": str, "is_mainview": int}, header=0)
+        else:
+            raise ValueError(f"retrieval_level must be either 'object' or 'image'. Got: {retrieval_level}")
+
         print(f"Reading database items from: {include_only_path}")
-        db_objs_paths = include_only.groupby('id')['path'].apply(list)
+        include_only['path'] = include_only['path'].map(lambda p: self._db_folder / p)
+        db_objid2paths = include_only.groupby('id')['path'].apply(list).to_dict()
+        self._objid2paths.update(db_objid2paths)
+
+        if retrieval_level == 'object':
+            mainviews = include_only[include_only["is_mainview"] == 1]
+            db_objid2mainviewpaths = mainviews.groupby('id')['path'].first().to_dict()
+            self._objid2mainviewpath.update(db_objid2mainviewpaths)
 
         n_db = 0
-        for obj_id, paths in db_objs_paths.items():
-            self._objid2paths[obj_id] = [self._db_folder / p for p in paths]
+        for obj_id in db_objid2paths.keys():
             self._index2objid[self.get_relevant_pivot() + n_db] = obj_id
-            if retrieval_level == 'object':
-                id_cond = include_only["id"] == obj_id
-                mainview_cond = include_only["is_mainview"] == 1
-                self._objid2mainviewpaths[obj_id] = self._db_folder / \
-                                                    include_only[id_cond & mainview_cond]['path'].iloc[0]
             n_db += 1
         self._n_db = n_db
         self._data_len = self._n_queries + self._n_relevant + self._n_db

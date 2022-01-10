@@ -4,16 +4,16 @@ import numpy as np
 from sklearn.metrics import auc, roc_curve
 import torch
 
-from src.metrics import Meter, frr, far
+from src.metrics import Metric, frr, far
 
 
-class FVMeter(Meter):
+class FVMeter(Metric):
     def __init__(self, dist='euclidean', override_name='fv_meter'):
         """
         abstract class of metrics for a given verification problem.
         :param dist: type of distance function. `euclidean` and `cosine` are available now.
         """
-        super().__init__(override_name=dist + "_" + override_name)
+        super().__init__(name=dist + "_" + override_name)
         self.conf = np.zeros((2, 2), dtype=np.int32)
         self.distances = []
         self.labels = []

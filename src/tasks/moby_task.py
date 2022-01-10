@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from pydantic import BaseModel
 
+from src.constructor import create_scheduler, create_optimizer
 from src.constructor import create_backbone
 from src.constructor.config_structure import TrainConfigParams
 from src.registry import TASKS, POOLINGS
@@ -79,6 +80,15 @@ class MoBYTask(BaseTask):
 
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
+    def configure_optimizers(self):
+        modules = [self.backbone, self.pooling, self.projector, self.predictor]
+        optimizer = create_optimizer(modules, self.hparams.optimizers)
+        if self.hparams.schedulers is not None:
+            scheduler = create_scheduler(optimizer, self.hparams.schedulers)
+            return [optimizer], [scheduler]
+        else:
+            return [optimizer]
+
     def train(self, mode: bool = True):
         self.training = mode
         for block in [self.backbone, self.pooling, self.projector, self.predictor]:
@@ -116,13 +126,13 @@ class MoBYTask(BaseTask):
 
         batch_size = keys1.shape[0]
 
-        ptr = int(self.queue_ptr)
-        assert self.memory_size % batch_size == 0  # for simplicity
+        start = int(self.queue_ptr)
+        end = min(int(self.queue_ptr) + batch_size, self.memory_size)
 
         # replace the keys at ptr (dequeue and enqueue)
-        self.queue1[:, ptr:ptr + batch_size] = keys1.T
-        self.queue2[:, ptr:ptr + batch_size] = keys2.T
-        ptr = (ptr + batch_size) % self.memory_size  # move pointer
+        self.queue1[:, start:end] = keys1[:end - start].T
+        self.queue2[:, start:end] = keys2[:end - start].T
+        ptr = end % self.memory_size  # move pointer
 
         self.queue_ptr[0] = ptr
 
