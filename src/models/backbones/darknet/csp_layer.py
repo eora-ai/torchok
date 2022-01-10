@@ -1,11 +1,13 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import torch
 import torch.nn as nn
-from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from mmcv.runner import BaseModule
+# from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
+# from mmcv.runner import BaseModule
+
+from src.models.backbones.efficientnet.efficientnet_blocks import ConvBnAct, DepthwiseSeparableConv
 
 
-class DarknetBottleneck(BaseModule):
+class DarknetBottleneck(nn.Module):
     """The basic bottleneck block used in Darknet.
     Each ResBlock consists of two ConvModules and the input is added to the
     final output. Each ConvModule is composed of Conv, BN, and LeakyReLU.
@@ -33,29 +35,24 @@ class DarknetBottleneck(BaseModule):
                  expansion=0.5,
                  add_identity=True,
                  use_depthwise=False,
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=None):
-        super().__init__(init_cfg)
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish):
+        super(DarknetBottleneck, self).__init__()
         hidden_channels = int(out_channels * expansion)
-        conv = DepthwiseSeparableConvModule if use_depthwise else ConvModule
-        self.conv1 = ConvModule(
+        conv = DepthwiseSeparableConv if use_depthwise else ConvBnAct
+        self.conv1 = ConvBnAct(
             in_channels,
             hidden_channels,
             1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
         self.conv2 = conv(
             hidden_channels,
             out_channels,
             3,
             stride=1,
-            padding=1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
         self.add_identity = \
             add_identity and in_channels == out_channels
 
@@ -70,7 +67,7 @@ class DarknetBottleneck(BaseModule):
             return out
 
 
-class CSPLayer(BaseModule):
+class CSPLayer(nn.Module):
     """Cross Stage Partial Layer.
     Args:
         in_channels (int): The input channels of the CSP layer.
@@ -97,33 +94,29 @@ class CSPLayer(BaseModule):
                  num_blocks=1,
                  add_identity=True,
                  use_depthwise=False,
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=None):
-        super().__init__(init_cfg)
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish,
+                 ):
+        super(CSPLayer, self).__init__()
         mid_channels = int(out_channels * expand_ratio)
-        self.main_conv = ConvModule(
+        self.main_conv = ConvBnAct(
             in_channels,
             mid_channels,
             1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
-        self.short_conv = ConvModule(
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
+        self.short_conv = ConvBnAct(
             in_channels,
             mid_channels,
             1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
-        self.final_conv = ConvModule(
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
+        self.final_conv = ConvBnAct(
             2 * mid_channels,
             out_channels,
             1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
 
         self.blocks = nn.Sequential(*[
             DarknetBottleneck(
@@ -132,9 +125,8 @@ class CSPLayer(BaseModule):
                 1.0,
                 add_identity,
                 use_depthwise,
-                conv_cfg=conv_cfg,
-                norm_cfg=norm_cfg,
-                act_cfg=act_cfg) for _ in range(num_blocks)
+                norm_kwargs=norm_kwargs,
+                act_layer=act_layer) for _ in range(num_blocks)
         ])
 
     def forward(self, x):

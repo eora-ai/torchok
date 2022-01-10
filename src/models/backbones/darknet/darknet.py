@@ -4,13 +4,15 @@
 import warnings
 
 import torch.nn as nn
-from mmcv.cnn import ConvModule
-from mmcv.runner import BaseModule
+# from mmcv.cnn import ConvModule
+# from mmcv.runner import BaseModule
+
 from torch.nn.modules.batchnorm import _BatchNorm
+from src.models.backbones.efficientnet.efficientnet_blocks import ConvBnAct
 
 from ..utils.registry import register_model
 
-class ResBlock(BaseModule):
+class ResBlock(nn.Module):
     """The basic residual block used in Darknet. Each ResBlock consists of two
     ConvModules and the input is added to the final output. Each ConvModule is
     composed of Conv, BN, and LeakyReLU. In YoloV3 paper, the first convLayer
@@ -33,17 +35,17 @@ class ResBlock(BaseModule):
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
                  act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-                 init_cfg=None):
-        super(ResBlock, self).__init__(init_cfg)
+                 ):
+        super(ResBlock, self).__init__()
         assert in_channels % 2 == 0  # ensure the in_channels is even
         half_in_channels = in_channels // 2
 
         # shortcut
         cfg = dict(conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg)
 
-        self.conv1 = ConvModule(in_channels, half_in_channels, 1, **cfg)
-        self.conv2 = ConvModule(
-            half_in_channels, in_channels, 3, padding=1, **cfg)
+        self.conv1 = ConvBnAct(in_channels, half_in_channels, 1, **cfg)
+        self.conv2 = ConvBnAct(
+            half_in_channels, in_channels, 3, **cfg)
 
     def forward(self, x):
         residual = x
@@ -54,7 +56,7 @@ class ResBlock(BaseModule):
         return out
 
 
-class Darknet(BaseModule):
+class Darknet(nn.Module):
     """Darknet backbone.
     Args:
         depth (int): Depth of Darknet. Currently only support 53.
@@ -97,13 +99,12 @@ class Darknet(BaseModule):
                  depth=53,
                  out_indices=(3, 4, 5),
                  frozen_stages=-1,
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', requires_grad=True),
-                 act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
+                 norm_kwargs=dict(requires_grad=True),
+                 act_layer=nn.LeakyReLU(negative_slope=0.1),
                  norm_eval=True,
-                 pretrained=None,
-                 init_cfg=None):
-        super(Darknet, self).__init__(init_cfg)
+                #  pretrained=None,
+                ):
+        super(Darknet, self).__init__()
         if depth not in self.arch_settings:
             raise KeyError(f'invalid depth {depth} for darknet')
 
@@ -112,9 +113,9 @@ class Darknet(BaseModule):
         self.frozen_stages = frozen_stages
         self.layers, self.channels = self.arch_settings[depth]
 
-        cfg = dict(conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg)
+        cfg = dict(norm_kwargs=norm_kwargs, act_layer=act_layer)
 
-        self.conv1 = ConvModule(3, 32, 3, padding=1, **cfg)
+        self.conv1 = ConvBnAct(3, 32, 3, padding=1, **cfg)
 
         self.cr_blocks = ['conv1']
         for i, n_layers in enumerate(self.layers):
@@ -127,23 +128,6 @@ class Darknet(BaseModule):
 
         self.norm_eval = norm_eval
 
-        assert not (init_cfg and pretrained), \
-            'init_cfg and pretrained cannot be specified at the same time'
-        if isinstance(pretrained, str):
-            warnings.warn('DeprecationWarning: pretrained is deprecated, '
-                          'please use "init_cfg" instead')
-            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
-        elif pretrained is None:
-            if init_cfg is None:
-                self.init_cfg = [
-                    dict(type='Kaiming', layer='Conv2d'),
-                    dict(
-                        type='Constant',
-                        val=1,
-                        layer=['_BatchNorm', 'GroupNorm'])
-                ]
-        else:
-            raise TypeError('pretrained must be a str or None')
 
     def forward(self, x):
         outs = []
@@ -176,9 +160,8 @@ class Darknet(BaseModule):
                             out_channels,
                             res_repeat,
                             conv_cfg=None,
-                            norm_cfg=dict(type='BN', requires_grad=True),
-                            act_cfg=dict(type='LeakyReLU',
-                                         negative_slope=0.1)):
+                            norm_kwargs=dict(requires_grad=True),
+                            act_layer=nn.LeakyReLU):
         """In Darknet backbone, ConvLayer is usually followed by ResBlock. This
         function will make that. The Conv layers always have 3x3 filters with
         stride=2. The number of the filters in Conv layer is the same as the
@@ -194,13 +177,13 @@ class Darknet(BaseModule):
                 Default: dict(type='LeakyReLU', negative_slope=0.1).
         """
 
-        cfg = dict(conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg)
+        cfg = dict(norm_kwargs=norm_kwargs, act_layer=act_layer)
 
         model = nn.Sequential()
         model.add_module(
             'conv',
-            ConvModule(
-                in_channels, out_channels, 3, stride=2, padding=1, **cfg))
+            ConvBnAct(
+                in_channels, out_channels, 3, stride=2, **cfg))
         for idx in range(res_repeat):
             model.add_module('res{}'.format(idx),
                              ResBlock(out_channels, **cfg))

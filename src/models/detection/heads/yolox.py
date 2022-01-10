@@ -5,8 +5,9 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mmcv.cnn import (ConvModule, DepthwiseSeparableConvModule,
-                      bias_init_with_prob)
+# from mmcv.cnn import (ConvModule, DepthwiseSeparableConvModule,
+#                       bias_init_with_prob)
+from src.models.backbones.efficientnet.efficientnet_blocks import ConvBnAct, DepthwiseSeparableConv
 
 from src.registry import DETECTION_HEADS, HEADS
 
@@ -73,9 +74,8 @@ class YOLOXHead(nn.Module):
                  use_depthwise=False,
                  dcn_on_last_conv=False,
                  conv_bias='auto',
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish,
                  ):
 
         super(YOLOXHead, self).__init__()
@@ -90,9 +90,8 @@ class YOLOXHead(nn.Module):
         assert conv_bias == 'auto' or isinstance(conv_bias, bool)
         self.conv_bias = conv_bias
         self.use_sigmoid_cls = True
-        self.conv_cfg = conv_cfg
-        self.norm_cfg = norm_cfg
-        self.act_cfg = act_cfg
+        self.norm_kwargs = norm_kwargs
+        self.act_layer = act_layer
 
         self._init_layers()
 
@@ -112,26 +111,21 @@ class YOLOXHead(nn.Module):
 
     def _build_stacked_convs(self):
         """Initialize conv layers of a single level head."""
-        conv = DepthwiseSeparableConvModule \
-            if self.use_depthwise else ConvModule
+        conv = DepthwiseSeparableConv \
+            if self.use_depthwise else ConvBnAct
         stacked_convs = []
         for i in range(self.stacked_convs):
             chn = self.in_channels if i == 0 else self.feat_channels
-            if self.dcn_on_last_conv and i == self.stacked_convs - 1:
-                conv_cfg = dict(type='DCNv2')
-            else:
-                conv_cfg = self.conv_cfg
             stacked_convs.append(
                 conv(
                     chn,
                     self.feat_channels,
                     3,
                     stride=1,
-                    padding=1,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=self.norm_cfg,
-                    act_cfg=self.act_cfg,
-                    bias=self.conv_bias))
+                    norm_kwargs = self.norm_kwargs,
+                    act_layer = self.act_layer,
+                    # bias=self.conv_bias
+                    ))
         return nn.Sequential(*stacked_convs)
 
     def _build_predictor(self):
@@ -141,14 +135,14 @@ class YOLOXHead(nn.Module):
         conv_obj = nn.Conv2d(self.feat_channels, 1, 1)
         return conv_cls, conv_reg, conv_obj
 
-    def init_weights(self):
-        super(YOLOXHead, self).init_weights()
-        # Use prior in model initialization to improve stability
-        bias_init = bias_init_with_prob(0.01)
-        for conv_cls, conv_obj in zip(self.multi_level_conv_cls,
-                                      self.multi_level_conv_obj):
-            conv_cls.bias.data.fill_(bias_init)
-            conv_obj.bias.data.fill_(bias_init)
+    # def init_weights(self):
+    #     super(YOLOXHead, self).init_weights()
+    #     # Use prior in model initialization to improve stability
+    #     bias_init = bias_init_with_prob(0.01)
+    #     for conv_cls, conv_obj in zip(self.multi_level_conv_cls,
+    #                                   self.multi_level_conv_obj):
+    #         conv_cls.bias.data.fill_(bias_init)
+    #         conv_obj.bias.data.fill_(bias_init)
 
     def forward_single(self, x, cls_convs, reg_convs, conv_cls, conv_reg,
                        conv_obj):

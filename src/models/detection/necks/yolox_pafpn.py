@@ -3,14 +3,13 @@ import math
 
 import torch
 import torch.nn as nn
-from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from mmcv.runner import BaseModule
+from src.models.backbones.efficientnet.efficientnet_blocks import ConvBnAct, DepthwiseSeparableConv
 
-from .csp_layer import CSPLayer
+from src.models.backbones.darknet.csp_layer import CSPLayer
 from src.registry import DETECTION_NECKS
 
 @DETECTION_NECKS.register_class
-class YOLOXPAFPN(BaseModule):
+class YOLOXPAFPN(nn.Module):
     """Path Aggregation Network used in YOLOX.
     Args:
         in_channels (List[int]): Number of input channels per scale.
@@ -36,21 +35,14 @@ class YOLOXPAFPN(BaseModule):
                  num_csp_blocks=3,
                  use_depthwise=False,
                  upsample_cfg=dict(scale_factor=2, mode='nearest'),
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=dict(
-                     type='Kaiming',
-                     layer='Conv2d',
-                     a=math.sqrt(5),
-                     distribution='uniform',
-                     mode='fan_in',
-                     nonlinearity='leaky_relu')):
-        super(YOLOXPAFPN, self).__init__(init_cfg)
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish,
+                 ):
+        super(YOLOXPAFPN, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
 
-        conv = DepthwiseSeparableConvModule if use_depthwise else ConvModule
+        conv = DepthwiseSeparableConv if use_depthwise else ConvBnAct
 
         # build top-down blocks
         self.upsample = nn.Upsample(**upsample_cfg)
@@ -58,13 +50,12 @@ class YOLOXPAFPN(BaseModule):
         self.top_down_blocks = nn.ModuleList()
         for idx in range(len(in_channels) - 1, 0, -1):
             self.reduce_layers.append(
-                ConvModule(
+                ConvBnAct(
                     in_channels[idx],
                     in_channels[idx - 1],
                     1,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    norm_kwargs=norm_kwargs,
+                    act_layer=act_layer))
             self.top_down_blocks.append(
                 CSPLayer(
                     in_channels[idx - 1] * 2,
@@ -72,9 +63,8 @@ class YOLOXPAFPN(BaseModule):
                     num_blocks=num_csp_blocks,
                     add_identity=False,
                     use_depthwise=use_depthwise,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    norm_kwargs=norm_kwargs,
+                    act_layer=act_layer))
 
         # build bottom-up blocks
         self.downsamples = nn.ModuleList()
@@ -86,10 +76,8 @@ class YOLOXPAFPN(BaseModule):
                     in_channels[idx],
                     3,
                     stride=2,
-                    padding=1,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    norm_kwargs=norm_kwargs,
+                    act_layer=act_layer))
             self.bottom_up_blocks.append(
                 CSPLayer(
                     in_channels[idx] * 2,
@@ -97,20 +85,18 @@ class YOLOXPAFPN(BaseModule):
                     num_blocks=num_csp_blocks,
                     add_identity=False,
                     use_depthwise=use_depthwise,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    norm_kwargs=norm_kwargs,
+                    act_layer=act_layer))
 
         self.out_convs = nn.ModuleList()
         for i in range(len(in_channels)):
             self.out_convs.append(
-                ConvModule(
+                ConvBnAct(
                     in_channels[i],
                     out_channels,
                     1,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=norm_cfg,
-                    act_cfg=act_cfg))
+                    norm_kwargs=norm_kwargs,
+                    act_layer=act_layer))
 
     def forward(self, inputs):
         """

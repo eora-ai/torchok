@@ -3,9 +3,11 @@ import math
 
 import torch
 import torch.nn as nn
-from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
-from mmcv.runner import BaseModule
-from torch.nn.modules.batchnorm import _BatchNorm
+# from mmcv.cnn import ConvModule, DepthwiseSeparableConvModule
+# from mmcv.runner import BaseModule
+# from torch.nn.modules.batchnorm import _BatchNorm
+
+from src.models.backbones.efficientnet.efficientnet_blocks import ConvBnAct, DepthwiseSeparableConv
 
 from .csp_layer import CSPLayer
 
@@ -33,19 +35,17 @@ class Focus(nn.Module):
                  out_channels,
                  kernel_size=1,
                  stride=1,
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish')):
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish):
         super().__init__()
-        self.conv = ConvModule(
+        self.conv = ConvBnAct(
             in_channels * 4,
             out_channels,
             kernel_size,
             stride,
-            padding=(kernel_size - 1) // 2,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer,
+            )
 
     def forward(self, x):
         # shape of x (b,c,w,h) -> y(b,4c,w/2,h/2)
@@ -65,7 +65,7 @@ class Focus(nn.Module):
         return self.conv(x)
 
 
-class SPPBottleneck(BaseModule):
+class SPPBottleneck(nn.Module):
     """Spatial pyramid pooling layer used in YOLOv3-SPP.
     Args:
         in_channels (int): The input channels of this Module.
@@ -86,32 +86,29 @@ class SPPBottleneck(BaseModule):
                  in_channels,
                  out_channels,
                  kernel_sizes=(5, 9, 13),
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
-                 init_cfg=None):
-        super().__init__(init_cfg)
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish
+                 ):
+        super(SPPBottleneck, self).__init__()
         mid_channels = in_channels // 2
-        self.conv1 = ConvModule(
+        self.conv1 = ConvBnAct(
             in_channels,
             mid_channels,
             1,
             stride=1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
         self.poolings = nn.ModuleList([
             nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2)
             for ks in kernel_sizes
         ])
         conv2_channels = mid_channels * (len(kernel_sizes) + 1)
-        self.conv2 = ConvModule(
+        self.conv2 = ConvBnAct(
             conv2_channels,
             out_channels,
             1,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -120,7 +117,7 @@ class SPPBottleneck(BaseModule):
         return x
 
 
-class CSPDarknet(BaseModule):
+class CSPDarknet(nn.Module):
     """CSP-Darknet backbone used in YOLOv5 and YOLOX.
     Args:
         arch (str): Architecture of CSP-Darknet, from {P5, P6}.
@@ -179,43 +176,27 @@ class CSPDarknet(BaseModule):
                  out_indices=(2, 3, 4),
                  frozen_stages=-1,
                  use_depthwise=False,
-                 arch_ovewrite=None,
                  spp_kernal_sizes=(5, 9, 13),
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', momentum=0.03, eps=0.001),
-                 act_cfg=dict(type='Swish'),
+                 norm_kwargs=dict(momentum=0.03, eps=0.001),
+                 act_layer=nn.Hardswish,
                  norm_eval=False,
-                 init_cfg=dict(
-                     type='Kaiming',
-                     layer='Conv2d',
-                     a=math.sqrt(5),
-                     distribution='uniform',
-                     mode='fan_in',
-                     nonlinearity='leaky_relu')):
-        super().__init__(init_cfg)
+                ):
+        super(CSPDarknet, self).__init__()
         arch_setting = self.arch_settings[arch]
-        if arch_ovewrite:
-            arch_setting = arch_ovewrite
-        assert set(out_indices).issubset(
-            i for i in range(len(arch_setting) + 1))
-        if frozen_stages not in range(-1, len(arch_setting) + 1):
-            raise ValueError('frozen_stages must be in range(-1, '
-                             'len(arch_setting) + 1). But received '
-                             f'{frozen_stages}')
 
         self.out_indices = out_indices
         self.frozen_stages = frozen_stages
         self.use_depthwise = use_depthwise
         self.norm_eval = norm_eval
-        conv = DepthwiseSeparableConvModule if use_depthwise else ConvModule
+        conv = DepthwiseSeparableConv if use_depthwise else ConvBnAct
 
         self.stem = Focus(
             3,
             int(arch_setting[0][0] * widen_factor),
             kernel_size=3,
-            conv_cfg=conv_cfg,
-            norm_cfg=norm_cfg,
-            act_cfg=act_cfg)
+            norm_kwargs=norm_kwargs,
+            act_layer=act_layer)
+
         self.layers = ['stem']
 
         for i, (in_channels, out_channels, num_blocks, add_identity,
@@ -229,19 +210,16 @@ class CSPDarknet(BaseModule):
                 out_channels,
                 3,
                 stride=2,
-                padding=1,
-                conv_cfg=conv_cfg,
-                norm_cfg=norm_cfg,
-                act_cfg=act_cfg)
+                norm_kwargs=norm_kwargs,
+                act_layer=act_layer)
             stage.append(conv_layer)
             if use_spp:
                 spp = SPPBottleneck(
                     out_channels,
                     out_channels,
                     kernel_sizes=spp_kernal_sizes,
-                    conv_cfg=conv_cfg,
-                    norm_cfg=norm_cfg,
-                    act_cfg=act_cfg)
+                    norm_kwargs=norm_kwargs,
+                    act_layer=act_layer)
                 stage.append(spp)
             csp_layer = CSPLayer(
                 out_channels,
@@ -249,9 +227,8 @@ class CSPDarknet(BaseModule):
                 num_blocks=num_blocks,
                 add_identity=add_identity,
                 use_depthwise=use_depthwise,
-                conv_cfg=conv_cfg,
-                norm_cfg=norm_cfg,
-                act_cfg=act_cfg)
+                norm_kwargs=norm_kwargs,
+                act_layer=act_layer)
             stage.append(csp_layer)
             self.add_module(f'stage{i + 1}', nn.Sequential(*stage))
             self.layers.append(f'stage{i + 1}')

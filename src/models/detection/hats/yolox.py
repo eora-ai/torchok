@@ -5,7 +5,8 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from mmcv.ops.nms import batched_nms
+
+from torchvision.ops import batched_nms
 from src.registry import DETECTION_HAT
 
 from .point_generator import MlvlPointGenerator
@@ -47,7 +48,7 @@ class YOLOXHat(nn.Module):
                 strides=[8, 16, 32],
                 input_size = (640, 640),
                 conf_thr=0.01,
-                nms_cfg=dict(type='nms', iou_threshold=0.65)
+                iou_threshold=0.65
                 ):
         super(YOLOXHat, self).__init__()
 
@@ -63,7 +64,7 @@ class YOLOXHat(nn.Module):
         # confidance for inference
         self.conf_thr = conf_thr
         # nms config params
-        self.nms_cfg = nms_cfg
+        self.iou_threshold = iou_threshold
 
         
     def _get_flatten_output(self,
@@ -119,7 +120,7 @@ class YOLOXHat(nn.Module):
         if labels.numel() == 0:
             return bboxes, labels
         else:
-            dets, keep = batched_nms(bboxes, scores, labels, self.nms_cfg)
+            dets, keep = batched_nms(bboxes, scores, labels, iou_threshold=self.iou_threshold)
             return dets, labels[keep]
 
     def forward_infer(self,
