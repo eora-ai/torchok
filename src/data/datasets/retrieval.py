@@ -85,9 +85,9 @@ class QueryToRelevantDataset(ABCDataset):
         if image.dtype == np.bool8:
             image = (image * 255).astype(np.uint8)
 
-        if len(image.shape) > 2 and image.shape[2] == 4:
+        if image.ndim > 2 and image.shape[2] == 4:
             img = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
-        elif len(image.shape) == 2:
+        elif image.ndim == 2:
             img = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         else:
             img = image
