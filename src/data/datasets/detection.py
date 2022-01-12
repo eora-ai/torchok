@@ -69,7 +69,7 @@ class DetectionDataset(ImageDataset):
         output = {
             'input': sample['image'],
             'target_bboxes': torch.tensor(sample['bboxes']).type(torch.float16),
-            'target_labels': torch.tensor(sample['category_ids']).type(torch.__dict__[self.target_dtype]),
+            'target_classes': torch.tensor(sample['category_ids']).type(torch.__dict__[self.target_dtype]),
             'bbox_count': torch.tensor(sample['bbox_count'])
         }
 
@@ -81,17 +81,17 @@ class DetectionDataset(ImageDataset):
         row_annotations = record[self.target_column]
 
         bboxes = []
-        labels = []
+        classes = []
         for annotation in row_annotations:
             bbox = [int(annotation['x_min']), int(annotation['y_min']), int(annotation['x_max']), int(annotation['y_max'])]
             label = annotation['label']
             bboxes.append(bbox)
-            labels.append(label)
+            classes.append(label)
 
         sample = {
             'image': image,
             'bboxes': bboxes,
-            'category_ids': labels
+            'category_ids': classes
             }
 
         if self.augment is not None:
@@ -122,9 +122,9 @@ class DetectionDataset(ImageDataset):
                 bbox_count = t['bbox_count']
                 if bbox_count != 0:
                     bboxes[:bbox_count] = t['target_bboxes']
-                    labels[:bbox_count] = t['target_labels']
+                    labels[:bbox_count] = t['target_classes']
                 t['target_bboxes'] = bboxes
-                t['target_labels'] = labels
+                t['target_classes'] = labels
 
         batch = default_collate(batch)
         

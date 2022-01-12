@@ -242,7 +242,7 @@ def get_cls_results(pred_bboxes, target_bboxes, class_id):
     Returns:
         tuple[list[np.ndarray]]: detected bboxes, gt bboxes, ignored gt bboxes
     """
-    cls_dets = get_class_bboxes(pred_bboxes, class_id, size=5)
+    cls_dets = get_class_bboxes(pred_bboxes, class_id, size=4)
 
     cls_gts = get_class_bboxes(target_bboxes, class_id)
 

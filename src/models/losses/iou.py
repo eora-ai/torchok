@@ -122,7 +122,7 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
 
 
 @LOSSES.register_class
-class DetectionIoU(nn.Module):
+class DetectionIoULoss(nn.Module):
     def __init__(self, linear=False, mode='log', eps=1e-6, loss_weight=1.0,) -> None:
         super().__init__()
         self.linear = False

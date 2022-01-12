@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from src.constructor import create_backbone, create_scheduler, create_optimizer
 from src.constructor.config_structure import TrainConfigParams
 from src.registry import TASKS, DETECTION_NECKS, \
-    DETECTION_HEADS, DETECTION_HAT
+    DETECTION_HEADS, DETECTION_HATS
 from .base_task import BaseTask
 import torch.nn as nn
 from src.models.backbones.utils.hub import download_cached_file
@@ -48,7 +48,7 @@ class DetectionTask(BaseTask, nn.Module):
                             feat_channels=128
         )
 
-        infer_class = DETECTION_HAT.get(self.params.hat_name)
+        infer_class = DETECTION_HATS.get(self.params.hat_name)
         self.infer_module = infer_class(num_classes=self.params.head_params['num_classes'])
         self.num_classes = self.params.head_params['num_classes']
 
@@ -58,6 +58,7 @@ class DetectionTask(BaseTask, nn.Module):
         file = download_cached_file(url)
         loaded_state_dict = torch.load(file)['state_dict']
         model_state_dict = self.state_dict()
+        # print(model_state_dict)
         loaded_keys = list(loaded_state_dict.keys())
         model_state_dict
         lol = 0
@@ -75,7 +76,8 @@ class DetectionTask(BaseTask, nn.Module):
             if load_value is not None and load_value.shape == value.shape:
                 lol += 1
                 model_state_dict[key] = load_value
-        self.load_state_dict(model_state_dict)
+        loaded = self.load_state_dict(model_state_dict)
+        print('load state dict = ' + str(loaded))
 
     def forward(self, x):
         backbone_features = self.backbone(x)
@@ -91,14 +93,14 @@ class DetectionTask(BaseTask, nn.Module):
     def forward_with_gt(self, batch):
         input_data = batch['input']
         gt_bboxes = batch['target_bboxes']
-        gt_labels = batch['target_labels']
+        gt_labels = batch['target_classes']
 
         cls_score, bbox_pred, objectness = self.forward(input_data)
 
         num_total_samples, \
-            loss_bbox_pred, loss_bbox_targets,\
-                loss_obj_pred, loss_obj_targets,\
-                    loss_cls_pred, loss_cls_targets = self.infer_module.forward_train(
+            bbox_pred, bbox_targets,\
+                obj_pred, obj_targets,\
+                    cls_pred, cls_targets = self.infer_module.forward_train(
                                                             cls_score,
                                                             bbox_pred,
                                                             objectness, 
@@ -107,44 +109,36 @@ class DetectionTask(BaseTask, nn.Module):
                                                             )
         
         output = {
-            'bbox_pred': loss_bbox_pred, 
-            'bbox_target': loss_bbox_targets, 
-            'obj_pred': loss_obj_pred, 
-            'obj_target': loss_obj_targets,
-            'cls_pred': loss_cls_pred, 
-            'cls_targets': loss_cls_targets,
+            'bbox_pred': bbox_pred, 
+            'bbox_target': bbox_targets, 
+            'obj_pred': obj_pred, 
+            'obj_target': obj_targets,
+            'cls_pred': cls_pred, 
+            'cls_targets': cls_targets,
             }
         return output
 
     def training_step(self, batch, batch_idx):
         output = self.forward_with_gt(batch)
         loss = self.criterion(**output)
-        input_data = batch['input']
-        gt_bboxes = batch['target_bboxes']
-        gt_labels = batch['target_labels']
-        prediction = self.forward_valid(input_data)
-        target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
-        valid_output = {
-            'target': target,
-            'prediction': prediction
-        }
-        self.metric_manager.update('train', **valid_output)
+        # self.metric_manager.update('train', **output)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        output = self.forward_with_gt(batch)
-        loss = self.criterion(**output)
         input_data = batch['input']
         gt_bboxes = batch['target_bboxes']
-        gt_labels = batch['target_labels']
+        gt_labels = batch['target_classes']
         prediction = self.forward_valid(input_data)
+        # prediction is list of elements 
         target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
         valid_output = {
             'target': target,
             'prediction': prediction
         }
         self.metric_manager.update('valid', **valid_output)
-        return loss
+
+        # loss = 0
+        return torch.tensor(0.)
 
     # def test_step(self, batch, batch_idx):
     #     output = self.forward_with_gt(batch)

@@ -19,7 +19,7 @@ loss:
         target_fields:
           target: cls_targets
           input: cls_pred
-    - name: DetectionIoU
+    - name: DetectionIoULoss
       params:
         mode: square
         target_fields:
@@ -30,7 +30,7 @@ loss:
         target_fields:
           target: obj_target
           input: obj_pred
-  weight: [1, 10, 1] 
+  weight: [1, 1, 1] 
 
 
 optimizers:
@@ -55,7 +55,7 @@ schedulers:
 
 data:
   common_params:
-    data_folder: "/workdir/rbayazitov/torchok_detector/"
+    data_folder: "/home/lolik/kaggle_data/"
     input_dtype: float16
 
   train_params:
@@ -86,52 +86,52 @@ data:
         name: ToTensorV2
     augment:
       - name: HorizontalFlip
-      - name: VerticalFlip
-      - name: OneOf
-        params:
-          transforms:
-            - name: Blur
-            - name: GaussianBlur
-            - name: MedianBlur
-            - name: MotionBlur
-          p: 0.2
-      - name: RandomFog
-        params:
-          p: 0.2
-      - name: RandomShadow
-        params:
-          p: 0.2
-      - name: RandomSunFlare
-        params:
-          p: 0.2
-      - name: ChannelDropout
-        params:
-          p: 0.2
-      - name: ChannelShuffle
-        params:
-          p: 0.2
-      - name: ColorJitter
-        params:
-          p: 0.2
-      - name: OneOf
-        params:
-          transforms:
-            - name: ImageCompression
-              params:
-                quality_lower: 90
-            - name: GaussNoise
-      - name: Equalize
-        params:
-          p: 0.3
-      - name: ToGray
-        params:
-          p: 0.3
+      # - name: VerticalFlip
+      # - name: OneOf
+      #   params:
+      #     transforms:
+      #       - name: Blur
+      #       - name: GaussianBlur
+      #       - name: MedianBlur
+      #       - name: MotionBlur
+      #     p: 0.2
+      # - name: RandomFog
+      #   params:
+      #     p: 0.2
+      # - name: RandomShadow
+      #   params:
+      #     p: 0.2
+      # - name: RandomSunFlare
+      #   params:
+      #     p: 0.2
+      # - name: ChannelDropout
+      #   params:
+      #     p: 0.2
+      # - name: ChannelShuffle
+      #   params:
+      #     p: 0.2
+      # - name: ColorJitter
+      #   params:
+      #     p: 0.2
+      # - name: OneOf
+      #   params:
+      #     transforms:
+      #       - name: ImageCompression
+      #         params:
+      #           quality_lower: 90
+      #       - name: GaussNoise
+      # - name: Equalize
+      #   params:
+      #     p: 0.3
+      # - name: ToGray
+      #   params:
+      #     p: 0.3
       
   valid_params:
     name: DetectionDataset
     dataloader_params: *dataloader_params
     params:
-      path_to_datalist: "valid.csv"
+      path_to_datalist: "train_without_negative.csv"
     transform:
       - *normalize
       - *totensor
@@ -141,14 +141,14 @@ data:
 
 trainer:
   gpus: [0]
-  max_epochs: 100
+  max_epochs: 25
   progress_bar_refresh_rate: 1
   check_val_every_n_epoch: 1
   precision: 16
   amp_level: 'O2'
   amp_backend: 'apex'
 
-log_dir: '/workdir/logs/detectors/'
+log_dir: 'logs/detectors/'
 experiment_name: yolox
 
 logger:

@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision.ops import batched_nms
-from src.registry import DETECTION_HAT
+from src.registry import DETECTION_HATS
 
 from .point_generator import MlvlPointGenerator
 from .assigner import SimOTAAssigner
@@ -35,7 +35,7 @@ def multi_apply(func, *args, **kwargs):
     return tuple(map(list, zip(*map_results)))
 
 
-@DETECTION_HAT.register_class
+@DETECTION_HATS.register_class
 class YOLOXHat(nn.Module):
     """
     Args:
@@ -120,8 +120,8 @@ class YOLOXHat(nn.Module):
         if labels.numel() == 0:
             return bboxes, labels
         else:
-            dets, keep = batched_nms(bboxes, scores, labels, iou_threshold=self.iou_threshold)
-            return dets, labels[keep]
+            indexes = batched_nms(bboxes, scores, labels, iou_threshold=self.iou_threshold)
+            return bboxes[indexes], labels[indexes]
 
     def forward_infer(self,
                    cls_scores,
