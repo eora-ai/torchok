@@ -49,7 +49,7 @@ class DetectionTask(BaseTask, nn.Module):
         )
 
         infer_class = DETECTION_HATS.get(self.params.hat_name)
-        self.infer_module = infer_class(num_classes=self.params.head_params['num_classes'])
+        self.infer_module = infer_class(num_classes=self.params.head_params['num_classes'], **self.params.hat_params)
         self.num_classes = self.params.head_params['num_classes']
 
         self._set_pretrained_weights()
@@ -136,8 +136,6 @@ class DetectionTask(BaseTask, nn.Module):
             'prediction': prediction
         }
         self.metric_manager.update('valid', **valid_output)
-
-        # loss = 0
         return torch.tensor(0.)
 
     # def test_step(self, batch, batch_idx):

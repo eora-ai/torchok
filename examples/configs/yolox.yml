@@ -11,6 +11,9 @@ task:
     head_params:
       num_classes: &num_classes 1
     hat_name: YOLOXHat
+    hat_params:
+      mode: binary
+      conf_thr: 0.25
 
 loss:
   loss_list:
@@ -30,22 +33,22 @@ loss:
         target_fields:
           target: obj_target
           input: obj_pred
-  weight: [1, 1, 1] 
+  weight: [1, 10, 1] 
 
-
-optimizers:
-  name: SGD
-  params:
-    lr: &initial_lr 0.01
-    weight_decay: 0.0005
-    momentum: 0.9
-    nesterov: true
 
 # optimizers:
-#   name: Adam
+#   name: SGD
 #   params:
-#     lr: &initial_lr 0.001
+#     lr: &initial_lr 0.01
 #     weight_decay: 0.0005
+#     momentum: 0.9
+#     nesterov: true
+
+optimizers:
+  name: Adam
+  params:
+    lr: &initial_lr 0.001
+    weight_decay: 0.0005
 
 schedulers:
   name: ExponentialLR
@@ -55,21 +58,21 @@ schedulers:
 
 data:
   common_params:
-    data_folder: "/home/lolik/kaggle_data/"
+    data_folder: "/workdir/kaggle_data/"
     input_dtype: float16
 
   train_params:
     name: DetectionDataset
     dataloader_params: &dataloader_params
       use_custom_collate_fn: true
-      batch_size: 8
+      batch_size: 64
       num_workers: 12
       shuffle: true
       drop_last: false
     params:
       # path_to_datalist: "small_train.csv"
       # path_to_datalist: "train.csv"
-      path_to_datalist: "train_without_negative.csv"
+      path_to_datalist: "train_without_neg.csv"
     transform:
       - &normalize
         name: Normalize
@@ -131,7 +134,7 @@ data:
     name: DetectionDataset
     dataloader_params: *dataloader_params
     params:
-      path_to_datalist: "train_without_negative.csv"
+      path_to_datalist: "valid_without_neg.csv"
     transform:
       - *normalize
       - *totensor
@@ -141,7 +144,7 @@ data:
 
 trainer:
   gpus: [0]
-  max_epochs: 25
+  max_epochs: 100
   progress_bar_refresh_rate: 1
   check_val_every_n_epoch: 1
   precision: 16
@@ -171,7 +174,7 @@ metrics:
     phases: ['train', 'valid', 'test']
     params:
       nproc: 1
-      num_classes: *num_classes
+      num_classes: 2
       iou_thr: 0.5
       target_fields:
         target: target

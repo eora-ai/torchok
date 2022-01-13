@@ -301,7 +301,7 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
     
     # pool = Pool(nproc)
     eval_results = []
-    for i in range(num_classes):
+    for i in range(1, num_classes):
         # get gt and det bboxes of this class
         cls_dets, cls_gts = get_cls_results(pred_bboxes, clear_target_bboxes, i)
         cls_gts_ignore = [np.empty((0, 4), dtype=np.float16) for _ in range(len(cls_gts))]
@@ -375,11 +375,16 @@ class MeanAveragePrecision(Metric):
     def calculate(self, target, prediction):
         mean_ap = eval_map(pred_bboxes=prediction, target_bboxes=target, \
                                             num_classes=self.num_classes, nproc=self.nproc, iou_thr=self.iou_thr)
+        # print('mAP = ' + str(mean_ap))
+        # print('target = ' + str(len(target)))
+        # print('prediction = ' + str(len(prediction)))
         return mean_ap
 
     def update(self, target, prediction, *args, **kwargs):
         """Updates metric buffer"""
         batch_size = 1
+        # print(prediction[0])
+        # print(target)
         value = self.calculate(target, prediction) * batch_size
         self.mean = (self.n * self.mean + value) / (self.n + batch_size)
         self.n += batch_size

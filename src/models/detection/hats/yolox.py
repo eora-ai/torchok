@@ -47,8 +47,9 @@ class YOLOXHat(nn.Module):
                 num_classes,
                 strides=[8, 16, 32],
                 input_size = (640, 640),
-                conf_thr=0.01,
-                iou_threshold=0.65
+                conf_thr=0.15,
+                iou_threshold=0.65,
+                mode='multiclass'
                 ):
         super(YOLOXHat, self).__init__()
 
@@ -56,9 +57,11 @@ class YOLOXHat(nn.Module):
         featmap_sizes = [torch.Size([int(input_size[0]/stride), int(input_size[1]/stride)]) for stride in strides]
         prior_generator = MlvlPointGenerator(strides, featmap_sizes, offset=0, with_stride=True)
         self.register_buffer("flatten_priors", prior_generator.flatten_priors)
-      
+
+        self.mode = mode
+
         # create assigner
-        self.assigner = SimOTAAssigner(center_radius=2.5)
+        self.assigner = SimOTAAssigner(center_radius=2.5, mode=self.mode)
 
         self.num_classes = num_classes
         # confidance for inference
@@ -110,6 +113,8 @@ class YOLOXHat(nn.Module):
         return decoded_bboxes
 
     def _bboxes_nms(self, cls_scores, bboxes, score_factor):
+        if self.mode == 'binary':
+            cls_scores = torch.concat([1 - cls_scores, cls_scores], -1)
         max_scores, labels = torch.max(cls_scores, 1)
         valid_mask = score_factor * max_scores >= self.conf_thr
 
@@ -257,7 +262,6 @@ class YOLOXHat(nn.Module):
         assign_result = self.assigner.assign(
             cls_preds.sigmoid() * objectness.unsqueeze(1).sigmoid(),
             offset_priors, decoded_bboxes, gt_bboxes, gt_labels)
-
         #Sampler
         #pos_inds - assigner positive indexes
         pos_inds = torch.nonzero(assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
@@ -276,7 +280,11 @@ class YOLOXHat(nn.Module):
         pos_ious = pos_ious.unsqueeze(-1)
 
         # IOU aware classification score 
-        cls_target = F.one_hot(pos_gt_labels, self.num_classes) * pos_ious
+        if self.mode == 'binary':
+            cls_target = F.one_hot(pos_gt_labels - 1, self.num_classes) * pos_ious
+        else:
+            cls_target = F.one_hot(pos_gt_labels, self.num_classes) * pos_ious
+
         obj_target = torch.zeros_like(objectness).unsqueeze(-1)
         obj_target[pos_inds] = 1
         bbox_target = pos_gt_bboxes
