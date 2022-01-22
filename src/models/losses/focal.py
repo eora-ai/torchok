@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +9,7 @@ from src.registry import LOSSES
 
 @LOSSES.register_class
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2, alpha=None, autobalance=False, ignore_index=-100, eps=1e-12,
+    def __init__(self, gamma=2, alpha=None, autobalance=False, ignore_index: Optional[int] = None, eps=1e-12,
                  reduction="mean", normalized=False, reduced_threshold=None):
         """
         Focal loss for multi-class problem.
@@ -81,7 +83,7 @@ class FocalLoss(nn.Module):
 
         loss = focal_term * logpt
 
-        if self.alpha is not None:
+        if alpha is not None:
             loss = loss * alpha
 
         if self.normalized:
