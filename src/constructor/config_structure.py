@@ -1,11 +1,15 @@
 from argparse import Namespace
 from datetime import timedelta
-from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import BaseModel, Field
 from pytorch_lightning.accelerators.accelerator import Accelerator
-from pytorch_lightning.plugins import Plugin
+from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.loggers.base import LightningLoggerBase
+from pytorch_lightning.plugins import CheckpointIO, PrecisionPlugin, TrainingTypePlugin
 from pytorch_lightning.plugins.environments import ClusterEnvironment
+from pytorch_lightning.profiler import BaseProfiler
 from typing_extensions import Literal
 
 
@@ -34,62 +38,65 @@ class DatasetParams(BaseModel):
 
 class DataParams(BaseModel):
     common_params: Optional[dict] = {}
-    train_params: DatasetParams
-    valid_params: DatasetParams
+    train_params: Optional[DatasetParams]
+    valid_params: Optional[DatasetParams]
     test_params: Optional[DatasetParams]
 
 
 class TrainerParams(BaseModel):
-    default_root_dir: Optional[str] = None
-    gradient_clip_val: float = 0.0
-    gradient_clip_algorithm: str = 'norm'
-    process_position: int = 0
-    num_nodes: int = 1
-    num_processes: int = 1
-    gpus: Optional[Union[List[int], str, int]] = None
+    accelerator: Union[str, Accelerator, None] = None
+    accumulate_grad_batches: Union[int, Dict[int, int], None] = None
+    amp_backend: str = 'native'
+    amp_level: Optional[str] = None
+    auto_lr_find: Union[bool, str] = False
+    auto_scale_batch_size: Union[str, bool] = False
     auto_select_gpus: bool = False
-    tpu_cores: Optional[Union[List[int], str, int]] = None
-    log_gpu_memory: Optional[str] = None
-    progress_bar_refresh_rate: Optional[int] = None
-    overfit_batches: Union[int, float] = 0.0
-    track_grad_norm: Union[int, float, str] = -1
+    benchmark: bool = False
     check_val_every_n_epoch: int = 1
+    checkpoint_callback: Optional[bool] = None
+    default_root_dir: Optional[str] = None
+    detect_anomaly: bool = False
+    deterministic: bool = False
+    devices: Union[int, str, List[int], None] = None
+    enable_model_summary: bool = True
+    enable_progress_bar: bool = True
     fast_dev_run: Union[int, bool] = False
-    accumulate_grad_batches: Union[int, Dict[int, int], List[list]] = 1
-    max_epochs: Optional[int] = None
-    min_epochs: Optional[int] = None
-    max_steps: Optional[int] = None
-    min_steps: Optional[int] = None
-    max_time: Optional[Union[str, timedelta, Dict[str, int]]] = None
+    flush_logs_every_n_steps: Optional[int] = None
+    gpus: Union[int, str, List[int], None] = None
+    gradient_clip_algorithm: Optional[str] = None
+    gradient_clip_val: Union[int, float, None] = None
+    ipus: Optional[int] = None
+    limit_predict_batches: Union[int, float] = 1.0
+    limit_test_batches: Union[int, float] = 1.0
     limit_train_batches: Union[int, float] = 1.0
     limit_val_batches: Union[int, float] = 1.0
-    limit_test_batches: Union[int, float] = 1.0
-    limit_predict_batches: Union[int, float] = 1.0
-    val_check_interval: Union[int, float] = 1.0
-    flush_logs_every_n_steps: int = 100
     log_every_n_steps: int = 50
-    accelerator: Optional[Union[str, Accelerator]] = None
-    sync_batchnorm: bool = False
-    precision: int = 32
-    weights_summary: Optional[str] = 'top'
-    weights_save_path: Optional[str] = None
-    num_sanity_val_steps: int = 2
-    truncated_bptt_steps: Optional[int] = None
-    benchmark: bool = False
-    deterministic: bool = False
-    reload_dataloaders_every_epoch: bool = False
-    auto_lr_find: Union[bool, str] = False
-    replace_sampler_ddp: bool = True
-    terminate_on_nan: bool = False
-    auto_scale_batch_size: Union[str, bool] = False
-    prepare_data_per_node: bool = True
-    plugins: Optional[Union[List[Union[Plugin, ClusterEnvironment, str]], Plugin, ClusterEnvironment, str]] = None
-    amp_backend: str = 'native'
-    amp_level: str = 'O2'
-    distributed_backend: Optional[str] = None
+    log_gpu_memory: Optional[str] = None
+    max_epochs: Optional[int] = None
+    max_steps: int = - 1
+    max_time: Union[str, timedelta, Dict[str, int], None] = None
+    min_epochs: Optional[int] = None
+    min_steps: Optional[int] = None
     move_metrics_to_cpu: bool = False
     multiple_trainloader_mode: str = 'max_size_cycle'
-    stochastic_weight_avg: bool = False
+    num_nodes: int = 1
+    num_processes: int = 1
+    num_sanity_val_steps: int = 2
+    overfit_batches: Union[int, float] = 0.0
+    plugins: Union[TrainingTypePlugin, PrecisionPlugin, ClusterEnvironment, CheckpointIO, str, List[
+        Union[TrainingTypePlugin, PrecisionPlugin, ClusterEnvironment, CheckpointIO, str]], None] = None
+    precision: Union[int, str] = 32
+    prepare_data_per_node: Optional[bool] = None
+    process_position: int = 0
+    progress_bar_refresh_rate: Optional[int] = None
+    reload_dataloaders_every_n_epochs: int = 0
+    replace_sampler_ddp: bool = True
+    strategy: Union[str, TrainingTypePlugin, None] = None
+    sync_batchnorm: bool = False
+    tpu_cores: Union[int, str, List[int], None] = None
+    track_grad_norm: Union[int, float, str] = - 1
+    val_check_interval: Union[int, float] = 1.0
+    weights_save_path: Optional[str] = None
 
     class Config:
         arbitrary_types_allowed = True
