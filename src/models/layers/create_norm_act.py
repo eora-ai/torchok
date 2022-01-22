@@ -47,10 +47,9 @@ def create_norm_act(layer_type, num_features, apply_act=True, jit=False, **kwarg
     return layer_instance
 
 
-def convert_norm_act(norm_layer, act_layer):
+def convert_norm_act(norm_layer, act_layer, **norm_act_kwargs):
     assert isinstance(norm_layer, (type, str, types.FunctionType, functools.partial))
     assert act_layer is None or isinstance(act_layer, (type, str, types.FunctionType, functools.partial))
-    norm_act_kwargs = {}
 
     # unbind partial fn, so args can be rebound later
     if isinstance(norm_layer, functools.partial):
