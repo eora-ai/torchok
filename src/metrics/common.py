@@ -393,7 +393,8 @@ class Metric:
 
     def update(self, target, prediction, *args, **kwargs):
         """Updates metric buffer"""
-        batch_size = prediction.shape[0]
+        # batch_size = target.shape[0]
+        batch_size = len(target)
         value = self.calculate(target, prediction) * batch_size
         self.mean = (self.n * self.mean + value) / (self.n + batch_size)
         self.n += batch_size

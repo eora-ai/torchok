@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import math
 from functools import partial
+from unittest import result
 
 import torch
 import torch.nn as nn
@@ -114,7 +115,7 @@ class YOLOXHat(nn.Module):
 
     def _bboxes_nms(self, cls_scores, bboxes, score_factor):
         if self.mode == 'binary':
-            cls_scores = torch.concat([1 - cls_scores, cls_scores], -1)
+            cls_scores = torch.cat([1 - cls_scores, cls_scores], -1)
         max_scores, labels = torch.max(cls_scores, 1)
         valid_mask = score_factor * max_scores >= self.conf_thr
 
@@ -123,10 +124,12 @@ class YOLOXHat(nn.Module):
         labels = labels[valid_mask]
 
         if labels.numel() == 0:
-            return bboxes, labels
+            return bboxes, labels, scores
         else:
             indexes = batched_nms(bboxes, scores, labels, iou_threshold=self.iou_threshold)
-            return bboxes[indexes], labels[indexes]
+            # print(bboxes[indexes], labels[indexes], scores[indexes])
+            return bboxes[indexes], labels[indexes], scores[indexes]
+            # return bboxes[indexes], labels[indexes]
 
     def forward_infer(self,
                    cls_scores,
@@ -165,14 +168,30 @@ class YOLOXHat(nn.Module):
             cls_scores = flatten_cls_preds[img_id]
             score_factor = flatten_objectness[img_id]
             bboxes = flatten_bboxes[img_id]
-
             result_list.append(self._bboxes_nms(cls_scores, bboxes, score_factor))
 
+        prediction = []
+        for elem in result_list:
+            bboxes, labels, scores = elem
+            if scores.shape[0] != 0:
+                t = torch.cat([scores[0].unsqueeze(0), bboxes[0]], 0).unsqueeze(0)
+                for i in range(1, scores.shape[0]):
+                    arr = torch.cat([scores[i].unsqueeze(0), bboxes[i]], 0)
+                    arr = arr.unsqueeze(0)
+                    t = torch.cat([t, arr])
+                prediction.append(t)
+            else:
+                prediction.append(torch.tensor([]))
+
+        result_score = [list([elem[0], elem[1]]) for elem in result_list]
+
+        return result_score, prediction
         #change tuple to list        
-        result_list = [list(elem) for elem in result_list]
-        
-        return result_list
- 
+        # result_label = [list([elem[0], elem[1]]) for elem in result_list]
+        # result_score = [list([elem[0], elem[2]]) for elem in result_list]
+        # # for 
+        # return result_label, result_score
+    
     def forward_train(self,
                 cls_scores,
                 bbox_preds,

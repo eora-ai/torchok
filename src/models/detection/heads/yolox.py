@@ -173,3 +173,4 @@ class YOLOXHead(nn.Module):
                            self.multi_level_conv_cls,
                            self.multi_level_conv_reg,
                            self.multi_level_conv_obj)
+                           

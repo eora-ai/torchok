@@ -219,3 +219,4 @@ class MlvlPointGenerator(nn.Module):
              self.offset) * self.strides[level_idx][1]
         prioris = torch.stack([x, y], 1).to(dtype)
         return prioris
+        

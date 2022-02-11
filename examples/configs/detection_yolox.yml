@@ -6,6 +6,7 @@ task:
       in_chans: &num_channels 3
       pretrained: false
     input_size: [ *num_channels, &height 640, &width 640]
+    # input_size: [*num_channels, &height 960, &width 960]
     neck_name: YOLOXPAFPN
     head_name: YOLOXHead
     head_params:
@@ -13,7 +14,7 @@ task:
     hat_name: YOLOXHat
     hat_params:
       mode: binary
-      conf_thr: 0.25
+      conf_thr: 0.01
 
 loss:
   loss_list:
@@ -33,7 +34,7 @@ loss:
         target_fields:
           target: obj_target
           input: obj_pred
-  weight: [1, 10, 1] 
+  weight: [1, 1, 1] 
 
 
 # optimizers:
@@ -54,6 +55,15 @@ schedulers:
   name: ExponentialLR
   params:
     gamma: 0.98
+# schedulers:
+#   name: OneCycleLR
+#   params:
+#     epochs: 100
+#     steps_per_epoch: 523
+#     max_lr: *initial_lr
+#     pct_start: 0.3
+#   aux_params:
+#     interval: step
 
 
 data:
@@ -65,21 +75,20 @@ data:
     name: DetectionDataset
     dataloader_params: &dataloader_params
       use_custom_collate_fn: true
-      batch_size: 64
-      num_workers: 12
+      batch_size: 4
+      num_workers: 4
       shuffle: true
       drop_last: false
     params:
       # path_to_datalist: "small_train.csv"
       # path_to_datalist: "train.csv"
-      path_to_datalist: "train_without_neg.csv"
+      path_to_datalist: "train_video_0_1.csv"
     transform:
       - &normalize
         name: Normalize
         params:
           mean: [0.485, 0.456, 0.406]
           std: [0.229, 0.224, 0.225]
-          # std: [0.5, 0.5, 0.5]
       - &resize
         name: Resize
         params:
@@ -89,7 +98,12 @@ data:
         name: ToTensorV2
     augment:
       - name: HorizontalFlip
-      # - name: VerticalFlip
+      - name: VerticalFlip
+      - name: RandomResizedCrop
+        params:
+          height: *height
+          width: *width
+          p: 0.2
       # - name: OneOf
       #   params:
       #     transforms:
@@ -101,12 +115,12 @@ data:
       # - name: RandomFog
       #   params:
       #     p: 0.2
-      # - name: RandomShadow
-      #   params:
-      #     p: 0.2
-      # - name: RandomSunFlare
-      #   params:
-      #     p: 0.2
+      - name: RandomShadow
+        params:
+          p: 0.2
+      - name: RandomSunFlare
+        params:
+          p: 0.2
       # - name: ChannelDropout
       #   params:
       #     p: 0.2
@@ -126,15 +140,15 @@ data:
       # - name: Equalize
       #   params:
       #     p: 0.3
-      # - name: ToGray
-      #   params:
-      #     p: 0.3
+      - name: ToGray
+        params:
+          p: 0.3
       
   valid_params:
     name: DetectionDataset
     dataloader_params: *dataloader_params
     params:
-      path_to_datalist: "valid_without_neg.csv"
+      path_to_datalist: "valid_video_2.csv"
     transform:
       - *normalize
       - *totensor
@@ -151,14 +165,24 @@ trainer:
   amp_level: 'O2'
   amp_backend: 'apex'
 
-log_dir: 'logs/detectors/'
-experiment_name: yolox
+log_dir: '${SM_OUTPUT_DATA_DIR}/logs'
+experiment_name: &experiment_name reef-rbayazitov
 
+# logger:
+  # logger: tensorboard
+  # log_graph: false
 logger:
-  logger: tensorboard
-  log_graph: false
+  logger: mlflow
+  experiment_name: *experiment_name
+  tags:
+    mlflow.runName: "yolox train 0,1 video, valid 2 video, add augs, th 0.25, loss [1, 1, 1]"
+  save_dir: "s3://ml-competitions/mlruns"
+  secrets_manager:
+    region: "eu-west-1"
+    mlflow_secret: "acme/ml-mlflow"
 
 checkpoint:
+  # monitor: valid/comp_metric
   monitor: valid/mAP50
   save_last: true
   mode: max
@@ -171,7 +195,7 @@ profiler:
 
 metrics:
   - name: MeanAveragePrecision
-    phases: ['train', 'valid', 'test']
+    phases: ['valid', 'test']
     params:
       nproc: 1
       num_classes: 2
@@ -179,3 +203,11 @@ metrics:
       target_fields:
         target: target
         prediction: prediction
+
+  # - name: BinaryBetaMeanAveragePrecision
+  #   phases: ['valid', 'test']
+  #   params:
+  #     name: comp_metric
+  #     target_fields:
+  #       target: gt_bboxes
+  #       prediction: prediction_score

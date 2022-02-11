@@ -146,7 +146,14 @@ def tpfp_default(det_bboxes,
         extra_length = 0.
     else:
         extra_length = 1.
-
+    # if len(det_bboxes) == 0:
+    #     tp = 0
+    #     fp = 0
+    #     return tp, fp
+    # if len(gt_bboxes) == 0:
+    #     tp = 0
+    #     fp = len(det_bboxes)
+    #     return tp, fp
     # an indicator of ignored gts
     gt_ignore_inds = np.concatenate(
         (np.zeros(gt_bboxes.shape[0], dtype=np.bool),
@@ -276,11 +283,14 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
     Returns:
         tuple: (mAP, [dict, dict, ...])
     """
-
+    # pred_target = []
     for i in range(len(pred_bboxes)):
         pred_bboxes[i][0] = pred_bboxes[i][0].detach().cpu().numpy()
         pred_bboxes[i][1] = pred_bboxes[i][1].detach().cpu().numpy()
+        # if len(pred_target) == 0:
+        # pred_target.append(pred_bboxes[i][1])
     
+    # print('target bboxes = ' + str(target_bboxes))
 
     clear_target_bboxes = []
     for i in range(len(target_bboxes)):
@@ -297,6 +307,9 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
         clear_target = np.array(clear_target)
         clear_target_bboxes.append([clear_bboxes, clear_target])
 
+    # print('clear_target = ' + str(clear_target))
+    # print('clear_target_bboxes = ' + str(clear_target_bboxes))
+    # print('pred_target = ' + str(pred_target))
     num_imgs = len(pred_bboxes)
     
     # pool = Pool(nproc)
@@ -313,6 +326,7 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
         tpfp = []
         for img_num in range(num_imgs):
             tp, fp = tpfp_default(cls_dets[img_num], cls_gts[img_num], cls_gts_ignore[img_num], iou_thr)
+            # print(tp ,fp)
             tpfp.append([tp, fp])
         tp, fp = tuple(zip(*tpfp))
         # calculate gt number of each scale
@@ -391,42 +405,142 @@ class MeanAveragePrecision(Metric):
 
 
 
-# @METRICS.register_class
-# class BinaryBetaMeanAveragePrecision(Metric):
-#     """
-#     F Betta score for binary detection task
-#     """
-#     def __init__(self, \
-#         name, target_fields=None, \
-#             beta=2, min_iou_th=0.3, max_iou_th=0.85, step=0.05):
-#         super().__init__(name=name, target_fields=target_fields)
+def calc_iou(bboxes1, bboxes2, bbox_mode='xywh'):
+    assert len(bboxes1.shape) == 2 and bboxes1.shape[1] == 4
+    assert len(bboxes2.shape) == 2 and bboxes2.shape[1] == 4
+    
+    bboxes1 = bboxes1.copy()
+    bboxes2 = bboxes2.copy()
 
-#         self.beta = beta
-#         self.min_iou_th = min_iou_th
-#         self.max_iou_th = max_iou_th
-#         self.step = step
+    x11, y11, x12, y12 = np.split(bboxes1, 4, axis=1)
+    x21, y21, x22, y22 = np.split(bboxes2, 4, axis=1)
+    xA = np.maximum(x11, np.transpose(x21))
+    yA = np.maximum(y11, np.transpose(y21))
+    xB = np.minimum(x12, np.transpose(x22))
+    yB = np.minimum(y12, np.transpose(y22))
+    interArea = np.maximum((xB - xA + 1), 0) * np.maximum((yB - yA + 1), 0)
+    boxAArea = (x12 - x11 + 1) * (y12 - y11 + 1)
+    boxBArea = (x22 - x21 + 1) * (y22 - y21 + 1)
+    iou = interArea / (boxAArea + np.transpose(boxBArea) - interArea)
+    return iou
 
-#     def f_beta(self, tp, fp, fn):
-#         numerator = (1 + self.beta**2) * tp
-#         denominator = ((1 + self.beta**2) * tp + self.beta**2 * fn + fp)
-#         score = numerator / denominator
-#         return score
+def f_beta(tp, fp, fn, beta=2):
+    return (1+beta**2)*tp / ((1+beta**2)*tp + beta**2*fn+fp)
 
-#     # def score_from_iou(self, iou_th, ious):
+def imagewise_f2_score_at_iou_th(gt_bboxes, pred_bboxes, beta, iou_th):
+    gt_bboxes = gt_bboxes.copy()
+    pred_bboxes = pred_bboxes.copy()
+
+    tp = 0
+    fp = 0
+    for k, pred_bbox in enumerate(pred_bboxes): # fixed in ver.7
+        # print(gt_bboxes)
+        # print(pred_bbox)
+        ious = calc_iou(gt_bboxes, pred_bbox[None, 1:])
+        # print(gt_bboxes, pred_bbox[1:])
+        # ious = calc_iou(gt_bboxes, pred_bbox[1:])
+        max_iou = ious.max()
+        if max_iou > iou_th:
+            tp += 1
+            gt_bboxes = np.delete(gt_bboxes, ious.argmax(), axis=0)
+        else:
+            fp += 1
+        if len(gt_bboxes) == 0:
+            fp += len(pred_bboxes) - (k + 1) # fix in ver.7
+            break
+
+    fn = len(gt_bboxes)
+    score = f_beta(tp, fp, fn, beta=beta)
+    return score
+
+def imagewise_f2_score(gt_bboxes, pred_bboxes, beta, min_iou_th, max_iou_th, step):
+    """
+    gt_bboxes: (N, 4) np.array in xywh format
+    pred_bboxes: (N, 5) np.array in conf+xywh format
+    """
+    # v2: add corner case hundling.
+    if len(gt_bboxes) == 0 and len(pred_bboxes) == 0:
+        return 1.0
+    elif len(gt_bboxes) == 0 or len(pred_bboxes) == 0:
+        return 0.0
+    
+    pred_bboxes = pred_bboxes[pred_bboxes[:,0].argsort()[::-1]] # sort by conf
+    
+    scores = []
+    for iou_th in np.arange(min_iou_th, max_iou_th, step):
+        scores.append(imagewise_f2_score_at_iou_th(gt_bboxes, pred_bboxes, beta, iou_th))
+    return np.mean(scores)
+
+@METRICS.register_class
+class BinaryBetaMeanAveragePrecision(Metric):
+    """
+    F Betta score for binary detection task
+    """
+    def __init__(self, \
+        name=None, target_fields=None, \
+            beta=2, min_iou_th=0.3, max_iou_th=0.85, step=0.05):
+        super().__init__(name=name, target_fields=target_fields)
+        if name is None:
+            name = 'BinaryBetaMeanAveragePrecision'
+        self.beta = beta
+        self.min_iou_th = min_iou_th
+        self.max_iou_th = max_iou_th
+        self.step = step
+        # Need to not wrong converting in the map_arguments metric manager
+        self.use_gpu = True
+        self.use_torch = True
+
+    def f_beta(self, tp, fp, fn):
+        numerator = (1 + self.beta**2) * tp
+        denominator = ((1 + self.beta**2) * tp + self.beta**2 * fn + fp)
+        score = numerator / denominator
+        return score
         
 
-#     def calculate(self, target, prediction):
-#         """
-#         target: (N, 4) torch.tensor in [xmin, ymin, xmax, ymax] format
-#         prediction: (N, 5) torch.tensor in [confidance, xmin, ymin, xmax, ymax] format
-#         """
-#         # sort by confidance
-#         indexes = prediction[:,0].argsort()[::-1]
-#         target = target[indexes]
-#         prediction = prediction[indexes]
-
-#         b_s = target.shape[0]
-#         ious = [bbox_overlaps(target[i], prediction[i][1:] ,is_aligned=True) for i in range(b_s)]
-        # for iou_th in torch.arange(self.min_iou_th, self.max_iou_th, self.step):
+    def calculate(self, target, prediction):
+        """
+        target: (N, 4) torch.tensor in [xmin, ymin, xmax, ymax] format
+        prediction: (N, 5) torch.tensor in [confidance, xmin, ymin, xmax, ymax] format
+        """
+        # target = target.cpu().numpy()
+        # gt_bboxes, pred_bboxes, beta, min_iou_th, max_iou_th, step
+        score = 0
+        # print(target)
+        # target = target.cpu().numpy()
+        # new_target = []
+        # for i in range(len(target)):
+        # for i in range(len(target)):
+        #     if target[i]
+        target = [tar.cpu().numpy() for tar in target]
+        # print(target.shape)
+        # print(len(target))
+        # target_bboxes = []
+        # # clear_target_bboxes = []
+        # for i in range(len(target)):
+        #     t_bboxes = target[i][0].detach().cpu().numpy()
+        #     t_labels = target[i][1].detach().cpu().numpy()
+        #     for j in range(len(t_labels)):
+        #         if t_labels[j] != -1:
+        #             # clear_target.append(t_labels[j])
+        #             target_bboxes.append(t_bboxes[j])
+        # target_bboxes = np.array(target_bboxes)
+        # print('target_bboxes = ' + str(target_bboxes))
+        # print('prediction shape = ' + str(target.shape))
+        #     clear_bboxes = np.array(clear_bboxes)
+        #     clear_target = np.array(clear_target)
+        # clear_target_bboxes.append([clear_bboxes, clear_target])
+        # for i in range(len(prediction)):
+        #     if isinstance(prediction[i], type(list)):
+        #         continue
+        #     prediction[i] = torch.tensor(prediction[i])
+        #     print(prediction[i])
+        #     prediction[i] = prediction[i].cpu().numpy()
+        prediction = [pred.cpu().numpy() for pred in prediction]
+        # print(len(prediction))
+        # prediction = prediction.cpu().numpy() 
+        # print(prediction)
+        for i in range(len(target)):
+            score += imagewise_f2_score(target[i], prediction[i], self.beta, self.min_iou_th, self.max_iou_th, self.step)
+        return score / len(target)
             
     

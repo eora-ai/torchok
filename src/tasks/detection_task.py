@@ -87,8 +87,8 @@ class DetectionTask(BaseTask, nn.Module):
 
     def forward_valid(self, x):
         cls_score, bbox_pred, objectness = self.forward(x)
-        prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
-        return prediction
+        result_score, prediction = self.infer_module.forward_infer(cls_score, bbox_pred, objectness)
+        return result_score, prediction
 
     def forward_with_gt(self, batch):
         input_data = batch['input']
@@ -127,14 +127,34 @@ class DetectionTask(BaseTask, nn.Module):
     def validation_step(self, batch, batch_idx):
         input_data = batch['input']
         gt_bboxes = batch['target_bboxes']
+        # print(gt_bboxes.shape)
         gt_labels = batch['target_classes']
-        prediction = self.forward_valid(input_data)
+        gt_bboxes_ = []
+        for i in range(gt_labels.shape[0]):
+            index = torch.where(gt_labels[i] != -1)[0]
+            batch_index = torch.tensor([i]*len(index))
+            indexes = (batch_index, index)
+            if len(indexes[0]) == 0:
+                gt_bboxes_.append(torch.tensor([]))
+                continue
+            boxes = gt_bboxes[indexes]
+            gt_bboxes_.append(boxes)
+        # print(gt_bboxes)
+        # prediction_label, prediction_score = self.forward_valid(input_data)
+        result_score, prediction = self.forward_valid(input_data)
+        # print(prediction)
+        
         # prediction is list of elements 
         target = [[gt_bboxes[i], gt_labels[i]] for i in range(gt_bboxes.shape[0])]
+        # print(gt_bboxes)
         valid_output = {
             'target': target,
-            'prediction': prediction
+            'prediction': result_score,
+            'prediction_score': prediction,
+            'gt_bboxes': gt_bboxes_
         }
+        # print(prediction_label)
+        # print(prediction_score)
         self.metric_manager.update('valid', **valid_output)
         return torch.tensor(0.)
 
