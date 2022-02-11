@@ -314,7 +314,7 @@ def eval_map(pred_bboxes, target_bboxes, num_classes, nproc=4, iou_thr=0.5):
     
     # pool = Pool(nproc)
     eval_results = []
-    for i in range(1, num_classes):
+    for i in range(num_classes):
         # get gt and det bboxes of this class
         cls_dets, cls_gts = get_cls_results(pred_bboxes, clear_target_bboxes, i)
         cls_gts_ignore = [np.empty((0, 4), dtype=np.float16) for _ in range(len(cls_gts))]
