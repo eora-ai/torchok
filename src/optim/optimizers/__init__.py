@@ -3,20 +3,10 @@ from torch.optim import (
     RMSprop, Rprop, SGD, SparseAdam
 )
 
-from src.registry import OPTIMIZERS
+from src.constructor.registry import OPTIMIZERS
 from . import adafactor
-from . import adahessian
-from . import adamp
-from . import lamb
-from . import lars
-from . import lookahead
-from . import madgrad
-from . import nadam
-from . import novograd
-from . import nvnovograd
-from . import radam
-from . import sgdp
 
+# TODO: add other fresh optimizers from PyTorch
 OPTIMIZERS.register_class(Adadelta)
 OPTIMIZERS.register_class(Adagrad)
 OPTIMIZERS.register_class(Adam)
