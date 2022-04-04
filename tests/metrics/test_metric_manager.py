@@ -1,4 +1,7 @@
 import unittest
+# !TODO WHY its now import without it
+import sys
+sys.path.append('../../')
 
 import torch
 from torchmetrics import Metric
@@ -16,10 +19,10 @@ class MetricParams:
         self.metric_params = metric_params
 
     
-def generate_wrapper_params(name, target_fields, phases=['train', 'valid']):
+def generate_wrapper_params(target_fields, name=None, phases=['train', 'valid']):
     wrapper_dict = {
-        'name': name,
         'target_fields': target_fields,
+        'name': name,
         'phases': phases,
     }
     return wrapper_dict
@@ -73,12 +76,7 @@ def run_metric_manager(class_names: List[str], wrapper_names: List[str], \
 
     metric_params = []
     for i in range(len(class_names)):
-        wrapper_params = {
-            'target_fields': target_fields[i],
-        }
-        if wrapper_names[i] is not None:
-            wrapper_params['name'] = wrapper_names[i],
-
+        wrapper_params = generate_wrapper_params(target_fields[i], wrapper_names[i])
         params = MetricParams(class_name=class_names[i], wrapper_params=wrapper_params)
         metric_params.append(params)
 
@@ -88,6 +86,16 @@ def run_metric_manager(class_names: List[str], wrapper_names: List[str], \
         metric_manager.update('train', **data_generator[i])
 
     return metric_manager.on_epoch_end('train')
+
+class TestCase:
+    def __init__(self, test_name: str, class_names: List[str], wrapper_names: List[str], \
+                target_fields: List[Dict], data_generator, expected):
+        self.test_name = test_name
+        self.class_names = class_names
+        self.wrapper_names = wrapper_names
+        self.target_fields = target_fields
+        self.data_generator = data_generator
+        self.expected = expected
 
     
 class MetricManagerTest(unittest.TestCase):
@@ -99,14 +107,7 @@ class MetricManagerTest(unittest.TestCase):
         sizes = [5, 5]
         data_generator = FakeDataGenerator(embedding_fake_data, sizes)
 
-        class TestCase:
-            def __init__(self, test_name: str, class_names: List[str], wrapper_names: List[str], \
-                       target_fields: List[Dict], expected):
-                self.test_name = test_name
-                self.class_names = class_names
-                self.wrapper_names = wrapper_names
-                self.target_fields = target_fields
-                self.expected = expected
+        
 
         target_fields = target_fields = dict(predict='embedding', target='target')
         testcases = [
@@ -135,19 +136,44 @@ class MetricManagerTest(unittest.TestCase):
                 expected={'train/MocSumMetric': 5, 'train/MocRequoreMemoryBlockMetric_embedding': 20}
             ),
         ]
-
         for case in testcases:
             actual = run_metric_manager(
                 class_names=case.class_names, wrapper_names=case.wrapper_names, \
                 target_fields=case.target_fields, data_generator=data_generator
             )
-            self.assertListEqual(
+            self.assertDictEqual(
                 case.expected,
                 actual,
                 "failed test {} expected {}, actual {}".format(
                     case.test_name, case.expected, actual
                 ),
             )
+class MetricManagerRaiseTest(unittest.TestCase):
+    def test(self):
+        # generate data
+        embedding_data = FakeData(name='embedding', shape = [512])
+        target_data = FakeData(name='target', shape=[10])
+        embedding_fake_data = [embedding_data, target_data]
+        sizes = [5, 5]
+        data_generator = FakeDataGenerator(embedding_fake_data, sizes)
+
+        target_fields = target_fields = dict(predict='embedding', target='target')
+        testcases = [
+            TestCase(
+                test_name='raise_test', \
+                class_names=['MocRaiseMetric'], \
+                wrapper_names=[None], target_fields=[target_fields], \
+                data_generator=data_generator, \
+                expected={'train/MocRaiseMetric': 5}
+            ),
+        ]
+        for case in testcases:
+            with self.assertRaises(Exception):
+                actual = run_metric_manager(
+                    class_names=case.class_names, wrapper_names=case.wrapper_names, \
+                    target_fields=case.target_fields, data_generator=data_generator
+                )
+
 
 if __name__ == '__main__':
     unittest.main()
