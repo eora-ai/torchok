@@ -58,7 +58,7 @@ class ImageClassificationDataset(ImageDataset):
         if multilabel:
             self.__num_classes = num_classes
             self.__lazy_init_multilabel = lazy_init_multilabel
-            if not self.lazy_init_multilabel:
+            if not self.lazy_init_multilabel and not self.test_mode:
                 process_func = partial(self.process_multilabel, num_classes=self.num_classes)
                 self.csv[self.target_column] = self.csv[self.target_column].apply(process_func)
 
