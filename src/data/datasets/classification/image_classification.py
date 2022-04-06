@@ -45,6 +45,9 @@ class ImageClassificationDataset(ImageDataset):
             expand_rate: A multiplier that shows how many times the dataset will be larger than its real size.
                 Useful for small datasets.
             test_mode: If True, only image without labels will be returned.
+            multilabel: If True, target labels is being converted to multihot vector for multilabel task.
+            num_classes: Number of classes for multilabel task(length of multihot target vector).
+            lazy_init_multilabel: If True, the target variable is converted to multihot when __getitem__ is called.
         """
         super().__init__(data_folder, path_to_datalist, transform, input_dtype, grayscale, test_mode, augment)
 
