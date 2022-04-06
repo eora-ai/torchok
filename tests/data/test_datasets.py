@@ -4,6 +4,7 @@ import torch
 from albumentations import Resize
 from albumentations.core.composition import Compose
 from albumentations.pytorch import ToTensorV2
+
 from src.data.datasets.classification.image_classification import ImageClassificationDataset
 
 
