@@ -1,5 +1,4 @@
 from typing import Union, Optional
-from functools import partial
 
 import re
 import torch
@@ -13,57 +12,127 @@ from src.data.datasets.base import ImageDataset
 
 @DATASETS.register_class
 class ImageClassificationDataset(ImageDataset):
-    """A generic dataset for image classification task"""
+    """A generic dataset for multilabel/multiclass image classification task"""
 
     def __init__(self,
                  data_folder: str,
-                 path_to_datalist: str,
+                 csv_path: str,
+                 num_classes: int,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
                  target_dtype: str = 'long',
+                 input_column: str = 'image_path',
                  target_column: str = 'label',
                  grayscale: bool = False,
-                 expand_rate: int = 1,
                  test_mode: Optional[bool] = False,
                  multilabel: bool = False,
-                 num_classes: int = None,
-                 lazy_init_multilabel: bool = False):
+                 lazy_init: bool = False):
         """
         Args:
             data_folder: Directory with all the images.
-            path_to_datalist: Path to the csv file with path to images and annotations.
+            csv_path: Path to the csv file with path to images and annotations.
                 Path to images must be under column `image_path` and annotations must be under `label` column
+            num_classes: Number of classes (i.e. maximum class index in the dataset).
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of of the torch tensors related to the image.
+            input_column: Name of the column that contains paths to images.
             target_dtype: Data type of of the torch tensors related to the target.
             target_column: Name of the column that contains target labels.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
-            expand_rate: A multiplier that shows how many times the dataset will be larger than its real size.
-                Useful for small datasets.
             test_mode: If True, only image without labels will be returned.
-            multilabel: If True, target labels is being converted to multihot vector for multilabel task.
-            num_classes: Number of classes for multilabel task(length of multihot target vector).
-            lazy_init_multilabel: If True, the target variable is converted to multihot when __getitem__ is called.
+            multilabel: If True, target labels are being converted to multihot vector for multilabel task.
+                        If False, dataset prepare target for multiclass classification.
+            lazy_init: If True, the target variable is converted to multihot when __getitem__ is called (multilabel).
+                       For multiclass will check the class index to fit the range when __getitem__ is called.
         """
-        super().__init__(data_folder, path_to_datalist, transform, input_dtype, grayscale, test_mode, augment)
+        super().__init__(data_folder, csv_path, transform, augment, input_dtype, input_column, grayscale, test_mode)
 
+        self.__num_classes = num_classes
         self.__target_column = target_column
         self.__target_dtype = target_dtype
-        self.__expand_rate = expand_rate
         self.__multilabel = multilabel
+        self.__lazy_init = lazy_init
 
-        self.update_transform_targets({'input': 'image'})
+        if not self.__lazy_init and not self.test_mode:
+            if multilabel:
+                self.csv[self.target_column] = self.csv[self.target_column].apply(self.__process_multilabel)
+            else:
+                self.csv[self.target_column] = self.csv[self.target_column].apply(self.__process_multiclass)
 
-        if multilabel:
-            self.__num_classes = num_classes
-            self.__lazy_init_multilabel = lazy_init_multilabel
-            if not self.lazy_init_multilabel and not self.test_mode:
-                process_func = partial(self.process_multilabel, num_classes=self.num_classes)
-                self.csv[self.target_column] = self.csv[self.target_column].apply(process_func)
+    def __getitem__(self, idx: int) -> dict:
+        record = self.csv.iloc[idx]
+        image_path = record[self.input_column]
+        image = self._read_image(image_path)
+        sample = {'input': image, 'index': idx}
+        sample = self._apply_transform(self.augment, sample)
+        sample = self._apply_transform(self.transform, sample)
+        sample['input'] = sample['input'].type(torch.__dict__[self.input_dtype])
+
+        if self.test_mode:
+            return sample
+
+        sample['target'] = record[self.target_column]
+
+        if self.lazy_init:
+            if self.multilabel:
+                sample['target'] = self.__process_multilabel(str(sample['target']))
+                sample['target'] = sample['target'].astype(self.target_dtype)
+            else:
+                sample['target'] = self.__process_multiclass(str(sample['target']))
+
+        sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.target_dtype])
+
+        return sample
+
+    def __len__(self) -> int:
+        return len(self.csv)
+
+    def __process_multiclass(self, class_idx: Union[int, str]) -> int:
+        """Check the class index to fit the range
+
+        Args:
+            class_idx: Target class index for multiclass classification
+
+        Returns:
+            Verified class index
+
+        Raises:
+            ValueError: If class index is out of range
+        """
+        class_idx = class_idx if isinstance(class_idx, int) else int(class_idx)
+        if class_idx >= self.num_classes:
+            raise ValueError(f'Target column contain class index: {class_idx}, ' +
+                             f'it\'s more than num_classes = {self.num_classes}')
+        return class_idx
+
+    def __process_multilabel(self, labels: str) -> np.array:
+        """Convert label to multihot representation.
+
+        Args:
+            label: Target labels for multilabel classification.
+                The class indexes must be separated by any separator.
+
+        Returns:
+            Multihot vector.
+
+        Raises:
+            ValueError: If class label is out of range
+        """
+        labels = list(map(int, re.findall(r'\d+', labels)))
+
+        max_label = max(labels)
+
+        if max_label < self.num_classes:
+            multihot = np.zeros((self.num_classes,), dtype=bool)
+            multihot[labels] = True
+        else:
+            raise ValueError(f'Target column contain label: {max_label}, ' +
+                             f'it\'s more than num_classes = {self.num_classes}')
+        return multihot
 
     @property
     def target_column(self) -> str:
@@ -74,10 +143,6 @@ class ImageClassificationDataset(ImageDataset):
         return self.__target_dtype
 
     @property
-    def expand_rate(self) -> int:
-        return self.__expand_rate
-
-    @property
     def multilabel(self) -> bool:
         return self.__multilabel
 
@@ -86,47 +151,5 @@ class ImageClassificationDataset(ImageDataset):
         return self.__num_classes
 
     @property
-    def lazy_init_multilabel(self) -> bool:
-        return self.__lazy_init_multilabel
-
-    def __getitem__(self, idx: int) -> dict:
-        idx = idx // self.expand_rate
-        record = self.csv.iloc[idx]
-        image = self._read_image(record)
-        sample = {'input': image, 'index': idx}
-        sample = self.apply_transform(self.augment, sample)
-        sample = self.apply_transform(self.transform, sample)
-        sample['input'] = sample['input'].type(torch.__dict__[self.input_dtype])
-
-        if self.test_mode:
-            return sample
-
-        sample['target'] = record[self.target_column]
-
-        if self.multilabel and self.lazy_init_multilabel:
-            sample['target'] = self.process_multilabel(str(sample['target']), self.num_classes)
-            sample['target'] = sample['target'].astype(self.input_dtype)
-
-        sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.target_dtype])
-
-        return sample
-
-    def __len__(self) -> int:
-        csv_len = len(self.csv) * self.expand_rate
-        return csv_len
-
-    @staticmethod
-    def process_multilabel(label: Union[int, str], num_classes: int) -> np.array:
-        if isinstance(label, int):
-            label = [label]
-        else:
-            label = list(map(int, re.findall(r'\d+', label)))
-
-        max_label = max(label)
-
-        if max_label < num_classes:
-            multihot = np.zeros((num_classes,), dtype=bool)
-            multihot[label] = True
-        else:
-            raise Exception(f'Target column contain label: {max_label}, it\'s more than num_classes = {num_classes}')
-        return multihot
+    def lazy_init(self) -> bool:
+        return self.__lazy_init
