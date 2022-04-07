@@ -14,36 +14,39 @@ class UnsupervisedContrastiveDataset(ImageDataset):
 
     def __init__(self,
                  data_folder: str,
-                 path_to_datalist: str,
+                 csv_path: str,
                  transform: Union[BasicTransform, BaseCompose],
+                 augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
-                 grayscale: bool = False,
-                 augment: Optional[Union[BasicTransform, BaseCompose]] = None):
+                 input_column: str = 'image_path',
+                 grayscale: bool = False):
         """
         Args:
             data_folder: Directory with all the images.
-            path_to_datalist: Path to the csv file with path to images and annotations.
-                Path to images must be under column `image_path` and annotations must be under `label` column
+            csv_path: Path to the csv file with path to images and annotations.
+                Path to images must be under column `image_path` and annotations must be under `label` column.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
-            input_dtype: data type of of the torch tensors related to the image
-            grayscale: if True image will be read as grayscale otherwise as RGB.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-        """
-        super().__init__(data_folder, path_to_datalist, transform, input_dtype, grayscale, augment=augment)
+            input_dtype: data type of of the torch tensors related to the image.
+            input_column: Name of the column that contains paths to images.
+            grayscale: if True image will be read as grayscale otherwise as RGB.
 
-        self.update_transform_targets({'input': 'image'})
+        """
+        super().__init__(data_folder, csv_path, transform, augment, input_dtype, input_column, grayscale)
 
     def __getitem__(self, idx: int) -> dict:
         record = self.csv.iloc[idx]
-        image = self._read_image(record)
+        image_path = record[self.input_column]
+        image = self._read_image(image_path)
         sample = {'input': image}
-        sample_0_transformed = self.apply_transform(self.augment, sample)['input']
-        sample_1_transformed = self.apply_transform(self.augment, sample)['input']
 
-        sample_0_augmented = self.apply_transform(self.transform, {'input': sample_0_transformed})
-        sample_1_augmented = self.apply_transform(self.transform, {'input': sample_1_transformed})
+        sample_0_transformed = self._apply_transform(self.augment, sample)['input']
+        sample_1_transformed = self._apply_transform(self.augment, sample)['input']
+
+        sample_0_augmented = self._apply_transform(self.transform, {'input': sample_0_transformed})
+        sample_1_augmented = self._apply_transform(self.transform, {'input': sample_1_transformed})
 
         sample_0 = sample_0_augmented['input'].type(torch.__dict__[self.input_dtype])
         sample_1 = sample_1_augmented['input'].type(torch.__dict__[self.input_dtype])
