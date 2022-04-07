@@ -92,21 +92,21 @@ class ImageClassificationDataset(ImageDataset):
         return len(self.csv)
 
     def __process_multiclass(self, class_idx: Union[int, str]) -> int:
-        """Check the class index to fit the range
+        """Check the class index to fit the range.
 
         Args:
-            class_idx: Target class index for multiclass classification
+            class_idx: Target class index for multiclass classification.
 
         Returns:
-            Verified class index
+            Verified class index.
 
         Raises:
-            ValueError: If class index is out of range
+            ValueError: If class index is out of range.
         """
         class_idx = class_idx if isinstance(class_idx, int) else int(class_idx)
         if class_idx >= self.num_classes:
             raise ValueError(f'Target column contain class index: {class_idx}, ' +
-                             f'it\'s more than num_classes = {self.num_classes}')
+                             f'it\'s more than num_classes = {self.num_classes}.')
         return class_idx
 
     def __process_multilabel(self, labels: str) -> np.array:
@@ -120,7 +120,7 @@ class ImageClassificationDataset(ImageDataset):
             Multihot vector.
 
         Raises:
-            ValueError: If class label is out of range
+            ValueError: If class label is out of range.
         """
         labels = list(map(int, re.findall(r'\d+', labels)))
 
@@ -131,7 +131,7 @@ class ImageClassificationDataset(ImageDataset):
             multihot[labels] = True
         else:
             raise ValueError(f'Target column contain label: {max_label}, ' +
-                             f'it\'s more than num_classes = {self.num_classes}')
+                             f'it\'s more than num_classes = {self.num_classes}.')
         return multihot
 
     @property
