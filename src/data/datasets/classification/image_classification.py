@@ -91,7 +91,7 @@ class ImageClassificationDataset(ImageDataset):
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
         sample['index'] = idx
 
-        if self.test_mode:
+        if self._test_mode:
             return sample
 
         sample['target'] = record[self.__target_column]

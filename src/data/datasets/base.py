@@ -32,14 +32,12 @@ class ImageDataset(Dataset, ABC):
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        self.__test_mode = test_mode
+        self._test_mode = test_mode
         self.__transform = transform
         self.__augment = augment
         self.__input_dtype = input_dtype
         self.__input_column = input_column
         self.__grayscale = grayscale
-        self.__valid_transform_params = ['image', 'mask', 'bboxes']
-
         self.__data_folder = Path(data_folder)
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
@@ -56,8 +54,7 @@ class ImageDataset(Dataset, ABC):
         if transform is None:
             return sample
 
-        valid_sample = {key: value for (key, value) in sample.items() if key in self.__valid_transform_params}
-        new_sample = transform(**valid_sample)
+        new_sample = transform(**sample)
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
@@ -83,7 +80,7 @@ class ImageDataset(Dataset, ABC):
 
     @property
     def test_mode(self) -> bool:
-        return self.__test_mode
+        return self._test_mode
 
     @property
     def transform(self) -> Optional[Union[BasicTransform, BaseCompose]]:
