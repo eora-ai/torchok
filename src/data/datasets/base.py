@@ -4,10 +4,9 @@ from typing import Union, Optional
 
 import cv2
 import numpy as np
-import pandas as pd
+from torch.utils.data import Dataset
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
-from torch.utils.data import Dataset
 
 
 class ImageDataset(Dataset, ABC):
@@ -15,19 +14,15 @@ class ImageDataset(Dataset, ABC):
 
     def __init__(self,
                  data_folder: str,
-                 csv_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
                  input_column: str = 'image_path',
                  grayscale: bool = False,
-                 test_mode: bool = False,
-                 transform_targets: dict = {'input': 'image'}):
+                 test_mode: bool = False):
         """
         Args:
             data_folder: Directory with all the images.
-            csv_path: Path to the csv file with path to images and annotations.
-                Path to images must be under column `image_path` and annotations must be under `label` column.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
@@ -36,7 +31,6 @@ class ImageDataset(Dataset, ABC):
             input_column: Name of the column that contains paths to images.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
-            transform_target: Transformations target for `albumentations` library.
         """
         self.__test_mode = test_mode
         self.__transform = transform
@@ -44,19 +38,17 @@ class ImageDataset(Dataset, ABC):
         self.__input_dtype = input_dtype
         self.__input_column = input_column
         self.__grayscale = grayscale
-        self.__transform_targets = transform_targets
+        self.__valid_transform_params = ['image', 'mask', 'bboxes']
 
         self.__data_folder = Path(data_folder)
-        self.__csv = pd.read_csv(self.data_folder / csv_path)
-        self.__update_transform_targets(transform_targets)
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
-        """Apply transformations (from `albumentations` library) to given sample.
+        """Transformations based on API of albumentations library.
 
         Args:
             transform: Transformations from `albumentations` library.
                 https://github.com/albumentations-team/albumentations/
-            sample: Sample to which the transformation will be applied.
+            sample: Sample which the transformation will be applied to.
 
         Returns:
             Transformed sample.
@@ -64,23 +56,9 @@ class ImageDataset(Dataset, ABC):
         if transform is None:
             return sample
 
-        new_sample = {}
-        # mapping to `albumentations` acceptable parameters
-        for source, target in self.transform_targets.items():
-            if source in sample:
-                if source == 'input' or source == 'target':
-                    new_sample[target] = sample[source]
-                else:
-                    new_sample[source] = sample[source]
-
-        new_sample = transform(**new_sample)
-        # inverse mapping
-        for source, target in self.transform_targets.items():
-            if target in new_sample and (source == 'input' or source == 'target'):
-                sample[source] = new_sample[target]
-            elif source in new_sample:
-                sample[source] = new_sample[source]
-        return sample
+        valid_sample = {key: value for (key, value) in sample.items() if key in self.__valid_transform_params}
+        new_sample = transform(**valid_sample)
+        return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
         full_image_path = self.data_folder / image_path
@@ -94,13 +72,6 @@ class ImageDataset(Dataset, ABC):
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         return image
-
-    def __update_transform_targets(self, transform_targets: dict) -> None:
-        self.transform.additional_targets = transform_targets
-        self.transform.add_targets(transform_targets)
-        if self.augment is not None:
-            self.augment.additional_targets = transform_targets
-            self.augment.add_targets(transform_targets)
 
     @abstractmethod
     def __len__(self) -> int:
@@ -135,13 +106,5 @@ class ImageDataset(Dataset, ABC):
         return self.__grayscale
 
     @property
-    def transform_targets(self) -> dict:
-        return self.__transform_targets
-
-    @property
     def data_folder(self) -> Path:
         return self.__data_folder
-
-    @property
-    def csv(self) -> pd.DataFrame:
-        return self.__csv
