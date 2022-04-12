@@ -1,5 +1,5 @@
 class Registry:
-    """ Registry of pipeline's components: models, datasets, metrics, etc.
+    """Registry of pipeline's components: models, datasets, metrics, etc.
     
     The registry is meant to be used as a decorator for any classes, 
     so that they can be accessed by class name for instantiating. 
@@ -13,7 +13,7 @@ class Registry:
     def __init__(self, name: str):
         """
         Args:
-            name: Module name.
+            name: Component name.
         """
         self.__name = name
         self.__class_dict = dict()
@@ -57,14 +57,14 @@ class Registry:
         return result
 
     def register_class(self, class_type: type):
-        """Registrate a new class.
+        """Register a new class.
 
         Args:
             class_type: Class to be registered.
 
         Raises:
             TypeError: If class_type not type.
-            KeyError: If class_type already registrated.
+            KeyError: If class_type already registered.
         """
         if not (isinstance(class_type, type) or callable(class_type)):
             raise TypeError(f'class_type must be class type, but got {type(class_type)}')
