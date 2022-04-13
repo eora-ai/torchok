@@ -42,7 +42,7 @@ class EachToEachRetrievalDataset(ImageDataset):
         Args:
             data_folder: Directory with all the images.
             matches_csv_path: path to csv file where queries with their relevance scores are specified
-            img_paths_csv_path: path to mapping image identifiers to image paths. Format: id | path.
+            img_paths_csv_path: path to mapping image identifiers to image paths. Format: id | `input_column`.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.

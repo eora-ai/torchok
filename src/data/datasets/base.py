@@ -35,8 +35,8 @@ class ImageDataset(Dataset, ABC):
         self._test_mode = test_mode
         self.__transform = transform
         self.__augment = augment
-        self.__input_dtype = input_dtype
-        self.__input_column = input_column
+        self._input_dtype = input_dtype
+        self._input_column = input_column
         self.__grayscale = grayscale
         self.__data_folder = Path(data_folder)
 
@@ -92,11 +92,11 @@ class ImageDataset(Dataset, ABC):
 
     @property
     def input_dtype(self) -> str:
-        return self.__input_dtype
+        return self._input_dtype
 
     @property
     def input_column(self) -> str:
-        return self.__input_column
+        return self._input_column
 
     @property
     def grayscale(self) -> bool:
