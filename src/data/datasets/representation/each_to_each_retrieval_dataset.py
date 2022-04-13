@@ -57,8 +57,8 @@ class EachToEachRetrievalDataset(ImageDataset):
                                      dtype={"query": str, "relevant": str, 'scores': str})
 
         self.__img_paths = pd.read_csv(self.data_folder / img_paths_csv_path,
-                                       usecols=["id", input_column],
-                                       dtype={"id": str, input_column: str},
+                                       usecols=["id", self._input_column],
+                                       dtype={"id": str, self._input_column: str},
                                        header=0)
 
         self.__img_paths[self._input_column] = self.__img_paths[self._input_column]\
@@ -93,7 +93,7 @@ class EachToEachRetrievalDataset(ImageDataset):
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self._input_dtype])
         sample['index'] = index
         return sample
 
