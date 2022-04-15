@@ -12,11 +12,11 @@ class TestRetrievalDataset(unittest.TestCase):
     def __init__(self, methodName: str = None) -> None:
         super().__init__(methodName)
         self.__root_dir = Path(__file__).parent
-        self.__gallery_folder = self.__root_dir / 'data/retrieval/orig/'
-        self.__data_folder = self.__root_dir / 'data/retrieval/orig/'
-        self.__gallery_path = self.__root_dir / 'data/retrieval/toilets_gallery.csv'
-        self.__img_paths_csv_path = self.__root_dir / 'data/retrieval/toilets_paths.csv'
-        self.__matches_csv_path = self.__root_dir / 'data/retrieval/toilets_match.csv'
+        self.__gallery_folder = self.__root_dir / 'retrieval_data/gallery/'
+        self.__data_folder = self.__root_dir / 'retrieval_data/'
+        self.__gallery_path = self.__root_dir / 'retrieval_data/toilets_gallery.csv'
+        self.__img_paths_csv_path = self.__root_dir / 'retrieval_data/toilets_paths.csv'
+        self.__matches_csv_path = self.__root_dir / 'retrieval_data/toilets_match.csv'
         self.__transform = Compose([Resize(224, 224), ToTensorV2()], p=1.0)
         self.__augment = Compose([HorizontalFlip(p=0.5), VerticalFlip(p=0.5)])
 

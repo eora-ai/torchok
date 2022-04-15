@@ -38,7 +38,7 @@ class ImageDataset(Dataset, ABC):
         self._input_dtype = input_dtype
         self._input_column = input_column
         self.__grayscale = grayscale
-        self.__data_folder = Path(data_folder)
+        self._data_folder = Path(data_folder)
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Transformations based on API of albumentations library.
@@ -104,4 +104,4 @@ class ImageDataset(Dataset, ABC):
 
     @property
     def data_folder(self) -> Path:
-        return self.__data_folder
+        return self._data_folder
