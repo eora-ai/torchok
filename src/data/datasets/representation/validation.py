@@ -11,28 +11,41 @@ from src.data.datasets.base import ImageDataset
 
 class RetrievalDataset(ImageDataset):
     """Dataset for query->relevant benchmarking
+    Dataset for image retrieval where gallery consists of query, relevant and gallery items.
+    The searches are made by queries while looking for relevant items in the whole set of items.
+    Where gallery items are treated non-relevan.
 
-     .. csv-table:: Match csv example
-     :header: query, relevant, scores
-     1194917,601566 554492 224125 2001716519,4 3 2 2
-     1257924,456490,4
+    Example match.csv:
 
-     .. csv-table:: Image csv example
-     :header: id, image_path
-     1194917,data/img_1.jpg
-     601566,data/img_2.jpg
-     554492,data/img_3.jpg
-     224125,data/img_4.jpg
-     2001716519,data/img_5.jpg
-     1257924,data/img_6.jpg
-     456490,data/img_7.jpg
+    Query ids should be unique, otherwise the rows having the same query id will be treated as different matches.
+    Relevant ids can be repeated in different queries.
+    Scores reflect the order of similarity of the image to the query.
+    A higher score corresponds to a greater similarity.
 
-     .. csv-table:: Gallery Image csv example
-     :header: id,image_paths
-     8,data/db/img_1.jpg
-     10,data/db/img_2.jpg
-     12,data/db/img_3.jpg
+    .. csv-table:: Match csv example
+    :header: query, relevant, scores
+    1194917,601566 554492 224125 2001716519,4 3 2 2
+    1257924,456490,4
 
+    Example img_list.csv:
+
+    img_list.csv maps the id's of query and relevant elements to image paths
+
+    .. csv-table:: Image csv example
+    :header: id, image_path
+    1194917,data/img_1.jpg
+    601566,data/img_2.jpg
+    554492,data/img_3.jpg
+    224125,data/img_4.jpg
+    2001716519,data/img_5.jpg
+    1257924,data/img_6.jpg
+    456490,data/img_7.jpg
+
+    .. csv-table:: Gallery Image csv example
+    :header: id, image_paths
+    8,data/db/img_1.jpg
+    10,data/db/img_2.jpg
+    12,data/db/img_3.jpg
     """
 
     def __init__(self,
@@ -62,6 +75,9 @@ class RetrievalDataset(ImageDataset):
             gallery_list_csv_path: path to mapping image identifiers to image paths. Format: id | path.
             input_column: Name of the column that contains paths to images.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
+
+        Raises:
+            ValueError: if use_gallery True, but gallery_folder or gallery_list_csv_path is None
         """
         super().__init__(data_folder, transform, augment, input_dtype, input_column, grayscale)
 
@@ -81,18 +97,17 @@ class RetrievalDataset(ImageDataset):
         self._data_len = self.__n_queries + self.__n_relevant
 
         if use_gallery:
-            if gallery_folder is None:
-                raise ValueError('Argument `gallery_folder` is None, please send path to gallery_folder')
-            if gallery_list_csv_path is None:
-                raise ValueError('Argument `gallery_list_csv_path` is None, please send path to gallery_list_csv_path')
-
             self.__gallery_folder = gallery_folder
             self.__gallery_list_csv_path = gallery_list_csv_path
+
+            if self.__gallery_folder is None:
+                raise ValueError('Argument `gallery_folder` is None, please send path to gallery_folder')
+            if self.__gallery_list_csv_path is None:
+                raise ValueError('Argument `gallery_list_csv_path` is None, please send path to gallery_list_csv_path')
 
             self.__gallery_paths = pd.read_csv(Path(self.__gallery_folder) / self.__gallery_list_csv_path,
                                                usecols=['id', self._input_column],
                                                dtype={'id': int, self._input_column: str})
-
             self.__gallery_imgid2paths = dict(zip(self.__gallery_paths['id'], self.__gallery_paths[self._input_column]))
 
             self.__n_gallery = 0
@@ -131,7 +146,6 @@ class RetrievalDataset(ImageDataset):
         return sample
 
     def __parse_match_csv(self):
-
         self.__query_arr = self.__matches.loc[:, 'query'].tolist()
         self.__index2imgid = dict(enumerate(self.__query_arr))
         self.__n_queries = len(self.__index2imgid)
@@ -154,11 +168,12 @@ class RetrievalDataset(ImageDataset):
 
     def __get_targets(self):
         """
-        Traverses all the query->relevant lists and constructs a map of relevance scores and their positions
-        in the joined set of relevant items to each query.
+        Maps item scores to queues.
 
         Returns:
-            List of relevance cards to each of N queries.
+            Two target tensor: scores and is_query.
+            Scores is tensor with shape(len(self), n_queries).
+            Is_query is tensor with shape (len(self)).
         Raises:
             ValueError: If relevant objects list doesn't match with relevance scores list in size.
         """
@@ -194,7 +209,7 @@ class RetrievalDataset(ImageDataset):
 
     @property
     def n_queries(self) -> int:
-        return self._n_queries
+        return self.__n_queries
 
     @property
     def n_relevant(self) -> int:
