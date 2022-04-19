@@ -54,7 +54,7 @@ class TestRetrievalDataset(unittest.TestCase):
                                      use_gallery=True,
                                      gallery_folder=self.__gallery_folder,
                                      gallery_list_csv_path=self.__gallery_path)
-        self.assertEqual(self.__ds[0]['image'].shape, (3, 224, 224))
+        self.assertEqual(self.__ds[18]['image'].shape, (3, 224, 224))
 
     def test_len_when_use_gallery_true(self):
         self.__ds = RetrievalDataset(self.__data_folder,

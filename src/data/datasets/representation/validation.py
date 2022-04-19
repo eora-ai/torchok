@@ -114,7 +114,7 @@ class RetrievalDataset(ImageDataset):
             self.__n_gallery = 0
             self._gallery_index2imgid = {}
             for img_id in self.__gallery_imgid2paths:
-                self._gallery_index2imgid[self.__n_gallery] = img_id
+                self._gallery_index2imgid[self._data_len + self.__n_gallery] = img_id
                 self.__n_gallery += 1
 
             self._data_len += self.__n_gallery
