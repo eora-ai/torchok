@@ -15,8 +15,7 @@ class RetrievalDataset(ImageDataset):
     The searches are made by queries while looking for relevant items in the whole set of items.
     Where gallery items are treated non-relevant.
 
-    Example match.csv:
-
+    Example matches csv:
     Query ids should be unique, otherwise the rows having the same query id will be treated as different matches.
     Relevant ids can be repeated in different queries.
     Scores reflect the order of similarity of the image to the query,
@@ -27,8 +26,7 @@ class RetrievalDataset(ImageDataset):
     1194917,601566 554492 224125 2001716519,4 3 2 2
     1257924,456490,4
 
-    Example img_list.csv:
-
+    Example img_list csv:
     img_list.csv maps the id's of query and relevant elements to image paths
 
     .. csv-table:: Image csv example
@@ -65,6 +63,7 @@ class RetrievalDataset(ImageDataset):
             data_folder: Directory with all the images.
             matches_csv_path: path to csv file where queries with their relevance scores are specified
             img_list_csv_path: path to mapping image identifiers to image paths. Format: id | path.
+                Id from matches csv are linked to id from img_list csv
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
@@ -169,13 +168,13 @@ class RetrievalDataset(ImageDataset):
                 self.__relevance_scores[-1].append(img_score)
 
     def __get_targets(self) -> Tuple[torch.FloatTensor, torch.BoolTensor]:
-        """
-        Maps item scores to queues.
+        """Maps item scores to queues.
 
         Returns:
             Two target tensor: scores and is_query.
             Scores is tensor with shape(len(self), n_queries).
             Is_query is tensor with shape (len(self)).
+
         Raises:
             ValueError: If relevant objects list doesn't match with relevance scores list in size.
         """
