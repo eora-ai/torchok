@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional
+from typing import Tuple, Union, Optional
 
 import torch
 import pandas as pd
@@ -11,16 +11,16 @@ from src.data.datasets.base import ImageDataset
 
 class RetrievalDataset(ImageDataset):
     """Dataset for query->relevant benchmarking
-    Dataset for image retrieval where gallery consists of query, relevant and gallery items.
+    Dataset for image retrieval where gallery consists of query, relevant and gallery items(optional).
     The searches are made by queries while looking for relevant items in the whole set of items.
-    Where gallery items are treated non-relevan.
+    Where gallery items are treated non-relevant.
 
     Example match.csv:
 
     Query ids should be unique, otherwise the rows having the same query id will be treated as different matches.
     Relevant ids can be repeated in different queries.
-    Scores reflect the order of similarity of the image to the query.
-    A higher score corresponds to a greater similarity.
+    Scores reflect the order of similarity of the image to the query,
+    a higher score corresponds to a greater similarity.
 
     .. csv-table:: Match csv example
     :header: query, relevant, scores
@@ -54,9 +54,9 @@ class RetrievalDataset(ImageDataset):
                  img_list_csv_path: str,
                  transform: Union[BasicTransform, BaseCompose],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 use_gallery: bool = False,
-                 gallery_folder: str = None,
-                 gallery_list_csv_path: str = None,
+                 use_gallery: Optional[bool] = False,
+                 gallery_folder: Optional[str] = None,
+                 gallery_list_csv_path: Optional[str] = None,
                  input_dtype: str = 'float32',
                  input_column: str = 'image_path',
                  grayscale: bool = False):
@@ -69,10 +69,10 @@ class RetrievalDataset(ImageDataset):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            input_dtype: Data type of of the torch tensors related to the image.
-            use_gallery: If True, will use gallery data
+            use_gallery: If True, will use gallery data(non-relevant items)
             gallery_folder: path to a folder with all gallery images (traversed recursively)
             gallery_list_csv_path: path to mapping image identifiers to image paths. Format: id | path.
+            input_dtype: Data type of of the torch tensors related to the image.
             input_column: Name of the column that contains paths to images.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
 
@@ -92,11 +92,13 @@ class RetrievalDataset(ImageDataset):
         self.__parse_match_csv()
 
         self._imgid2paths = dict(zip(self.__img_paths['id'], self.__img_paths[self._input_column]))
-        # filtering ( save only imgid that in match csv)
+        # filtering (save only img_id that in match.csv)
         self._imgid2paths = {img_id: self._imgid2paths[img_id] for img_id in self.__index2imgid.values()}
         self._data_len = self.__n_queries + self.__n_relevant
 
-        if use_gallery:
+        self.__use_gallery = use_gallery
+
+        if self.__use_gallery:
             self.__gallery_folder = gallery_folder
             self.__gallery_list_csv_path = gallery_list_csv_path
 
@@ -166,7 +168,7 @@ class RetrievalDataset(ImageDataset):
                 self.__relevant_arr[-1].append(img_id)
                 self.__relevance_scores[-1].append(img_score)
 
-    def __get_targets(self):
+    def __get_targets(self) -> Tuple[torch.FloatTensor, torch.BoolTensor]:
         """
         Maps item scores to queues.
 
@@ -208,9 +210,29 @@ class RetrievalDataset(ImageDataset):
         return self.__img_paths
 
     @property
+    def use_gallery(self) -> bool:
+        return self.__use_gallery
+
+    @property
+    def gallery_list_csv_path(self) -> Optional[str]:
+        return self.__gallery_list_csv_path
+
+    @property
+    def gallery_folder(self) -> Optional[str]:
+        return self.__gallery_folder
+
+    @property
+    def gallery_paths(self) -> Optional[pd.DataFrame]:
+        return self.__gallery_paths
+
+    @property
     def n_queries(self) -> int:
         return self.__n_queries
 
     @property
     def n_relevant(self) -> int:
         return self.__n_relevant
+
+    @property
+    def n_gallery(self) -> Optional[int]:
+        return self.__n_gallery

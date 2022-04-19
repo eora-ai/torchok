@@ -45,7 +45,7 @@ class TestRetrievalDataset(unittest.TestCase):
                                      grayscale=True)
         self.assertEqual(self.__ds[0]['image'].shape, (1, 224, 224))
 
-    def test_shape_when_gallery(self):
+    def test_shape_when_use_gallery_true(self):
         self.__ds = RetrievalDataset(self.__data_folder,
                                      self.__matches_csv_path,
                                      self.__img_paths_csv_path,
@@ -56,7 +56,7 @@ class TestRetrievalDataset(unittest.TestCase):
                                      gallery_list_csv_path=self.__gallery_path)
         self.assertEqual(self.__ds[0]['image'].shape, (3, 224, 224))
 
-    def test_len_when_gallery(self):
+    def test_len_when_use_gallery_true(self):
         self.__ds = RetrievalDataset(self.__data_folder,
                                      self.__matches_csv_path,
                                      self.__img_paths_csv_path,
