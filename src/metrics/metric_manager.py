@@ -1,89 +1,177 @@
-import torch
-from torch import Tensor, tensor
+from torch import Tensor, tensor, nn
 from torchmetrics import Metric
 
-from typing import List, Dict, Optional
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
 
 from src.registry import METRICS
-from .metric_utils import MetricMemoryBank, MetricWrapper
 
-class MetricManager:
+
+class MetricParams:
+    """
+    Class for contain metric parameters.
+    """
+    def __init__(self, class_name: str, target_fields: dict, phases: List[str] = None, \
+                 name: str = None, metric_params: dict = {}):
+        """
+        Args
+            class_name: Metric class name with would be created.
+            target_fields: Dictionary for mapping Task output with Metric forward keys.
+            phases: Metric run phases.
+            name: Metric name in logging output.
+            metric_params: Metric class initialize parameters.
+        """
+        self.class_name = class_name
+        self.target_fields = target_fields
+        self.phases = phases if phases is not None else ['train', 'valid', 'test']
+        self.name = name
+        self.metric_params = metric_params
+
+
+class MetricWithUtils(nn.Module):
+    """
+    Union class for metric and metric utils parameters
+    """
+    def __init__(self, metric: Metric, target_fields: Dict[str, str], name: str = None):
+        """
+        Args:
+            metric: Metric written with TorchMetrics.
+            target_fields: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
+            name: The metric name.
+        """
+        super().__init__()
+        self.__metric = metric
+        self.__target_fields = target_fields
+        self.__name = name
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def target_fields(self):
+        return self.__target_fields
+
+    def forward(self, *args, **kwargs):
+        return self.__metric(*args, **kwargs)
+
+    def compute(self):
+        return self.__metric.compute()
+
+
+class MetricManager(nn.Module):
+    """Manages all metrics for the model."""
+
+    # model use phases
     phases = ['train', 'valid', 'test']
-    """Manages all metrics for the model,
-    stores their values at checkpoints"""
 
-    def __init__(self, params: List):
-        # !TODO append List[MetricParams]
-        self.metrics = {phase: {} for phase in self.phases}
-        self.memory_bank = {phase: None for phase in self.phases}
+    def __init__(self, params: List[MetricParams]):
+        """
+        Args:
+            params: Metric parameters.
+        """
+        super().__init__()
+        phase2metrics = {phase: {} for phase in self.phases}
         for phase in self.phases:
-            phase_mem_bank_name_list = []
-            for metric in params:
-                if phase in metric.wrapper_params['phases']:
-                    metric_obj = METRICS.get(metric.class_name)(**metric.metric_params)
-                    metric_wrapper = MetricWrapper(metric=metric_obj, **metric.wrapper_params)
-                    self.metrics[phase][metric_wrapper.name] = metric_wrapper
-                    if metric_wrapper.require_memory_bank:
-                        for target_arg, source_arg in metric_wrapper.target_fields.items():
-                            if source_arg not in phase_mem_bank_name_list:
-                                phase_mem_bank_name_list.append(source_arg)
-            # create memory bank
-            if len(phase_mem_bank_name_list) != 0:
-                self.memory_bank[phase] = MetricMemoryBank(phase_mem_bank_name_list)
+            phase2metrics[phase] = self.__get_phase_metrics(params, phase)
 
-    def update(self, phase, *args, **kwargs):
-        """Update states of all metrics on training/validation loop"""
-        if phase not in self.phases:
-            raise ValueError(f'Incorrect epoch setting. '
-                             f'Please choose one of {self.phases}')
+        self.phase2metrics = phase2metrics
+
+    def __get_phase_metrics(self, params: List[MetricParams], phase: str) -> nn.ModuleList:
+        """
+        Generate metric list for current phase.
+
+        Args:
+            params: All metric params from config file.
+            phase: Current phase name.
+
+        Return:
+            Metric list as nn.ModuleList for current phase. 
+        """
+        # create added_metric_names set
+        added_metric_names = set()
+        metrics = []
+        for metric_params in params:
+            if phase not in metric_params.phases:
+                continue
+            metric = METRICS.get(metric_params.class_name)(**metric_params.metric_params)
+            target_fields = metric_params.target_fields
+            name = metric_params.name if metric_params.name is not None else metric_params.class_name
+            if name in added_metric_names:
+                target_fields_values = list(target_fields.values())
+                name += + '_' + target_fields_values[0] + '_' + target_fields_values[1]
+            else:
+                added_metric_names.add(name)
+
+            metrics.append(MetricWithUtils(metric=metric, target_fields=target_fields, name=name))
+
+        metrics = nn.ModuleList(metrics)
+        return metrics
+
+    def forward(self, phase: str, *args, **kwargs):
+        """Update states of all metrics on phase loop.
+
+        Args:
+            phase: Phase name.
+        """
         args = list(args)
-        for i, arg in enumerate(args):
-            if isinstance(arg, torch.Tensor):
-                args[i] = arg.detach()
-        for key, value in kwargs.items():
-            if isinstance(value, torch.Tensor):
-                kwargs[key] = value.detach()
-        
-        if self.memory_bank[phase] is not None:
-            self.memory_bank[phase].update(**kwargs)
-        
-        for name, metric in self.metrics[phase].items():
-            targeted_kwargs = self.map_arguments(metric, kwargs)
-            if targeted_kwargs: 
-                metric.update(*args, **targeted_kwargs)
-
-    def on_epoch_end(self, phase):
-        """Summarize epoch values and return log"""
         if phase not in self.phases:
             raise ValueError(f'Incorrect epoch setting. '
                              f'Please choose one of {self.phases}')
-        phase_memory_bank = None
-        if self.memory_bank[phase] is not None:
-            phase_memory_bank = self.memory_bank[phase].compute()
+
+        for metric_with_utils in self.phase2metrics[phase]:
+            targeted_kwargs = self.map_arguments(metric_with_utils.target_fields, kwargs)
+            if targeted_kwargs:
+                # may be we need only update because forward use compute and sync all the processses
+                metric_with_utils(*args, **targeted_kwargs)
+            
+
+    def on_epoch_end(self, phase: str) -> Dict[str, Tensor]:
+        """Summarize epoch values and return log.
+        
+        Args:
+            phase: Run metric phase.
+
+        Returns:
+            Return logging dictionary, there the key is phase/metric_name and value is metric value on phase.
+
+        Raises:
+            ValueError: An error occure, when phase not in self.phases.
+            ValueError: An error occure, when metric.compute() return tensor with non zero shape.
+        """
+        if phase not in self.phases:
+            raise ValueError(f'Incorrect epoch setting. '
+                             f'Please choose one of {self.phases}')
             
         log = {}
-        for name, metric in self.metrics[phase].items():
-            if hasattr(metric, 'require_memory_bank'):
-                extension_name, metric_value = metric.compute(phase_memory_bank)
-            else:
-                extension_name, metric_value = metric.compute()
+        for metric_with_utils in self.phase2metrics[phase]:
+            metric_value = metric_with_utils.compute()
+            if isinstance(metric_value, dict):
+                metric_value = list(metric_value.values())[0]
             
-            metric_value_shape = list(metric_value.shape)
+            if len(metric_value.shape) != 0:
+                raise ValueError(f'{metric_with_utils.name} must compute float value, '
+                                f'not torch tensor with shap {metric_value.shape}.')
             
-            if len(metric_value_shape) != 0:
-                raise Exception(
-                    f'{metric.name} must compute float value, not torch tensor with shap {metric_value_shape}'
-                    )
-            
-            log[f'{phase}/{name}{extension_name}'] = metric_value
+            log[f'{phase}/{metric_with_utils.name}'] = metric_value
 
         return log
 
     @staticmethod
-    def map_arguments(metric, kwargs):
-        targeted_kwargs = {}
-        for target_arg, source_arg in metric.target_fields.items():
-            if source_arg in kwargs:
-                arg = kwargs[source_arg]
-                targeted_kwargs[target_arg] = arg
-        return targeted_kwargs
+    def map_arguments(metric_target_fields: Dict[str, str], task_output: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Map arguments between metric target_fields and task output dictionary
+
+        Args:
+            metric_target_fields: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
+            task_output: Output after task forward pass.
+
+        Return:
+            Metric input dictionary like **kwargs for metric forward pass.
+        """
+        metric_input = {}
+        for metric_target, metric_source in metric_target_fields.items():
+            if metric_source in task_output:
+                arg = task_output[metric_source]
+                metric_input[metric_target] = arg
+        return metric_input
