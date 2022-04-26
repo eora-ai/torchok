@@ -1,6 +1,8 @@
 import unittest
 from pathlib import Path
 
+import torch
+
 from albumentations.pytorch import ToTensorV2
 from albumentations.core.composition import Compose
 from albumentations import Resize, HorizontalFlip, VerticalFlip
@@ -75,6 +77,60 @@ class TestRetrievalDataset(unittest.TestCase):
                                      self.__augment)
         self.assertListEqual([*self.__ds[0]], ['image', 'index', 'is_query', 'scores'])
 
+    def test_target_tensor_when_gallery_false(self):
+        self.__ds = RetrievalDataset(self.__data_folder,
+                                     self.__matches_csv_path,
+                                     self.__img_paths_csv_path,
+                                     self.__transform,
+                                     self.__augment)
+
+        true_target = torch.tensor([[0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [4., 0., 0.],
+                                    [3., 0., 0.],
+                                    [2., 0., 0.],
+                                    [0., 4., 0.],
+                                    [0., 3., 0.],
+                                    [0., 2., 0.],
+                                    [0., 0., 4.],
+                                    [0., 0., 3.],
+                                    [0., 0., 2.]])
+
+        self.assertTrue(torch.equal(self.__ds.scores, true_target))
+
+    def test_target_tensor_when_gallery_true(self):
+        self.__ds = RetrievalDataset(self.__data_folder,
+                                     self.__matches_csv_path,
+                                     self.__img_paths_csv_path,
+                                     self.__transform,
+                                     self.__augment,
+                                     use_gallery=True,
+                                     gallery_folder=self.__gallery_folder,
+                                     gallery_list_csv_path=self.__gallery_path)
+
+        true_target = torch.tensor([[0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [4., 0., 0.],
+                                    [3., 0., 0.],
+                                    [2., 0., 0.],
+                                    [0., 4., 0.],
+                                    [0., 3., 0.],
+                                    [0., 2., 0.],
+                                    [0., 0., 4.],
+                                    [0., 0., 3.],
+                                    [0., 0., 2.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.],
+                                    [0., 0., 0.]])
+
+        self.assertTrue(torch.equal(self.__ds.scores, true_target))
 
 if __name__ == "__main__":
     unittest.main()

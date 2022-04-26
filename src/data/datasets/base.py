@@ -16,8 +16,7 @@ class ImageDataset(Dataset, ABC):
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 input_dtype: str = 'float32',
-                 input_column: str = 'image_path',
+                 image_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """
@@ -27,16 +26,14 @@ class ImageDataset(Dataset, ABC):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            input_dtype: Data type of of the torch tensors related to the image.
-            input_column: Name of the column that contains paths to images.
+            image_dtype: Data type of of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
         self._test_mode = test_mode
         self.__transform = transform
         self.__augment = augment
-        self._input_dtype = input_dtype
-        self._input_column = input_column
+        self._image_dtype = image_dtype
         self.__grayscale = grayscale
         self._data_folder = Path(data_folder)
 
@@ -91,12 +88,8 @@ class ImageDataset(Dataset, ABC):
         return self.__augment
 
     @property
-    def input_dtype(self) -> str:
-        return self._input_dtype
-
-    @property
-    def input_column(self) -> str:
-        return self._input_column
+    def image_dtype(self) -> str:
+        return self._image_dtype
 
     @property
     def grayscale(self) -> bool:
