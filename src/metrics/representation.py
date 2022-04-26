@@ -37,7 +37,7 @@ class IndexBasedMeter(Metric, ABC):
     dataset = {'classification': 0, 'representation': 1}
     def __init__(self, exact_index: bool, dataset: Union[str, int], metric: Union[str, int], k: int = None, \
                  search_batch_size: int = None, normalize_input: bool = False, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(compute_on_step=False, **kwargs)
         self.exact_index = exact_index
         # raise if metric is incorrect
         if not (metric in self.metrics or metric in self.metrics.values()):
@@ -91,6 +91,8 @@ class IndexBasedMeter(Metric, ABC):
                 raise ValueError("In representation dataset scores must be a not None")
             
             is_queries = is_queries.detach().cpu()
+            # ddp strategy not support torch.bool, so convert to long that support gather method.
+            is_queries = is_queries.type(torch.long)
             self.is_queries.append(is_queries)
             
             scores = scores.detach().cpu()
@@ -108,17 +110,23 @@ class IndexBasedMeter(Metric, ABC):
             Generator wich return relevant and closest examples.
         """
         vectors = torch.cat(self.vectors).numpy()
+        # print(f'vectors shape = {vectors.shape}')
+        print(f'ALL vectors = {vectors}')
+        
         if self.normalize_input:
             vectors = normalize(vectors)
+
         if self.dataset == 0:
             # if classification dataset
             targets = torch.cat(self.targets).numpy()
+            print(targets)
             # prepare data
             q_vecs, db_vecs, relevants, scores, db_idxs = self.prepare_classification_data(vectors, targets)
         else:
             # if representation dataset
             scores = torch.cat(self.scores).numpy()
-            is_queries = torch.cat(self.is_queries).numpy()
+            # convert numpy array with type long to bool
+            is_queries = torch.cat(self.is_queries).numpy().astype(np.bool)
             # prepare data
             q_vecs, db_vecs, relevants, scores, db_idxs = self.prepare_representation_data(vectors, is_queries, scores)
 
@@ -157,10 +165,15 @@ class IndexBasedMeter(Metric, ABC):
             scores: Array of scores without queries empty scores.
             db_idxs: Array with all database indexes.
         """
+        print(f'is_queries = {is_queries}')
         q_vecs = vectors[is_queries]
+        print(f'q_vecs = {q_vecs}')
         db_vecs = vectors[~is_queries]
+        print(f'db_vecs = {db_vecs}')
         db_idxs = np.arange(len(db_vecs))
-        scores = scores[len(q_vecs):]
+        print(f'scores before = {scores}')
+        scores = scores[~is_queries]
+        print(f'scores = {scores}')
         relevant = []
         empty_relevant_idxs = []
         for idx in range(len(q_vecs)):
@@ -247,6 +260,33 @@ class IndexBasedMeter(Metric, ABC):
             Closest include searched indexes and distances, size (search_batch_size, , 2).
         """
         def generator():
+            """Generate relevant - y_true, and closest - y_pred for metric calculation with ranx library.
+
+            Returns:
+                relevant: List of relevant indexes with its scores per each queries. Length of list = search_batch_size.
+                    And size of one element of list = (relevant_indexes_size, 2), where last shape 2 for relevant index
+                    and it score. 
+                    Example for 3 search_batch_size, and relevant_sizes = [2, 2, 1] with score = 1 for every \
+                    relevant index:
+                    [
+                        np.array([[6, 1], [7, 1]]), 
+                        np.array([[2, 1], [5, 1]]), 
+                        np.array([[4, 1]])
+                    ].
+                closest: List of numpy arrays, with nearest searched indexes by top k, with its distances.
+                    Example for k = 3:
+                    [
+                        np.array([[4.        , 0.29289323],
+                               [2.        , 0.29289323],
+                               [6.        , 0.42264974]]), 
+                        np.array([[5.        , 0.29289323],
+                               [2.        , 0.29289323],
+                               [6.        , 0.42264974]]), 
+                        np.array([[4.        , 0.29289323],
+                               [5.        , 0.29289323],
+                               [6.        , 0.42264974]])
+                    ].
+            """
             for i in range(0, len(queries), search_batch_size):
                 if i + search_batch_size >= len(queries):
                     query_idxs = np.arange(i, len(queries))
@@ -270,7 +310,8 @@ class IndexBasedMeter(Metric, ABC):
                 
                 relevant = list(relevant)
                 closest = list(closest)
-
+                print(f'relevant = {relevant}')
+                print(f'closest = {closest}')
                 yield relevant, closest
 
         return generator()
