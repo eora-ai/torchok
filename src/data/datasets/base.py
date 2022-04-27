@@ -1,4 +1,3 @@
-from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 
@@ -13,7 +12,6 @@ class ImageDataset(Dataset, ABC):
     """ An abstract class for image dataset """
 
     def __init__(self,
-                 data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  image_dtype: str = 'float32',
@@ -21,7 +19,6 @@ class ImageDataset(Dataset, ABC):
                  test_mode: bool = False):
         """
         Args:
-            data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
@@ -35,7 +32,6 @@ class ImageDataset(Dataset, ABC):
         self.__augment = augment
         self._image_dtype = image_dtype
         self.__grayscale = grayscale
-        self._data_folder = Path(data_folder)
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Transformations based on API of albumentations library.
@@ -55,8 +51,7 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        full_image_path = self.data_folder / image_path
-        image = cv2.imread(str(full_image_path), int(not self.grayscale))
+        image = cv2.imread(str(image_path), int(not self.grayscale))
 
         if image is None:
             raise ValueError(f'{image_path} image does not exist')
@@ -94,7 +89,3 @@ class ImageDataset(Dataset, ABC):
     @property
     def grayscale(self) -> bool:
         return self.__grayscale
-
-    @property
-    def data_folder(self) -> Path:
-        return self._data_folder

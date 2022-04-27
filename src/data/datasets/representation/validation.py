@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
-from albumentations import BasicTransform
-from albumentations.core.composition import BaseCompose
-
 import torch
 import pandas as pd
+
+from albumentations import BasicTransform
+from albumentations.core.composition import BaseCompose
 
 from src.data.datasets.base import ImageDataset
 
@@ -92,12 +92,13 @@ class RetrievalDataset(ImageDataset):
         Raises:
             ValueError: if gallery_folder True, but gallery_list_csv_path is None
         """
-        super().__init__(data_folder, transform, augment, image_dtype, grayscale)
+        super().__init__(transform, augment, image_dtype, grayscale)
+        self.__data_folder = Path(data_folder)
         self.__matches_map_column = matches_map_column
         self.__img_list_map_column = img_list_map_column
         self.__gallery_map_column = gallery_map_column
 
-        self.__matches = pd.read_csv(self._data_folder / matches_csv_path,
+        self.__matches = pd.read_csv(self.__data_folder / matches_csv_path,
                                      usecols=[self.__matches_map_column['query'],
                                               self.__matches_map_column['relevant'],
                                               self.__matches_map_column['scores']],
@@ -105,7 +106,7 @@ class RetrievalDataset(ImageDataset):
                                             self.__matches_map_column['relevant']: str,
                                             self.__matches_map_column['scores']: str})
 
-        self.__img_paths = pd.read_csv(self._data_folder / img_list_csv_path,
+        self.__img_paths = pd.read_csv(self.__data_folder / img_list_csv_path,
                                        usecols=[self.__img_list_map_column['img_id'],
                                                 self.__img_list_map_column['image_path']],
                                        dtype={self.__img_list_map_column['img_id']: int,
@@ -168,7 +169,7 @@ class RetrievalDataset(ImageDataset):
         """
         if index < self.__n_queries + self.__n_relevant:
             img_id = self.__index2imgid[index]
-            image_path = self._data_folder / self._imgid2path[img_id]
+            image_path = self.__data_folder / self._imgid2path[img_id]
         else:
             img_id = self._gallery_index2imgid[index]
             image_path = self.__gallery_folder / self.__gallery_imgid2path[img_id]
@@ -184,7 +185,7 @@ class RetrievalDataset(ImageDataset):
 
         return sample
 
-    def __parse_match_csv(self):
+    def __parse_match_csv(self) -> Tuple[int, int, dict, list, list]:
         query_arr = self.__matches.loc[:, 'query'].tolist()
         index2imgid = dict(enumerate(query_arr))
         n_queries = len(index2imgid)
@@ -207,13 +208,13 @@ class RetrievalDataset(ImageDataset):
                 relevance_scores[-1].append(img_score)
         return n_relevant, n_queries, index2imgid, relevant_arr, relevance_scores
 
-    def __get_targets(self) -> Tuple[torch.FloatTensor, torch.BoolTensor]:
+    def __get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor]:
         """Maping item scores to queues.
 
         Returns:
             Two target tensor: scores and is_query.
-            Scores is tensor with shape(len(self), n_queries).
-            Is_query is tensor with shape (len(self)).
+            Scores is tensor with shape: (len(self), n_queries).
+            Is_query is tensor with shape: (len(self)).
 
         Raises:
             ValueError: If relevant objects list doesn't match with relevance scores list in size.
@@ -237,44 +238,40 @@ class RetrievalDataset(ImageDataset):
         return scores, is_query
 
     def __len__(self) -> int:
+        """Length of Retrieval dataset."""
         return self._data_len
 
     @property
-    def matches(self) -> pd.DataFrame:
-        return self.__matches
-
-    @property
-    def img_paths(self) -> pd.DataFrame:
-        return self.__img_paths
-
-    @property
-    def gallery_list_csv_path(self) -> Optional[str]:
-        return self.__gallery_list_csv_path
+    def data_folder(self) -> str:
+        """Directory with all the images."""
+        return self.__data_folder
 
     @property
     def gallery_folder(self) -> Optional[str]:
+        """Directory with all gallery images."""
         return self.__gallery_folder
 
     @property
-    def gallery_paths(self) -> Optional[pd.DataFrame]:
-        return self.__gallery_paths
-
-    @property
     def n_queries(self) -> int:
+        """Is number of queries."""
         return self.__n_queries
 
     @property
     def n_relevant(self) -> int:
+        """Is number of relevant items."""
         return self.__n_relevant
 
     @property
     def n_gallery(self) -> Optional[int]:
+        """Is number of gallery items."""
         return self.__n_gallery
 
     @property
-    def scores(self):
+    def scores(self) -> torch.FloatTensor:
+        """Tensor of all scores."""
         return self.__scores
 
     @property
-    def is_query(self):
+    def is_query(self) -> torch.IntTensor:
+        """Tensor of all types of items."""
         return self.__is_query
