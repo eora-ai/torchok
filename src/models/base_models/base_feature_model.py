@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 
-class BaseFeatureModel(nn.Module, ABC):
+class BaseChannelsModel(nn.Module, ABC):
     """Interface for using input and output channels.
 
     Args:
