@@ -111,11 +111,8 @@ class RetrievalDataset(ImageDataset):
                                        dtype={self.__img_list_map_column['img_id']: int,
                                               self.__img_list_map_column['image_path']: str})
 
-        (self.__n_relevant,
-         self.__n_queries,
-         self.__index2imgid,
-         self.__relevant_arr,
-         self.__relevance_scores) = self.__parse_match_csv()
+        self.__n_relevant, self.__n_queries, self.__index2imgid,\
+            self.__relevant_arr, self.__relevance_scores = self.__parse_match_csv()
 
         self._imgid2path = dict(zip(self.__img_paths[self.__img_list_map_column['img_id']],
                                     self.__img_paths[self.__img_list_map_column['image_path']]))
