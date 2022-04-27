@@ -53,7 +53,6 @@ class TestRetrievalDataset(unittest.TestCase):
                                      self.__img_paths_csv_path,
                                      self.__transform,
                                      self.__augment,
-                                     use_gallery=True,
                                      gallery_folder=self.__gallery_folder,
                                      gallery_list_csv_path=self.__gallery_path)
         self.assertEqual(self.__ds[18]['image'].shape, (3, 224, 224))
@@ -64,7 +63,6 @@ class TestRetrievalDataset(unittest.TestCase):
                                      self.__img_paths_csv_path,
                                      self.__transform,
                                      self.__augment,
-                                     use_gallery=True,
                                      gallery_folder=self.__gallery_folder,
                                      gallery_list_csv_path=self.__gallery_path)
         self.assertEqual(len(self.__ds), 20)
@@ -105,7 +103,6 @@ class TestRetrievalDataset(unittest.TestCase):
                                      self.__img_paths_csv_path,
                                      self.__transform,
                                      self.__augment,
-                                     use_gallery=True,
                                      gallery_folder=self.__gallery_folder,
                                      gallery_list_csv_path=self.__gallery_path)
 
@@ -132,5 +129,6 @@ class TestRetrievalDataset(unittest.TestCase):
 
         self.assertTrue(torch.equal(self.__ds.scores, true_target))
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     unittest.main()
