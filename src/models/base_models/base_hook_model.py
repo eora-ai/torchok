@@ -9,6 +9,7 @@ from copy import deepcopy
 from typing import Dict, List, Tuple, Union
 from enum import Enum
 
+from base_feature_model import BaseChannelsModel
 
 @dataclass
 class FeatureInfo:
@@ -168,3 +169,8 @@ class BaseHookModel(nn.Module):
     @property
     def feature_hooks(self):
         return self._feature_hooks
+
+
+# How to do class without methods =)
+class BaseChannelsHookModel(BaseHookModel, BaseChannelsModel):
+    pass
