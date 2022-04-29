@@ -1,4 +1,3 @@
-from email import generator
 import torch
 import torch.nn as nn
 
@@ -6,10 +5,9 @@ from dataclasses import dataclass
 from functools import partial
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Generator
 from enum import Enum
 
-from base_feature_model import BaseChannelsModel
 
 @dataclass
 class FeatureInfo:
@@ -54,7 +52,7 @@ class FeatureHooks:
         named_modules: nn.Model answer of self.named_modules() function call.
     """
 
-    def __init__(self, hooks: List[Hook], named_modules: generator):
+    def __init__(self, hooks: List[Hook], named_modules: Generator):
         # setup feature hooks
         modules = {k: v for k, v in named_modules}
         for i, hook in enumerate(hooks):
@@ -100,13 +98,41 @@ class FeatureHooks:
         return output
 
 
-class BaseHookModel(nn.Module):
+class BaseModel(nn.Module):
+    """Base model for all Torchok Models - Backbone, Neck, Pooling and Head.
+
+    This class support methods for add hooks.
+    Also it's have channels and reduction for input and output tensors, for each forward and hooks case. 
+    Channels - tensor channels.
+    Reduction -  downscale value for get tensor shape.
+
+    Args:
+        input_forward_channels: Input channels list for forward method.
+        input_forward_reductions: Optional value of input reduction list for forward. Need to reconstruct initial input
+            tensor shape.
+        input_hooks_channels: Optional value of input channels list for hooks.
+        input_hooks_reductions: Optional value of input hooks reduction list. Need to reconstruct initial input tensor 
+            shape.
+    """
+    def __init__(self, input_forward_channels: List[int], input_forward_reductions: List[int] = None, \
+                 input_hooks_channels: List[int] = None, input_hooks_reductions: List[int] = None):
+        super().__init__()
+        self._input_forward_channels = input_forward_channels
+        self._input_forward_reductions = input_forward_reductions
+        self._input_hooks_channels = input_hooks_channels
+        self._input_hooks_reductions = input_hooks_reductions
+
+        self._output_forward_channels = None
+        self._output_forward_reductions = None
+        self._output_hooks_channels = None
+        self._output_hooks_reductions = None
 
     def create_hooks(self):
         """Generate feature hooks."""
         self._stage_names = [feature.module_name for feature in self.feature_info]
-        self._encoder_channels = [feature.channel_number for feature in self.feature_info]
-        hooks = [Hook(module_name=name, hook_type=HookType.FORWARD) for name in self.stage_names]
+        self._output_hooks_channels = [feature.channel_number for feature in self.feature_info]
+        self._output_hooks_reductions = [feature.reduction for feature in self.feature_info]
+        hooks = [Hook(module_name=name, hook_type=HookType.FORWARD) for name in self._stage_names]
         self._feature_hooks = FeatureHooks(hooks, self.named_modules())
 
     def forward(self, x: torch.Tensor):
@@ -159,8 +185,36 @@ class BaseHookModel(nn.Module):
         self.feature_info = checked_feature_info
 
     @property
-    def encoder_channels(self):
-        return self._encoder_channels
+    def input_forward_features(self):
+        return self._input_forward_channels
+
+    @property
+    def input_forward_reductions(self):
+        return self._input_forward_reductions
+
+    @property
+    def input_hooks_channels(self):
+        return self._input_hooks_channels
+
+    @property
+    def input_hooks_reductions(self):
+        return self._input_hooks_reductions
+
+    @property
+    def output_forward_features(self):
+        return self._output_forward_channels
+
+    @property
+    def output_forward_reductions(self):
+        return self._output_forward_reductions
+
+    @property
+    def output_hooks_channels(self):
+        return self._output_hooks_channels
+
+    @property
+    def output_hooks_reductions(self):
+        return self._output_hooks_reductions
 
     @property
     def stage_names(self):
@@ -169,8 +223,4 @@ class BaseHookModel(nn.Module):
     @property
     def feature_hooks(self):
         return self._feature_hooks
-
-
-# How to do class without methods =)
-class BaseChannelsHookModel(BaseHookModel, BaseChannelsModel):
-    pass
+    
