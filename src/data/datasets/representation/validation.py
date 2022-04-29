@@ -59,14 +59,9 @@ class RetrievalDataset(ImageDataset):
                  gallery_folder: Optional[str] = None,
                  gallery_list_csv_path: Optional[str] = None,
                  image_dtype: str = 'float32',
-                 img_list_map_column: dict = {'image_path': 'image_path',
-                                              'img_id': 'id'},
-                 matches_map_column: dict = {'query': 'query',
-                                             'relevant': 'relevant',
-                                             'scores': 'scores'},
-
-                 gallery_map_column: dict = {'gallery_path': 'image_path',
-                                             'gallery_id': 'id'},
+                 img_list_map_column: dict = None,
+                 matches_map_column: dict = None,
+                 gallery_map_column: dict = None,
                  grayscale: bool = False):
         """Init RetrievalDataset class.
 
@@ -85,8 +80,15 @@ class RetrievalDataset(ImageDataset):
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
             image_dtype: Data type of of the torch tensors related to the image.
             img_list_map_column: Image maping column names. Key - TorchOK column name, Value - csv column name.
+                default value: {'image_path': 'image_path',
+                                'img_id': 'id'}
             matches_map_column: Matches maping column names. Key - TorchOK column name, Value - csv column name.
+                default value: {'query': 'query',
+                                'relevant': 'relevant',
+                                'scores': 'scores'}
             gallery_map_column: Gallery maping column names. Key - TorchOK column name, Value - csv column name.
+                default value: {'gallery_path': 'image_path',
+                                'gallery_id': 'id'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
 
         Raises:
@@ -94,9 +96,18 @@ class RetrievalDataset(ImageDataset):
         """
         super().__init__(transform, augment, image_dtype, grayscale)
         self.__data_folder = Path(data_folder)
-        self.__matches_map_column = matches_map_column
-        self.__img_list_map_column = img_list_map_column
-        self.__gallery_map_column = gallery_map_column
+        self.__matches_map_column = matches_map_column if matches_map_column is not None\
+            else {'query': 'query',
+                  'relevant': 'relevant',
+                  'scores': 'scores'}
+
+        self.__img_list_map_column = img_list_map_column if img_list_map_column is not None\
+            else {'image_path': 'image_path',
+                  'img_id': 'id'}
+
+        self.__gallery_map_column = gallery_map_column if gallery_map_column is not None\
+            else {'gallery_path': 'image_path',
+                  'gallery_id': 'id'}
 
         self.__matches = pd.read_csv(self.__data_folder / matches_csv_path,
                                      usecols=[self.__matches_map_column['query'],
@@ -195,17 +206,24 @@ class RetrievalDataset(ImageDataset):
 
         for index in range(len(self.__matches)):
             row_relevants, row_scores = [], []
-            relevant_arr.append(row_relevants)
-            relevance_scores.append(row_scores)
-            rel_img_idxs = map(int, self.__matches.iloc[index]['relevant'].split())
-            rel_img_scores = map(float, self.__matches.iloc[index]['scores'].split())
+            rel_img_idxs = list(map(int, self.__matches.iloc[index]['relevant'].split()))
+            rel_img_scores = list(map(float, self.__matches.iloc[index]['scores'].split()))
+
+            if len(rel_img_idxs) != len(rel_img_scores):
+                raise ValueError(f'Relevant objects list must match relevance scores list in size.'
+                                 f'Got number of relevant object indices: {len(rel_img_idxs)}, '
+                                 f'number of relevance scores: {len(rel_img_scores)}')
+
             for img_id, img_score in zip(rel_img_idxs, rel_img_scores):
                 # save unique image_id
                 if img_id not in index2imgid.values():
                     index2imgid[n_queries + n_relevant] = img_id
                     n_relevant += 1
-                relevant_arr[-1].append(img_id)
-                relevance_scores[-1].append(img_score)
+                row_relevants.append(img_id)
+                row_scores.append(img_score)
+
+            relevant_arr.append(row_relevants)
+            relevance_scores.append(row_scores)
         return n_relevant, n_queries, index2imgid, relevant_arr, relevance_scores
 
     def __get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor]:
@@ -225,11 +243,6 @@ class RetrievalDataset(ImageDataset):
         for index in range(self.__n_queries):
             relevant_img_idxs = self.__relevant_arr[index]
             relevance_scores = self.__relevance_scores[index]
-            if len(relevant_img_idxs) != len(relevance_scores):
-                raise ValueError(f'Relevant objects list must match relevance scores list in size.'
-                                 f'Got number of relevant object indices: {len(relevant_img_idxs)}, '
-                                 f'number of relevance scores: {len(relevance_scores)}')
-
             relevant_indices = [self.__imgid2index[img_id] for img_id in relevant_img_idxs]
             for rel_index, score in zip(relevant_indices, relevance_scores):
                 scores[rel_index][index] = score
