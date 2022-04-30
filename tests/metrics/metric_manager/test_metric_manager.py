@@ -1,7 +1,7 @@
 import unittest
 
 # from src.registry import METRICS
-from src.metrics.metric_manager import MetricParams, MetricManager, METRICS
+from src.metrics.metric_manager import MetricParams, MetricManager, METRICS, Phase
 
 import torch
 from torchmetrics import Metric
@@ -74,9 +74,9 @@ def run_metric_manager(class_names: List[str], names: List[str], \
     metric_manager = MetricManager(metric_params)
     print(f'type = {type(metric_manager)}')
     for i in range(len(data_generator)):
-        metric_manager('train', **data_generator[i])
+        metric_manager(Phase.TRAIN, **data_generator[i])
 
-    return metric_manager.on_epoch_end('train')
+    return metric_manager.on_epoch_end(Phase.TRAIN)
 
 class TestCase:
     def __init__(self, test_name: str, class_names: List[str], names: List[str], \

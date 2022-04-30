@@ -1,6 +1,6 @@
 import unittest
 import os
-from src.metrics.metric_manager import MetricParams, MetricManager, METRICS
+from src.metrics.metric_manager import MetricParams, MetricManager, METRICS, Phase
 
 from pytorch_lightning import LightningModule, Trainer
 import torch
@@ -70,7 +70,7 @@ class Model(LightningModule):
         loss = F.cross_entropy(predict, fake_target)
         # set fake data to output, to check metrics
         output = dict(predict=fake_predict, target=fake_target)
-        self.metric_manager('train', **output)
+        self.metric_manager(Phase.TRAIN, **output)
         return loss
 
     def configure_optimizers(self):
@@ -94,7 +94,7 @@ def run_model(metric_params: List[MetricParams]):
     # Train the model ⚡
     trainer.fit(mnist_model, train_loader)
 
-    metric_manager_answer = mnist_model.metric_manager.on_epoch_end('train')
+    metric_manager_answer = mnist_model.metric_manager.on_epoch_end(Phase.TRAIN)
     return metric_manager_answer
     
 
