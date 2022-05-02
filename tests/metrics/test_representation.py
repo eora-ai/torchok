@@ -13,29 +13,28 @@ vectors = {
         [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 
     'representation': torch.tensor([
-        [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], # queries
-        [0, 0, 1, 1], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], # database
-    ])
+        [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], \
+        [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 }
 
 targets = {
     'classification': torch.tensor([0, 1, 1, 2, 2, 1, 0, 0, 3]),
-    'representation': torch.tensor([0, 1, 2, 3, 1, 2, 1, 0, 0])
+    'representation': torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3])
 }
 
-is_queries = torch.tensor([True, True, True, True, False, False, False, False, False])
+is_queries = torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3], dtype=torch.int32)
 
 scores = torch.tensor(
     [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
         [0, 2.5, 0, 0],
+        [0, 0, 0, 0],
         [0, 0, 3, 0],
         [0, 1, 0, 0],
         [2, 0, 0, 0],
-        [3, 0, 0, 0]
+        [3, 0, 0, 0],
+        [0, 0, 0, 0],
     ]
 )
 
@@ -133,7 +132,7 @@ def compute_metric_dict(test_case: TestCase):
                 score = scores[3*i : 3*(i + 1)]
                 is_query = is_queries[3*i : 3*(i + 1)]
 
-            metric.update(vectors=vec, targets=target, scores=score, is_queries=is_query)
+            metric.update(vectors=vec, targets=target, scores=score, queries_idxs=is_query)
         value = metric.compute()
         answer_dict[k] = float(value)
     # print(f'ANSWER DICT = {answer_dict}')

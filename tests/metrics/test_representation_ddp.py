@@ -25,29 +25,28 @@ vectors = {
         [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 
     'representation': torch.tensor([
-        [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], # queries
-        [0, 0, 1, 1], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], # database
-    ])
+        [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], \
+        [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 }
 
 targets = {
     'classification': torch.tensor([0, 1, 1, 2, 2, 1, 0, 0, 3]),
-    'representation': torch.tensor([0, 1, 2, 3, 1, 2, 1, 0, 0])
+    'representation': torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3])
 }
 
-is_queries = torch.tensor([True, True, True, True, False, False, False, False, False])
+is_queries = torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3], dtype=torch.int32)
 
 scores = torch.tensor(
     [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
         [0, 2.5, 0, 0],
+        [0, 0, 0, 0],
         [0, 0, 3, 0],
         [0, 1, 0, 0],
         [2, 0, 0, 0],
-        [3, 0, 0, 0]
+        [3, 0, 0, 0],
+        [0, 0, 0, 0],
     ]
 )
 
@@ -94,14 +93,14 @@ representation_dataset_answers = {
     'average_precision': {
         1: 0.5,
         2: 0.5,
-        3: 0.7222222222222223,
-        4: 0.8055555555555555
+        3: 0.5555555555555555,
+        4: 0.6388888888888888
     },
     'ndcg': {
         1: 0.6666666666666666,
-        2: 0.4847038505208375,
-        3: 0.6933556704671239,
-        4: 0.8099261657231794
+        2: 0.6152427457535189,
+        3: 0.7325624272592081,
+        4: 0.7229100454445524
     }
 }
 
@@ -165,14 +164,13 @@ class Model(LightningModule):
         vectors = batch['vectors']
         targets = batch['targets']
         predict = self(vectors.float())
-        loss = F.cross_entropy(predict, targets)
-        print(batch)
+        loss = F.cross_entropy(predict, torch.zeros(predict.shape[0], dtype=torch.long))
         # set fake data to output, to check metrics
         for metric in self.metrics:
             if self.dataset == 'classification':
                 metric(vectors=batch['vectors'], targets=batch['targets'])
             else:
-                metric(vectors=batch['vectors'], scores=batch['scores'], is_queries=batch['is_queries'])
+                metric(vectors=batch['vectors'], scores=batch['scores'], queries_idxs=batch['is_queries'])
         return loss
 
     def configure_optimizers(self):
@@ -208,15 +206,13 @@ class DDPTestRepresentationMetrics(unittest.TestCase):
     def test_classification_dataset(self):
         test_cases = [
             TestCase(test_name='recall', dataset='representation'),
-            # TestCase(test_name='precision'),
-            # TestCase(test_name='average_precision'),
-            # TestCase(test_name='ndcg'),
+            TestCase(test_name='precision', dataset='representation'),
+            TestCase(test_name='average_precision', dataset='representation'),
+            TestCase(test_name='ndcg', dataset='representation'),
         ]
 
         for case in test_cases:
             actual = run_model(case)
-            print(actual)
-            print(case.expected)
             name = case.class_name
             for k in range(1, 5):
                 assert math.isclose(case.expected[k], actual[k])
