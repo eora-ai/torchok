@@ -1,5 +1,15 @@
 [flake8]
-exclude = .git
+exclude =
+    .git
+    __pycache__
+
 max-line-length = 120
 import-order-style = google 
 convention = google
+avoid-escape = False
+
+# H306: imports not in alphabetical order (prefer flake8 style)
+# H101: Use TODO(NAME)
+# H301: one import per line
+# H405: multi line docstring summary not separated with an empty line (same as D205)
+ignore = H306, H101, H301, H405
