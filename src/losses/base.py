@@ -1,17 +1,20 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from torch import Tensor
-from torch.nn.modules.loss import _Loss
 from torch.nn import Module, ModuleList
+from torch.nn.modules.loss import _Loss
 
 
 class JointLoss(Module):
+    """Represents wrapper for loss modules that can be forwarded as a weighted sum of losses and
+    can provide direct access to each loss.
+    """
     def __init__(self, losses: List[_Loss], mappings: List[Dict[str, str]],
                  tags: List[Optional[str]], weights: List[Optional[float]],
                  normalize_weights: bool = True):
-        """Represents wrapper for loss modules that can be forwarded as a weighted sum of losses and
-        can provide direct access to each loss. Reduction isn't applied, so the included loss modules
-        are responsible for reduction
+        """Init JointLoss.
+
+        Reduction isn't applied, so the included loss modules are responsible for reduction
 
         Args:
             losses: List of loss modules with their `forward` methods implemented
@@ -38,8 +41,8 @@ class JointLoss(Module):
 
         num_specified_weights = sum(filter(lambda w: w is not None, weights))
         if num_specified_weights > 0 and num_specified_weights != len(losses):
-            raise ValueError(f'Loss weights must be either specified for each loss function or '
-                             f'not specified for any loss function')
+            raise ValueError('Loss weights must be either specified for each loss function or '
+                             'not specified for any loss function')
 
         if num_specified_weights == 0:
             self.__weights = [1.] * len(self.__losses)
@@ -50,8 +53,8 @@ class JointLoss(Module):
             self.__weights = [w / sum(self.__weights) for w in self.__weights]
 
     def forward(self, **kwargs) -> Tuple[Tensor, Dict[str, Tensor]]:
-        """Forwards individual loss modules and sums the values up in a weighted average manner
-        to form the total loss value
+        """Forward individual loss modules and sums the values up in a weighted average manner
+        to form the total loss value.
 
         Args:
             **kwargs: Any tensors which are supported by the corresponding loss modules.
@@ -78,7 +81,7 @@ class JointLoss(Module):
         return total_loss, tagged_loss_values
 
     def __getitem__(self, tag: str) -> _Loss:
-        """Provides direct access to loss module by its tag
+        """Provide direct access to loss module by its tag.
 
         Args:
             tag: Tag of the desired loss module

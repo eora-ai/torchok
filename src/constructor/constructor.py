@@ -1,22 +1,24 @@
 from collections.abc import Iterable
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union     # noqa: H301
 
+import albumentations as A
 from omegaconf import DictConfig, ListConfig
-
-from albumentations import BaseCompose, BasicTransform, Compose
-from torch.nn import Module
 from torch import Tensor
+from torch.nn import Module
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from . import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
-from ..data.datasets.base import ImageDataset
-from ..losses.base import JointLoss
+from src.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from src.data.datasets.base import ImageDataset
+from src.losses.base import JointLoss
 
 
 class Constructor:
+    """Provides factory features for optimizers, schedulers, loss functions, data loaders and metrics."""
+
     def __init__(self, hparams: DictConfig):
-        """Provides factory features for optimizers, schedulers, loss functions, data loaders and metrics
+        """Init Constructor with hparams.
+
         Args:
             hparams: Configuration dictionary for all the mentioned components.
             The dictionary should contain at least the following parameter groups (see configuration for details):
@@ -29,11 +31,13 @@ class Constructor:
 
     def configure_optimizers(self, parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]],
                              optim_idx: int = -1) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
-        """Creates optimizers and learning rate schedulers from a pre-defined configuration.
+        """Create optimizers and learning rate schedulers from a pre-defined configuration.
+
         Note: optimization parameters are split into two groups: decay and no-decay specifying which parameters can be
         weight decayed and which not. Each module is checked on having an attribute `no_weight_decay`,
         specifying a list of submodules which must be not weight decayed (useful in transformer models such as Swin).
         All *.bias parameters, 1D tensors and scalars are put into no-decay group according to the best practice.
+
         Args:
             parameters: Parameters for optimization
             optim_idx: Optimizer and scheduler index if specific optimizer/scheduler group is needed to be created.
@@ -94,10 +98,10 @@ class Constructor:
         }
 
     @staticmethod
-    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]]) -> \
-        List[Dict[str, Any]]:
-        if not isinstance(parameters, Iterable) and not isinstance(parameters, Module) \
-            and not isinstance(parameters, Tensor):
+    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]]
+                                          ) -> List[Dict[str, Any]]:
+        if not isinstance(parameters, Iterable) and not isinstance(parameters, Module) and \
+                not isinstance(parameters, Tensor):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):
             parameters = [parameters]
@@ -126,7 +130,7 @@ class Constructor:
             if not param.requires_grad:
                 continue
 
-            if param.ndim <= 1 or name.endswith(".bias") or name in no_weight_decay_list:
+            if param.ndim <= 1 or name.endswith('.bias') or name in no_weight_decay_list:
                 no_decay.append(param)
             else:
                 decay.append(param)
@@ -135,8 +139,10 @@ class Constructor:
             {'params': no_decay, 'weight_decay': 0.},
             {'params': decay}]
 
-    def prepare_dataloaders(self, phase: str) -> List[DataLoader]:
-        """Creates data loaders. Each data loader is based on a dataset while dataset consists
+    def create_dataloaders(self, phase: str) -> List[DataLoader]:
+        """Create data loaders.
+
+        Each data loader is based on a dataset while dataset consists
         augmentations and transformations in the `albumentations`_ format.
 
         Args:
@@ -183,7 +189,7 @@ class Constructor:
         return dataset_class(transform=transform, augment=augment, **dataset_params.params)
 
     @staticmethod
-    def __prepare_transforms_recursively(transforms: ListConfig[DictConfig]) -> List[BasicTransform, BaseCompose]:
+    def __prepare_transforms_recursively(transforms: ListConfig[DictConfig]) -> List[A.Compose, A.BaseCompose]:
         transforms_list = []
 
         for transform_info in transforms:
@@ -203,7 +209,7 @@ class Constructor:
         return transforms_list
 
     @staticmethod
-    def __prepare_base_compose(compose_name: str, **kwargs) -> Compose:
+    def __prepare_base_compose(compose_name: str, **kwargs) -> A.Compose:
         transforms = kwargs.pop('transforms', None)
         if transforms is None:
             raise ValueError(f'There are transforms must be specified for {compose_name} composition')
@@ -214,18 +220,18 @@ class Constructor:
         return transform
 
     @staticmethod
-    def __create_transforms(transforms_params: ListConfig[DictConfig]) -> Optional[Compose]:
+    def __create_transforms(transforms_params: ListConfig[DictConfig]) -> Optional[A.Compose]:
         if transforms_params is None:
             return None
 
         return Constructor.__prepare_base_compose('Compose', transforms=transforms_params)
 
     def configure_metrics_manager(self):
-        # TODO
+        # TODO (vladvin)
         pass
 
     def configure_losses(self) -> JointLoss:
-        """Creates list of loss modules wrapping them into a JointLoss module
+        """Create list of loss modules wrapping them into a JointLoss module.
 
         Returns: JointLoss module
         """
@@ -241,10 +247,13 @@ class Constructor:
 
     @property
     def hparams(self) -> DictConfig:
-        """Configuration dictionary containing at least the following parameter groups (see configuration for details):
-        - optimization
-        - data
-        - losses
-        - metrics
+        """Return configuration dictionary.
+
+        Returns:
+            Dict, containing at least the following parameter groups (see configuration for details):
+                - optimization
+                - data
+                - losses
+                - metrics
         """
         return self.__hparams
