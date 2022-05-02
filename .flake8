@@ -3,7 +3,3 @@ exclude = .git
 max-line-length = 120
 import-order-style = google 
 convention = google
-# need run command 
-# pip install flake8_docstrings 
-# pip install flake8-import-order
-# pip install flake8-quotes
