@@ -16,19 +16,17 @@ class Phase(Enum):
 
 @dataclass
 class MetricParams:
-    """
-    Class for contain metric parameters.
+    """Class for contain metric parameters.
+
+    Args
+        class_name: Metric class name with would be created.
+        target_fields: Dictionary for mapping Task output with Metric forward keys.
+        phases: Metric run phases.
+        name: Metric name in logging output.
+        metric_params: Metric class initialize parameters.
     """
     def __init__(self, class_name: str, target_fields: dict, phases: List[Phase] = None, \
                  name: str = None, metric_params: dict = {}):
-        """
-        Args
-            class_name: Metric class name with would be created.
-            target_fields: Dictionary for mapping Task output with Metric forward keys.
-            phases: Metric run phases.
-            name: Metric name in logging output.
-            metric_params: Metric class initialize parameters.
-        """
         self.class_name = class_name
         self.target_fields = target_fields
         self.phases = set([Phase.TRAIN, Phase.VALID, Phase.TEST]) if phases is None else set(phases) 
@@ -68,16 +66,15 @@ class MetricWithUtils(nn.Module):
 
 
 class MetricManager(nn.Module):
-    """Manages all metrics for the model."""
-
+    """Manages all metrics for the model.
+    
+    Args:
+        params: Metric parameters.
+    """
     # model use phases
     phases = [Phase.TRAIN, Phase.VALID, Phase.TEST]
 
     def __init__(self, params: List[MetricParams]):
-        """
-        Args:
-            params: Metric parameters.
-        """
         super().__init__()
         phase2metrics = {phase: {} for phase in self.phases}
         for phase in self.phases:
@@ -144,8 +141,8 @@ class MetricManager(nn.Module):
             log: Logging dictionary, there the key is phase/metric_name and value is metric value on phase.
 
         Raises:
-            ValueError: An error occure, when phase not in self.phases.
-            ValueError: An error occure, when metric.compute() return tensor with non zero shape.
+            ValueError: If phase not in self.phases.
+            ValueError: If metric.compute() return tensor with non zero shape.
         """
         if phase not in self.phases:
             raise ValueError(f'Incorrect epoch setting. '
@@ -175,7 +172,7 @@ class MetricManager(nn.Module):
             metric_target_fields: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
             task_output: Output after task forward pass.
 
-        Return:
+        Returns:
             metric_input: Metric input dictionary like **kwargs for metric forward pass.
         """
         metric_input = {}
