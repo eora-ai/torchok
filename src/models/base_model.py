@@ -117,6 +117,8 @@ class BaseModel(nn.Module):
     def __init__(self, input_forward_channels: List[int], input_forward_reductions: List[int] = None, \
                  input_hooks_channels: List[int] = None, input_hooks_reductions: List[int] = None):
         super().__init__()
+        self._feature_info = None
+
         self._input_forward_channels = input_forward_channels
         self._input_forward_reductions = input_forward_reductions
         self._input_hooks_channels = input_hooks_channels
@@ -129,11 +131,23 @@ class BaseModel(nn.Module):
 
     def create_hooks(self):
         """Generate feature hooks."""
-        self._stage_names = [feature.module_name for feature in self.feature_info]
-        self._output_hooks_channels = [feature.channel_number for feature in self.feature_info]
-        self._output_hooks_reductions = [feature.reduction for feature in self.feature_info]
+        # Check if all self._feature_info is FeatureInfo types.
+        self.check_feature_info_type(self)
+        self._stage_names = [feature.module_name for feature in self._feature_info]
+        self._output_hooks_channels = [feature.channel_number for feature in self._feature_info]
+        self._output_hooks_reductions = [feature.reduction for feature in self._feature_info]
         hooks = [Hook(module_name=name, hook_type=HookType.FORWARD) for name in self._stage_names]
         self._feature_hooks = FeatureHooks(hooks, self.named_modules())
+
+    def check_feature_info_type(self):
+        """Check if all self._feature_info is FeatureInfo class.
+            
+        Raises:
+            ValueError: If any value in feature_info is not FeatureInfo class.
+        """
+        for feature in self._feature_info:
+            if type(feature) != FeatureInfo:
+                raise ValueError('All feature_info must be FeatureInfo class.')
 
     def forward(self, x: torch.Tensor):
         # Return features for classification.
@@ -166,23 +180,9 @@ class BaseModel(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
-    @feature_info.setter
-    def feature_info(self, feature_info: List[FeatureInfo]):
-        """Check if all feature_info is FeatureInfo class.
-        
-        Args:
-            feature_info: Value to be feature_info class parameter.
-            
-        Raises:
-            ValueError: If any value in feature_info is not FeatureInfo class.
-        """
-        checked_feature_info = []
-        for feature in feature_info:
-            if type(feature) == FeatureInfo:
-                checked_feature_info.append(feature)
-            else:
-                raise ValueError('All feature_info must be FeatureInfo class.')
-        self.feature_info = checked_feature_info
+    @property
+    def feature_info(self):
+        return self._feature_info
 
     @property
     def input_forward_features(self):
