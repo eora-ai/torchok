@@ -18,7 +18,7 @@ class Phase(Enum):
 class MetricParams:
     """Class for contain metric parameters.
 
-    Args
+    Args:
         class_name: Metric class name with would be created.
         target_fields: Dictionary for mapping Task output with Metric forward keys.
         phases: Metric run phases.
