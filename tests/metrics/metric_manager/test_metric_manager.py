@@ -68,7 +68,7 @@ def run_metric_manager(class_names: List[str], names: List[str], \
 
     metric_params = []
     for i in range(len(class_names)):
-        params = MetricParams(class_name=class_names[i], target_fields=target_fields[i], name=names[i])
+        params = MetricParams(name=class_names[i], mapping=target_fields[i], log_name=names[i])
         metric_params.append(params)
 
     metric_manager = MetricManager(metric_params)

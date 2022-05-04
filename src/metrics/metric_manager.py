@@ -1,37 +1,57 @@
 from torch import Tensor, tensor, nn
 from torchmetrics import Metric
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Any, Optional
 
 from src.registry import METRICS
 
 
+# Metric parameters
 class Phase(Enum):
     TRAIN = 'train'
     VALID = 'valid'
     TEST = 'test'
+    PREDICT = 'predict'
 
+phase_mapping = {
+    'train': Phase.TRAIN,
+    'valid': Phase.VALID,
+    'test': Phase.TEST,
+    'predict': Phase.PREDICT,
+    'Phase.TRAIN': Phase.TRAIN,
+    'Phase.VALID': Phase.VALID,
+    'Phase.TEST': Phase.TEST,
+    'Phase.PREDICT': Phase.PREDICT,
+}
 
 @dataclass
 class MetricParams:
-    """Class for contain metric parameters.
+    name: str
+    mapping: Dict[str, str]
+    log_name: str = None
+    params: Dict = field(default_factory=dict)
+    phases: List[Phase] = None
 
-    Args:
-        class_name: Metric class name with would be created.
-        target_fields: Dictionary for mapping Task output with Metric forward keys.
-        phases: Metric run phases.
-        name: Metric name in logging output.
-        metric_params: Metric class initialize parameters.
-    """
-    def __init__(self, class_name: str, target_fields: dict, phases: List[Phase] = None, \
-                 name: str = None, metric_params: dict = {}):
-        self.class_name = class_name
-        self.target_fields = target_fields
-        self.phases = set([Phase.TRAIN, Phase.VALID, Phase.TEST]) if phases is None else set(phases) 
-        self.name = name
-        self.metric_params = metric_params
+    def __post_init__(self):
+        """Post process for phases. 
+        
+        Hydra can't handle list of Enums. It's force to converts values to Enums.
+
+        Raises:
+            KeyError: If phase in config not in mapping dict.
+        """
+        if self.phases is None:
+            self.phases = [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT]
+        else:
+            phases = []
+            for phase in self.phases:
+                if phase not in phase_mapping:
+                    raise KeyError(f'Phase has no key = {phase}, it must be one of {list(phase_mapping.keys())}')
+                else:
+                    phases.append(phase_mapping[phase])
+            self.phases = phases
 
 
 class MetricWithUtils(nn.Module):
@@ -39,24 +59,24 @@ class MetricWithUtils(nn.Module):
     
     Args:
         metric: Metric written with TorchMetrics.
-        target_fields: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
-        name: The metric name.
+        mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
+        log_name: The metric name used in logs.
     """
-    def __init__(self, metric: Metric, target_fields: Dict[str, str], name: str = None):
+    def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
         super().__init__()
         self.__metric = metric
-        self.__target_fields = target_fields
-        self.__name = name
+        self.__mapping = mapping
+        self.__log_name = log_name
 
     @property
-    def name(self) -> str:
-        """The metric name in loggin."""
-        return self.__name
+    def log_name(self) -> str:
+        """The metric name used in loggs."""
+        return self.__log_name
 
     @property
-    def target_fields(self) -> Dict[str, str]:
+    def mapping(self) -> Dict[str, str]:
         """Dictionary for mapping Metric forward input keys with Task output dictionary keys."""
-        return self.__target_fields
+        return self.__mapping
 
     def forward(self, *args, **kwargs):
         return self.__metric(*args, **kwargs)
@@ -72,43 +92,47 @@ class MetricManager(nn.Module):
         params: Metric parameters.
     """
     # model use phases
-    phases = [Phase.TRAIN, Phase.VALID, Phase.TEST]
+    phases = [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT]
 
     def __init__(self, params: List[MetricParams]):
         super().__init__()
+        # Change list to set in phases
+        for param in params:
+            param.phases = set(param.phases)
+
         phase2metrics = {phase: {} for phase in self.phases}
         for phase in self.phases:
             phase2metrics[phase] = self.__get_phase_metrics(params, phase)
 
         self.__phase2metrics = phase2metrics
 
-    def __get_phase_metrics(self, params: List[MetricParams], phase: str) -> nn.ModuleList:
+    def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """
         Generate metric list for current phase.
 
         Args:
             params: All metric params from config file.
-            phase: Current phase name.
+            phase: Current phase Enum.
 
-        Return:
+        Returns:
             metrics: Metric list as nn.ModuleList for current phase. 
         """
         # create added_metric_names set
-        added_metric_names = set()
+        added_log_names = set()
         metrics = []
         for metric_params in params:
             if phase not in metric_params.phases:
                 continue
-            metric = METRICS.get(metric_params.class_name)(**metric_params.metric_params)
-            target_fields = metric_params.target_fields
-            name = metric_params.name if metric_params.name is not None else metric_params.class_name
-            if name in added_metric_names:
-                target_fields_values = list(target_fields.values())
-                name += + '_' + target_fields_values[0] + '_' + target_fields_values[1]
+            metric = METRICS.get(metric_params.name)(**metric_params.params)
+            mapping = metric_params.mapping
+            log_name = metric_params.log_name if metric_params.log_name is not None else metric_params.name
+            if log_name in added_log_names:
+                mapping_values = list(mapping.values())
+                log_name += + '_' + mapping_values[0] + '_' + mapping_values[1]
             else:
-                added_metric_names.add(name)
+                added_log_names.add(log_name)
 
-            metrics.append(MetricWithUtils(metric=metric, target_fields=target_fields, name=name))
+            metrics.append(MetricWithUtils(metric=metric, mapping=mapping, log_name=log_name))
 
         metrics = nn.ModuleList(metrics)
         return metrics
@@ -117,7 +141,7 @@ class MetricManager(nn.Module):
         """Update states of all metrics on phase loop.
 
         Args:
-            phase: Phase enum.
+            phase: Phase Enum.
         """
         args = list(args)
         if phase not in self.phases:
@@ -125,7 +149,7 @@ class MetricManager(nn.Module):
                              f'Please choose one of enum value {self.phases}')
 
         for metric_with_utils in self.__phase2metrics[phase]:
-            targeted_kwargs = self.map_arguments(metric_with_utils.target_fields, kwargs)
+            targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             if targeted_kwargs:
                 # may be we need only update because forward use compute and sync all the processses
                 metric_with_utils(*args, **targeted_kwargs)
@@ -155,28 +179,28 @@ class MetricManager(nn.Module):
                 metric_value = list(metric_value.values())[0]
             
             if len(metric_value.shape) != 0:
-                raise ValueError(f'{metric_with_utils.name} must compute float value, '
+                raise ValueError(f'{metric_with_utils.log_name} must compute float value, '
                                 f'not torch tensor with shap {metric_value.shape}.')
             
-            metric_key = f'{phase.value}/{metric_with_utils.name}'
+            metric_key = f'{phase.value}/{metric_with_utils.log_name}'
             log[metric_key] = metric_value
 
         return log
 
     @staticmethod
-    def map_arguments(metric_target_fields: Dict[str, str], task_output: Dict[str, Any]) -> Dict[str, Any]:
+    def map_arguments(mapping: Dict[str, str], task_output: Dict[str, Any]) -> Dict[str, Any]:
         """
         Map arguments between metric target_fields and task output dictionary
 
         Args:
-            metric_target_fields: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
+            mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
             task_output: Output after task forward pass.
 
         Returns:
             metric_input: Metric input dictionary like **kwargs for metric forward pass.
         """
         metric_input = {}
-        for metric_target, metric_source in metric_target_fields.items():
+        for metric_target, metric_source in mapping.items():
             if metric_source in task_output:
                 arg = task_output[metric_source]
                 metric_input[metric_target] = arg

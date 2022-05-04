@@ -109,13 +109,13 @@ class DDPMetricManagerTest(unittest.TestCase):
     METRICS.register_class(Accuracy)
     accuracy_target_fields = dict(preds='predict', target='target')
     accuracy_params = MetricParams(
-        class_name='Accuracy', target_fields=accuracy_target_fields,  
+        name='Accuracy', mapping=accuracy_target_fields,  
         )
     accuracy_answer = {'train/Accuracy': accuracy_answer}
 
     memory_bank_target_fields = dict(state='predict')
     memory_block_params = MetricParams(
-        class_name='MetricMemoryBlock', target_fields=memory_bank_target_fields,
+        name='MetricMemoryBlock', mapping=memory_bank_target_fields,
     )
     memory_block_answer = {'train/MetricMemoryBlock': len(labels) * EPOCH}
     
