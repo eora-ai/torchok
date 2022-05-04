@@ -23,6 +23,7 @@ dependencies:
   - pymysql=1.0.2
   - pip:
       - rank_eval==0.0.1
+      - torchmetrics==0.8.1
       - opencv-python==4.5.3.56
       - albumentations==1.0.3
       - sagemaker==2.59.1

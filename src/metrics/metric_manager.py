@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Any, Optional
 
-from src.registry import METRICS
+from src.constructor import METRICS
 
 
 # Metric parameters

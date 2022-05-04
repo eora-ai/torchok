@@ -1,7 +1,7 @@
 import unittest
 
-# from src.registry import METRICS
-from src.metrics.metric_manager import MetricParams, MetricManager, METRICS, Phase
+from src.constructor import METRICS
+from src.metrics.metric_manager import MetricParams, MetricManager, Phase
 
 import torch
 from torchmetrics import Metric

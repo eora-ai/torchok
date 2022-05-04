@@ -1,6 +1,7 @@
 import unittest
 import os
-from src.metrics.metric_manager import MetricParams, MetricManager, METRICS, Phase
+from src.constructor import METRICS
+from src.metrics.metric_manager import MetricParams, MetricManager, Phase
 
 from pytorch_lightning import LightningModule, Trainer
 import torch
