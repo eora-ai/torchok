@@ -107,8 +107,7 @@ class MetricManager(nn.Module):
         self.__phase2metrics = phase2metrics
 
     def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
-        """
-        Generate metric list for current phase.
+        """Generate metric list for current phase.
 
         Args:
             params: All metric params from config file.
@@ -189,8 +188,7 @@ class MetricManager(nn.Module):
 
     @staticmethod
     def map_arguments(mapping: Dict[str, str], task_output: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Map arguments between metric target_fields and task output dictionary
+        """Map arguments between metric target_fields and task output dictionary.
 
         Args:
             mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
