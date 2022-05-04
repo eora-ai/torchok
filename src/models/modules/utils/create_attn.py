@@ -3,10 +3,7 @@
 Hacked together by / Copyright 2020 Ross Wightman
 """
 import torch
-
-from .cbam import CbamModule, LightCbamModule
-from .eca import EcaModule, CecaModule
-from .se import SEModule, EffectiveSEModule
+from src.models.modules.blocks.se import SEModule, EffectiveSEModule
 
 
 def get_attn(attn_type):
@@ -20,14 +17,6 @@ def get_attn(attn_type):
                 module_cls = SEModule
             elif attn_type == 'ese':
                 module_cls = EffectiveSEModule
-            elif attn_type == 'eca':
-                module_cls = EcaModule
-            elif attn_type == 'ceca':
-                module_cls = CecaModule
-            elif attn_type == 'cbam':
-                module_cls = CbamModule
-            elif attn_type == 'lcbam':
-                module_cls = LightCbamModule
             else:
                 assert False, "Invalid attn module (%s)" % attn_type
         elif isinstance(attn_type, bool):
@@ -41,6 +30,5 @@ def get_attn(attn_type):
 def create_attn(attn_type, channels, **kwargs):
     module_cls = get_attn(attn_type)
     if module_cls is not None:
-        # NOTE: it's expected the first (positional) argument of all attention layers is the # input channels
         return module_cls(channels, **kwargs)
     return None
