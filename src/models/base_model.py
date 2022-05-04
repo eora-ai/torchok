@@ -15,12 +15,12 @@ class FeatureInfo:
     
     Args:
         module_name: Name of hooked module.
-        channel_number: Number of image channels.
-        reduction: Downscale value for get image shape in current module.
+        num_channels: Number of image channels.
+        stride: Downscale value for get image shape in current module.
     """
     module_name: str
-    channel_number: int
-    reduction: int
+    num_channels: int
+    stride: int
 
 
 class HookType(Enum):
@@ -48,18 +48,18 @@ class FeatureHooks:
     redesign for torcscript.
 
     Args:
-        hooks: Hooks to be registrate.
-        named_modules: nn.Model answer of self.named_modules() function call.
+        hooks: Hooks to be registered.
+        named_modules: Result of self.named_modules() function call.
     """
 
-    def __init__(self, hooks: List[Hook], named_modules: Generator):
+    def __init__(self, hooks: List[Hook], named_modules: Generator[Tuple[str, nn.Module]]):
         # setup feature hooks
         modules = {k: v for k, v in named_modules}
         for i, hook in enumerate(hooks):
             hook_name = hook.module_name
             module = modules[hook_name]
             hook_fn = partial(self._collect_output_hook, hook_name)
-            # registrate hooks
+            # register hooks
             if hook.hook_type == HookType.FORWARD_PRE:
                 module.register_forward_pre_hook(hook_fn)
             else:
