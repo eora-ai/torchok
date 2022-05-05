@@ -29,7 +29,7 @@ phase_mapping = {
 class MetricParams:
     name: str
     mapping: Dict[str, str]
-    log_name: str = None
+    log_prefix: str = None
     params: Dict = field(default_factory=dict)
     phases: List[Phase] = None
 
@@ -69,7 +69,7 @@ class MetricWithUtils(nn.Module):
 
     @property
     def log_name(self) -> str:
-        """The metric name used in loggs."""
+        """The prefix for metric name used in loggs."""
         return self.__log_name
 
     @property
@@ -113,20 +113,27 @@ class MetricManager(nn.Module):
         Returns:
             metrics: Metric list as nn.ModuleList for current phase. 
         """
-        # create added_metric_names set
-        added_log_names = set()
+        # create added_metric_names list
+        added_log_names = []
         metrics = []
         for metric_params in params:
             if phase not in metric_params.phases:
                 continue
             metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
-            log_name = metric_params.log_name if metric_params.log_name is not None else metric_params.name
+            prefix = '' if metric_params.log_prefix is None else metric_params.log_prefix + '_'
+            log_name = prefix + metric_params.name
             if log_name in added_log_names:
-                mapping_values = list(mapping.values())
-                log_name += + '_' + mapping_values[0] + '_' + mapping_values[1]
+                # If prefix not set.
+                if metric_params.log_prefix is None:
+                    raise ValueError('Has a two identical metrics. Please, set in config file '
+                                     'prefix for one of them.')
+                # If prefix set.
+                else:
+                    raise ValueError('Has a two identical metrics with the same log_prefix. '
+                                     'Please, set in config file differet log_prefix for identical metrics.')
             else:
-                added_log_names.add(log_name)
+                added_log_names.append(log_name)
 
             metrics.append(MetricWithUtils(metric=metric, mapping=mapping, log_name=log_name))
 
