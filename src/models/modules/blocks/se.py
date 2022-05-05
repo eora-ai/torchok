@@ -4,7 +4,8 @@ from src.models.modules.utils.create_act import create_act_layer
 
 
 class SEModule(nn.Module):
-    """ SE Module as defined in original SE-Nets with a few additions
+    """ SE Module as defined in original SE-Nets with a few additions.
+
     Additions include:
         * min_channels can be specified to keep reduced channel count at a minimum (default: 8)
         * divisor can be specified to keep channels rounded to specified values (default: 1)
@@ -12,11 +13,20 @@ class SEModule(nn.Module):
         * reduction channels can be specified by float ratio (if reduction_ratio is set)
     """
 
-    def __init__(self, channels, reduction=16, act_layer=nn.ReLU, gate_layer='sigmoid',
-                 reduction_ratio=None, reduction_channels=None, min_channels=8, divisor=1):
+    def __init__(self,
+                 channels,
+                 reduction=16,
+                 act_layer=nn.ReLU,
+                 gate_layer='sigmoid',
+                 reduction_ratio=None,
+                 reduction_channels=None,
+                 min_channels=8,
+                 divisor=1):
+
         super(SEModule, self).__init__()
+
         if reduction_channels is not None:
-            reduction_channels = reduction_channels  # direct specification highest priority, no rounding/min done
+            reduction_channels = reduction_channels
         elif reduction_ratio is not None:
             reduction_channels = self.__make_divisible(channels * reduction_ratio, divisor, min_channels)
         else:
@@ -29,7 +39,6 @@ class SEModule(nn.Module):
     def __make_divisible(self, v, divisor=8, min_value=None):
         min_value = min_value or divisor
         new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-        # Make sure that round down does not go down by more than 10%.
         if new_v < 0.9 * v:
             new_v += divisor
         return new_v
@@ -43,7 +52,8 @@ class SEModule(nn.Module):
 
 
 class EffectiveSEModule(nn.Module):
-    """ 'Effective Squeeze-Excitation
+    """ 'Effective Squeeze-Excitation.
+
     From `CenterMask : Real-Time Anchor-Free Instance Segmentation` - https://arxiv.org/abs/1911.06667
     """
 

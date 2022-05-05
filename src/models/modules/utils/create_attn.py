@@ -3,7 +3,7 @@
 Hacked together by / Copyright 2020 Ross Wightman
 """
 import torch
-from src.models.modules.blocks.se import SEModule, EffectiveSEModule
+from src.models.modules.blocks.se import SEModule
 
 
 def get_attn(attn_type):
@@ -15,10 +15,8 @@ def get_attn(attn_type):
             attn_type = attn_type.lower()
             if attn_type == 'se':
                 module_cls = SEModule
-            elif attn_type == 'ese':
-                module_cls = EffectiveSEModule
             else:
-                assert False, "Invalid attn module (%s)" % attn_type
+                assert False, 'Invalid attn module (%s)' % attn_type
         elif isinstance(attn_type, bool):
             if attn_type:
                 module_cls = SEModule
