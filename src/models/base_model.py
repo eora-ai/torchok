@@ -5,8 +5,13 @@ from dataclasses import dataclass
 from functools import partial
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
-from typing import Dict, List, Tuple, Union, Generator
+from typing import Dict, List, Tuple, Union, Generator, Optional
 from enum import Enum
+
+
+class HookType(Enum):
+    FORWARD = 'forward'
+    FORWARD_PRE = 'forward_pre'
 
 
 @dataclass
@@ -21,11 +26,7 @@ class FeatureInfo:
     module_name: str
     num_channels: int
     stride: int
-
-
-class HookType(Enum):
-    FORWARD = 'forward'
-    FORWARD_PRE = 'forward_pre'
+    hook_type: HookType = HookType.FORWARD
 
 
 @dataclass
@@ -58,7 +59,7 @@ class FeatureHooks:
         for i, hook in enumerate(hooks):
             hook_name = hook.module_name
             module = modules[hook_name]
-            hook_fn = partial(self._collect_output_hook, hook_name)
+            hook_fn = partial(self._collect_hook_features, hook_name)
             # register hooks
             if hook.hook_type == HookType.FORWARD_PRE:
                 module.register_forward_pre_hook(hook_fn)
@@ -67,8 +68,8 @@ class FeatureHooks:
            
         self._feature_outputs = defaultdict(OrderedDict)
 
-    def _collect_output_hook(self, hook_name: str, *args):
-        """Collect hooks outputs in self._feature_outputs.
+    def _collect_hook_features(self, hook_name: str, *args):
+        """Collect hooks features in self._hook_features.
         
         Args:
             hook_name: Name of saved hooked module.
@@ -81,10 +82,10 @@ class FeatureHooks:
             device = x.device
         else:
             device = x[0].device
-        self._feature_outputs[device][hook_name] = x
+        self._hook_features[device][hook_name] = x
 
-    def get_output(self, device: torch.device) -> Dict[str, torch.tensor]:
-        """Return hooks output.
+    def get_features(self, device: torch.device) -> Dict[str, torch.tensor]:
+        """Return hooks features.
 
         Args:
             device: Saved hooks device.
@@ -92,60 +93,70 @@ class FeatureHooks:
         Returns:
             output: Dict of module hook name two its output tensor.
         """
-        output = self._feature_outputs[device]
+        output = self._hook_features[device]
         # clear after reading
-        self._feature_outputs[device] = OrderedDict()  
+        self._hook_features[device] = OrderedDict()  
         return output
 
 
 class BaseModel(nn.Module):
-    """Base model for all Torchok Models - Backbone, Neck, Pooling and Head.
+    """Base model for all TorchOk Models - Backbone, Neck, Pooling and Head.
 
-    This class support methods for add hooks.
-    Also it's have channels and reduction for input and output tensors, for each forward and hooks case. 
-    Channels - tensor channels.
-    Reduction -  downscale value for get tensor shape.
-
-    Args:
-        input_forward_channels: Input channels list for forward method.
-        input_forward_reductions: Optional value of input reduction list for forward. Need to reconstruct initial input
-            tensor shape.
-        input_hooks_channels: Optional value of input channels list for hooks.
-        input_hooks_reductions: Optional value of input hooks reduction list. Need to reconstruct initial input tensor 
-            shape.
+    This class supports adding feature hooks to some model layers.
+    Also it's have feature info list for every hook.
+    To create hooks, method self.get_features_info() must be rewrited!
     """
-    def __init__(self, input_forward_channels: List[int], input_forward_reductions: List[int] = None, \
-                 input_hooks_channels: List[int] = None, input_hooks_reductions: List[int] = None):
+    def __init__(self):
+        """Inits BaseModel class and it's hooks.
+
+        Raises:
+            ValueError: If rewrited self.get_features_info() method return not FeatureInfo list.
+        """
         super().__init__()
-        self._feature_info = None
 
-        self._input_forward_channels = input_forward_channels
-        self._input_forward_reductions = input_forward_reductions
-        self._input_hooks_channels = input_hooks_channels
-        self._input_hooks_reductions = input_hooks_reductions
+        # Create feature_info list with hooks
+        self._features_info, self._feature_hooks = self._create_hooks()
 
-        self._output_forward_channels = None
-        self._output_forward_reductions = None
-        self._output_hooks_channels = None
-        self._output_hooks_reductions = None
 
-    def create_hooks(self):
-        """Generate feature hooks."""
+    def get_features_info(self) -> List[FeatureInfo]:
+        """Method for initialize Hooks.
+        
+        It must be rewrite in inherited classes, if Module would need hooks.
+
+        Retruns: Hooks FeatureInfo list.
+        """
+        return None
+
+    def _create_hooks(self) -> Tuple[List[FeatureInfo], FeatureHooks]:
+        """Call self.get_features_info() method to generate feature_info list and then generate feature hooks.
+        
+        If self.get_features_info() not rewrited in inheritable class the features_info and hooks would be None.
+
+        Returns:
+            feature_info: Hooks feature info list.
+            feature_hooks: Generated hooks.
+        """
+        features_info = self.get_features_info()
         # Check if all self._feature_info is FeatureInfo types.
-        self.check_feature_info_type(self)
-        self._stage_names = [feature.module_name for feature in self._feature_info]
-        self._output_hooks_channels = [feature.channel_number for feature in self._feature_info]
-        self._output_hooks_reductions = [feature.reduction for feature in self._feature_info]
-        hooks = [Hook(module_name=name, hook_type=HookType.FORWARD) for name in self._stage_names]
-        self._feature_hooks = FeatureHooks(hooks, self.named_modules())
+        if features_info is not None:
+            self.__check_features_info_types()
+            hooks = [
+                Hook(module_name=feature.module_name, hook_type=feature.hook_type) 
+                for feature in features_info
+                ]
+            feature_hooks = FeatureHooks(hooks, self.named_modules())
+        else:
+            feature_hooks = None
 
-    def check_feature_info_type(self):
+        return features_info, feature_hooks
+
+    def __check_features_info_types(self):
         """Check if all self._feature_info is FeatureInfo class.
             
         Raises:
             ValueError: If any value in feature_info is not FeatureInfo class.
         """
-        for feature in self._feature_info:
+        for feature in self._features_info:
             if type(feature) != FeatureInfo:
                 raise ValueError('All feature_info must be FeatureInfo class.')
 
@@ -153,74 +164,32 @@ class BaseModel(nn.Module):
         # Return features for classification.
         raise NotImplementedError
 
-    def forward_backbone_features(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
-        """Return model output with hooks features."""
+    def forward_stage_features(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """Return model output with hooks features.
+        
+        Returns:
+            last_features: Module forward method output.
+            hooks_features: Hooks outputs.
+        """
         last_features = self.forward(x)
-        backbone_features = self._feature_hooks.get_output(x.device)
-        backbone_features = list(backbone_features.values())
-        backbone_features = [x] + backbone_features
-        return last_features, backbone_features
+        hooks_features = self._feature_hooks.get_features(x.device)
+        hooks_features = list(hooks_features.values())
+        hooks_features = [x] + hooks_features
+        return last_features, hooks_features
 
-    def forward_stage_features(self, x: torch.Tensor) -> List[torch.Tensor]:
-        """Return only hooks features."""
-        x = self.forward(x)
-        return list(self._feature_hooks.get_output(x.device).values())
-
-    def init_weights(self):
-        """Initialize weights."""
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)
+    def get_output_hooks_channels(self) -> List[int]:
+        """Generate hooks output channels numbers.
+        
+        Returns:
+            output_hooks_channels: Hooks output channels numbers.
+        """
+        output_hooks_channels = [feature.num_channels for feature in self._feature_info]
+        return output_hooks_channels
 
     @property
     def feature_info(self):
-        return self._feature_info
-
-    @property
-    def input_forward_features(self):
-        return self._input_forward_channels
-
-    @property
-    def input_forward_reductions(self):
-        return self._input_forward_reductions
-
-    @property
-    def input_hooks_channels(self):
-        return self._input_hooks_channels
-
-    @property
-    def input_hooks_reductions(self):
-        return self._input_hooks_reductions
-
-    @property
-    def output_forward_features(self):
-        return self._output_forward_channels
-
-    @property
-    def output_forward_reductions(self):
-        return self._output_forward_reductions
-
-    @property
-    def output_hooks_channels(self):
-        return self._output_hooks_channels
-
-    @property
-    def output_hooks_reductions(self):
-        return self._output_hooks_reductions
-
-    @property
-    def stage_names(self):
-        return self._stage_names
+        return self._features_info
 
     @property
     def feature_hooks(self):
         return self._feature_hooks
-    
