@@ -1,8 +1,8 @@
 """TorchOK ResNet
 
-This started as a copy of https://github.com/pytorch/vision 'resnet.py'
-
-ResNeXt, SE-ResNeXt, SENet, and MXNet Gluon stem/downsample variants, tiered stems added by Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/resnet.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 from typing import Optional, Union, List, Dict
 
@@ -183,7 +183,7 @@ class ResNet(BaseModel):
         """Init ResNet.
 
         Args:
-            block: Type of BasicBlock.
+            block: Type of block.
             layers: Number of layers.
             in_chans: Input channels.
             block_args: Arguments for block_args.

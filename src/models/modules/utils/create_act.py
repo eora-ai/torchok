@@ -1,5 +1,8 @@
-""" Activation Factory
-Hacked together by / Copyright 2020 Ross Wightman
+"""TorchOK Activation Factory.
+
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/create_act.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 from src.models.modules.bricks.activations.activations import *
 from src.models.modules.bricks.activations.activations_jit import *
