@@ -1,3 +1,11 @@
+"""TorchOK Squeeze-and-Excitation Channel Attention module.
+
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/squeeze_excite.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
+"""
+from typing import Optional
+
 from torch import nn as nn
 
 from src.models.modules.utils.create_act import create_act_layer
@@ -14,14 +22,14 @@ class SEModule(nn.Module):
     """
 
     def __init__(self,
-                 channels,
-                 reduction=16,
-                 act_layer=nn.ReLU,
-                 gate_layer='sigmoid',
-                 reduction_ratio=None,
-                 reduction_channels=None,
-                 min_channels=8,
-                 divisor=1):
+                 channels: list,
+                 reduction: int = 16,
+                 act_layer: nn.Module = nn.ReLU,
+                 gate_layer: str = 'sigmoid',
+                 reduction_ratio: Optional[float] = None,
+                 reduction_channels: Optional[int] = None,
+                 min_channels: int = 8,
+                 divisor: int = 1):
 
         super(SEModule, self).__init__()
 
@@ -57,7 +65,9 @@ class EffectiveSEModule(nn.Module):
     From `CenterMask : Real-Time Anchor-Free Instance Segmentation` - https://arxiv.org/abs/1911.06667
     """
 
-    def __init__(self, channels, gate_layer='hard_sigmoid'):
+    def __init__(self,
+                 channels: int,
+                 gate_layer: str = 'hard_sigmoid'):
         super(EffectiveSEModule, self).__init__()
         self.fc = nn.Conv2d(channels, channels, kernel_size=1, padding=0)
         self.gate = create_act_layer(gate_layer, inplace=True)

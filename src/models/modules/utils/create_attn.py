@@ -1,6 +1,8 @@
-""" Select AttentionFactory Method
+""""TorchOK Attention Factory.
 
-Hacked together by / Copyright 2020 Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/create_attn.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 import torch
 from src.models.modules.blocks.se import SEModule

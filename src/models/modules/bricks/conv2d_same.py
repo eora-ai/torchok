@@ -1,5 +1,8 @@
-""" Conv2d w/ Same Padding
-Hacked together by / Copyright 2020 Ross Wightman
+"""TorchOK Conv2d w/ Same Padding
+
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/conv2d_same.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 from typing import Tuple, Optional
 
