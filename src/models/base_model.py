@@ -42,18 +42,20 @@ class Hook:
 
 
 class FeatureHooks:
-    """ Feature Hook Helper
+    """ Feature Hook Helper.
 
     This module helps with the setup and extraction of hooks for extracting features from
     internal nodes in a model by node name. This works quite well in eager Python but needs
     redesign for torcscript.
-
-    Args:
-        hooks: Hooks to be registered.
-        named_modules: Result of self.named_modules() function call.
     """
 
     def __init__(self, hooks: List[Hook], named_modules: Generator[Tuple[str, nn.Module]]):
+        """Init FeatureHooks class.
+        
+        Args:
+            hooks: Hooks to be registered.
+            named_modules: Result of self.named_modules() function call.
+        """
         # setup feature hooks
         modules = {k: v for k, v in named_modules}
         for i, hook in enumerate(hooks):
