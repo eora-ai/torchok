@@ -1,3 +1,6 @@
+import numbers
+import numpy as np
+
 from torch import Tensor, tensor, nn
 from torchmetrics import Metric
 
@@ -19,11 +22,7 @@ phase_mapping = {
     'train': Phase.TRAIN,
     'valid': Phase.VALID,
     'test': Phase.TEST,
-    'predict': Phase.PREDICT,
-    'Phase.TRAIN': Phase.TRAIN,
-    'Phase.VALID': Phase.VALID,
-    'Phase.TEST': Phase.TEST,
-    'Phase.PREDICT': Phase.PREDICT,
+    'predict': Phase.PREDICT
 }
 
 @dataclass
@@ -86,7 +85,7 @@ class MetricWithUtils(nn.Module):
 
 
 class MetricManager(nn.Module):
-    """Manages all metrics for the model.
+    """Manages all metrics for a Task.
     
     Args:
         params: Metric parameters.
@@ -100,11 +99,9 @@ class MetricManager(nn.Module):
         for param in params:
             param.phases = set(param.phases)
 
-        phase2metrics = {phase: {} for phase in self.phases}
-        for phase in self.phases:
-            phase2metrics[phase] = self.__get_phase_metrics(params, phase)
-
-        self.__phase2metrics = phase2metrics
+        self.__phase2metrics = nn.ModuleDict()
+        for phase in Phase:
+            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase)
 
     def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """Generate metric list for current phase.
@@ -143,14 +140,11 @@ class MetricManager(nn.Module):
             phase: Phase Enum.
         """
         args = list(args)
-        if phase not in self.phases:
-            raise ValueError(f'Incorrect epoch setting. '
-                             f'Please choose one of enum value {self.phases}')
 
-        for metric_with_utils in self.__phase2metrics[phase]:
+        for metric_with_utils in self.__phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             if targeted_kwargs:
-                # may be we need only update because forward use compute and sync all the processses
+                # may be we only need to update because forward makes synchronization between processes
                 metric_with_utils(*args, **targeted_kwargs)
             
 
@@ -161,25 +155,34 @@ class MetricManager(nn.Module):
             phase: Run metric phase.
 
         Returns:
-            log: Logging dictionary, there the key is phase/metric_name and value is metric value on phase.
+            log: log: Logging dictionary, where key is `<phase>/<metric_name>` and value is metric value for 
+                a given phase.
 
         Raises:
-            ValueError: If phase not in self.phases.
-            ValueError: If metric.compute() return tensor with non zero shape.
-        """
-        if phase not in self.phases:
-            raise ValueError(f'Incorrect epoch setting. '
-                             f'Please choose one of enum value {self.phases}')
-            
+            ValueError: If metric.compute() returns tensor with non zero shape.
+        """ 
         log = {}
-        for metric_with_utils in self.__phase2metrics[phase]:
+        for metric_with_utils in self.__phase2metrics[phase.name]:
             metric_value = metric_with_utils.compute()
-            if isinstance(metric_value, dict):
-                metric_value = list(metric_value.values())[0]
-            
-            if len(metric_value.shape) != 0:
-                raise ValueError(f'{metric_with_utils.log_name} must compute float value, '
-                                f'not torch tensor with shap {metric_value.shape}.')
+            # If it tensor type with wrong shape.
+            if isinstance(metric_value, Tensor) and len(metric_value.shape) != 0:
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                                 f'not torch tensor with shape {metric_value.shape}.')
+            # If it numpy array with wrong shape.
+            if isinstance(metric_value, np.ndarray) and len(metric_value.shape) != 0:
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                                 f'not numpy array with shape {metric_value.shape}.')
+            # If it numpy array with one element but wrong dtype
+            if (isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and 
+                np.issubdtype(metric_value.dtype, np.number)):
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                                 f'not numpy array element with dtype {metric_value.dtype}.')
+
+            is_number = isinstance(metric_value, numbers.Number)
+            # If not numeric type.
+            if not (is_number or isinstance(metric_value, Tensor) or  isinstance(metric_value, np.ndarray)):
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                                 f'not numpy array element with dtype {metric_value.dtype}.')
             
             metric_key = f'{phase.value}/{metric_with_utils.log_name}'
             log[metric_key] = metric_value
@@ -188,6 +191,7 @@ class MetricManager(nn.Module):
 
     @staticmethod
     def map_arguments(mapping: Dict[str, str], task_output: Dict[str, Any]) -> Dict[str, Any]:
+        # TODO: create a common function for MetricManager and Constructor
         """Map arguments between metric target_fields and task output dictionary.
 
         Args:
