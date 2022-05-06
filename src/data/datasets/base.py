@@ -34,6 +34,7 @@ class ImageDataset(Dataset, ABC):
         self._image_dtype = image_dtype
         self._grayscale = grayscale
 
+
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Is transformations based on API of albumentations library.
 
