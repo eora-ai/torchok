@@ -1,13 +1,8 @@
-""" Activations
+"""TorchOK Activations.
 
-A collection of jit-scripted activations fn and modules with a common interface so that they can
-easily be swapped. All have an `inplace` arg even if not used.
-
-All jit scripted activations are lacking in-place variations on purpose, scripted kernel fusion does not
-currently work across in-place op boundaries, thus performance is equal to or less than the non-scripted
-versions if they contain in-place ops.
-
-Hacked together by / Copyright 2020 Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/activations_jit.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 
 import torch

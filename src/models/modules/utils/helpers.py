@@ -1,6 +1,8 @@
-"""Layer/Module Helpers
+"""TorchOK Layer/Module Helpers.
 
-Hacked together by / Copyright 2020 Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/helpers.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 from itertools import repeat
 import collections.abc

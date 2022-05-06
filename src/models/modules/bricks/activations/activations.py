@@ -1,9 +1,8 @@
-""" Activations
+"""TorchOK Activations.
 
-A collection of activations fn and modules with a common interface so that they can
-easily be swapped. All have an `inplace` arg even if not used.
-
-Hacked together by / Copyright 2020 Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/activations.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 
 import torch

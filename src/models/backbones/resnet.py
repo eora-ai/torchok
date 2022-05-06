@@ -193,29 +193,27 @@ class ResNet(BaseModel):
         self.channels = [64, 128, 256, 512]
         self.num_features = 512 * block.expansion
 
-        super(ResNet, self).__init__(self.channels)
+        super(ResNet, self).__init__()
 
         self.conv1 = nn.Conv2d(in_chans, self.channels[0], kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(self.channels[0])
         self.act1 = nn.ReLU(inplace=True)
-        self._feature_info = [FeatureInfo(channel_number=self.channels[0], reduction=2, module_name='act1')]
+        self._feature_info = [FeatureInfo(num_channels=self.channels[0], stride=2, module_name='act1')]
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.layer1 = self.__make_layer(block, self.channels[0], layers[0], **self.block_args)
-        self._feature_info.append(FeatureInfo(channel_number=self.channels[0], reduction=2, module_name='layer1'))
+        self._feature_info.append(FeatureInfo(num_channels=self.channels[0], stride=1, module_name='layer1'))
 
         self.layer2 = self.__make_layer(block, self.channels[1], layers[1], stride=2, **self.block_args)
-        self._feature_info.append(FeatureInfo(channel_number=self.channels[1], reduction=2, module_name='layer2'))
+        self._feature_info.append(FeatureInfo(num_channels=self.channels[1], stride=2, module_name='layer2'))
 
         self.layer3 = self.__make_layer(block, self.channels[2], layers[2], stride=2, **self.block_args)
-        self._feature_info.append(FeatureInfo(channel_number=self.channels[2], reduction=2, module_name='layer3'))
+        self._feature_info.append(FeatureInfo(num_channels=self.channels[2], stride=2, module_name='layer3'))
 
         self.layer4 = self.__make_layer(block, self.channels[3], layers[3], stride=2, **self.block_args)
-        self._feature_info.append(FeatureInfo(channel_number=self.channels[3], reduction=2, module_name='layer4'))
+        self._feature_info.append(FeatureInfo(num_channels=self.channels[3], stride=2, module_name='layer4'))
 
-        self.create_hooks()
-
-        self.init_weights()
+        self._create_hooks()
 
     def __make_layer(self,
                      block: Union[BasicBlock, Bottleneck],

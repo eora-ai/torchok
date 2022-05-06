@@ -1,12 +1,8 @@
-""" Activations (memory-efficient w/ custom autograd)
+"""TorchOK Activations (memory-efficient w/ custom autograd).
 
-A collection of activations fn and modules with a common interface so that they can
-easily be swapped. All have an `inplace` arg even if not used.
-
-These activations are not compatible with jit scripting or ONNX export of the model, please use either
-the JIT or basic versions of the activations.
-
-Hacked together by / Copyright 2020 Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/activations_me.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 
 import torch
