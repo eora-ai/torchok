@@ -24,7 +24,7 @@ class ImageDataset(Dataset, ABC):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of of the torch tensors related to the image.
+            image_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
@@ -65,28 +65,35 @@ class ImageDataset(Dataset, ABC):
 
     @abstractmethod
     def __len__(self) -> int:
+        """Dataset length."""
         pass
 
     @abstractmethod
     def __getitem__(self, item: int) -> dict:
+        """Get item sample."""
         pass
 
     @property
     def test_mode(self) -> bool:
+        """Is test mode."""
         return self._test_mode
 
     @property
     def transform(self) -> Optional[Union[BasicTransform, BaseCompose]]:
+        """Is transform to be applied on a sample."""
         return self._transform
 
     @property
     def augment(self) -> Optional[Union[BasicTransform, BaseCompose]]:
+        """Is optional augment to be applied on a sample."""
         return self._augment
 
     @property
     def image_dtype(self) -> str:
+        """Is data type of the torch tensors related to the image."""
         return self._image_dtype
 
     @property
     def grayscale(self) -> bool:
+        """Is grayscale mode."""
         return self._grayscale

@@ -34,7 +34,7 @@ class ImageClassificationDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  image_dtype: str = 'float32',
                  target_dtype: str = 'long',
-                 csv_mapping_column: dict = None,
+                 csv_columns_mapping: dict = None,
                  grayscale: bool = False,
                  test_mode: bool = False,
                  multilabel: bool = False,
@@ -52,7 +52,7 @@ class ImageClassificationDataset(ImageDataset):
                 This should have the interface of transforms in `albumentations` library.
             image_dtype: Data type of of the torch tensors related to the image.
             target_dtype: Data type of of the torch tensors related to the target.
-            csv_mapping_column: Matches maping column names. Key - TorchOK column name, Value - csv column name.
+            csv_columns_mapping: Matches maping column names. Key - TorchOK column name, Value - csv column name.
                 default value: {'image_path': 'image_path',
                                 'label': 'label'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
@@ -70,12 +70,12 @@ class ImageClassificationDataset(ImageDataset):
         self.__multilabel = multilabel
         self.__lazy_init = lazy_init
         self.__csv_path = csv_path
-        self.__csv_mapping_column = csv_mapping_column if csv_mapping_column is not None\
+        self.__csv_columns_mapping = csv_columns_mapping if csv_columns_mapping is not None\
             else {'image_path': 'image_path',
                   'label': 'label'}
 
-        self.__input_column = self.__csv_mapping_column['image_path']
-        self.__target_column = self.__csv_mapping_column['label']
+        self.__input_column = self.__csv_columns_mapping['image_path']
+        self.__target_column = self.__csv_columns_mapping['label']
 
         if self.__multilabel:
             self.__csv = pd.read_csv(self.__data_folder / self.__csv_path, dtype={self.__input_column: 'str',
@@ -89,6 +89,14 @@ class ImageClassificationDataset(ImageDataset):
                 self.__csv[self.__target_column] = self.__csv[self.__target_column].apply(self.__process_multiclass)
 
     def __getitem__(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['index'] - Index.
+        """
         record = self.__csv.iloc[idx]
         image_path = self.__data_folder / record[self.__input_column]
         image = self._read_image(image_path)
@@ -115,6 +123,7 @@ class ImageClassificationDataset(ImageDataset):
         return sample
 
     def __len__(self) -> int:
+        """Dataset length."""
         return len(self.__csv)
 
     def __process_multiclass(self, class_idx: int) -> int:
@@ -161,24 +170,25 @@ class ImageClassificationDataset(ImageDataset):
 
     @property
     def csv_mapping_column(self) -> dict:
-        return self.__csv_mapping_column
+        """Column name matching."""
+        return self.__csv_columns_mapping
 
     @property
     def target_dtype(self) -> str:
+        """Is target type."""
         return self.__target_dtype
 
     @property
     def multilabel(self) -> bool:
+        """Is task mode."""
         return self.__multilabel
 
     @property
     def num_classes(self) -> int:
+        """Is number of classes."""
         return self.__num_classes
 
     @property
     def lazy_init(self) -> bool:
+        """Is lazy init mode."""
         return self.__lazy_init
-
-    @property
-    def csv(self) -> pd.DataFrame:
-        return self.__csv
