@@ -1,6 +1,8 @@
-""" Padding Helpers
+"""TorchOK Padding Helpers.
 
-Hacked together by / Copyright 2020 Ross Wightman
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/padding.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 import math
 from typing import List, Tuple

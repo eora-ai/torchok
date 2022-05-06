@@ -1,4 +1,8 @@
-""" Model / Layer Config singleton state
+"""TorchOK  Model / Layer Config singleton state.
+
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/config.py
+Copyright 2019 Ross Wightman
+Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 from typing import Any, Optional
 
