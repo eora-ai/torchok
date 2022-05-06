@@ -25,8 +25,7 @@ class FakeDataGenerator:
     def __getitem__(self, idx):
         curr_dict = {}
         for fake_data in self.fake_data_list:
-            repeats = fake_data.num_repeats
-            if idx < repeats:
+            if idx < fake_data.num_repeats:
                 curr_dict[fake_data.name] = self._generate_fake_data(fake_data)
         return curr_dict
     

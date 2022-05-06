@@ -29,7 +29,7 @@ phase_mapping = {
 class MetricParams:
     name: str
     mapping: Dict[str, str]
-    log_prefix: str = None
+    prefix: str = None
     params: Dict = field(default_factory=dict)
     phases: List[Phase] = None
 
@@ -69,7 +69,7 @@ class MetricWithUtils(nn.Module):
 
     @property
     def log_name(self) -> str:
-        """The prefix for metric name used in loggs."""
+        """The metric name used in logs."""
         return self.__log_name
 
     @property
@@ -121,17 +121,17 @@ class MetricManager(nn.Module):
                 continue
             metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
-            prefix = '' if metric_params.log_prefix is None else metric_params.log_prefix + '_'
+            prefix = '' if metric_params.prefix is None else metric_params.prefix + '_'
             log_name = prefix + metric_params.name
             if log_name in added_log_names:
                 # If prefix not set.
-                if metric_params.log_prefix is None:
+                if metric_params.prefix is None:
                     raise ValueError('Has a two identical metrics. Please, set in config file '
                                      'prefix for one of them.')
                 # If prefix set.
                 else:
-                    raise ValueError('Has a two identical metrics with the same log_prefix. '
-                                     'Please, set in config file differet log_prefix for identical metrics.')
+                    raise ValueError('Has a two identical metrics with the same prefix. '
+                                     'Please, set in config file differet prefix for identical metrics.')
             else:
                 added_log_names.append(log_name)
 
