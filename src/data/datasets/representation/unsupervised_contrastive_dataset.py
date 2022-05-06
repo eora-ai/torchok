@@ -81,6 +81,6 @@ class UnsupervisedContrastiveDataset(ImageDataset):
         return len(self.__csv)
 
     @property
-    def csv_mapping_column(self) -> dict:
+    def csv_columns_mapping(self) -> dict:
         """Column name matching."""
         return self.__csv_columns_mapping
