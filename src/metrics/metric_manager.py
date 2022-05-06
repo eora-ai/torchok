@@ -120,7 +120,10 @@ class MetricManager(nn.Module):
             phase: Current phase Enum.
 
         Returns:
-            metrics: Metric list as nn.ModuleList for current phase. 
+            metrics: Metric list as nn.ModuleList for current phase.
+
+        Raises:
+            ValueError: If got two identical log_names.
         """
         # create added_metric_names list
         added_log_names = []
@@ -133,14 +136,8 @@ class MetricManager(nn.Module):
             prefix = '' if metric_params.prefix is None else metric_params.prefix + '_'
             log_name = prefix + metric_params.name
             if log_name in added_log_names:
-                # If prefix not set.
-                if metric_params.prefix is None:
-                    raise ValueError('Has a two identical metrics. Please, set in config file '
-                                     'prefix for one of them.')
-                # If prefix set.
-                else:
-                    raise ValueError('Has a two identical metrics with the same prefix. '
-                                     'Please, set in config file differet prefix for identical metrics.')
+                raise ValueError(f'Got two metrics with identical names: {log_name}. '
+                                 f'Please, set differet prefixes for identical metrics in the config file.')           
             else:
                 added_log_names.append(log_name)
 
@@ -160,7 +157,6 @@ class MetricManager(nn.Module):
         for metric_with_utils in self.__phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             if targeted_kwargs:
-                # may be we only need to update because forward makes synchronization between processes
                 metric_with_utils(*args, **targeted_kwargs)
             
 
@@ -175,7 +171,7 @@ class MetricManager(nn.Module):
                 a given phase.
 
         Raises:
-            ValueError: If metric.compute() returns tensor with non zero shape.
+            ValueError: If metric.compute() returns not numerical value.
         """ 
         log = {}
         for metric_with_utils in self.__phase2metrics[phase.name]:
@@ -216,12 +212,19 @@ class MetricManager(nn.Module):
 
         Returns:
             metric_input: Metric input dictionary like **kwargs for metric forward pass.
+
+        Raises:
+            ValueError: If not found mapping_source in task_output keys.
         """
         metric_input = {}
         for metric_target, metric_source in mapping.items():
             if metric_source in task_output:
                 arg = task_output[metric_source]
                 metric_input[metric_target] = arg
+            else:
+                raise ValueError(f'Cannot find {metric_source} for your mapping {metric_target} : {metric_source}. '
+                                 f'You should either add {metric_source} output to your model or remove the mapping '
+                                 f'from configuration')
         return metric_input
 
     @property
