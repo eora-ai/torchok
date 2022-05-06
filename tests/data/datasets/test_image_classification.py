@@ -37,7 +37,7 @@ class TestClassificationMulticlass(unittest.TestCase):
     def test_input_dtype_when_specified(self):
         self.__input_dtype = 'float32'
         self.__ds = ImageClassificationDataset(self.__data_folder, self.__csv_path, self.__num_classes,
-                                               self.__transform, input_dtype=self.__input_dtype)
+                                               self.__transform, image_dtype=self.__input_dtype)
         self.assertEqual(self.__ds[0]['image'].dtype, torch.__dict__[self.__input_dtype])
 
     def test_target_dtype_when_specified(self):
