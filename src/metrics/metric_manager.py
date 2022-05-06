@@ -27,11 +27,20 @@ phase_mapping = {
 
 @dataclass
 class MetricParams:
+    """Metric Params.
+    
+    Args:
+        name: Registrated metric class name.
+        mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
+        params: Metric dictionary initialize parameters.
+        prefix: Prefix string for logging metric.
+        phases: Metric phase run. 
+    """
     name: str
     mapping: Dict[str, str]
-    prefix: str = None
     params: Dict = field(default_factory=dict)
-    phases: List[Phase] = None
+    prefix: Optional[str] = None
+    phases: Optional[List[Phase]] = None
 
     def __post_init__(self):
         """Post process for phases. 
