@@ -59,25 +59,23 @@ class MetricMemoryBlock(Metric):
 class Model(LightningModule):
     def __init__(self, metric_params: List[MetricParams]):
         super().__init__()
-        # self.l1 = torch.nn.Linear(INPUT_DATA_SHAPE, uniq_label_count)
+        self.l1 = torch.nn.Linear(INPUT_DATA_SHAPE, uniq_label_count)
         self.metric_manager = MetricManager(metric_params)
 
     def forward(self, x):
-        # return torch.relu(self.l1(x.view(x.size(0), -1)))
-        return torch.tensor(1.)
+        return torch.relu(self.l1(x.view(x.size(0), -1)))
 
     def training_step(self, batch, batch_nb):
         input, fake_predict, fake_target = batch
-        # predict = self(input)
-        # loss = F.cross_entropy(predict, fake_target)
+        predict = self(input)
+        loss = F.cross_entropy(predict, fake_target)
         # set fake data to output, to check metrics
         output = dict(predict=fake_predict, target=fake_target)
         self.metric_manager(Phase.TRAIN, **output)
-        # return loss
-        return torch.tensor(1.)
+        return loss
 
-    # def configure_optimizers(self):
-    #     return torch.optim.Adam(self.parameters(), lr=0.02)
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=0.02)
 
 
 def run_model(metric_params: List[MetricParams]):
