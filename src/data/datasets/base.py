@@ -1,4 +1,3 @@
-from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Union, Optional
 
@@ -13,32 +12,26 @@ class ImageDataset(Dataset, ABC):
     """ An abstract class for image dataset """
 
     def __init__(self,
-                 data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 input_dtype: str = 'float32',
-                 input_column: str = 'image_path',
+                 image_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """
         Args:
-            data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            input_dtype: Data type of of the torch tensors related to the image.
-            input_column: Name of the column that contains paths to images.
+            image_dtype: Data type of of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
         self._test_mode = test_mode
         self.__transform = transform
         self.__augment = augment
-        self.__input_dtype = input_dtype
-        self.__input_column = input_column
+        self._image_dtype = image_dtype
         self.__grayscale = grayscale
-        self.__data_folder = Path(data_folder)
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Transformations based on API of albumentations library.
@@ -58,8 +51,7 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        full_image_path = self.data_folder / image_path
-        image = cv2.imread(str(full_image_path), int(not self.grayscale))
+        image = cv2.imread(str(image_path), int(not self.grayscale))
 
         if image is None:
             raise ValueError(f'{image_path} image does not exist')
@@ -91,17 +83,9 @@ class ImageDataset(Dataset, ABC):
         return self.__augment
 
     @property
-    def input_dtype(self) -> str:
-        return self.__input_dtype
-
-    @property
-    def input_column(self) -> str:
-        return self.__input_column
+    def image_dtype(self) -> str:
+        return self._image_dtype
 
     @property
     def grayscale(self) -> bool:
         return self.__grayscale
-
-    @property
-    def data_folder(self) -> Path:
-        return self.__data_folder
