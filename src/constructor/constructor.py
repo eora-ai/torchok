@@ -1,10 +1,10 @@
 from collections.abc import Iterable
-from typing import Any, Dict, List, Optional, Union     # noqa: H301
+from typing import Any, Dict, List, Optional, Union
 
 import albumentations as A
 from omegaconf import DictConfig, ListConfig
 from torch import Tensor
-from torch.nn import Module
+from torch.nn import Module, Parameter
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
@@ -41,7 +41,7 @@ class Constructor:
         Args:
             parameters: Parameters for optimization
             optim_idx: Optimizer and scheduler index if specific optimizer/scheduler group is needed to be created.
-            Default is -1 meaning all the optimizers/schedulers are created
+            Default is -1 meaning all the optimizers/schedulers are created.
 
         Returns:
             List of dicts in the PyTorch Lightning accepted format:
@@ -51,8 +51,8 @@ class Constructor:
                 <any PyTorch Lightning parameters. See `their documentation`_>
 
         Raises:
-            - ValueError: when a requested optimizer/scheduler group with optim_idx isn't present in configuration
-            - ValueError: when parameters type is out of supported types list (see typing)
+            - ValueError: When a requested optimizer/scheduler group with optim_idx isn't present in configuration
+            - ValueError: When parameters type is out of supported types list (see typing)
 
         .. _their documentation:
         https://pytorch-lightning.readthedocs.io/en/1.6.2/common/lightning_module.html#configure-optimizers
@@ -98,10 +98,10 @@ class Constructor:
         }
 
     @staticmethod
-    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]]
-                                          ) -> List[Dict[str, Any]]:
+    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]]) -> List[
+            Dict[str, Union[Tensor, float]]]:
         if not isinstance(parameters, Iterable) and not isinstance(parameters, Module) and \
-                not isinstance(parameters, Tensor):
+           not isinstance(parameters, Tensor):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):
             parameters = [parameters]
@@ -119,7 +119,7 @@ class Constructor:
     # Copyright 2019 Ross Wightman
     # Licensed under The Apache 2.0 License [see LICENSE for details]
     @staticmethod
-    def __param_groups_weight_decay(model: Module):
+    def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
         no_weight_decay_list = []
         if hasattr(model, 'no_weight_decay'):
             no_weight_decay_list = model.no_weight_decay()
@@ -156,16 +156,17 @@ class Constructor:
         https://pytorch-lightning.readthedocs.io/en/1.6.2/common/lightning_module.html#train-dataloader
 
         Raises:
-            - ValueError: when requested phase is not from the specified list of supported phases
-            - ValueError: when transforms are not specified for composition augmentations of albumentation
-            - ValueError: when OneOrOther composition is passed that isn't supported
+            - ValueError: When requested phase is not from the specified list of supported phases
+            - ValueError: When transforms are not specified for composition augmentations of albumentation
+            - ValueError: When OneOrOther composition is passed that isn't supported
         """
+        # FIXME: change to Enum when config structure is ready
         if phase not in ['train', 'valid', 'test', 'predict']:
             raise ValueError(f'Not support phase for data loaders specification: {phase}')
 
         return [
             self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
-            for phase_params in self.hparams.data['phase']
+            for phase_params in self.hparams.data[phase]
         ]
 
     @staticmethod
@@ -197,7 +198,7 @@ class Constructor:
             transform_params = transform_info.params
 
             if transform_name == 'Compose' or transform_name == 'OneOf' or transform_name == 'SomeOf' or \
-                    transform_name == 'PerChannel' or transform_name == 'Sequential':
+               transform_name == 'PerChannel' or transform_name == 'Sequential':
                 transform = Constructor.__prepare_base_compose(transform_name, **transform_params)
             elif transform_name == 'OneOrOther':
                 raise ValueError('OneOrOther composition is currently not supported')
@@ -227,6 +228,10 @@ class Constructor:
         return Constructor.__prepare_base_compose('Compose', transforms=transforms_params)
 
     def configure_metrics_manager(self):
+        """Create list of metrics wrapping them into a MetricManager module.
+
+        Returns: MetricManager module.
+        """
         # TODO (vladvin)
         pass
 

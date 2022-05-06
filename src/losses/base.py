@@ -6,9 +6,11 @@ from torch.nn.modules.loss import _Loss
 
 
 class JointLoss(Module):
-    """Represents wrapper for loss modules that can be forwarded as a weighted sum of losses and
-    can provide direct access to each loss.
+    """Represents wrapper for loss modules.
+
+    This joined loss can be forwarded as a weighted sum of losses and can provide direct access to each loss.
     """
+
     def __init__(self, losses: List[_Loss], mappings: List[Dict[str, str]],
                  tags: List[Optional[str]], weights: List[Optional[float]],
                  normalize_weights: bool = True):
@@ -31,7 +33,7 @@ class JointLoss(Module):
             normalize_weights: Either to normalize the weights, so that they sum up to 1 before loss value calculation.
 
         Raises:
-            - ValueError: when only a few weights are specified but not for all the loss modules
+            - ValueError: When only a few weights are specified but not for all the loss modules
         """
         super().__init__()
         self.__losses = ModuleList(losses)
@@ -53,7 +55,9 @@ class JointLoss(Module):
             self.__weights = [w / sum(self.__weights) for w in self.__weights]
 
     def forward(self, **kwargs) -> Tuple[Tensor, Dict[str, Tensor]]:
-        """Forward individual loss modules and sums the values up in a weighted average manner
+        """Forward the joined loss module.
+
+        First, individual loss modules are calculated. Then the values are summed up in a weighted average manner
         to form the total loss value.
 
         Args:
@@ -67,7 +71,7 @@ class JointLoss(Module):
             Individual values will be return for tagged values only
 
         Raises:
-            - ValueError: when some keys from a mapping cannot be found among neural network outputs
+            - ValueError: When some keys from a mapping cannot be found among neural network outputs
         """
         total_loss = 0.
         tagged_loss_values = {}
@@ -89,7 +93,7 @@ class JointLoss(Module):
         Returns: Loss module
 
         Raises:
-            - KeyError: when a specified tag cannot be found (often happens when tags are specified not for each loss)
+            - KeyError: When a specified tag cannot be found (often happens when tags are specified not for each loss)
         """
         if tag in self.__tag2loss:
             return self.__tag2loss[tag]
