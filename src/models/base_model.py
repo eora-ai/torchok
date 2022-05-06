@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import torch
 import torch.nn as nn
 
@@ -101,12 +102,13 @@ class FeatureHooks:
         return output
 
 
-class BaseModel(nn.Module):
+class BaseModel(nn.Module, ABC):
     """Base model for all TorchOk Models - Backbone, Neck, Pooling and Head.
 
     This class supports adding feature hooks to some model layers.
-    Also it's have feature info list for every hook.
+    Class has feature info list for every hook.
     To create hooks, method self.get_features_info() must be rewrited!
+    Also class contains method get_output_channels wich returns forward pass and hooks output channels. 
     """
     def __init__(self):
         """Inits BaseModel class and it's hooks.
@@ -179,7 +181,7 @@ class BaseModel(nn.Module):
         hooks_features = [x] + hooks_features
         return last_features, hooks_features
 
-    def get_output_hooks_channels(self) -> List[int]:
+    def _get_output_hooks_channels(self) -> List[int]:
         """Generate hooks output channels numbers.
         
         Returns:
@@ -187,6 +189,25 @@ class BaseModel(nn.Module):
         """
         output_hooks_channels = [feature.num_channels for feature in self._feature_info]
         return output_hooks_channels
+
+    @abstractmethod
+    def _get_output_forward_channels(self) -> Union[int, List[int]]:
+        """Set output channels for Module forward pass.
+        
+        Returns: Outpus channels.
+        """
+        pass
+    
+    def get_output_channels(self) -> Tuple[Union[int, List[int]], List[int]]:
+        """Create forward an hooks channels numbers.
+        
+        Returns:
+            forward_channels: Forward pass output channels.
+            hooks_channels: Hooks output channels.
+        """
+        forward_channels = self._get_output_forward_channels()
+        hooks_channels = self._get_output_hooks_channels()
+        return forward_channels, hooks_channels
 
     @property
     def feature_info(self):
