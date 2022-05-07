@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from functools import partial
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
-from typing import Dict, List, Tuple, Union, Generator, Optional
+from typing import Dict, List, Tuple, Union, Generator, Optional, Any
 from enum import Enum
 
 
@@ -51,7 +51,7 @@ class FeatureHooks:
     """
 
     def __init__(self, hooks: List[Hook], named_modules: Generator[Tuple[str, nn.Module]]):
-        """Init FeatureHooks class.
+        """Initialize feature hooks.
         
         Args:
             hooks: Hooks to be registered.
@@ -106,44 +106,45 @@ class BaseModel(nn.Module, ABC):
     """Base model for all TorchOk Models - Backbone, Neck, Pooling and Head.
 
     This class supports adding feature hooks to some model layers.
-    Class has feature info list for every hook.
-    To create hooks, method self.get_features_info() must be rewrited!
-    Also class contains method get_output_channels wich returns forward pass and hooks output channels. 
+    Class has feature info to describe hooks.
+    To create hooks, method self.get_features_info() must be overriden!
+    Also class contains method get_output_channels which returns forward pass and hooks output channels. 
     """
     def __init__(self):
         """Inits BaseModel class and it's hooks.
 
         Raises:
-            ValueError: If rewrited self.get_features_info() method return not FeatureInfo list.
+            ValueError: If overriden self.get_features_info() method return not FeatureInfo list.
         """
         super().__init__()
 
-        # Create feature_info list with hooks
+        # Create features_info list with hooks
         self._features_info, self._feature_hooks = self._create_hooks()
-
 
     def get_features_info(self) -> List[FeatureInfo]:
         """Method for initialize Hooks.
         
-        It must be rewrite in inherited classes, if Module would need hooks.
+        It should be overriden in an inherited class if a user is expected to have access to feature hooks 
+        of the implemented Module.
 
         Retruns: Hooks FeatureInfo list.
         """
         return None
 
     def _create_hooks(self) -> Tuple[List[FeatureInfo], FeatureHooks]:
-        """Call self.get_features_info() method to generate feature_info list and then generate feature hooks.
+        """Call self.get_features_info() method to generate features_info list and then generate feature hooks.
         
-        If self.get_features_info() not rewrited in inheritable class the features_info and hooks would be None.
+        If self.get_features_info() isn't overrided in an inherited class then the features_info and hooks 
+        will be None and no feature hooks will be created.
 
         Returns:
-            feature_info: Hooks feature info list.
+            features_info: Hooks feature info list.
             feature_hooks: Generated hooks.
         """
         features_info = self.get_features_info()
-        # Check if all self._feature_info is FeatureInfo types.
+        # Check if all self._features_info is FeatureInfo types.
         if features_info is not None:
-            self.__check_features_info_types()
+            self.__check_features_info_types(features_info)
             hooks = [
                 Hook(module_name=feature.module_name, hook_type=feature.hook_type) 
                 for feature in features_info
@@ -154,44 +155,43 @@ class BaseModel(nn.Module, ABC):
 
         return features_info, feature_hooks
 
-    def __check_features_info_types(self):
-        """Check if all self._feature_info is FeatureInfo class.
-            
+    def __check_features_info_types(self, features_info: List[Any]):
+        """Check if all self._features_info is FeatureInfo class.
+        
+        Args:
+            features_info: Feature info list that must be checked.
+
         Raises:
-            ValueError: If any value in feature_info is not FeatureInfo class.
+            ValueError: If any value in features_info is not FeatureInfo class.
         """
-        for feature in self._features_info:
+        for feature in features_info:
             if type(feature) != FeatureInfo:
-                raise ValueError('All feature_info must be FeatureInfo class.')
+                raise ValueError('All features_info must be FeatureInfo class.')
 
-    def forward(self, x: torch.Tensor):
-        # Return features for classification.
-        raise NotImplementedError
-
-    def forward_stage_features(self, x: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+    def forward_stage_features(self, *input: Any) -> Tuple[torch.Tensor, List[torch.Tensor]]:
         """Return model output with hooks features.
         
         Returns:
             last_features: Module forward method output.
             hooks_features: Hooks outputs.
         """
-        last_features = self.forward(x)
-        hooks_features = self._feature_hooks.get_features(x.device)
+        device = list(*input)[0].device
+        last_features = self.forward(*input)
+        hooks_features = self._feature_hooks.get_features(device)
         hooks_features = list(hooks_features.values())
-        hooks_features = [x] + hooks_features
         return last_features, hooks_features
 
-    def _get_output_hooks_channels(self) -> List[int]:
+    def _get_hooks_output_channels(self) -> List[int]:
         """Generate hooks output channels numbers.
         
         Returns:
             output_hooks_channels: Hooks output channels numbers.
         """
-        output_hooks_channels = [feature.num_channels for feature in self._feature_info]
+        output_hooks_channels = [feature.num_channels for feature in self._features_info]
         return output_hooks_channels
 
     @abstractmethod
-    def _get_output_forward_channels(self) -> Union[int, List[int]]:
+    def _get_forward_output_channels(self) -> Union[int, List[int]]:
         """Set output channels for Module forward pass.
         
         Returns: Outpus channels.
@@ -205,12 +205,12 @@ class BaseModel(nn.Module, ABC):
             forward_channels: Forward pass output channels.
             hooks_channels: Hooks output channels.
         """
-        forward_channels = self._get_output_forward_channels()
-        hooks_channels = self._get_output_hooks_channels()
+        forward_channels = self._get_forward_output_channels()
+        hooks_channels = self._get_hooks_output_channels()
         return forward_channels, hooks_channels
 
     @property
-    def feature_info(self):
+    def features_info(self):
         return self._features_info
 
     @property
