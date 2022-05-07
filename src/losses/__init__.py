@@ -5,7 +5,7 @@ from torch.nn import (
     TripletMarginLoss, TripletMarginWithDistanceLoss, AdaptiveLogSoftmaxWithLoss
 )
 
-from src.registry import LOSSES
+from src.constructor import LOSSES
 from .segmentation import dice, lovasz
 from .representation import pairwise
 from .common import cross_entropy, focal

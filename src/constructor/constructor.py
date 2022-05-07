@@ -29,7 +29,7 @@ class Constructor:
         """
         self.__hparams = hparams
 
-    def configure_optimizers(self, parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]],
+    def configure_optimizers(self, parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
                              optim_idx: int = -1) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
         """Create optimizers and learning rate schedulers from a pre-defined configuration.
 
@@ -78,11 +78,11 @@ class Constructor:
         return opt_sched_list
 
     @staticmethod
-    def __create_optimizer(parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]],
-                           optim_params: DictConfig) -> Optimizer:
-        optimizer_class = OPTIMIZERS.get(optim_params.optimizer.name)
+    def __create_optimizer(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
+                           optimizer_params: DictConfig) -> Optimizer:
+        optimizer_class = OPTIMIZERS.get(optimizer_params.name)
         parameters = Constructor.__set_weight_decay_for_parameters(parameters)
-        optimizer = optimizer_class(parameters, **optim_params.optimizer.params)
+        optimizer = optimizer_class(parameters, **optimizer_params.params)
 
         return optimizer
 
@@ -90,7 +90,7 @@ class Constructor:
     def __create_scheduler(optimizer: Optimizer, scheduler_params: DictConfig) -> Dict[str, Any]:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
-        pl_params = scheduler.pl_params if 'pl_params' in scheduler else {}
+        pl_params = scheduler_params.pl_params if 'pl_params' in scheduler_params else {}
 
         return {
             'scheduler': scheduler,
@@ -98,7 +98,7 @@ class Constructor:
         }
 
     @staticmethod
-    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, Iterable[Union[Module, Tensor]]]) -> List[
+    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]) -> List[
             Dict[str, Union[Tensor, float]]]:
         if not isinstance(parameters, Iterable) and not isinstance(parameters, Module) and \
            not isinstance(parameters, Tensor):
@@ -120,6 +120,7 @@ class Constructor:
     # Licensed under The Apache 2.0 License [see LICENSE for details]
     @staticmethod
     def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
+        # TODO: add description of no_weight_decay method into BaseModel
         no_weight_decay_list = []
         if hasattr(model, 'no_weight_decay'):
             no_weight_decay_list = model.no_weight_decay()
@@ -190,7 +191,7 @@ class Constructor:
         return dataset_class(transform=transform, augment=augment, **dataset_params.params)
 
     @staticmethod
-    def __prepare_transforms_recursively(transforms: ListConfig[DictConfig]) -> List[A.Compose, A.BaseCompose]:
+    def __prepare_transforms_recursively(transforms: ListConfig) -> List[Union[A.Compose, A.BaseCompose]]:
         transforms_list = []
 
         for transform_info in transforms:
@@ -221,7 +222,7 @@ class Constructor:
         return transform
 
     @staticmethod
-    def __create_transforms(transforms_params: ListConfig[DictConfig]) -> Optional[A.Compose]:
+    def __create_transforms(transforms_params: ListConfig) -> Optional[A.Compose]:
         if transforms_params is None:
             return None
 
