@@ -1,7 +1,7 @@
 import unittest
 
 from src.constructor import METRICS
-from src.metrics.metric_manager import MetricParams, MetricManager, Phase
+from src.metrics.metrics_manager import MetricParams, MetricManager, Phase
 
 import torch
 from torchmetrics import Metric
@@ -85,38 +85,49 @@ mappings = dict(predict='embedding', target='target')
 
 
 class MetricManagerTest(unittest.TestCase):
-    def test_something_when_something_happens(self):
-        testcases = [
-            TestCase(
-                test_name='one_sum_metric', names=['MockSumMetric'], \
-                prefixes=['moc_sum'], mappings=[mappings], data_generator=data_generator, \
-                expected={'train/moc_sum_MockSumMetric': 5}
-            ),
-            TestCase(
-                test_name='two_metrics', \
-                names=['MockSumMetric', 'MockConstantMetric'], \
-                prefixes=['moc_sum', None], mappings=[mappings, mappings], \
-                data_generator=data_generator, \
-                expected={'train/moc_sum_MockSumMetric': 5, 'train/MockConstantMetric': 0}
-            ),
-        ]
-        for case in testcases:
-            print(f'case name = {case.test_name}')
-            actual = run_metric_manager(
-                names=case.names, prefixes=case.prefixes, \
-                mappings=case.mappings, data_generator=data_generator
+    def test_metrics_manager_when_one_metric_is_defined_sum_metric(self):
+        case = TestCase(
+            test_name='one_sum_metric', names=['MockSumMetric'], \
+            prefixes=['moc_sum'], mappings=[mappings], data_generator=data_generator, \
+            expected={'train/moc_sum_MockSumMetric': 5}
             )
-            self.assertDictEqual(
-                case.expected,
-                actual,
-                "failed test {} expected {}, actual {}".format(
-                    case.test_name, case.expected, actual
-                ),
+    
+        print(f'case name = {case.test_name}')
+        actual = run_metric_manager(
+            names=case.names, prefixes=case.prefixes, \
+            mappings=case.mappings, data_generator=data_generator
+        )
+        self.assertDictEqual(
+            case.expected,
+            actual,
+            "failed test {} expected {}, actual {}".format(
+                case.test_name, case.expected, actual
+            ),
+        )
+    def test_metrics_manager_when_two_metrics_is_defined_sum_metric_and_constant_metric(self):
+        case = TestCase(
+            test_name='two_metrics', \
+            names=['MockSumMetric', 'MockConstantMetric'], \
+            prefixes=['moc_sum', None], mappings=[mappings, mappings], \
+            data_generator=data_generator, \
+            expected={'train/moc_sum_MockSumMetric': 5, 'train/MockConstantMetric': 0}
             )
-
+        
+        print(f'case name = {case.test_name}')
+        actual = run_metric_manager(
+            names=case.names, prefixes=case.prefixes, \
+            mappings=case.mappings, data_generator=data_generator
+        )
+        self.assertDictEqual(
+            case.expected,
+            actual,
+            "failed test {} expected {}, actual {}".format(
+                case.test_name, case.expected, actual
+            ),
+        )
 
 class MetricManagerRaiseTest(unittest.TestCase):
-    def test(self):
+    def test_metrics_manager_when_raise_is_happend(self):
         testcases = [
             TestCase(
                 test_name='raise_test', \
