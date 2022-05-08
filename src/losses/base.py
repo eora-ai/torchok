@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from torch import Tensor
 from torch.nn import Module, ModuleList
-from torch.nn.modules.loss import _Loss
 
 
 class JointLoss(Module):
@@ -11,7 +10,7 @@ class JointLoss(Module):
     This joined loss can be forwarded as a weighted sum of losses and can provide direct access to each loss.
     """
 
-    def __init__(self, losses: List[_Loss], mappings: List[Dict[str, str]],
+    def __init__(self, losses: List[Module], mappings: List[Dict[str, str]],
                  tags: List[Optional[str]], weights: List[Optional[float]],
                  normalize_weights: bool = True):
         """Init JointLoss.
@@ -41,7 +40,7 @@ class JointLoss(Module):
         self.__tags = tags
         self.__mappings = mappings
 
-        num_specified_weights = sum(filter(lambda w: w is not None, weights))
+        num_specified_weights = len(list(filter(lambda w: w is not None, weights)))
         if num_specified_weights > 0 and num_specified_weights != len(losses):
             raise ValueError('Loss weights must be either specified for each loss function or '
                              'not specified for any loss function')
@@ -80,11 +79,11 @@ class JointLoss(Module):
             loss = loss_module(**targeted_kwargs)
             total_loss = total_loss + loss * weight
             if tag is not None:
-                tagged_loss_values[tag] = total_loss
+                tagged_loss_values[tag] = loss
 
         return total_loss, tagged_loss_values
 
-    def __getitem__(self, tag: str) -> _Loss:
+    def __getitem__(self, tag: str) -> Module:
         """Provide direct access to loss module by its tag.
 
         Args:
