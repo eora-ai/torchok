@@ -15,3 +15,9 @@ use-flake8-tabs = True
 # H301: one import per line
 # H405: multi line docstring summary not separated with an empty line (same as D205)
 ignore = H306, H101, H301, H405
+
+# D101: Missing docstring in public class
+# D102: Missing docstring in public method
+# D105: Missing docstring in magic method
+per-file-ignores =
+    tests/*:D101,D102,D105

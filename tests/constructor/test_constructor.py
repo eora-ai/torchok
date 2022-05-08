@@ -8,8 +8,8 @@ from torch.nn import Conv2d, Module, Parameter
 from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 
+from src.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS
 from src.constructor.constructor import Constructor
-from src.constructor import OPTIMIZERS, SCHEDULERS, DATASETS, TRANSFORMS
 from src.data.datasets.base import ImageDataset
 
 
@@ -33,51 +33,46 @@ class TestDataset(ImageDataset):
 OPTIM_BASIC_HPARAMS = OmegaConf.create({
     'optimization': [
         {
-            'optimizer':
-                {
-                    'name': 'Adam',
-                    'params': {
-                        'lr': 0.0001
-                    }
-                },
-            'scheduler':
-                {
-                    'name': 'OneCycleLR',
-                    'params': {
-                        'max_lr': 0.001,
-                        'total_steps': 100000
-                    },
-                    'pl_params': {
-                        'interval': 'step'
-                    }
+            'optimizer': {
+                'name': 'Adam',
+                'params': {
+                    'lr': 0.0001
                 }
+            },
+            'scheduler': {
+                'name': 'OneCycleLR',
+                'params': {
+                    'max_lr': 0.001,
+                    'total_steps': 100000
+                },
+                'pl_params': {
+                    'interval': 'step'
+                }
+            }
         }
     ]
 })
 
 
 DATASETS_BASIC_HPARAMS = OmegaConf.create({
-    'data':
-        {
-            'train': [
-                {
-                    'dataset':
-                        {
-                            'name': 'TestDataset',
-                            'transform': None,
-                            'augment': None,
-                            'params': {}
-                        },
-                    'dataloader':
-                        {
-                            'batch_size': 8,
-                            'num_workers': 4,
-                            'drop_last': True,
-                            'shuffle': True
-                        }
+    'data': {
+        'train': [
+            {
+                'dataset': {
+                    'name': 'TestDataset',
+                    'transform': None,
+                    'augment': None,
+                    'params': {}
+                },
+                'dataloader': {
+                    'batch_size': 8,
+                    'num_workers': 4,
+                    'drop_last': True,
+                    'shuffle': True
                 }
-            ]
-        }
+            }
+        ]
+    }
 })
 
 
@@ -197,25 +192,27 @@ class TestConstructor(unittest.TestCase):
 
     def __test_transforms_augmentations(self, kind):
         hparams = DATASETS_BASIC_HPARAMS.copy()
-        hparams['data']['train'][0]['dataset'][kind] = OmegaConf.create([{
-            'name': 'OneOf',
-            'params': {
-                'transforms': [
-                    {
-                        'name': 'Blur',
-                        'params': {
-                            'blur_limit': 11
+        hparams['data']['train'][0]['dataset'][kind] = OmegaConf.create([
+            {
+                'name': 'OneOf',
+                'params': {
+                    'transforms': [
+                        {
+                            'name': 'Blur',
+                            'params': {
+                                'blur_limit': 11
+                            }
+                        }, {
+                            'name': 'RandomCrop',
+                            'params': {
+                                'width': 224,
+                                'height': 224
+                            }
                         }
-                    }, {
-                        'name': 'RandomCrop',
-                        'params': {
-                            'width': 224,
-                            'height': 224
-                        }
-                    }
-                ]
+                    ]
+                }
             }
-        }])
+        ])
 
         constructor = Constructor(hparams)
         dataloaders = constructor.create_dataloaders('train')

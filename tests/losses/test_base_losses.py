@@ -5,6 +5,7 @@ from torch.nn import Module
 
 from src.losses.base import JointLoss
 
+
 class Loss1(Module):
     def forward(self, input, target):
         return torch.abs(input * 10. - target)
@@ -20,12 +21,10 @@ class TestJointLoss(unittest.TestCase):
         joint_loss = JointLoss(
             losses=[Loss1(), Loss2()],
             tags=['loss1', 'loss2'],
-            mappings=[
-                         {
-                             'input': 'x',
-                             'target': 'y'
-                         }
-                     ] * 2,
+            mappings=[{
+                'input': 'x',
+                'target': 'y'
+            }] * 2,
             weights=[0.7, 0.3]
         )
 
@@ -37,12 +36,10 @@ class TestJointLoss(unittest.TestCase):
         joint_loss = JointLoss(
             losses=[Loss1(), Loss2()],
             tags=['loss1', 'loss2'],
-            mappings=[
-                         {
-                             'input': 'x',
-                             'target': 'y'
-                         }
-                     ] * 2,
+            mappings=[{
+                'input': 'x',
+                'target': 'y'
+            }] * 2,
             weights=[None, None]
         )
 
@@ -54,12 +51,10 @@ class TestJointLoss(unittest.TestCase):
         joint_loss = JointLoss(
             losses=[Loss1(), Loss2()],
             tags=['loss1', 'loss2'],
-            mappings=[
-                         {
-                             'input': 'x',
-                             'target': 'y'
-                         }
-                     ] * 2,
+            mappings=[{
+                'input': 'x',
+                'target': 'y'
+            }] * 2,
             weights=[0.7, 0.3]
         )
 
@@ -74,11 +69,9 @@ class TestJointLoss(unittest.TestCase):
             JointLoss(
                 losses=[Loss1(), Loss2()],
                 tags=['loss1', 'loss2'],
-                mappings=[
-                             {
-                                 'input': 'x',
-                                 'target': 'y'
-                             }
-                         ] * 2,
+                mappings=[{
+                    'input': 'x',
+                    'target': 'y'
+                }] * 2,
                 weights=[0.7, None]
             )
