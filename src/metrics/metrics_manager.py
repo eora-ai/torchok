@@ -156,8 +156,7 @@ class MetricManager(nn.Module):
 
         for metric_with_utils in self.__phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
-            if targeted_kwargs:
-                metric_with_utils(*args, **targeted_kwargs)
+            metric_with_utils(*args, **targeted_kwargs)
             
 
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
