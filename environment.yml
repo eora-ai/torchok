@@ -22,8 +22,8 @@ dependencies:
   - mlflow=1.14.1
   - pymysql=1.0.2
   - pip:
-      - torchmetrics==0.6.2
-      - ranx==0.1.11
+      - rank_eval==0.0.1
+      - torchmetrics==0.8.1
       - opencv-python==4.5.3.56
       - albumentations==1.0.3
       - sagemaker==2.59.1
