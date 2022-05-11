@@ -9,10 +9,11 @@ from typing import Optional, Union, List, Dict
 import torch
 import torch.nn as nn
 
-from src.models.modules.utils.create_attn import create_attn
+from src.constructor import BACKBONES
+from src.models.modules.blocks.se import SEModule
 from src.models.backbones.base import BaseModel, FeatureInfo
 from src.models.backbones.utils.helpers import build_model_with_cfg
-from src.models.backbones.utils.registry import register_model
+from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 
 
 def _cfg(url='', **kwargs):
@@ -22,8 +23,8 @@ def _cfg(url='', **kwargs):
         'pool_size': (7, 7),
         'crop_pct': 0.875,
         'interpolation': 'bilinear',
-        'mean': (0.485, 0.456, 0.406),
-        'std': (0.229, 0.224, 0.225),
+        'mean': IMAGENET_DEFAULT_MEAN,
+        'std': IMAGENET_DEFAULT_STD,
         'first_conv': 'conv1',
         'classifier': 'fc',
         **kwargs
@@ -69,7 +70,7 @@ class BasicBlock(nn.Module):
                  out_channels: int,
                  stride: int = 1,
                  downsample: Optional[nn.Module] = None,
-                 attn_layer: str = None):
+                 attn_layer: Optional[nn.Module] = None):
         """Init BasicBlock.
 
         Args:
@@ -77,7 +78,7 @@ class BasicBlock(nn.Module):
             out_channels: Number of output channels.
             stride: Stride.
             downsample: Downsample module.
-            attn_layer: Type of attention block.
+            attn_layer: Attention block.
         """
         super(BasicBlock, self).__init__()
         out_block_channels = out_channels * self.expansion
@@ -86,11 +87,12 @@ class BasicBlock(nn.Module):
         self.act1 = nn.ReLU(inplace=True)
         self.conv2 = nn.Conv2d(out_channels, out_block_channels, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(out_block_channels)
-        self.se = create_attn(attn_layer, out_block_channels)
+        self.se = attn_layer(out_block_channels) if attn_layer is not None else None
         self.act2 = nn.ReLU(inplace=True)
         self.downsample = downsample
 
     def forward(self, x):
+        """Forward method."""
         identity = x
 
         out = self.conv1(x)
@@ -121,8 +123,8 @@ class Bottleneck(nn.Module):
                  in_channels: int,
                  out_channels: int,
                  stride: int = 1,
-                 downsample: nn.Sequential = None,
-                 attn_layer: str = None):
+                 downsample: Optional[nn.Module] = None,
+                 attn_layer: Optional[nn.Module] = None):
         """Init Bottleneck.
 
         Args:
@@ -130,7 +132,7 @@ class Bottleneck(nn.Module):
             out_channels: Number of output channels.
             stride: Stride.
             downsample: Downsample module.
-            attn_layer: Type of attention block.
+            attn_layer: Attention block.
         """
         super(Bottleneck, self).__init__()
         out_block_channels = out_channels * self.expansion
@@ -142,11 +144,12 @@ class Bottleneck(nn.Module):
         self.act2 = nn.ReLU(inplace=True)
         self.conv3 = nn.Conv2d(out_channels, out_block_channels, kernel_size=1, stride=1, bias=False)
         self.bn3 = nn.BatchNorm2d(out_block_channels)
-        self.se = create_attn(attn_layer, out_block_channels)
+        self.se = attn_layer(out_block_channels) if attn_layer is not None else None
         self.act3 = nn.ReLU(inplace=True)
         self.downsample = downsample
 
     def forward(self, x):
+        """Forward method."""
         identity = x
 
         out = self.conv1(x)
@@ -241,6 +244,7 @@ class ResNet(BaseModel):
         return nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor):
+        """Forward method."""
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.act1(x)
@@ -259,81 +263,81 @@ def create_resnet(variant, pretrained=False, **kwargs):
                                 pretrained=pretrained, **kwargs, pretrained_strict=False)
 
 
-@register_model
+@BACKBONES.register_class
 def resnet18(pretrained=False, **kwargs):
     """Is constructing a ResNet-18 model."""
     model_args = dict(block=BasicBlock, layers=[2, 2, 2, 2], **kwargs)
     return create_resnet('resnet18', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def resnet34(pretrained=False, **kwargs):
     """Is constructing a ResNet-34 model."""
     model_args = dict(block=BasicBlock, layers=[3, 4, 6, 3], **kwargs)
     return create_resnet('resnet34', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def resnet50(pretrained=False, **kwargs):
     """Is constructing a ResNet-50 model."""
     model_args = dict(block=Bottleneck, layers=[3, 4, 6, 3], **kwargs)
     return create_resnet('resnet50', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def resnet101(pretrained=False, **kwargs):
     """Is constructing a ResNet-101 model."""
     model_args = dict(block=Bottleneck, layers=[3, 4, 23, 3], **kwargs)
     return create_resnet('resnet101', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def resnet152(pretrained=False, **kwargs):
     """Is constructing a ResNet-152 model."""
     model_args = dict(block=Bottleneck, layers=[3, 8, 36, 3], **kwargs)
     return create_resnet('resnet152', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def seresnet18(pretrained=False, **kwargs):
     """Is constructing a SEResNet-18 model."""
     block_args = kwargs.pop('block_args', dict())
-    block_args.update({'attn_layer': 'se'})
+    block_args.update({'attn_layer': SEModule})
     model_args = dict(block=BasicBlock, layers=[2, 2, 2, 2], block_args=block_args, **kwargs)
     return create_resnet('seresnet18', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def seresnet34(pretrained=False, **kwargs):
     """Is constructing a SEResNet-34 model."""
     block_args = kwargs.pop('block_args', dict())
-    block_args.update({'attn_layer': 'se'})
+    block_args.update({'attn_layer': SEModule})
     model_args = dict(block=BasicBlock, layers=[3, 4, 6, 3], block_args=block_args, **kwargs)
     return create_resnet('seresnet34', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def seresnet50(pretrained=False, **kwargs):
     """Is constructing a SEResNet-50 model."""
     block_args = kwargs.pop('block_args', dict())
-    block_args.update({'attn_layer': 'se'})
+    block_args.update({'attn_layer': SEModule})
     model_args = dict(block=Bottleneck, layers=[3, 4, 6, 3], block_args=block_args, **kwargs)
     return create_resnet('seresnet50', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def seresnet101(pretrained=False, **kwargs):
     """Is constructing a SEResNet-101 model."""
     block_args = kwargs.pop('block_args', dict())
-    block_args.update({'attn_layer': 'se'})
+    block_args.update({'attn_layer': SEModule})
     model_args = dict(block=Bottleneck, layers=[3, 4, 23, 3], block_args=block_args, **kwargs)
     return create_resnet('seresnet101', pretrained, **model_args)
 
 
-@register_model
+@BACKBONES.register_class
 def seresnet152(pretrained=False, **kwargs):
     """Is constructing a SEResNet-152 model."""
     block_args = kwargs.pop('block_args', dict())
-    block_args.update({'attn_layer': 'se'})
+    block_args.update({'attn_layer': SEModule})
     model_args = dict(block=Bottleneck, layers=[3, 8, 36, 3], block_args=block_args, **kwargs)
     return create_resnet('seresnet152', pretrained, **model_args)

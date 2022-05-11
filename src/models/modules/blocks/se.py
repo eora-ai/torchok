@@ -8,11 +8,9 @@ from typing import Optional
 
 from torch import nn as nn
 
-from src.models.modules.utils.create_act import create_act_layer
-
 
 class SEModule(nn.Module):
-    """ SE Module as defined in original SE-Nets with a few additions.
+    """SE Module as defined in original SE-Nets with a few additions.
 
     Additions include:
         * min_channels can be specified to keep reduced channel count at a minimum (default: 8)
@@ -22,15 +20,22 @@ class SEModule(nn.Module):
     """
 
     def __init__(self,
-                 channels: list,
+                 channels: int,
                  reduction: int = 16,
-                 act_layer: nn.Module = nn.ReLU,
-                 gate_layer: str = 'sigmoid',
                  reduction_ratio: Optional[float] = None,
                  reduction_channels: Optional[int] = None,
                  min_channels: int = 8,
                  divisor: int = 1):
+        """Init SEModule.
 
+        Args:
+            channels: Number input channels.
+            reduction: Reduction coefficient.
+            reduction_ratio: Reduction ratio.
+            reduction_channels: Reduction channels.
+            min_channels: Minimum number of reduction channels.
+            divisor: `reduction_channels` must be a multiple of `divisor`.
+        """
         super(SEModule, self).__init__()
 
         if reduction_channels is not None:
@@ -40,9 +45,9 @@ class SEModule(nn.Module):
         else:
             reduction_channels = self.__make_divisible(channels // reduction, divisor, min_channels)
         self.fc1 = nn.Conv2d(channels, reduction_channels, kernel_size=1, bias=True)
-        self.act = act_layer(inplace=True)
+        self.act = nn.ReLU(inplace=True)
         self.fc2 = nn.Conv2d(reduction_channels, channels, kernel_size=1, bias=True)
-        self.gate = create_act_layer(gate_layer)
+        self.gate = nn.Sigmoid()
 
     def __make_divisible(self, v, divisor=8, min_value=None):
         min_value = min_value or divisor
@@ -52,27 +57,9 @@ class SEModule(nn.Module):
         return new_v
 
     def forward(self, x):
+        """Forward method."""
         x_se = x.mean((2, 3), keepdim=True)
         x_se = self.fc1(x_se)
         x_se = self.act(x_se)
         x_se = self.fc2(x_se)
-        return x * self.gate(x_se)
-
-
-class EffectiveSEModule(nn.Module):
-    """ 'Effective Squeeze-Excitation.
-
-    From `CenterMask : Real-Time Anchor-Free Instance Segmentation` - https://arxiv.org/abs/1911.06667
-    """
-
-    def __init__(self,
-                 channels: int,
-                 gate_layer: str = 'hard_sigmoid'):
-        super(EffectiveSEModule, self).__init__()
-        self.fc = nn.Conv2d(channels, channels, kernel_size=1, padding=0)
-        self.gate = create_act_layer(gate_layer, inplace=True)
-
-    def forward(self, x):
-        x_se = x.mean((2, 3), keepdim=True)
-        x_se = self.fc(x_se)
         return x * self.gate(x_se)

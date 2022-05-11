@@ -1,9 +1,10 @@
+import imp
 import unittest
 
 import timm
 import torch
 
-from src.models.backbones.resnet import resnet18, resnet50, seresnet50
+from src.constructor import BACKBONES
 
 
 class TestResNet18(unittest.TestCase):
@@ -18,7 +19,7 @@ class TestResNet18(unittest.TestCase):
         self.__timm_model(self.__input)
         self.__output['output_last_layer']
 
-        self.__model = resnet18(pretrained=True)
+        self.__model = BACKBONES.get('resnet18')(pretrained=True)
         self.assertTrue(self.__model(self.__input).equal(self.__output['output_last_layer']))
 
     def get_output(self, name):
@@ -38,7 +39,7 @@ class TestResNet50(unittest.TestCase):
         self.__timm_model(self.__input)
         self.__output['output_last_layer']
 
-        self.__model = resnet50(pretrained=True)
+        self.__model = BACKBONES.get('resnet50')(pretrained=True)
         self.assertTrue(self.__model(self.__input).equal(self.__output['output_last_layer']))
 
     def get_output(self, name):
@@ -58,7 +59,7 @@ class TestSEResNet50(unittest.TestCase):
         self.__timm_model(self.__input)
         self.__output['output_last_layer']
 
-        self.__model = seresnet50(pretrained=True)
+        self.__model = BACKBONES.get('seresnet50')(pretrained=True)
         self.assertTrue(self.__model(self.__input).equal(self.__output['output_last_layer']))
 
     def get_output(self, name):
