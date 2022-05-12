@@ -1,7 +1,43 @@
 from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
 
 from torch import Tensor
 from torch.nn import Module, ModuleList
+
+from src.constructor import LOSSES
+
+# Losses parameters
+@dataclass
+class LossParams:
+    """
+    Args:
+        losses: List of loss modules with their `forward` methods implemented
+        mappings: List of mappings, each making relationships from neural network outputs to loss inputs.
+        Useful in `Task`s in their `forward_with_gt` methods to support direct passing of tensors
+        between a neural network and loss functions
+        tags: List of tags applied to each loss from `losses`. Useful when user wants to access individual loss
+        by its tag via `JointLoss.__getitem__`. Losses for which tags are `None`, can't be accessed directly and
+        `JointLoss.__getitem__` will throw a `ValueError`
+        weights: List of scalar weights for loss functions, so that resulting loss value will be:
+        `loss = loss_i * weight_i for i in [0, len(losses) - 1]`. The weights must be
+        either specified for each loss function or not specified for any loss functions.
+        In the last case the weights will be automatically set as equal
+    """
+    name: str
+    tag: str
+    mapping: Dict[str, str]
+    weight: Optional[float]
+    params: Dict = field(default_factory=dict)
+    
+@dataclass
+class JointLossParams:
+    """
+    Args:
+        loss_params: List parameters for loss.
+        normalize_weights: Either to normalize the weights, so that they sum up to 1 before loss value calculation.
+    """
+    loss_params: List[LossParams]
+    normalize_weights: bool = True
 
 
 class JointLoss(Module):
@@ -9,46 +45,45 @@ class JointLoss(Module):
 
     This joined loss can be forwarded as a weighted sum of losses and can provide direct access to each loss.
     """
-
-    def __init__(self, losses: List[Module], mappings: List[Dict[str, str]],
-                 tags: List[Optional[str]], weights: List[Optional[float]],
-                 normalize_weights: bool = True):
+    def __init__(self, joint_loss_params: JointLossParams):
         """Init JointLoss.
 
         Reduction isn't applied, so the included loss modules are responsible for reduction
 
         Args:
-            losses: List of loss modules with their `forward` methods implemented
-            mappings: List of mappings, each making relationships from neural network outputs to loss inputs.
-            Useful in `Task`s in their `forward_with_gt` methods to support direct passing of tensors
-            between a neural network and loss functions
-            tags: List of tags applied to each loss from `losses`. Useful when user wants to access individual loss
-            by its tag via `JointLoss.__getitem__`. Losses for which tags are `None`, can't be accessed directly and
-            `JointLoss.__getitem__` will throw a `ValueError`
-            weights: List of scalar weights for loss functions, so that resulting loss value will be:
-            `loss = loss_i * weight_i for i in [0, len(losses) - 1]`. The weights must be
-            either specified for each loss function or not specified for any loss functions.
-            In the last case the weights will be automatically set as equal
-            normalize_weights: Either to normalize the weights, so that they sum up to 1 before loss value calculation.
+            joint_loss_params: Include loss_params for create losses and normalize_weights bool value which indicates 
+                whether to normalize losses weights.
 
         Raises:
             - ValueError: When only a few weights are specified but not for all the loss modules
         """
         super().__init__()
-        self.__losses = ModuleList(losses)
-        self.__tag2loss = {tag: loss for tag, loss in zip(tags, self.__losses) if tag is not None}
-        self.__tags = tags
-        self.__mappings = mappings
+        loss_params = joint_loss_params.loss_params
+        normalize_weights = joint_loss_params.normalize_weights
 
-        num_specified_weights = len(list(filter(lambda w: w is not None, weights)))
-        if num_specified_weights > 0 and num_specified_weights != len(losses):
+        self.__losses = []
+        self.__tags = []
+        self.__mappings = []
+        self.__weights = []
+
+        for cur_loss_params in loss_params:
+            loss_module = LOSSES.get(cur_loss_params.name)(**cur_loss_params.params)
+            self.__losses.append(loss_module)
+            self.__tags.append(cur_loss_params.tag)
+            self.__mappings.append(cur_loss_params.mapping)
+            self.__weights.append(cur_loss_params.weight)
+
+        self.__losses = ModuleList(self.__losses)
+        self.__tag2loss = {tag: loss for tag, loss in zip(tags, self.__losses) if tag is not None}
+
+
+        num_specified_weights = len(list(filter(lambda w: w is not None, self.__weights)))
+        if num_specified_weights > 0 and num_specified_weights != len(self.__losses):
             raise ValueError('Loss weights must be either specified for each loss function or '
                              'not specified for any loss function')
 
         if num_specified_weights == 0:
             self.__weights = [1.] * len(self.__losses)
-        else:
-            self.__weights = weights
 
         if normalize_weights:
             self.__weights = [w / sum(self.__weights) for w in self.__weights]
