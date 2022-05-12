@@ -11,30 +11,27 @@ from torchmetrics import Metric, Accuracy
 from torchvision import transforms
 from torchvision.datasets import MNIST
 from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
+from src.metrics.representation import DatasetType, MetricDistance
 from typing import *
 import math
-
 
 
 BATCH_SIZE = 3
 EPOCH = 1
 
 vectors = {
-    'classification': torch.tensor([
+    DatasetType.CLASSIFICATION: torch.tensor([
         [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], \
         [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 
-    'representation': torch.tensor([
+    DatasetType.REPRESENTATION: torch.tensor([
         [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], \
         [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 }
 
-targets = {
-    'classification': torch.tensor([0, 1, 1, 2, 2, 1, 0, 0, 3]),
-    'representation': torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3])
-}
+targets = torch.tensor([0, 1, 1, 2, 2, 1, 0, 0, 3], dtype=torch.int32)
 
-is_queries = torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3], dtype=torch.int32)
+queries_idxs = torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3], dtype=torch.int32)
 
 scores = torch.tensor(
     [
@@ -50,6 +47,7 @@ scores = torch.tensor(
     ]
 )
 
+# 1-4 is top-k for retrieval
 classification_dataset_answers = {
     'recall': {
         1: 0.5, 
@@ -113,11 +111,11 @@ name2class = {
 
 
 class FakeData(Dataset):
-    def __init__(self, dataset='classification'):
-        self.vectors = vectors[dataset]
-        self.targets = targets[dataset]
+    def __init__(self, dataset_type=DatasetType.CLASSIFICATION):
+        self.vectors = vectors[dataset_type]
+        self.targets = targets
         self.scores = scores
-        self.is_queries = is_queries
+        self.queries_idxs = queries_idxs
 
     def __len__(self):
         return len(self.vectors)
@@ -127,23 +125,24 @@ class FakeData(Dataset):
             'vectors': self.vectors[item],
             'targets': self.targets[item],
             'scores': self.scores[item],
-            'is_queries': self.is_queries[item]
+            'queries_idxs': self.queries_idxs[item]
         }
         return output
 
 
 class TestCase:
-    def __init__(self, test_name, dataset: str = 'classification', search_batch_size: bool = None, \
-                 exact_index: bool = True, normalize_input: bool = True, metric: str = 'IP'):
+    def __init__(self, test_name, dataset_type: DatasetType = DatasetType.CLASSIFICATION, \
+            search_batch_size: bool = None, exact_index: bool = True, normalize_vectors: bool = True, \
+            metric_distance: MetricDistance = MetricDistance.IP):
         self.params = dict(
-            dataset = dataset,
+            dataset_type = dataset_type,
             search_batch_size = search_batch_size,
             exact_index = exact_index,
-            normalize_input = normalize_input,
-            metric = metric,
+            normalize_vectors = normalize_vectors,
+            metric_distance = metric_distance,
         )
         self.class_name = test_name
-        if dataset == 'classification':
+        if dataset_type == DatasetType.CLASSIFICATION:
             self.expected = classification_dataset_answers[test_name]
         else:
             self.expected = representation_dataset_answers[test_name]
@@ -153,7 +152,7 @@ class Model(LightningModule):
     def __init__(self, test_case: TestCase):
         super().__init__()
         self.l1 = torch.nn.Linear(4, 4)
-        self.dataset = test_case.params['dataset']
+        self.dataset = test_case.params['dataset_type']
         metric_class = name2class[test_case.class_name]
         self.metrics = [metric_class(**test_case.params, k=k) for k in range(1, 5)]
 
@@ -162,15 +161,14 @@ class Model(LightningModule):
 
     def training_step(self, batch, batch_nb):
         vectors = batch['vectors']
-        targets = batch['targets']
         predict = self(vectors.float())
         loss = F.cross_entropy(predict, torch.zeros(predict.shape[0], dtype=torch.long))
         # set fake data to output, to check metrics
         for metric in self.metrics:
-            if self.dataset == 'classification':
+            if self.dataset == DatasetType.CLASSIFICATION:
                 metric(vectors=batch['vectors'], targets=batch['targets'])
             else:
-                metric(vectors=batch['vectors'], scores=batch['scores'], queries_idxs=batch['is_queries'])
+                metric(vectors=batch['vectors'], scores=batch['scores'], queries_idxs=batch['queries_idxs'])
         return loss
 
     def configure_optimizers(self):
@@ -178,7 +176,7 @@ class Model(LightningModule):
 
 
 def run_model(test_case: TestCase):
-    train_ds = FakeData(test_case.params['dataset'])
+    train_ds = FakeData(test_case.params['dataset_type'])
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE)
 
     model = Model(test_case)
@@ -196,34 +194,61 @@ def run_model(test_case: TestCase):
 
     metric_dict = {}
     for k, metric in enumerate(model.metrics):
-        # print(f'metric vectors shape = {torch.cat(metric.vectors).shape}')
         metric_dict[k + 1] = metric.compute()
 
     return metric_dict
 
 
-class DDPTestRepresentationMetrics(unittest.TestCase):
-    def test_classification_dataset(self):
-        test_cases = [
-            TestCase(test_name='recall', dataset='representation'),
-            TestCase(test_name='precision', dataset='representation'),
-            TestCase(test_name='average_precision', dataset='representation'),
-            TestCase(test_name='ndcg', dataset='representation'),
-        ]
-
-        for case in test_cases:
+class TestDDPRepresentationMetrics(unittest.TestCase):
+    def test_recall_when_dataset_is_representation(self):
+        case = TestCase(test_name='recall', dataset_type=DatasetType.REPRESENTATION)
+        for k in range(1, 5):
             actual = run_model(case)
-            name = case.class_name
-            for k in range(1, 5):
-                assert math.isclose(case.expected[k], actual[k])
-            # print(f'Answer = {actual}')
-            # self.assertDictEqual(
-            #     case.expected,
-            #     actual,
-            #     "failed test {} expected {}, actual {}".format(
-            #         case.class_name, case.expected, actual
-            #     ),
-            # )
+            assert math.isclose(case.expected[k], actual[k])
+
+    def test_precision_when_dataset_is_representation(self):
+        case = TestCase(test_name='precision', dataset_type=DatasetType.REPRESENTATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
+
+    def test_average_precision_when_dataset_is_representation(self):
+        case = TestCase(test_name='average_precision', dataset_type=DatasetType.REPRESENTATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
+
+    def test_ndcg_when_dataset_is_representation(self):
+        case = TestCase(test_name='ndcg', dataset_type=DatasetType.REPRESENTATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
+
+    # all metrics with classification dataset failed the tests
+    # TODO: overwrite Classification Dataset.
+    def test_recall_when_dataset_is_classification(self):
+        case = TestCase(test_name='recall', dataset_type=DatasetType.CLASSIFICATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
+
+    def test_precision_when_dataset_is_classification(self):
+        case = TestCase(test_name='precision', dataset_type=DatasetType.CLASSIFICATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
+
+    def test_average_precision_when_dataset_is_classification(self):
+        case = TestCase(test_name='average_precision', dataset_type=DatasetType.CLASSIFICATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
+
+    def test_ndcg_when_dataset_is_classification(self):
+        case = TestCase(test_name='ndcg', dataset_type=DatasetType.CLASSIFICATION)
+        for k in range(1, 5):
+            actual = run_model(case)
+            assert math.isclose(case.expected[k], actual[k])
 
 
 if __name__ == '__main__':
