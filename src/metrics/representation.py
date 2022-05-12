@@ -150,14 +150,11 @@ class IndexBasedMeter(Metric, ABC):
 
         index = self.build_index(db_vecs)
 
-        # if search batch size is None, search queries vectors by one request
-        search_batch_size = len(q_vecs) if self.search_batch_size is None else self.search_batch_size
-
         # if k is None set it as database length
         k = len(db_vecs) if self.k is None else self.k
 
         # create relevant, closest generator
-        generator = self.query_generator(index, relevants, q_vecs, db_idxs, q_order_idxs, search_batch_size, k, scores)
+        generator = self.query_generator(index, relevants, q_vecs, db_idxs, q_order_idxs, k, scores)
         
         # compute metric
         scores = []
@@ -264,7 +261,7 @@ class IndexBasedMeter(Metric, ABC):
 
     def query_generator(self, index: Union[faiss.swigfaiss_avx2.IndexFlatIP, faiss.swigfaiss_avx2.IndexFlatL2], \
                         relevants: np.ndarray, queries: np.ndarray, db_ids: np.ndarray, q_order_idxs: np.ndarray, \
-                        search_batch_size: int, k: int, scores: Optional[np.ndarray] = None
+                        k: int, scores: Optional[np.ndarray] = None
     ) -> Generator[Tuple[List[np.ndarray], List[np.ndarray]], None, None]:
         """Create relevants relevant, closest arrays.
 
@@ -279,7 +276,6 @@ class IndexBasedMeter(Metric, ABC):
             scores: Scores for every relevant index per each query request, size (database_size, total_num_queries).
                 See representation dataset for more information.
             db_ids: Database indexes.
-            search_batch_size: Query size for one search request.
             k:  Number of top closest indexes to get.
 
         Returns:
@@ -316,8 +312,8 @@ class IndexBasedMeter(Metric, ABC):
                                [6.        , 0.42264974]])
                     ].
             """
-            for i in range(0, len(queries), search_batch_size):
-                query_idxs = np.arange(i, min(i + search_batch_size, len(queries)))
+            for i in range(0, len(queries), self.search_batch_size):
+                query_idxs = np.arange(i, min(i + self.search_batch_size, len(queries)))
 
                 closest_dist, closest_idx = index.search(queries[query_idxs], k=k)
                 relevant = relevants[query_idxs]
