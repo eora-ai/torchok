@@ -8,39 +8,39 @@ from typing import List
 from src.models.base_model import BaseModel, FeatureInfo
 
 
-# class TestBaseModelWithoutHooks(unittest.TestCase):
-#     def setUp(self):
-#         self._input_channel = 3
-#         self._output_channel = 5
-#         self._input = torch.ones(1, self._input_channel, 224, 224)
+class TestBaseModelWithoutHooks(unittest.TestCase):
+    def setUp(self):
+        self._input_channel = 3
+        self._output_channel = 5
+        self._input = torch.ones(1, self._input_channel, 224, 224)
 
-#         class ModelWithoutHooks(BaseModel):
-#             def __init__(self, input_channel: int, output_channel: int):
-#                 super().__init__()
-#                 self.conv = nn.Conv2d(input_channel, output_channel, 3, padding='same')
-#                 self.output_channel = output_channel
+        class ModelWithoutHooks(BaseModel):
+            def __init__(self, input_channel: int, output_channel: int):
+                super().__init__()
+                self.conv = nn.Conv2d(input_channel, output_channel, 3, padding='same')
+                self.output_channel = output_channel
 
-#             def get_forward_output_channels(self):
-#                 # Impltment abstract method
-#                 return self.output_channel
+            def get_forward_output_channels(self):
+                # Impltment abstract method
+                return self.output_channel
 
-#             def forward(self, x):
-#                 return self.conv(x)
+            def forward(self, x):
+                return self.conv(x)
 
-#         self._model = ModelWithoutHooks(self._input_channel, self._output_channel)
+        self._model = ModelWithoutHooks(self._input_channel, self._output_channel)
 
-#     def test_function_get_out_channel_when_hooks_was_not_define(self):
-#         print('test_function_get_out_channel_when_hooks_was_not_define')
-#         forward_channels, hooks_channels = self._model.get_output_channels()
-#         self.assertEqual(forward_channels, self._output_channel, 'Forward channels is not equal.')
-#         self.assertEqual(hooks_channels, None, 'Hooks channels is not None.')
+    def test_function_get_out_channel_when_hooks_was_not_define(self):
+        print('test_function_get_out_channel_when_hooks_was_not_define')
+        forward_channels, hooks_channels = self._model.get_output_channels()
+        self.assertEqual(forward_channels, self._output_channel, 'Forward channels is not equal.')
+        self.assertEqual(hooks_channels, None, 'Hooks channels is not None.')
 
-#     def test_forward_stage_features_when_hooks_was_not_define(self):
-#         print('test_function_get_out_channel_when_hooks_was_not_define')
-#         last_features, hooks_features = self._model.forward_stage_features(self._input)
-#         feature_shape = (1, self._output_channel, 224, 224)
-#         self.assertEqual(last_features.shape, feature_shape, 'Forward channels shape is not equal.')
-#         self.assertEqual(hooks_features, None, 'Hooks channels is not None.')
+    def test_forward_stage_features_when_hooks_was_not_define(self):
+        print('test_function_get_out_channel_when_hooks_was_not_define')
+        last_features, hooks_features = self._model.forward_stage_features(self._input)
+        feature_shape = (1, self._output_channel, 224, 224)
+        self.assertEqual(last_features.shape, feature_shape, 'Forward channels shape is not equal.')
+        self.assertEqual(hooks_features, None, 'Hooks channels is not None.')
 
 
 class TestBaseModelWithHooks(unittest.TestCase):
