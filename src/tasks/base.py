@@ -28,11 +28,12 @@ class BaseTask(LightningModule, ABC):
 
     @abstractmethod
     def forward(self, *args, **kwargs):
+        """Abstract forward method for validation an test."""
         pass
 
     @abstractmethod
     def forward_with_gt(batch: dict) -> dict:
-        """Abstract method for forward with ground truth labels."""
+        """Abstract forward method for training(with ground truth labels)."""
         pass
 
     @abstractmethod
@@ -66,8 +67,6 @@ class BaseTask(LightningModule, ABC):
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self._metric_manager.on_epoch_end('train'))
-
-        
 
     def validation_epoch_end(self, outputs: Tuple[torch.tensor, dict]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
@@ -105,7 +104,7 @@ class BaseTask(LightningModule, ABC):
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers.
-        
+
         Returns:
             This method return two lists.
             First list - optimizers.
@@ -166,20 +165,20 @@ class BaseTask(LightningModule, ABC):
 
     @property
     def hparams(self):
-        """Is hyperparameters that set in yaml file."""
+        """Hyperparameters that set in yaml file."""
         return self._hparams
 
     @property
     def metric_manager(self):
-        """Is metric manager."""
+        """Metric manager."""
         return self._metric_manager
 
     @property
     def criterion(self):
-        """Is criterion."""
+        """Criterion."""
         return self._criterion
 
     @property
     def input_shapes(self):
-        """Is input shape."""
+        """Input shape."""
         return self.__input_shapes

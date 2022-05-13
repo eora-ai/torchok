@@ -3,7 +3,7 @@ from typing import List, Tuple, Union
 import torch
 from omegaconf import DictConfig
 
-from src.registry import TASKS, POOLINGS, HEADS, BACKBONES
+from src.registry import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
 
@@ -27,15 +27,10 @@ class ClassificationTask(BaseTask):
         self._hparams.head_params['in_features'] = self.pooling.get_forward_output_channels()
         self.head = HEADS.get(self._hparams.head_name)(**self._hparams.head_params)
 
-    def forward_features(self, x: torch.tensor) -> torch.tensor:
-        """Forward through backbone and pooling modules."""
-        x = self.backbone(x)
-        x = self.pooling(x)
-        return x
-
     def forward(self, x: torch.tensor) -> torch.tensor:
         """Forward method."""
-        x = self.forward_features(x)
+        x = self.backbone(x)
+        x = self.pooling(x)
         x = self.head(x)
         return x
 
@@ -64,21 +59,21 @@ class ClassificationTask(BaseTask):
         return output
 
     def training_step(self, batch: dict) -> torch.tensor:
-        """The complete training loop."""
+        """Complete training loop."""
         output = self.forward_with_gt(batch)
         loss = self._criterion(**output)
         self._metric_manager.update('train', **output)
         return loss
 
     def validation_step(self, batch: dict) -> torch.tensor:
-        """The complete validation loop."""
+        """Complete validation loop."""
         output = self.forward_with_gt(batch)
         loss = self._criterion(**output)
         self._metric_manager.update('valid', **output)
         return loss
 
     def test_step(self, batch: dict) -> torch.tensor:
-        """The complete test loop."""
+        """Complete test loop."""
         output = self.forward_with_gt(batch)
         loss = self._criterion(**output)
         self._metric_manager.update('test', **output)
