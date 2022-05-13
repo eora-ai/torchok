@@ -29,11 +29,12 @@ class BaseTask(LightningModule, ABC):
 
     @abstractmethod
     def forward(self, *args, **kwargs):
+        """Abstract forward method for validation an test."""
         pass
 
     @abstractmethod
     def forward_with_gt(batch: dict) -> dict:
-        """Abstract method for forward with ground truth labels."""
+        """Abstract forward method for training(with ground truth labels)."""
         pass
 
     @abstractmethod
@@ -68,8 +69,6 @@ class BaseTask(LightningModule, ABC):
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self.__metric_manager.on_epoch_end('train'))
 
-        
-
     def validation_epoch_end(self, outputs: Tuple[torch.tensor, dict]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
         total_loss, tagged_loss_values = outputs
@@ -82,13 +81,6 @@ class BaseTask(LightningModule, ABC):
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self.__metric_manager.on_epoch_end('valid'))
 
-<<<<<<< HEAD
-    def test_epoch_end(self, outputs: torch.tensor) -> None:
-        """Is calling at the end of a test epoch with the output of all test steps."""
-        avg_loss = torch.stack(outputs).mean()
-        self.log('test/loss', avg_loss, on_step=False, on_epoch=True)
-        self.log_dict(self.__metric_manager.on_epoch_end('test'))
-=======
     def test_epoch_end(self, outputs: Tuple[torch.tensor, dict]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
         total_loss, tagged_loss_values = outputs
@@ -99,7 +91,6 @@ class BaseTask(LightningModule, ABC):
             self.log(f'test/{tag}', loss_value, on_step=False, on_epoch=True)
 
         self.log_dict(self._metric_manager.on_epoch_end('test'))
->>>>>>> after review
 
     def to_onnx(self, onnx_params) -> None:
         """It's saving the model in ONNX format."""
@@ -107,19 +98,14 @@ class BaseTask(LightningModule, ABC):
                         **onnx_params)
 
     def on_train_end(self) -> None:
-<<<<<<< HEAD
-        """Is calling at the end of training before logger experiment is closed."""
-        onnx_params = self.__hparams.onnx_params
-=======
         """It's calling at the end of training before logger experiment is closed."""
         onnx_params = self._hparams.onnx_params
->>>>>>> after review
         if onnx_params is not None:
             self.to_onnx(onnx_params)
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers.
-        
+
         Returns:
             This method return two lists.
             First list - optimizers.
@@ -145,48 +131,27 @@ class BaseTask(LightningModule, ABC):
     def val_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         phase = 'valid'
-<<<<<<< HEAD
-        drop_last = self.__hparams['data'][phase][0]['dataloader']['drop_last']
-        shuffle = self.__hparams['data'][phase][0]['dataloader']['shuffle']
-        if shuffle or drop_last:
-            raise ValueError(f'DataLoader parametrs `shuffle` and `drop_last` must be False in {phase} phase.')
-=======
         drop_last = self._hparams['data'][phase][0]['dataloader']['drop_last']
         if drop_last:
             raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
->>>>>>> after review
         data_loader = self.__constructor.create_dataloaders(phase)
         return data_loader
 
     def test_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for testing."""
         phase = 'test'
-<<<<<<< HEAD
-        drop_last = self.__hparams['data'][phase][0]['dataloader']['drop_last']
-        shuffle = self.__hparams['data'][phase][0]['dataloader']['shuffle']
-        if shuffle or drop_last:
-            raise ValueError(f'DataLoader parametrs `shuffle` and `drop_last` must be False in {phase} phase.')
-=======
         drop_last = self._hparams['data'][phase][0]['dataloader']['drop_last']
         if drop_last:
             raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
->>>>>>> after review
         data_loader = self.__constructor.create_dataloaders(phase)
         return data_loader
 
     def predict_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         phase = 'predict'
-<<<<<<< HEAD
-        drop_last = self.__hparams['data'][phase][0]['dataloader']['drop_last']
-        shuffle = self.__hparams['data'][phase][0]['dataloader']['shuffle']
-        if shuffle or drop_last:
-            raise ValueError(f'DataLoader parametrs `shuffle` and `drop_last` must be False in {phase} phase.')
-=======
         drop_last = self._hparams['data'][phase][0]['dataloader']['drop_last']
         if drop_last:
             raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
->>>>>>> after review
         data_loader = self.__constructor.create_dataloaders(phase)
         return data_loader
 
@@ -201,20 +166,20 @@ class BaseTask(LightningModule, ABC):
 
     @property
     def hparams(self):
-        """Is hyperparameters that set in yaml file."""
-        return self.__hparams
+        """Hyperparameters that set in yaml file."""
+        return self._hparams
 
     @property
     def metric_manager(self):
-        """Is metric manager."""
+        """Metric manager."""
         return self._metric_manager
 
     @property
     def criterion(self):
-        """Is criterion."""
+        """Criterion."""
         return self._criterion
 
     @property
     def input_shapes(self):
-        """Is input shape."""
+        """Input shape."""
         return self.__input_shapes
