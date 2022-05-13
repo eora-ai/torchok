@@ -9,7 +9,7 @@ from albumentations.core.composition import BaseCompose
 
 
 class ImageDataset(Dataset, ABC):
-    """ An abstract class for image dataset """
+    """An abstract class for image dataset."""
 
     def __init__(self,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
@@ -17,24 +17,26 @@ class ImageDataset(Dataset, ABC):
                  image_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
-        """
+        """Init ImageDataset.
+
         Args:
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of of the torch tensors related to the image.
+            image_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
         self._test_mode = test_mode
-        self.__transform = transform
-        self.__augment = augment
+        self._transform = transform
+        self._augment = augment
         self._image_dtype = image_dtype
-        self.__grayscale = grayscale
+        self._grayscale = grayscale
+
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
-        """Transformations based on API of albumentations library.
+        """Is transformations based on API of albumentations library.
 
         Args:
             transform: Transformations from `albumentations` library.
@@ -51,11 +53,11 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        image = cv2.imread(str(image_path), int(not self.grayscale))
+        image = cv2.imread(str(image_path), int(not self._grayscale))
 
         if image is None:
             raise ValueError(f'{image_path} image does not exist')
-        if self.grayscale:
+        if self._grayscale:
             image = image[..., None]
         else:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -64,28 +66,35 @@ class ImageDataset(Dataset, ABC):
 
     @abstractmethod
     def __len__(self) -> int:
+        """Dataset length."""
         pass
 
     @abstractmethod
     def __getitem__(self, item: int) -> dict:
+        """Get item sample."""
         pass
 
     @property
     def test_mode(self) -> bool:
+        """Is test mode."""
         return self._test_mode
 
     @property
     def transform(self) -> Optional[Union[BasicTransform, BaseCompose]]:
-        return self.__transform
+        """Is transform to be applied on a sample."""
+        return self._transform
 
     @property
     def augment(self) -> Optional[Union[BasicTransform, BaseCompose]]:
-        return self.__augment
+        """Is optional augment to be applied on a sample."""
+        return self._augment
 
     @property
     def image_dtype(self) -> str:
+        """Is data type of the torch tensors related to the image."""
         return self._image_dtype
 
     @property
     def grayscale(self) -> bool:
-        return self.__grayscale
+        """Is grayscale mode."""
+        return self._grayscale
