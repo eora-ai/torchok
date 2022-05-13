@@ -116,23 +116,28 @@ class TestCase:
             self.expected = representation_dataset_answers[test_name]
 
 
+def compute_metric_value(metric: Metric, test_case: TestCase):
+    for i in range(3):
+        vec = vectors[test_case.params['dataset_type']][3*i : 3*(i + 1)]
+        target = targets[3*i : 3*(i + 1)]
+
+        curr_scores = None
+        curr_queries_idxs = None
+        if test_case.params['dataset_type'] == DatasetType.REPRESENTATION:
+            curr_scores = scores[3*i : 3*(i + 1)]
+            curr_queries_idxs = queries_idxs[3*i : 3*(i + 1)]
+
+        metric.update(vectors=vec, targets=target, scores=curr_scores, queries_idxs=curr_queries_idxs)
+    value = metric.compute()
+    return value
+
+
 def compute_metric_dict(test_case: TestCase):
     metric_class = name2class[test_case.class_name]
     answer_dict = {}
     for k in range(1, 5):
         metric = metric_class(**test_case.params, k=k)
-        for i in range(3):
-            vec = vectors[test_case.params['dataset_type']][3*i : 3*(i + 1)]
-            target = targets[3*i : 3*(i + 1)]
-
-            curr_scores = None
-            curr_queries_idxs = None
-            if test_case.params['dataset_type'] == DatasetType.REPRESENTATION:
-                curr_scores = scores[3*i : 3*(i + 1)]
-                curr_queries_idxs = queries_idxs[3*i : 3*(i + 1)]
-
-            metric.update(vectors=vec, targets=target, scores=curr_scores, queries_idxs=curr_queries_idxs)
-        value = metric.compute()
+        value = compute_metric_value(metric, test_case)
         answer_dict[k] = float(value)
     return answer_dict
 
@@ -209,6 +214,14 @@ class TestRepresentationMetrics(unittest.TestCase):
                     case.class_name, case.expected, actual
                 ),
             )
+
+    def test_recall_when_k_is_None(self):
+        test_case = TestCase(test_name='recall', dataset_type=DatasetType.REPRESENTATION)
+        metric = RecallAtKMeter(**test_case.params, k=None)
+        value = compute_metric_value(metric, test_case)
+        answer = representation_dataset_answers['recall'][4]
+        self.assertEqual(value, answer, 'k = None is wrong result')
+
 
 if __name__ == '__main__':
     unittest.main()

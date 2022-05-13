@@ -159,7 +159,7 @@ class IndexBasedMeter(Metric, ABC):
         # compute metric
         scores = []
         for relevant_idx, closest_idx in generator:
-            scores += self.metric_func(relevant_idx, closest_idx, k=self.k).tolist()
+            scores += self.metric_func(relevant_idx, closest_idx, k=k).tolist()
         return np.mean(scores)
 
     def prepare_representation_data(self, vectors: np.ndarray, queries_idxs: np.ndarray, scores: np.ndarray
