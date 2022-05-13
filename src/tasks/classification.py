@@ -21,10 +21,10 @@ class ClassificationTask(BaseTask):
 
         self.backbone = BACKBONES.get(self._hparams.backbone_name)(**self._hparams.backbone_params)
 
-        self._hparams.pooling_params['in_features'] = self.backbone.num_features
+        self._hparams.pooling_params['in_features'] = self.backbone.get_forward_output_channels()
         self.pooling = POOLINGS.get(self._hparams.pooling_name)(**self._hparams.pooling_params)
 
-        self._hparams.head_params['in_features'] = self.pooling.out_features
+        self._hparams.head_params['in_features'] = self.pooling.get_forward_output_channels()
         self.head = HEADS.get(self._hparams.head_name)(**self._hparams.head_params)
 
     def forward_features(self, x: torch.tensor) -> torch.tensor:
