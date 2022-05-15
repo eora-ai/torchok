@@ -9,68 +9,19 @@ from enum import Enum
 from typing import List, Dict, Any, Optional
 
 from src.constructor import METRICS
-
-
-# Metric parameters
-class Phase(Enum):
-    TRAIN = 'train'
-    VALID = 'valid'
-    TEST = 'test'
-    PREDICT = 'predict'
-
-phase_mapping = {
-    'train': Phase.TRAIN,
-    'valid': Phase.VALID,
-    'test': Phase.TEST,
-    'predict': Phase.PREDICT
-}
-
-@dataclass
-class MetricParams:
-    """Metric Params.
-    
-    Args:
-        name: Registrated metric class name.
-        mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
-        params: Metric dictionary initialize parameters.
-        prefix: Prefix string for logging metric.
-        phases: Metric phase run. 
-    """
-    name: str
-    mapping: Dict[str, str]
-    params: Dict = field(default_factory=dict)
-    prefix: Optional[str] = None
-    phases: Optional[List[Phase]] = None
-
-    def __post_init__(self):
-        """Post process for phases. 
-        
-        Hydra can't handle list of Enums. It's force to converts values to Enums.
-
-        Raises:
-            KeyError: If phase in config not in mapping dict.
-        """
-        if self.phases is None:
-            self.phases = [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT]
-        else:
-            phases = []
-            for phase in self.phases:
-                if phase not in phase_mapping:
-                    raise KeyError(f'Phase has no key = {phase}, it must be one of {list(phase_mapping.keys())}')
-                else:
-                    phases.append(phase_mapping[phase])
-            self.phases = phases
+from src.constructor.config_structure import MetricParams, Phase
 
 
 class MetricWithUtils(nn.Module):
-    """Union class for metric and metric utils parameters.
-    
-    Args:
-        metric: Metric written with TorchMetrics.
-        mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
-        log_name: The metric name used in logs.
-    """
+    """Union class for metric and metric utils parameters."""
     def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
+        """Initalize MetricWithUtils.
+        
+        Args:
+            metric: Metric written with TorchMetrics.
+            mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
+            log_name: The metric name used in logs.
+        """
         super().__init__()
         self.__metric = metric
         self.__mapping = mapping
@@ -94,23 +45,21 @@ class MetricWithUtils(nn.Module):
 
 
 class MetricManager(nn.Module):
-    """Manages all metrics for a Task.
-    
-    Args:
-        params: Metric parameters.
-    """
-    # model use phases
-    phases = [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT]
-
+    """Manages all metrics for a Task."""
     def __init__(self, params: List[MetricParams]):
+        """Initialize MetricManager.
+
+        Args:
+            params: Metric parameters.
+        """
         super().__init__()
         # Change list to set in phases
         for param in params:
-            param.phases = set(param.phases)
+            param.phases = list(set(param.phases))
 
         self.__phase2metrics = nn.ModuleDict()
         for phase in Phase:
-            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase)
+            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase) 
 
     def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """Generate metric list for current phase.
@@ -144,6 +93,7 @@ class MetricManager(nn.Module):
             metrics.append(MetricWithUtils(metric=metric, mapping=mapping, log_name=log_name))
 
         metrics = nn.ModuleList(metrics)
+
         return metrics
 
     def forward(self, phase: Phase, *args, **kwargs):
@@ -158,7 +108,6 @@ class MetricManager(nn.Module):
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             metric_with_utils(*args, **targeted_kwargs)
             
-
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
         """Summarize epoch values and return log.
         

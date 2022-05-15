@@ -3,13 +3,15 @@ import unittest
 import albumentations as A
 import numpy as np
 from omegaconf import OmegaConf
+from torchmetrics import Accuracy
 import torch
 from torch.nn import Conv2d, Module, Parameter
 from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 
-from src.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from src.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS, METRICS
 from src.constructor.constructor import Constructor
+from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 
 
@@ -19,6 +21,7 @@ TRANSFORMS.register_class(A.Compose)
 TRANSFORMS.register_class(A.OneOf)
 TRANSFORMS.register_class(A.Blur)
 TRANSFORMS.register_class(A.RandomCrop)
+METRICS.register_class(Accuracy)
 
 
 @DATASETS.register_class
@@ -229,29 +232,32 @@ class TestConstructor(unittest.TestCase):
 
     def test_losses_creation_when_multiple_losses_specified(self):
         hparams = OmegaConf.create({
-            'losses': [
-                {
-                    'name': 'SmoothL1Loss',
-                    'params': {
-                        'beta': 0.5
-                    },
-                    'tag': 'representation',
-                    'mapping': {
-                        'input': 'emb_student',
-                        'target': 'emb_teacher'
-                    },
-                    'weight': 0.3
-                }, {
-                    'name': 'CrossEntropyLoss',
-                    'params': {},
-                    'tag': 'classification',
-                    'mapping': {
-                        'input': 'logits',
-                        'target': 'target'
-                    },
-                    'weight': 0.7
-                }
-            ]
+            'losses':{
+                    'loss_params': [
+                    {
+                        'name': 'SmoothL1Loss',
+                        'params': {
+                            'beta': 0.5
+                        },
+                        'tag': 'representation',
+                        'mapping': {
+                            'input': 'emb_student',
+                            'target': 'emb_teacher'
+                        },
+                        'weight': 0.3
+                    }, {
+                        'name': 'CrossEntropyLoss',
+                        'params': {},
+                        'tag': 'classification',
+                        'mapping': {
+                            'input': 'logits',
+                            'target': 'target'
+                        },
+                        'weight': 0.7
+                    }
+                ],
+                'normalize_weights': True
+            }
         })
 
         constructor = Constructor(hparams)
@@ -273,5 +279,26 @@ class TestConstructor(unittest.TestCase):
         self.assertEqual(losses['representation'].beta, 0.5)
 
     def test_metrics_manager_creation_when_multiple_metrics_specified(self):
-        # TODO: when interface is fixed
-        pass
+        hparams = OmegaConf.create({
+            'metrics': [
+                {
+                    'name': 'Accuracy',
+                    'mapping': {
+                        'input': 'logits',
+                        'target': 'target'
+                    },
+                    'params':  {},
+                    'prefix': 'Cls',
+                    'phases': [Phase.TRAIN, Phase.VALID, Phase.PREDICT, Phase.TEST]
+                }
+            ]
+        })
+
+        constructor = Constructor(hparams)
+        metric_manager = constructor.configure_metrics_manager()
+        phase2metrics = metric_manager.phase2metrics
+        mapping = dict(input='logits', target='target')
+        for phase in Phase:
+            self.assertEqual(len(phase2metrics[phase.name]), 1)
+            self.assertEqual(phase2metrics[phase.name][0].log_name, 'Cls_Accuracy')
+            self.assertEqual(phase2metrics[phase.name][0].mapping, mapping)

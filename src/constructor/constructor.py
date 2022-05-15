@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from src.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
 from src.data.datasets.base import ImageDataset
 from src.losses.base import JointLoss
+from src.metrics.metrics_manager import MetricManager
 
 
 class Constructor:
@@ -233,8 +234,7 @@ class Constructor:
 
         Returns: MetricManager module.
         """
-        # TODO (vladvin)
-        pass
+        return MetricManager(self.__hparams.metrics)
 
     def configure_losses(self) -> JointLoss:
         """Create list of loss modules wrapping them into a JointLoss module.
@@ -242,14 +242,16 @@ class Constructor:
         Returns: JointLoss module
         """
         loss_modules, mappings, tags, weights = [], [], [], []
-        for loss_config in self.__hparams.losses:
+        for loss_config in self.__hparams.losses.loss_params:
             loss_module = LOSSES.get(loss_config.name)(**loss_config.params)
             loss_modules.append(loss_module)
             mappings.append(loss_config.mapping)
             tags.append(loss_config.tag)
             weights.append(loss_config.weight)
 
-        return JointLoss(loss_modules, mappings, tags, weights)
+        normalize_weights = self.__hparams.losses.normalize_weights
+
+        return JointLoss(loss_modules, mappings, tags, weights, normalize_weights)
 
     @property
     def hparams(self) -> DictConfig:

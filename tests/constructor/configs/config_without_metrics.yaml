@@ -1,0 +1,64 @@
+data:
+  train:
+    - dataset:
+        name: TrainDataset
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: True
+        shuffle: True
+    
+    - dataset:
+        name: TrainDataset2
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: True
+        shuffle: True
+
+  valid:
+    - dataset:
+        name: ValidDataset
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: True
+        shuffle: True
+
+optimization:
+  - optimizer:
+      name: Adam
+      params:
+        lr: 0.0001
+    scheduler:
+      name: OneCycleLR
+      params:
+        max_lr: 0.001
+        total_steps: 100000
+      pl_params:
+        interval: step
+
+  - optimizer:
+      name: Adam
+      params:
+        lr: 0.0001
+
+losses:
+  loss_params:
+    - name: SmoothL1Loss
+      params:
+        beta: 0.5
+      tag: representation
+      mapping:
+        input: emb_student
+        target: emb_teacher
+      weight: 0.3
+      
+    - name: CrossEntropyLoss
+      tag: classification
+      mapping:
+        input: logist
+        target: target
+      weight: 0.7
+    
+  normalize_weights: false
