@@ -1,4 +1,4 @@
-"""TorchOK Model creation / weight loading / state_dict helpers
+"""TorchOK Model creation / weight loading / state_dict helpers.
 
 Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/helpers.py
 
@@ -10,6 +10,7 @@ import math
 from copy import deepcopy
 from typing import Callable
 
+import torch
 import torch.nn as nn
 from torch.hub import load_state_dict_from_url
 
@@ -17,7 +18,7 @@ _logger = logging.getLogger(__name__)
 
 
 def adapt_input_conv(input_data_channels: int,
-                     conv_weight):
+                     conv_weight: torch.Tensor):
     """Adaptation input conv block to input data.
 
     Args:
@@ -27,7 +28,7 @@ def adapt_input_conv(input_data_channels: int,
     conv_type = conv_weight.dtype
     conv_weight = conv_weight.float()
     weight_out_channels, weight_input_channels, weight_kernel_h, weight_kernel_w = conv_weight.shape
- 
+
     if input_data_channels == 1:
         if weight_input_channels > 3:
             assert weight_input_channels % 3 == 0
@@ -50,6 +51,7 @@ def adapt_input_conv(input_data_channels: int,
     conv_weight = conv_weight.to(conv_type)
     return conv_weight
 
+
 def load_pretrained(model: nn.Module,
                     in_chans: int = 3,
                     strict: bool = True,
@@ -57,17 +59,16 @@ def load_pretrained(model: nn.Module,
     """Load pretrained checkpoint.
 
     Args:
-        model: PyTorch model module
-        in_chans: in_chans for model
-        strict: strict load of checkpoint
-        progress: enable progress bar for weight download
-
+        model: PyTorch model module.
+        in_chans: Input channels for model.
+        strict: Strict load of checkpoint.
+        progress: Enable progress bar for weight download.
     """
     default_cfg = getattr(model, 'default_cfg', None) or {}
     pretrained_url = default_cfg.get('url', None)
 
     if not pretrained_url:
-        _logger.warning("No pretrained weights exist for this model. Using random initialization.")
+        _logger.warning('No pretrained weights exist for this model. Using random initialization.')
         return
 
     _logger.info(f'Loading pretrained weights from url ({pretrained_url})')
@@ -88,7 +89,7 @@ def load_pretrained(model: nn.Module,
                 state_dict[weight_name] = adapt_input_conv(in_chans, state_dict[weight_name])
                 _logger.info(
                     f'Converted input conv {input_conv_name} pretrained weights from 3 to {in_chans} channel(s)')
-            except NotImplementedError as e:
+            except NotImplementedError:
                 del state_dict[weight_name]
                 strict = False
                 _logger.warning(
@@ -101,16 +102,12 @@ def load_pretrained(model: nn.Module,
 
     model.load_state_dict(state_dict, strict=strict)
 
+
 def build_model_with_cfg(model_cls: Callable,
                          pretrained: bool,
                          default_cfg: dict,
                          **model_args) -> nn.Module:
-    """Build model with specified default_cfg and optional model_cfg
-
-    This helper fn aids in the construction of a model including:
-      * handling default_cfg and associated pretained weight loading
-      * passing through optional model_cfg for models with config based arch spec
-      * features_only model adaptation
+    """Build model with specified default_cfg and optional model_args.
 
     Args:
         model_cls: model class

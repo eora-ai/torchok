@@ -1,6 +1,10 @@
+import torch
 import torch.nn as nn
 
+
 class ConvBnAct(nn.Module):
+    """Combination of convolution, batchnorm and activation layers."""
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -10,7 +14,7 @@ class ConvBnAct(nn.Module):
                  bias=False,
                  act_layer=nn.ReLU):
         """Init ConvBnAct.
-        
+
         Args:
             in_channels:
             out_channels:
@@ -30,7 +34,8 @@ class ConvBnAct(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.act = act_layer(inplace=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
+        """Forward method."""
         x = self.conv(x)
         x = self.bn(x)
         x = self.act(x)
