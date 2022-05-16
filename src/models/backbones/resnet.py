@@ -11,6 +11,7 @@ import torch.nn as nn
 
 from src.constructor import BACKBONES
 from src.models.modules.blocks.se import SEModule
+from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.backbones.base import BaseModel, FeatureInfo
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
@@ -80,27 +81,23 @@ class BasicBlock(nn.Module):
             downsample: Downsample module.
             attn_layer: Attention block.
         """
-        super(BasicBlock, self).__init__()
+        super().__init__()
         out_block_channels = out_channels * self.expansion
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.act1 = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_block_channels, kernel_size=3, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_block_channels)
+
+        self.convbnact = ConvBnAct(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
+        self.conv = nn.Conv2d(out_channels, out_block_channels, kernel_size=3, padding=1, bias=False)
+        self.bn = nn.BatchNorm2d(out_block_channels)
         self.se = attn_layer(out_block_channels) if attn_layer is not None else None
-        self.act2 = nn.ReLU(inplace=True)
+        self.act = nn.ReLU(inplace=True)
         self.downsample = downsample
 
     def forward(self, x):
         """Forward method."""
         identity = x
 
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.act1(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
+        out = self.convbnact(x)
+        out = self.conv(out)
+        out = self.bn(out)
 
         if self.se is not None:
             out = self.se(out)
@@ -109,7 +106,7 @@ class BasicBlock(nn.Module):
             identity = self.downsample(x)
 
         out += identity
-        out = self.act2(out)
+        out = self.act(out)
 
         return out
 
@@ -134,34 +131,28 @@ class Bottleneck(nn.Module):
             downsample: Downsample module.
             attn_layer: Attention block.
         """
-        super(Bottleneck, self).__init__()
+        super().__init__()
         out_block_channels = out_channels * self.expansion
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.act1 = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        self.act2 = nn.ReLU(inplace=True)
-        self.conv3 = nn.Conv2d(out_channels, out_block_channels, kernel_size=1, stride=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(out_block_channels)
+
+        self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=1, padding=0, stride=1)
+        self.convbnact2 = ConvBnAct(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
+
+        self.conv = nn.Conv2d(out_channels, out_block_channels, kernel_size=1, stride=1, bias=False)
+        self.bn = nn.BatchNorm2d(out_block_channels)
+        self.act = nn.ReLU(inplace=True)
         self.se = attn_layer(out_block_channels) if attn_layer is not None else None
-        self.act3 = nn.ReLU(inplace=True)
+
         self.downsample = downsample
 
     def forward(self, x):
         """Forward method."""
         identity = x
 
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.act1(out)
+        out = self.convbnact1(x)
+        out = self.convbnact2(out)
 
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.act2(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
+        out = self.conv(out)
+        out = self.bn(out)
 
         if self.se is not None:
             out = self.se(out)
@@ -170,7 +161,7 @@ class Bottleneck(nn.Module):
             identity = self.downsample(x)
 
         out += identity
-        out = self.act3(out)
+        out = self.act(out)
 
         return out
 
@@ -196,12 +187,11 @@ class ResNet(BaseModel):
         self.channels = [64, 128, 256, 512]
         self.num_features = 512 * block.expansion
 
-        super(ResNet, self).__init__()
+        super().__init__()
 
-        self.conv1 = nn.Conv2d(in_chans, self.channels[0], kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm2d(self.channels[0])
-        self.act1 = nn.ReLU(inplace=True)
-        self._feature_info = [FeatureInfo(num_channels=self.channels[0], stride=2, module_name='act1')]
+        self.convbnact = ConvBnAct(in_chans, self.channels[0], kernel_size=7, stride=2, padding=3)
+
+        self._feature_info = [FeatureInfo(num_channels=self.channels[0], stride=2, module_name='convbnact')]
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.layer1 = self.__make_layer(block, self.channels[0], layers[0], **self.block_args)
@@ -245,9 +235,7 @@ class ResNet(BaseModel):
 
     def forward(self, x: torch.Tensor):
         """Forward method."""
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.act1(x)
+        x = self.convbnact(x)
         x = self.maxpool(x)
 
         x = self.layer1(x)
@@ -259,8 +247,8 @@ class ResNet(BaseModel):
 
 def create_resnet(variant, pretrained=False, **kwargs):
     """Is creating ResNet based model."""
-    return build_model_with_cfg(ResNet, variant, default_cfg=default_cfgs[variant],
-                                pretrained=pretrained, **kwargs, pretrained_strict=False)
+    return build_model_with_cfg(ResNet, default_cfg=default_cfgs[variant],
+                                pretrained=pretrained, **kwargs)
 
 
 @BACKBONES.register_class
