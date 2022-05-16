@@ -55,11 +55,10 @@ def run_metric_manager(names: List[str], prefixes: List[str], \
 
     metric_params = []
     for i in range(len(names)):
-        params = MetricParams(name=names[i], mapping=mappings[i], prefix=prefixes[i])
+        params = MetricParams(name=names[i], mapping=mappings[i], prefix=prefixes[i], phases=[Phase.TRAIN])
         metric_params.append(params)
 
     metric_manager = MetricManager(metric_params)
-    print(f'type = {type(metric_manager)}')
     for i in range(len(data_generator)):
         metric_manager(Phase.TRAIN, **data_generator[i])
 
