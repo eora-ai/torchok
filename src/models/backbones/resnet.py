@@ -257,49 +257,49 @@ class ResNet(BaseModel):
 
 
 def create_resnet(variant, pretrained=False, **kwargs):
-    """Is creating ResNet based model."""
+    """It's creating ResNet based model."""
     return build_model_with_cfg(ResNet, default_cfg=default_cfgs[variant],
                                 pretrained=pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def resnet18(pretrained=False, **kwargs):
-    """Is constructing a ResNet-18 model."""
+    """It's constructing a ResNet-18 model."""
     model_args = dict(block=BasicBlock, layers=[2, 2, 2, 2], **kwargs)
     return create_resnet('resnet18', pretrained, **model_args)
 
 
 @BACKBONES.register_class
 def resnet34(pretrained=False, **kwargs):
-    """Is constructing a ResNet-34 model."""
+    """It's constructing a ResNet-34 model."""
     model_args = dict(block=BasicBlock, layers=[3, 4, 6, 3], **kwargs)
     return create_resnet('resnet34', pretrained, **model_args)
 
 
 @BACKBONES.register_class
 def resnet50(pretrained=False, **kwargs):
-    """Is constructing a ResNet-50 model."""
+    """It's constructing a ResNet-50 model."""
     model_args = dict(block=Bottleneck, layers=[3, 4, 6, 3], **kwargs)
     return create_resnet('resnet50', pretrained, **model_args)
 
 
 @BACKBONES.register_class
 def resnet101(pretrained=False, **kwargs):
-    """Is constructing a ResNet-101 model."""
+    """It's constructing a ResNet-101 model."""
     model_args = dict(block=Bottleneck, layers=[3, 4, 23, 3], **kwargs)
     return create_resnet('resnet101', pretrained, **model_args)
 
 
 @BACKBONES.register_class
 def resnet152(pretrained=False, **kwargs):
-    """Is constructing a ResNet-152 model."""
+    """It's constructing a ResNet-152 model."""
     model_args = dict(block=Bottleneck, layers=[3, 8, 36, 3], **kwargs)
     return create_resnet('resnet152', pretrained, **model_args)
 
 
 @BACKBONES.register_class
 def seresnet18(pretrained=False, **kwargs):
-    """Is constructing a SEResNet-18 model."""
+    """It's constructing a SEResNet-18 model."""
     block_args = kwargs.pop('block_args', dict())
     block_args.update({'attn_layer': SEModule})
     model_args = dict(block=BasicBlock, layers=[2, 2, 2, 2], block_args=block_args, **kwargs)
@@ -308,7 +308,7 @@ def seresnet18(pretrained=False, **kwargs):
 
 @BACKBONES.register_class
 def seresnet34(pretrained=False, **kwargs):
-    """Is constructing a SEResNet-34 model."""
+    """It's constructing a SEResNet-34 model."""
     block_args = kwargs.pop('block_args', dict())
     block_args.update({'attn_layer': SEModule})
     model_args = dict(block=BasicBlock, layers=[3, 4, 6, 3], block_args=block_args, **kwargs)
@@ -317,7 +317,7 @@ def seresnet34(pretrained=False, **kwargs):
 
 @BACKBONES.register_class
 def seresnet50(pretrained=False, **kwargs):
-    """Is constructing a SEResNet-50 model."""
+    """It's constructing a SEResNet-50 model."""
     block_args = kwargs.pop('block_args', dict())
     block_args.update({'attn_layer': SEModule})
     model_args = dict(block=Bottleneck, layers=[3, 4, 6, 3], block_args=block_args, **kwargs)
@@ -326,7 +326,7 @@ def seresnet50(pretrained=False, **kwargs):
 
 @BACKBONES.register_class
 def seresnet101(pretrained=False, **kwargs):
-    """Is constructing a SEResNet-101 model."""
+    """It's constructing a SEResNet-101 model."""
     block_args = kwargs.pop('block_args', dict())
     block_args.update({'attn_layer': SEModule})
     model_args = dict(block=Bottleneck, layers=[3, 4, 23, 3], block_args=block_args, **kwargs)
@@ -335,7 +335,7 @@ def seresnet101(pretrained=False, **kwargs):
 
 @BACKBONES.register_class
 def seresnet152(pretrained=False, **kwargs):
-    """Is constructing a SEResNet-152 model."""
+    """It's constructing a SEResNet-152 model."""
     block_args = kwargs.pop('block_args', dict())
     block_args.update({'attn_layer': SEModule})
     model_args = dict(block=Bottleneck, layers=[3, 8, 36, 3], block_args=block_args, **kwargs)
