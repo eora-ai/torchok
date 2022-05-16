@@ -6,23 +6,26 @@ class ConvBnAct(nn.Module):
     """Combination of convolution, batchnorm and activation layers."""
 
     def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size,
-                 padding,
-                 stride=1,
-                 bias=False,
-                 act_layer=nn.ReLU):
+                 in_channels: int,
+                 out_channels: int,
+                 kernel_size: int,
+                 padding: int,
+                 stride:int = 1,
+                 bias: bool = False,
+                 act_layer: nn.Module = nn.ReLU):
         """Init ConvBnAct.
 
         Args:
-            in_channels:
-            out_channels:
-            kernel_size:
-            padding:
-            stride:
-            bias:
-            act_layer:
+            in_channels: Input channels.
+            out_channels: Output channels.
+            kernel_size: Kernel size.
+            padding: Padding.
+            stride: Stride.
+                default: 1
+            bias: Bias.
+                default: False
+            act_layer: Activation layer.
+                default: relu.
         """
         super().__init__()
         self.conv = nn.Conv2d(in_channels,
