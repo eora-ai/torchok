@@ -26,13 +26,13 @@ class OptmizerParams:
     
 @dataclass
 class SchedulerPLParams:
-    interval: str
-    monitor: str # I think need ENUM
+    interval: Optional[str] = None
+    monitor: Optional[str] = None
 
 @dataclass
 class SchedulerParams:
     name: str
-    pl_params: Optional[SchedulerPLParams]
+    pl_params: Optional[SchedulerPLParams] = None
     params: Dict = field(default_factory=dict)
 
 @dataclass
@@ -43,20 +43,20 @@ class OptimizationParams:
 
 # Data parameters
 @dataclass
-class DatasetParams:
-    name: str
-    params: Dict = field(default_factory=dict)
-
-@dataclass
 class AugmentationParams:
     name: str
     params: Dict = field(default_factory=dict)
 
 @dataclass
+class DatasetParams:
+    name: str
+    params: Dict = field(default_factory=dict)
+    transform: Optional[List[AugmentationParams]] = field(default_factory=list)
+    augment: Optional[List[AugmentationParams]] = field(default_factory=list)
+
+@dataclass
 class DataParams:
     dataset: DatasetParams
-    transforms: List[AugmentationParams]
-    augment: Optional[List[AugmentationParams]]
     dataloader: Dict = field(default_factory=dict)
 
 @dataclass
@@ -74,8 +74,8 @@ class LossParams:
     name: str
     tag: str
     mapping: Dict[str, str]
-    weight: Optional[float]
     params: Dict = field(default_factory=dict)
+    weight: Optional[float] = None
 
 @dataclass
 class JointLossParams:
@@ -112,14 +112,14 @@ class ConfigParams:
             KeyError: If phase in config not in mapping dict.
         """
         for i in range(len(self.metrics)):
-            phases = self.metrics[i].phases
-            if len(phases) == 0:
+            current_phases = self.metrics[i].phases
+            if len(current_phases) == 0:
                 self.metrics[i].phases = [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT]
             else:
                 new_phases = []
-                for phase in phases:
+                for phase in current_phases:
                     if phase not in phase_mapping:
                         raise KeyError(f'Phase has no key = {phase}, it must be one of {list(phase_mapping.keys())}')
                     else:
-                        phases.append(phase_mapping[phase])
+                        new_phases.append(phase_mapping[phase])
                 self.metrics[i].phases = new_phases

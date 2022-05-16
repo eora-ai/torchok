@@ -289,7 +289,7 @@ class TestConstructor(unittest.TestCase):
                     },
                     'params':  {},
                     'prefix': 'Cls',
-                    'phases': [Phase.TRAIN, Phase.VALID, Phase.PREDICT, Phase.TEST]
+                    'phases': [Phase.TRAIN]
                 }
             ]
         })
@@ -298,7 +298,7 @@ class TestConstructor(unittest.TestCase):
         metric_manager = constructor.configure_metrics_manager()
         phase2metrics = metric_manager.phase2metrics
         mapping = dict(input='logits', target='target')
-        for phase in Phase:
-            self.assertEqual(len(phase2metrics[phase.name]), 1)
-            self.assertEqual(phase2metrics[phase.name][0].log_name, 'Cls_Accuracy')
-            self.assertEqual(phase2metrics[phase.name][0].mapping, mapping)
+
+        self.assertEqual(list(phase2metrics.keys())[0], Phase.TRAIN.name)
+        self.assertEqual(phase2metrics[Phase.TRAIN.name][0].log_name, 'Cls_Accuracy')
+        self.assertEqual(phase2metrics[Phase.TRAIN.name][0].mapping, mapping)

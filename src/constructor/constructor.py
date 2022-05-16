@@ -91,7 +91,14 @@ class Constructor:
     def __create_scheduler(optimizer: Optimizer, scheduler_params: DictConfig) -> Dict[str, Any]:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
-        pl_params = scheduler_params.pl_params if 'pl_params' in scheduler_params else {}
+        pl_params = scheduler_params.pl_params
+        # Omega conf error when create pl_params with only one argument, it's request second,
+        # Optional wasn't help, don't know why.
+        if pl_params is None:
+            pl_params = {}
+        else:
+            # remove None values
+            pl_params = {k: v for k, v in pl_params.items() if v is not None}
 
         return {
             'scheduler': scheduler,
