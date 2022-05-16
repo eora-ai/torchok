@@ -1,0 +1,23 @@
+[flake8]
+exclude =
+    .git
+    __pycache__
+
+application_import_names=src
+max-line-length = 120
+import-order-style = google 
+convention = google
+avoid-escape = False
+use-flake8-tabs = True
+
+# H306: imports not in alphabetical order (prefer flake8 style)
+# H101: Use TODO(NAME)
+# H301: one import per line
+# H405: multi line docstring summary not separated with an empty line (same as D205)
+ignore = H306, H101, H301, H405
+
+# D101: Missing docstring in public class
+# D102: Missing docstring in public method
+# D105: Missing docstring in magic method
+per-file-ignores =
+    tests/*:D101,D102,D105
