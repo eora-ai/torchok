@@ -27,18 +27,17 @@ def _cfg(url='', **kwargs):
         'mean': IMAGENET_DEFAULT_MEAN,
         'std': IMAGENET_DEFAULT_STD,
         'first_conv': 'conv1',
-        'classifier': 'fc',
         **kwargs
     }
 
 
 default_cfgs = {
     # ResNet
-    'resnet18': _cfg(url=''),
+    'resnet18': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet18-torchok.pth'),
     'resnet34': _cfg(
         url=''),
     'resnet50': _cfg(
-        url='',
+        url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet50-torchok.pth',
         interpolation='bicubic',
         crop_pct=0.95),
     'resnet101': _cfg(
