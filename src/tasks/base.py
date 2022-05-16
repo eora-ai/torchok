@@ -21,10 +21,10 @@ class BaseTask(LightningModule, ABC):
         super().__init__()
         self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
-        self._metric_manager = self.__constructor.configure_metrics_manager()
-        self._criterion = self.__constructor.configure_losses()
-        self.__hparams = self.__constructor.hparams
-        self.__input_shapes = self.__hparams.input_shapes
+        self._metrics_manager = self.__constructor.configure_metrics_manager()
+        self._losses = self.__constructor.configure_losses()
+        self._hparams = self.__constructor.hparams
+        self.__input_shapes = self._hparams.input_shapes
         self.example_input_array = [torch.rand(1, *shape) for _, shape in self.__input_shapes.items()]
 
     @abstractmethod
@@ -35,18 +35,6 @@ class BaseTask(LightningModule, ABC):
     @abstractmethod
     def forward_with_gt(batch: dict) -> dict:
         """Abstract forward method for training(with ground truth labels)."""
-        pass
-
-    @abstractmethod
-    def training_step(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def validation_step(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def test_step(self, *args, **kwargs):
         pass
 
     def on_train_start(self) -> None:
@@ -67,7 +55,7 @@ class BaseTask(LightningModule, ABC):
             self.log(f'train/{tag}', loss_value, on_step=False, on_epoch=True)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
-        self.log_dict(self.__metric_manager.on_epoch_end('train'))
+        self.log_dict(self._metrics_manager.on_epoch_end('train'))
 
     def validation_epoch_end(self, outputs: Tuple[torch.tensor, dict]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
@@ -79,7 +67,7 @@ class BaseTask(LightningModule, ABC):
             self.log(f'valid/{tag}', loss_value, on_step=False, on_epoch=True)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
-        self.log_dict(self.__metric_manager.on_epoch_end('valid'))
+        self.log_dict(self._metrics_manager.on_epoch_end('valid'))
 
     def test_epoch_end(self, outputs: Tuple[torch.tensor, dict]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
@@ -90,7 +78,7 @@ class BaseTask(LightningModule, ABC):
         for tag, loss_value in tagged_loss_values.items():
             self.log(f'test/{tag}', loss_value, on_step=False, on_epoch=True)
 
-        self.log_dict(self._metric_manager.on_epoch_end('test'))
+        self.log_dict(self._metrics_manager.on_epoch_end('test'))
 
     def to_onnx(self, onnx_params) -> None:
         """It's saving the model in ONNX format."""
@@ -131,6 +119,8 @@ class BaseTask(LightningModule, ABC):
     def val_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         phase = 'valid'
+        
+
         drop_last = self._hparams['data'][phase][0]['dataloader']['drop_last']
         if drop_last:
             raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
@@ -170,14 +160,14 @@ class BaseTask(LightningModule, ABC):
         return self._hparams
 
     @property
-    def metric_manager(self):
-        """Metric manager."""
-        return self._metric_manager
+    def metrics_manager(self):
+        """Metrics manager."""
+        return self._metrics_manager
 
     @property
-    def criterion(self):
-        """Criterion."""
-        return self._criterion
+    def losses(self):
+        """Losses."""
+        return self._losses
 
     @property
     def input_shapes(self):

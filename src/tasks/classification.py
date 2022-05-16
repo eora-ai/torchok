@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 from typing import List, Tuple, Union
 
 import torch
@@ -80,4 +78,3 @@ class ClassificationTask(BaseTask):
         loss = self._criterion(**output)
         self._metric_manager.update('test', **output)
         return loss
->>>>>>> after review
