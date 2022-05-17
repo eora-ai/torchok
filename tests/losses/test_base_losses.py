@@ -48,6 +48,18 @@ class TestJointLoss(unittest.TestCase):
         torch.testing.assert_allclose(total_loss, torch.tensor([10.]))
 
     def test_value_error_when_weights_specified_not_for_each_loss(self):
+        with self.assertRaises(ValueError):
+            JointLoss(
+                losses=[Loss1(), Loss2()],
+                tags=['loss1', 'loss2'],
+                mappings=[{
+                    'input': 'x',
+                    'target': 'y'
+                }] * 2,
+                weights=[0.7, None]
+            )
+
+    def test_direct_loss_access_when_two_losses_specified(self):
         joint_loss = JointLoss(
             losses=[Loss1(), Loss2()],
             tags=['loss1', 'loss2'],
@@ -63,15 +75,3 @@ class TestJointLoss(unittest.TestCase):
         torch.testing.assert_allclose(total_loss, torch.tensor([8.]))
         torch.testing.assert_allclose(tagged_loss_values['loss1'], torch.tensor([5.]))
         torch.testing.assert_allclose(tagged_loss_values['loss2'], torch.tensor([15.]))
-
-    def test_direct_loss_access_when_two_losses_specified(self):
-        with self.assertRaises(ValueError):
-            JointLoss(
-                losses=[Loss1(), Loss2()],
-                tags=['loss1', 'loss2'],
-                mappings=[{
-                    'input': 'x',
-                    'target': 'y'
-                }] * 2,
-                weights=[0.7, None]
-            )
