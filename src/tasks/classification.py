@@ -61,20 +61,20 @@ class ClassificationTask(BaseTask):
     def training_step(self, batch: dict) -> torch.tensor:
         """Complete training loop."""
         output = self.forward_with_gt(batch)
-        loss = self._criterion(**output)
-        self._metric_manager.update('train', **output)
+        loss = self._losses(**output)
+        self._metrics_manager.update('train', **output)
         return loss
 
     def validation_step(self, batch: dict) -> torch.tensor:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        loss = self._criterion(**output)
-        self._metric_manager.update('valid', **output)
+        loss = self._losses(**output)
+        self._metrics_manager.update('valid', **output)
         return loss
 
     def test_step(self, batch: dict) -> torch.tensor:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        loss = self._criterion(**output)
-        self._metric_manager.update('test', **output)
+        loss = self._losses(**output)
+        self._metrics_manager.update('test', **output)
         return loss
