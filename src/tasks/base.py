@@ -25,7 +25,12 @@ class BaseTask(LightningModule, ABC):
         self._losses = self.__constructor.configure_losses()
         self._hparams = self.__constructor.hparams
         self.__input_shapes = self._hparams.input_shapes
-        self.example_input_array = [torch.rand(1, *shape) for _, shape in self.__input_shapes.items()]
+        self.__input_dtypes = self._hparams.input_dtypes
+        self._input_tensors = []
+
+        for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
+            input_tensor = torch.rand(1, *input_shape).type(torch.__dict__[input_dtype])
+            self._input_tensors.append(input_tensor)
 
     @abstractmethod
     def forward(self, *args, **kwargs):
@@ -82,7 +87,7 @@ class BaseTask(LightningModule, ABC):
 
     def to_onnx(self, onnx_params) -> None:
         """It's saving the model in ONNX format."""
-        super().to_onnx(input_sample=self.example_input_array,
+        super().to_onnx(input_sample=self._input_tensors,
                         **onnx_params)
 
     def on_train_end(self) -> None:
@@ -113,26 +118,46 @@ class BaseTask(LightningModule, ABC):
 
     def train_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or more PyTorch DataLoaders for training."""
+        phase = 'train'
+        data_params = self._hparams['data'].get(phase, None)
+
+        if data_params is None:
+            return None
+
         data_loader = self.__constructor.create_dataloaders('train')
         return data_loader
 
     def val_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         phase = 'valid'
-        
 
-        drop_last = self._hparams['data'][phase][0]['dataloader']['drop_last']
-        if drop_last:
-            raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
+        data_params = self._hparams['data'].get(phase, None)
+
+        if data_params is None:
+            return None
+
+        for data_param in data_params:
+            drop_last = data_param['dataloader']['drop_last']
+            if drop_last:
+                raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
+
         data_loader = self.__constructor.create_dataloaders(phase)
         return data_loader
 
     def test_dataloader(self) -> Optional[List[torch.DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for testing."""
         phase = 'test'
-        drop_last = self._hparams['data'][phase][0]['dataloader']['drop_last']
-        if drop_last:
-            raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
+
+        data_params = self._hparams['data'].get(phase, None)
+
+        if data_params is None:
+            return None
+
+        for data_param in data_params:
+            drop_last = data_param['dataloader']['drop_last']
+            if drop_last:
+                raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
+
         data_loader = self.__constructor.create_dataloaders(phase)
         return data_loader
 
@@ -171,5 +196,10 @@ class BaseTask(LightningModule, ABC):
 
     @property
     def input_shapes(self):
-        """Input shape."""
+        """Input shapes."""
         return self.__input_shapes
+
+    @property
+    def input_dtypes(self):
+        """Input dtypes."""
+        return self.__input_dtypes
