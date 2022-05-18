@@ -1,10 +1,11 @@
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import torch
 from omegaconf import DictConfig
 
 from src.registry import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
+from vpatrushev.torchOK2.torchok.src.constructor.config_structure import Phase
 
 
 @TASKS.register_class
@@ -27,27 +28,14 @@ class ClassificationTask(BaseTask):
         self._hparams.head_params['in_features'] = self.pooling.get_forward_output_channels()
         self.head = HEADS.get(self._hparams.head_name)(**self._hparams.head_params)
 
-    def forward(self, x: torch.tensor) -> torch.tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone(x)
         x = self.pooling(x)
         x = self.head(x)
         return x
 
-    def configure_optimizers(self) -> Union[List, Tuple[List, List]]:
-        """Define optimizers and LR schedulers."""
-        modules = [self.pooling, self.head]
-
-        if not self._hparams.freeze_backbone:
-            modules.append(self.backbone)
-        optimizers, schedulers = super().configure_optimizers()
-
-        if schedulers[0] is not None:
-            return [optimizers[0]], [schedulers[0]]
-        else:
-            return [optimizers[0]]
-
-    def forward_with_gt(self, batch: dict) -> dict:
+    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
         """Forward with ground truth labels."""
         input_data = batch['image']
         target = batch['target']
@@ -58,23 +46,32 @@ class ClassificationTask(BaseTask):
         output = {'target': target, 'embeddings': features, 'prediction': prediction}
         return output
 
-    def training_step(self, batch: dict) -> torch.tensor:
+    def configure_optimizers(self) -> Union[List, Tuple[List, List]]:
+        """Define optimizers and LR schedulers."""
+        optimizers, schedulers = super().configure_optimizers()
+
+        if schedulers[0] is not None:
+            return [optimizers[0]], [schedulers[0]]
+        else:
+            return [optimizers[0]]
+
+    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> torch.Tensor:
         """Complete training loop."""
         output = self.forward_with_gt(batch)
         loss = self._losses(**output)
-        self._metrics_manager.update('train', **output)
+        self._metrics_manager.update(Phase.TRAIN, **output)
         return loss
 
-    def validation_step(self, batch: dict) -> torch.tensor:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> torch.Tensor:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         loss = self._losses(**output)
-        self._metrics_manager.update('valid', **output)
+        self._metrics_manager.update(Phase.VALID, **output)
         return loss
 
-    def test_step(self, batch: dict) -> torch.tensor:
+    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> torch.Tensor:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         loss = self._losses(**output)
-        self._metrics_manager.update('test', **output)
+        self._metrics_manager.update(Phase.TEST, **output)
         return loss
