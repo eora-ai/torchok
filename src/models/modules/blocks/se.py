@@ -10,14 +10,7 @@ from torch import nn as nn
 
 
 class SEModule(nn.Module):
-    """SE Module as defined in original SE-Nets with a few additions.
-
-    Additions include:
-        * min_channels can be specified to keep reduced channel count at a minimum (default: 8)
-        * divisor can be specified to keep channels rounded to specified values (default: 1)
-        * reduction channels can be specified directly by arg (if reduction_channels is set)
-        * reduction channels can be specified by float ratio (if reduction_ratio is set)
-    """
+    """SE Module as defined in original SE-Nets with a few additions."""
 
     def __init__(self,
                  channels: int,
@@ -36,7 +29,7 @@ class SEModule(nn.Module):
             min_channels: Minimum number of reduction channels.
             divisor: `reduction_channels` must be a multiple of `divisor`.
         """
-        super(SEModule, self).__init__()
+        super().__init__()
 
         if reduction_channels is not None:
             reduction_channels = reduction_channels
@@ -49,12 +42,21 @@ class SEModule(nn.Module):
         self.fc2 = nn.Conv2d(reduction_channels, channels, kernel_size=1, bias=True)
         self.gate = nn.Sigmoid()
 
-    def __make_divisible(self, v, divisor=8, min_value=None):
+    def __make_divisible(self, value, divisor=8, min_value=None):
+        """Make divisible function.
+
+        This function rounds the channel number to the nearest value that can be divisible by the divisor.
+
+        Args:
+            value: The original channel number.
+            divisor: The divisor to fully divide the channel number.
+            min_value: The minimum value of the output channel.
+        """
         min_value = min_value or divisor
-        new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-        if new_v < 0.9 * v:
-            new_v += divisor
-        return new_v
+        new_value = max(min_value, int(value + divisor / 2) // divisor * divisor)
+        if new_value < 0.9 * value:
+            new_value += divisor
+        return new_value
 
     def forward(self, x):
         """Forward method."""

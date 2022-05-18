@@ -1,4 +1,4 @@
-"""TorchOK ResNet
+"""TorchOK ResNet.
 
 Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/resnet.py
 Copyright 2019 Ross Wightman
@@ -26,7 +26,7 @@ def _cfg(url='', **kwargs):
         'interpolation': 'bilinear',
         'mean': IMAGENET_DEFAULT_MEAN,
         'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'conv1',
+        'first_conv': 'convbnact.conv.weight',
         **kwargs
     }
 
@@ -83,9 +83,8 @@ class BasicBlock(nn.Module):
         super().__init__()
         out_block_channels = out_channels * self.expansion
 
-        self.convbnact = ConvBnAct(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
-        self.conv = nn.Conv2d(out_channels, out_block_channels, kernel_size=3, padding=1, bias=False)
-        self.bn = nn.BatchNorm2d(out_block_channels)
+        self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
+        self.convbnact2 = ConvBnAct(out_channels, out_block_channels, kernel_size=3, padding=1, act_layer=nn.Identity)
         self.se = attn_layer(out_block_channels) if attn_layer is not None else None
         self.act = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -94,9 +93,8 @@ class BasicBlock(nn.Module):
         """Forward method."""
         identity = x
 
-        out = self.convbnact(x)
-        out = self.conv(out)
-        out = self.bn(out)
+        out = self.convbnact1(x)
+        out = self.convbnact2(out)
 
         if self.se is not None:
             out = self.se(out)
@@ -135,12 +133,9 @@ class Bottleneck(nn.Module):
 
         self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=1, padding=0, stride=1)
         self.convbnact2 = ConvBnAct(out_channels, out_channels, kernel_size=3, padding=1, stride=stride)
-
-        self.conv = nn.Conv2d(out_channels, out_block_channels, kernel_size=1, stride=1, bias=False)
-        self.bn = nn.BatchNorm2d(out_block_channels)
+        self.convbnact3 = ConvBnAct(out_channels, out_block_channels, kernel_size=1, padding=0, act_layer=nn.Identity)
         self.act = nn.ReLU(inplace=True)
         self.se = attn_layer(out_block_channels) if attn_layer is not None else None
-
         self.downsample = downsample
 
     def forward(self, x: torch.Tensor):
@@ -149,9 +144,7 @@ class Bottleneck(nn.Module):
 
         out = self.convbnact1(x)
         out = self.convbnact2(out)
-
-        out = self.conv(out)
-        out = self.bn(out)
+        out = self.convbnact3(out)
 
         if self.se is not None:
             out = self.se(out)
@@ -176,7 +169,7 @@ class ResNet(BaseModel):
         """Init ResNet.
 
         Args:
-            block: Type of block.
+            block: Block type class.
             layers: Number of layers.
             in_chans: Input channels.
             block_args: Arguments for block_args.
@@ -206,21 +199,25 @@ class ResNet(BaseModel):
                      blocks: int,
                      stride: int = 1,
                      **block_args) -> nn.Sequential:
-        """Create layer - abstraction for convenient work.
+        """Create Resnet module which contain downsample and one of BasicBlock or Bottleneck modules.
 
         Args:
-            block: Abstraction for convenient work.
+            block: Block type class.
             in_channel: Input channels.
             blocks: Number of blocks.
-            stride: Stride.
+            stride: Stride for downsample module.
             block_args: Arguments of block.(for example: attn_layer)
         """
         downsample = None
 
         if stride != 1 or self.inplanes != in_channel * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, in_channel * block.expansion, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(in_channel * block.expansion)
+                ConvBnAct(self.inplanes,
+                          in_channel * block.expansion,
+                          kernel_size=1,
+                          padding=0,
+                          stride=stride,
+                          act_layer=nn.Identity)
             )
 
         layers = []
@@ -245,7 +242,8 @@ class ResNet(BaseModel):
 
         return x
 
-    def get_features_info(self, output_channels, module_names, strides):
+    def get_features_info(self, output_channels: List[int], module_names: List[int], strides: List[int]):
+        """See documentation in constructor."""
         features_info = []
         for num_channels, module_name, stride in zip(output_channels, module_names, strides):
             feature_info = FeatureInfo(module_name=module_name, num_channels=num_channels, stride=stride)
@@ -253,11 +251,12 @@ class ResNet(BaseModel):
         return features_info
 
     def get_forward_output_channels(self) -> Union[int, List[int]]:
+        """Return number of output channels."""
         return self.num_features
 
 
 def create_resnet(variant, pretrained=False, **kwargs):
-    """It's creating ResNet based model."""
+    """Create ResNet base model."""
     return build_model_with_cfg(ResNet, default_cfg=default_cfgs[variant],
                                 pretrained=pretrained, **kwargs)
 
