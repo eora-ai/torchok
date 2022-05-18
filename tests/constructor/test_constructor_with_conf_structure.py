@@ -147,17 +147,17 @@ def test_constructor_with_config_structure_when_full_config_was_define(config):
     print('Dataloader')
     
     print('test_dataloader_creation_when_dataloader_params_specified')
-    dataloaders = constructor.create_dataloaders('train')
+    dataloaders = constructor.create_dataloaders(Phase.TRAIN)
     actual_params = {
             'batch_size': dataloaders[0].batch_size,
             'num_workers': dataloaders[0].num_workers,
             'drop_last': dataloaders[0].drop_last,
             'shuffle': dataloaders[0].sampler is not None
         }
-    is_equal(actual_params, config_params.data.train[0].dataloader)
+    is_equal(actual_params, config_params.data[Phase.TRAIN][0].dataloader)
 
     print('test_transforms_when_transforms_specified')
-    dataloaders = constructor.create_dataloaders('train')
+    dataloaders = constructor.create_dataloaders(Phase.TRAIN)
     actual_transforms = dataloaders[0].dataset.transform
     actual_list = [
         actual_transforms.__class__.__name__,

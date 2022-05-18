@@ -9,6 +9,7 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from src.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 from src.losses.base import JointLoss
 from src.metrics.metrics_manager import MetricManager
@@ -148,7 +149,7 @@ class Constructor:
             {'params': no_decay, 'weight_decay': 0.},
             {'params': decay}]
 
-    def create_dataloaders(self, phase: str) -> List[DataLoader]:
+    def create_dataloaders(self, phase: Phase) -> List[DataLoader]:
         """Create data loaders.
 
         Each data loader is based on a dataset while dataset consists
@@ -156,7 +157,7 @@ class Constructor:
 
         Args:
             phase: Phase for which the data loaders are to be built.
-            Should be one of: 'train', 'valid', 'test', 'predict'
+            Should be one of: Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICTION
 
         Returns:
             List of data loaders to be used inside `PyTorch Lightning Module`_
@@ -169,13 +170,10 @@ class Constructor:
             - ValueError: When transforms are not specified for composition augmentations of albumentation
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
-        # FIXME: change to Enum when config structure is ready
-        if phase not in ['train', 'valid', 'test', 'predict']:
-            raise ValueError(f'Not support phase for data loaders specification: {phase}')
 
         return [
             self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
-            for phase_params in self.hparams.data[phase]
+            for phase_params in self.hparams.data[phase] if phase_params is not None
         ]
 
     @staticmethod

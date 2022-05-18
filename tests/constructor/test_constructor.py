@@ -59,7 +59,7 @@ OPTIM_BASIC_HPARAMS = OmegaConf.create({
 
 DATASETS_BASIC_HPARAMS = OmegaConf.create({
     'data': {
-        'train': [
+        Phase.TRAIN: [
             {
                 'dataset': {
                     'name': 'TestDataset',
@@ -176,7 +176,7 @@ class TestConstructor(unittest.TestCase):
 
     def test_dataloader_creation_when_dataloader_params_specified(self):
         constructor = Constructor(DATASETS_BASIC_HPARAMS)
-        dataloaders = constructor.create_dataloaders('train')
+        dataloaders = constructor.create_dataloaders(Phase.TRAIN)
 
         actual_params = {
             'batch_size': dataloaders[0].batch_size,
@@ -185,7 +185,7 @@ class TestConstructor(unittest.TestCase):
             'shuffle': dataloaders[0].sampler is not None
         }
 
-        self.assertEqual(actual_params, DATASETS_BASIC_HPARAMS['data']['train'][0]['dataloader'])
+        self.assertEqual(actual_params, DATASETS_BASIC_HPARAMS['data'][Phase.TRAIN][0]['dataloader'])
 
     def test_transforms_when_transforms_specified(self):
         self.__test_transforms_augmentations('transform')
@@ -195,7 +195,7 @@ class TestConstructor(unittest.TestCase):
 
     def __test_transforms_augmentations(self, kind):
         hparams = DATASETS_BASIC_HPARAMS.copy()
-        hparams['data']['train'][0]['dataset'][kind] = OmegaConf.create([
+        hparams['data'][Phase.TRAIN][0]['dataset'][kind] = OmegaConf.create([
             {
                 'name': 'OneOf',
                 'params': {
@@ -218,7 +218,7 @@ class TestConstructor(unittest.TestCase):
         ])
 
         constructor = Constructor(hparams)
-        dataloaders = constructor.create_dataloaders('train')
+        dataloaders = constructor.create_dataloaders(Phase.TRAIN)
 
         if kind == 'transform':
             actual_transforms = dataloaders[0].dataset.transform

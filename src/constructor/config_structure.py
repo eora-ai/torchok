@@ -1,3 +1,4 @@
+from omegaconf import DictConfig, ListConfig
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -32,13 +33,13 @@ class SchedulerPLParams:
 @dataclass
 class SchedulerParams:
     name: str
-    pl_params: Optional[SchedulerPLParams] = None
     params: Dict = field(default_factory=dict)
+    pl_params: Optional[SchedulerPLParams] = None
 
 @dataclass
 class OptimizationParams:
     optimizer: OptmizerParams
-    scheduler: Optional[SchedulerParams]
+    scheduler: Optional[SchedulerParams] = None
 
 
 # Data parameters
@@ -62,10 +63,10 @@ class DataParams:
 @dataclass
 class DataloaderParams:
     # I think it must be list, with Enum Phase inside DataParams
-    train: Optional[List[DataParams]]
-    valid: Optional[List[DataParams]]
-    test: Optional[List[DataParams]]
-    predict: Optional[List[DataParams]]
+    train: Optional[List[DataParams]] = None
+    valid: Optional[List[DataParams]] = None
+    test: Optional[List[DataParams]] = None
+    predict: Optional[List[DataParams]] = None
 
 
 # Losses parameters
@@ -99,7 +100,7 @@ class ConfigParams:
     data: DataloaderParams
     optimization: List[OptimizationParams]
     losses: JointLossParams
-    metrics: List[MetricParams] = field(default_factory=list)
+    metrics: Optional[List[MetricParams]] = field(default_factory=list)
 
     def __post_init__(self):
         """Post process for metrics phases. 
@@ -123,3 +124,11 @@ class ConfigParams:
                     else:
                         new_phases.append(phase_mapping[phase])
                 self.metrics[i].phases = new_phases
+
+        # Change dataloaders phase keys to Enum
+        data_with_enum = {}
+        for key, value in self.data.items():
+            phase_enum = phase_mapping[key]
+            data_with_enum[phase_enum] = value
+
+        self.data = DictConfig(data_with_enum)
