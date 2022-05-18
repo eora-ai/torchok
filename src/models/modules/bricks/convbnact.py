@@ -1,3 +1,4 @@
+"""TorchOK ConvBnAct module."""
 import torch
 import torch.nn as nn
 
@@ -10,7 +11,7 @@ class ConvBnAct(nn.Module):
                  out_channels: int,
                  kernel_size: int,
                  padding: int,
-                 stride:int = 1,
+                 stride: int = 1,
                  bias: bool = False,
                  act_layer: nn.Module = nn.ReLU):
         """Init ConvBnAct.
