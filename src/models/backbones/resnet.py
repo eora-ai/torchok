@@ -211,14 +211,12 @@ class ResNet(BaseModel):
         downsample = None
 
         if stride != 1 or self.inplanes != in_channel * block.expansion:
-            downsample = nn.Sequential(
-                ConvBnAct(self.inplanes,
-                          in_channel * block.expansion,
-                          kernel_size=1,
-                          padding=0,
-                          stride=stride,
-                          act_layer=nn.Identity)
-            )
+            downsample = ConvBnAct(self.inplanes,
+                                   in_channel * block.expansion,
+                                   kernel_size=1,
+                                   padding=0,
+                                   stride=stride,
+                                   act_layer=nn.Identity)
 
         layers = []
         layers.append(block(self.inplanes, in_channel, stride, downsample=downsample, **block_args))
