@@ -20,6 +20,8 @@ class OptmizerParams:
     
 @dataclass
 class SchedulerPLParams:
+    # See https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
+    # for more information.
     interval: Optional[str] = None
     frequency: Optional[int] = None
     monitor: Optional[str] = None
@@ -86,8 +88,7 @@ class MetricParams:
     name: str
     mapping: Dict[str, str]
     params: Dict = field(default_factory=dict)
-    # Need Any type because if it Phase - it need be one of [TRAIN, VALID, TEST, PREDICT] to Enum convert
-    # Overwise if it is a str it convert our Enum Phase to string and it will be 'Phase.TRAIN'
+    # Must be one of [TRAIN, VALID, TEST, PREDICT]
     phases: Optional[List[Phase]] = field(default_factory=list)
     prefix: Optional[str] = None
 
