@@ -53,10 +53,6 @@ class MetricManager(nn.Module):
             params: Metric parameters.
         """
         super().__init__()
-        # Change list to set in phases
-        for param in params:
-            param.phases = list(set(param.phases))
-
         self.__phase2metrics = nn.ModuleDict()
         for phase in Phase:
             self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase) 

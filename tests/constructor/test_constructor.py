@@ -232,8 +232,8 @@ class TestConstructor(unittest.TestCase):
 
     def test_losses_creation_when_multiple_losses_specified(self):
         hparams = OmegaConf.create({
-            'losses':{
-                    'loss_params': [
+            'joint_loss': {
+                'losses': [
                     {
                         'name': 'SmoothL1Loss',
                         'params': {
@@ -245,7 +245,8 @@ class TestConstructor(unittest.TestCase):
                             'target': 'emb_teacher'
                         },
                         'weight': 0.3
-                    }, {
+                    },
+                    {
                         'name': 'CrossEntropyLoss',
                         'params': {},
                         'tag': 'classification',
@@ -259,7 +260,6 @@ class TestConstructor(unittest.TestCase):
                 'normalize_weights': True
             }
         })
-
         constructor = Constructor(hparams)
         losses = constructor.configure_losses()
 
@@ -287,7 +287,7 @@ class TestConstructor(unittest.TestCase):
                         'input': 'logits',
                         'target': 'target'
                     },
-                    'params':  {},
+                    'params': {},
                     'prefix': 'Cls',
                     'phases': [Phase.TRAIN]
                 }

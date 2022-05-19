@@ -4,6 +4,7 @@ import yaml
 import os
 import hydra
 from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig
 from pathlib import Path
 
 
@@ -12,15 +13,15 @@ from pathlib import Path
 import cv2
 cv2.setNumThreads(0)
 
-# from src.constructor import TASKS
 from src.constructor.config_structure import ConfigParams
 # from src.constructor import create_trainer
 
 
 @hydra.main()
-def load_config(config):
+def load_config(config: DictConfig):
     # Need to add --config-path (-cp) and --config_name (-cn) in run command
     # Example config in configs/classification_cifar10.yaml
+    # TODO: add config into the project
     # Then the command line will be:
     # python --config-path configs --config_name classification_cifar10 
     config_params = ConfigParams(**config)
@@ -28,6 +29,7 @@ def load_config(config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    # TODO: May be need set default config path
     parser.add_argument('-cp', '--config-path', type=str,
                         help="Path to folder with yaml file with configuration parameters.")
     parser.add_argument('-cn', '--config-name', type=str,

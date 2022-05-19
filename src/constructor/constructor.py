@@ -93,8 +93,7 @@ class Constructor:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
         pl_params = scheduler_params.pl_params
-        # Omega conf error when create pl_params with only one argument, it's request second,
-        # Optional wasn't help, don't know why.
+
         if pl_params is None:
             pl_params = {}
         else:
@@ -247,14 +246,14 @@ class Constructor:
         Returns: JointLoss module
         """
         loss_modules, mappings, tags, weights = [], [], [], []
-        for loss_config in self.__hparams.losses.loss_params:
+        for loss_config in self.__hparams.joint_loss.losses:
             loss_module = LOSSES.get(loss_config.name)(**loss_config.params)
             loss_modules.append(loss_module)
             mappings.append(loss_config.mapping)
             tags.append(loss_config.tag)
             weights.append(loss_config.weight)
 
-        normalize_weights = self.__hparams.losses.normalize_weights
+        normalize_weights = self.__hparams.joint_loss.normalize_weights
 
         return JointLoss(loss_modules, mappings, tags, weights, normalize_weights)
 

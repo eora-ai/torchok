@@ -21,7 +21,7 @@ def test_config_load_when_full_config_was_define(config):
     else:
         print('Phase enum OK.')
     # test normalize_weights parameter
-    if config_params.losses.normalize_weights != False:
+    if config_params.joint_loss.normalize_weights != False:
         print('Failed. normalize_weights != False.')
     else:
         print('normalize_weights OK.')
@@ -40,7 +40,7 @@ def test_config_load_when_metric_is_not_define(config):
 @hydra.main(config_path="configs/", config_name="config.yaml")
 def test_empty_params_load_when_full_config_was_define(config):
     config_params = ConfigParams(**config)
-    params = config_params.losses.loss_params[1].params
+    params = config_params.joint_loss.losses[1].params
     if len(params) == 0:
         print('Load empty params is OK.')
     else:

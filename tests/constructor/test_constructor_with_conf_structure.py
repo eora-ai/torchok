@@ -189,7 +189,7 @@ def test_constructor_with_config_structure_when_full_config_was_define(config):
                 'input': 'emb_student',
                 'target': 'emb_teacher'
             }, {
-                'input': 'logits',
+                'input': 'logist',
                 'target': 'target'
             }
         ])

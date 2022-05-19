@@ -11,13 +11,6 @@ class Phase(Enum):
     TEST = 'test'
     PREDICT = 'predict'
 
-phase_mapping = {
-    'train': Phase.TRAIN,
-    'valid': Phase.VALID,
-    'test': Phase.TEST,
-    'predict': Phase.PREDICT
-}
-
 
 # Optimization parameters
 @dataclass
@@ -28,7 +21,10 @@ class OptmizerParams:
 @dataclass
 class SchedulerPLParams:
     interval: Optional[str] = None
+    frequency: Optional[int] = None
     monitor: Optional[str] = None
+    strict: Optional[bool] = None
+    name: Optional[str] = None
 
 @dataclass
 class SchedulerParams:
@@ -56,31 +52,31 @@ class DatasetParams:
     augment: Optional[List[AugmentationParams]] = field(default_factory=list)
 
 @dataclass
-class DataParams:
+class DataLoaderParams:
     dataset: DatasetParams
     dataloader: Dict = field(default_factory=dict)
 
 @dataclass
-class DataloaderParams:
+class DataParams:
     # I think it must be list, with Enum Phase inside DataParams
-    train: Optional[List[DataParams]] = None
-    valid: Optional[List[DataParams]] = None
-    test: Optional[List[DataParams]] = None
-    predict: Optional[List[DataParams]] = None
+    train: Optional[List[DataLoaderParams]] = None
+    valid: Optional[List[DataLoaderParams]] = None
+    test: Optional[List[DataLoaderParams]] = None
+    predict: Optional[List[DataLoaderParams]] = None
 
 
 # Losses parameters
 @dataclass
 class LossParams:
     name: str
-    tag: str
     mapping: Dict[str, str]
     params: Dict = field(default_factory=dict)
+    tag: Optional[str] = None
     weight: Optional[float] = None
 
 @dataclass
 class JointLossParams:
-    loss_params: List[LossParams]
+    losses: List[LossParams]
     normalize_weights: bool = True
 
 
@@ -90,40 +86,27 @@ class MetricParams:
     name: str
     mapping: Dict[str, str]
     params: Dict = field(default_factory=dict)
-    phases: Optional[List[Any]] = field(default_factory=list)
+    # Need Any type because if it Phase - it need be one of [TRAIN, VALID, TEST, PREDICT] to Enum convert
+    # Overwise if it is a str it convert our Enum Phase to string and it will be 'Phase.TRAIN'
+    phases: Optional[List[Phase]] = field(default_factory=list)
     prefix: Optional[str] = None
 
 
 # Config parameters
 @dataclass
 class ConfigParams:
-    data: DataloaderParams
+    data: DataParams
     optimization: List[OptimizationParams]
-    losses: JointLossParams
+    joint_loss: JointLossParams
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
 
     def __post_init__(self):
-        """Post process for metrics phases. 
+        """Post process for data phases. 
         
-        Convert string phase to enum.
-        Hydra can't call __post_init__ of it's fields, beacuse it's actually OmegaConf dict or list.
-        And hydra can't handle list of Enums. It's force to converts values to Enums.
-
-        Raises:
-            KeyError: If phase in config not in mapping dict.
+        Convert string phase keys to enum.
+        Hydra can't call __post_init__ of it's fields, because it's actually OmegaConf dict or list.
         """
-        for i in range(len(self.metrics)):
-            current_phases = self.metrics[i].phases
-            if len(current_phases) == 0:
-                self.metrics[i].phases = [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT]
-            else:
-                new_phases = []
-                for phase in current_phases:
-                    if phase not in phase_mapping:
-                        raise KeyError(f'Phase has no key = {phase}, it must be one of {list(phase_mapping.keys())}')
-                    else:
-                        new_phases.append(phase_mapping[phase])
-                self.metrics[i].phases = new_phases
+        phase_mapping = {phase.value: phase for phase in Phase}
 
         # Change dataloaders phase keys to Enum
         data_with_enum = {}

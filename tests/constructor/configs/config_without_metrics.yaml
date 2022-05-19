@@ -43,8 +43,8 @@ optimization:
       params:
         lr: 0.0001
 
-losses:
-  loss_params:
+joint_loss:
+  losses:
     - name: SmoothL1Loss
       params:
         beta: 0.5
