@@ -29,7 +29,7 @@ class BaseTask(LightningModule, ABC):
         self._input_tensors = []
 
         for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
-            input_tensor = torch.rand(1, *input_shape).type(torch.__dict__[input_dtype])
+            input_tensor = torch.rand(*input_shape).type(torch.__dict__[input_dtype])
             self._input_tensors.append(input_tensor)
 
     @abstractmethod
