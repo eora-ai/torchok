@@ -15,9 +15,8 @@ class TestClassificationMulticlass(unittest.TestCase):
         self.__data_folder = self.__root_dir / 'cifar10'
         self.__train = True
         self.__download = True
-        self.__transform = Compose([ToTensorV2(),
-                                    Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))], p=1.0)
-        self.__augment = Compose([HorizontalFlip(p=0.5), VerticalFlip(p=0.5)])
+        self.__transform = Compose([Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), ToTensorV2()], p=1.0)
+        self.__augment = None
 
     def test_len(self):
         self.__ds = DATASETS.get('CIFAR10')(self.__train,
@@ -25,5 +24,5 @@ class TestClassificationMulticlass(unittest.TestCase):
                             self.__data_folder,
                             self.__transform,
                             self.__augment)
-        print(self.__ds[1])
+        print(self.__ds[1]['image'].shape)
         self.assertEqual(len(self.__ds), 50000)
