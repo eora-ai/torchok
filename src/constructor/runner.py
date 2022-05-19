@@ -23,3 +23,4 @@ def create_trainer(train_config, job_link):
     callbacks = [checkpoint_callback]
     trainer = Trainer(logger=logger, callbacks=callbacks, **train_config.trainer)
     return trainer
+    

@@ -153,3 +153,4 @@ class ConfigParams:
             data_with_enum[phase_enum] = value
 
         self.data = DictConfig(data_with_enum)
+    
