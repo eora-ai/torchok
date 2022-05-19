@@ -26,7 +26,6 @@ def _cfg(url='', **kwargs):
         'interpolation': 'bilinear',
         'mean': IMAGENET_DEFAULT_MEAN,
         'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'convbnact.conv.weight',
         **kwargs
     }
 
@@ -84,7 +83,7 @@ class BasicBlock(nn.Module):
         out_block_channels = out_channels * self.expansion
 
         self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
-        self.convbnact2 = ConvBnAct(out_channels, out_block_channels, kernel_size=3, padding=1, act_layer=nn.Identity)
+        self.convbnact2 = ConvBnAct(out_channels, out_block_channels, kernel_size=3, padding=1, act_layer=None)
         self.se = attn_layer(out_block_channels) if attn_layer is not None else None
         self.act = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -133,7 +132,7 @@ class Bottleneck(nn.Module):
 
         self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=1, padding=0, stride=1)
         self.convbnact2 = ConvBnAct(out_channels, out_channels, kernel_size=3, padding=1, stride=stride)
-        self.convbnact3 = ConvBnAct(out_channels, out_block_channels, kernel_size=1, padding=0, act_layer=nn.Identity)
+        self.convbnact3 = ConvBnAct(out_channels, out_block_channels, kernel_size=1, padding=0, act_layer=None)
         self.act = nn.ReLU(inplace=True)
         self.se = attn_layer(out_block_channels) if attn_layer is not None else None
         self.downsample = downsample
@@ -216,7 +215,7 @@ class ResNet(BaseModel):
                                    kernel_size=1,
                                    padding=0,
                                    stride=stride,
-                                   act_layer=nn.Identity)
+                                   act_layer=None)
 
         layers = []
         layers.append(block(self.inplanes, in_channel, stride, downsample=downsample, **block_args))
