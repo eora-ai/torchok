@@ -50,7 +50,7 @@ class CIFAR10(ImageDataset):
         self.__train = train
 
         if download:
-            self.download()
+            self.__download()
 
         if not self._check_integrity():
             raise RuntimeError('Dataset not found or corrupted.' +
@@ -96,9 +96,12 @@ class CIFAR10(ImageDataset):
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
         sample['image'] = sample['image'].type(torch.__dict__[self._image_dtype])
+        sample['index'] = idx
 
-        if not self.test_mode:
-            sample["target"] = self.__targets[idx]
+        if self._test_mode:
+            return sample
+
+        sample['target'] = self.__targets[idx]
 
         return sample
 
@@ -113,11 +116,12 @@ class CIFAR10(ImageDataset):
                 return False
         return True
 
-    def download(self) -> None:
+    def __download(self) -> None:
+        """Download archive by url to specific folder."""
         if self._check_integrity():
             print('Files already downloaded and verified')
-            return
-        download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
+        else:
+            download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
 
     def extra_repr(self) -> str:
         return "Split: {}".format("Train" if self.__train is True else "Test")
