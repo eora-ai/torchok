@@ -31,8 +31,8 @@ class SchedulerPLParams:
 @dataclass
 class SchedulerParams:
     name: str
-    params: Dict = field(default_factory=dict)
     pl_params: Optional[SchedulerPLParams] = None
+    params: Dict = field(default_factory=dict)
 
 @dataclass
 class OptimizationParams:
