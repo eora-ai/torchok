@@ -14,7 +14,8 @@ import cv2
 cv2.setNumThreads(0)
 
 from src.constructor.config_structure import ConfigParams
-# from src.constructor import create_trainer
+from src.constructor.runner import create_trainer
+from src.constructor.registry import TASKS
 
 
 @hydra.main()
@@ -49,6 +50,6 @@ if __name__ == '__main__':
 
     config = load_config()
 
-    # model = TASKS.get(config.task.name)(config)
-    # trainer = create_trainer(config, str(args.job_link))
-    # trainer.fit(model)
+    model = TASKS.get(config.task.name)(config)
+    trainer = create_trainer(config, str(args.job_link))
+    trainer.fit(model)

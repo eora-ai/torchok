@@ -93,12 +93,49 @@ class MetricParams:
     prefix: Optional[str] = None
 
 
+# Task parameters
+@dataclass
+class TaskParams:
+    name: str
+    params: Optional[Dict] = field(default_factory=dict)
+
+
+# Trainer parameters
+# TODO: add all Trainer parameters
+@dataclass
+class TrainerParams:
+    max_epochs: int
+    precision: int = 32
+    gpus: Optional[List] = field(default_factory=list)
+
+
+# Checkpoint parameters
+@dataclass
+class CheckpointParams:
+    filename: Optional[str] = None
+    monitor: str = 'valid/loss'
+    verbose: bool = False
+    save_last: bool = False
+    save_top_k: Optional[int] = 1
+    save_weights_only: bool = False
+    mode: str = 'min'
+    auto_insert_metric_name: bool = False
+    every_n_train_steps: Optional[int] = None
+    every_n_val_epochs: Optional[int] = None
+
+
 # Config parameters
 @dataclass
 class ConfigParams:
+    # TODO add Logger params
+    task: TaskParams
     data: DataParams
     optimization: List[OptimizationParams]
     joint_loss: JointLossParams
+    trainer: TrainerParams
+    checkpoint: CheckpointParams
+    experiment_name: str
+    log_dir: str = './logs'
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
 
     def __post_init__(self):
