@@ -4,7 +4,7 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import Optional
+from typing import Optional, Union
 
 from torch import nn as nn
 
@@ -42,7 +42,7 @@ class SEModule(nn.Module):
         self.fc2 = nn.Conv2d(reduction_channels, channels, kernel_size=1, bias=True)
         self.gate = nn.Sigmoid()
 
-    def __make_divisible(self, value, divisor=8, min_value=None):
+    def __make_divisible(self, value: Union[int, float], divisor: int = 8, min_value: Optional[int] = None):
         """Make divisible function.
 
         This function rounds the channel number to the nearest value that can be divisible by the divisor.

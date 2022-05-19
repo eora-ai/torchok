@@ -1,4 +1,6 @@
 """TorchOK ConvBnAct module."""
+from typing import Optional
+
 import torch
 import torch.nn as nn
 
@@ -13,7 +15,7 @@ class ConvBnAct(nn.Module):
                  padding: int,
                  stride: int = 1,
                  bias: bool = False,
-                 act_layer: nn.Module = nn.ReLU):
+                 act_layer: Optional[nn.Module] = nn.ReLU):
         """Init ConvBnAct.
 
         Args:
@@ -36,11 +38,14 @@ class ConvBnAct(nn.Module):
                               padding=padding,
                               bias=bias)
         self.bn = nn.BatchNorm2d(out_channels)
-        self.act = act_layer(inplace=True)
+        self.act = act_layer(inplace=True) if act_layer is not None else None
 
     def forward(self, x: torch.Tensor):
         """Forward method."""
         x = self.conv(x)
         x = self.bn(x)
-        x = self.act(x)
+
+        if self.act is not None:
+            x = self.act(x)
+
         return x
