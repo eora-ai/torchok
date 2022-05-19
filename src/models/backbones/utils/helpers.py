@@ -69,6 +69,6 @@ def build_model_with_cfg(model_cls: Callable,
         input_convs = default_cfg.get('first_conv', None)
         if input_convs is not None and in_chans != 3:
             state_dict[input_convs] = adapt_input_conv(in_chans, state_dict[input_convs])
+        model.load_state_dict(state_dict, strict=True)
 
-    model.load_state_dict(state_dict, strict=True)
     return model
