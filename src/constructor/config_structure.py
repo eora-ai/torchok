@@ -31,8 +31,8 @@ class SchedulerPLParams:
 @dataclass
 class SchedulerParams:
     name: str
-    pl_params: Optional[SchedulerPLParams] = None
     params: Dict = field(default_factory=dict)
+    pl_params: Optional[SchedulerPLParams] = None
 
 @dataclass
 class OptimizationParams:
@@ -88,7 +88,7 @@ class MetricParams:
     name: str
     mapping: Dict[str, str]
     params: Dict = field(default_factory=dict)
-    # Must be one of [TRAIN, VALID, TEST, PREDICT]
+    # Must be one of [TRAIN, VALID, TEST,]
     phases: Optional[List[Phase]] = field(default_factory=list)
     prefix: Optional[str] = None
 
