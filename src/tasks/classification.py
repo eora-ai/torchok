@@ -3,9 +3,9 @@ from typing import Dict, List, Tuple, Union
 import torch
 from omegaconf import DictConfig
 
+from src.constructor.config_structure import Phase
 from src.registry import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
-from vpatrushev.torchOK2.torchok.src.constructor.config_structure import Phase
 
 
 @TASKS.register_class
@@ -69,9 +69,7 @@ class ClassificationTask(BaseTask):
         self._metrics_manager.update(Phase.VALID, **output)
         return loss
 
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> torch.Tensor:
+    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        loss = self._losses(**output)
         self._metrics_manager.update(Phase.TEST, **output)
-        return loss
