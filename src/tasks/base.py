@@ -13,8 +13,9 @@ class BaseTask(LightningModule, ABC):
     """An abstract class that represent main methods of tasks."""
 
     def __init__(self, hparams: DictConfig):
+        # TODO: change type to ConfigParams
         """Init BaseTask.
-
+        
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
@@ -23,9 +24,9 @@ class BaseTask(LightningModule, ABC):
         self.__constructor = Constructor(hparams)
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         self._losses = self.__constructor.configure_losses()
-        self._hparams = self.__constructor.hparams
-        self.__input_shapes = self._hparams.input_shapes
-        self.__input_dtypes = self._hparams.input_dtypes
+        self._hparams = hparams
+        self.__input_shapes = self._hparams.task.input_shapes
+        self.__input_dtypes = self._hparams.task.input_dtypes
         self._input_tensors = []
 
         for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
