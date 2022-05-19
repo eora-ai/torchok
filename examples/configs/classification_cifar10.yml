@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - base_classification_cifar10
+  - base_configparams
 
 task:
   name: ClassificationTask

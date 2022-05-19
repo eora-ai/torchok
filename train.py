@@ -18,7 +18,7 @@ from src.constructor.runner import create_trainer
 from src.constructor.registry import TASKS
 
 
-@hydra.main()
+@hydra.main(config_path=None)
 def load_config(config: DictConfig):
     # Need to add --config-path (-cp) and --config_name (-cn) in run command
     # Example config in configs/classification_cifar10.yaml
@@ -38,15 +38,10 @@ if __name__ == '__main__':
     parser.add_argument('-jl', '--job-link', type=str,
                         help="sagemaker job name, if running localy set to 'local'", default='local')
     args = parser.parse_args()
-    
-    # getconfig name
-    config_name = args.config_name
-    config_name = config_name.split('.')[0] if '.' in config_name else config_name
-    structure_name = 'base_' + config_name
 
     # registr ConfigStructure
     cs = ConfigStore.instance()
-    cs.store(name=structure_name, node=ConfigParams)
+    cs.store(name='base_configparams', node=ConfigParams)
 
     config = load_config()
 
