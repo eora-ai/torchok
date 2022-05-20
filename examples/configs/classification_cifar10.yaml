@@ -1,0 +1,115 @@
+# defaults:
+#   - _self_
+#   - base_configparams
+
+task:
+  name: ClassificationTask
+  params:
+    backbone_name: resnet18
+    freeze_backbone: False
+    backbone_params:
+      pretrained: true
+      in_chans: 3
+    pooling_name: Pooling
+    pooling_params:
+      global_pool: 'fast'
+    head_name: ClassificationHead
+    head_params:
+      num_classes: &num_classes 10
+  input_shapes: [[3, &height 32, &width 32]]
+  input_dtypes: ['float']
+
+joint_loss:
+  losses:
+    - name: CrossEntropyLoss
+      tag: classification
+      mapping:
+        input: prediction
+        target: target
+      weight: 1
+
+  normalize_weights: False
+
+data:
+  train:
+    - dataset:
+        name: CIFAR10
+        params:
+          train: True
+          download: True
+          data_folder: 'cifar10'
+        transform:
+        - name: Compose
+          params:
+            transforms:
+              - name: Normalize
+                params:
+                  mean: [0.5, 0.5, 0.5]
+                  std: [0.5, 0.5, 0.5]
+                  p: 1.0
+              - name: ToTensorV2
+                params:
+                  p: 1.0
+            p: 1.0
+        augment:
+
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: True
+        shuffle: True
+   
+  valid:
+    - dataset:
+        name: CIFAR10
+        params:
+          train: False
+          download: True
+          data_folder: '/workdir/vpatrushev/torchOK2/torchok/cifar10'
+        transform:
+        - name: Compose
+          params:
+            transforms:
+              - name: Normalize
+                params:
+                  mean: [0.5, 0.5, 0.5]
+                  std: [0.5, 0.5, 0.5]
+                  p: 1.0
+              - name: ToTensorV2
+                params:
+                  p: 1.0
+            p: 1.0
+          
+        augment:
+
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: False
+        shuffle: False
+
+optimization:
+  - optimizer:
+      name: Adam
+      params:
+        lr: 0.0001
+
+trainer:
+  gpus: [0]
+  max_epochs: 10
+  num_sanity_val_steps: 0
+
+log_dir: '/workdir/logs/classification'
+experiment_name: cifar10
+
+checkpoint:
+  monitor: train/Accuracy
+  save_last: true
+  mode: max
+
+metrics:
+  - name: Accuracy
+    mapping: 
+      preds: prediction
+      target: target
+    phases: [TRAIN, VALID]

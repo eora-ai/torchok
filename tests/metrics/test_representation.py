@@ -5,34 +5,37 @@ from torchmetrics import Metric
 from typing import List, Dict, Union
 import numpy as np
 from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
-from src.metrics.representation import DatasetType, MetricDistance
 
 
 vectors = {
-    DatasetType.CLASSIFICATION: torch.tensor([
+    'classification': torch.tensor([
         [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], \
         [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
 
-    DatasetType.REPRESENTATION: torch.tensor([
-        [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1], \
-        [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], [1, 0, 0, 0]]),
+    'representation': torch.tensor([
+        [0, 0, 0, 1], [0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], # queries
+        [0, 0, 1, 1], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [1, 0, 1, 1], # database
+    ])
 }
 
-targets = torch.tensor([0, 1, 1, 2, 2, 1, 0, 0, 3], dtype=torch.int32)
+targets = {
+    'classification': torch.tensor([0, 1, 1, 2, 2, 1, 0, 0, 3]),
+    'representation': torch.tensor([0, 1, 2, 3, 1, 2, 1, 0, 0])
+}
 
-queries_idxs = torch.tensor([0, 1, -1, 2, -1, -1, -1, -1, 3], dtype=torch.int32)
+is_queries = torch.tensor([True, True, True, True, False, False, False, False, False])
 
 scores = torch.tensor(
     [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-        [0, 2.5, 0, 0],
         [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 2.5, 0, 0],
         [0, 0, 3, 0],
         [0, 1, 0, 0],
         [2, 0, 0, 0],
-        [3, 0, 0, 0],
-        [0, 0, 0, 0],
+        [3, 0, 0, 0]
     ]
 )
 
@@ -99,37 +102,20 @@ name2class = {
 
 
 class TestCase:
-    def __init__(self, test_name, dataset_type: DatasetType = DatasetType.CLASSIFICATION, \
-            search_batch_size: bool = None, exact_index: bool = True, normalize_vectors: bool = True, \
-            metric_distance: MetricDistance = MetricDistance.IP):
+    def __init__(self, test_name, dataset: str = 'classification', search_batch_size: bool = None, \
+                 exact_index: bool = True, normalize_input: bool = True, metric: str = 'IP'):
         self.params = dict(
-            dataset_type = dataset_type,
+            dataset = dataset,
             search_batch_size = search_batch_size,
             exact_index = exact_index,
-            normalize_vectors = normalize_vectors,
-            metric_distance = metric_distance,
+            normalize_input = normalize_input,
+            metric = metric,
         )
         self.class_name = test_name
-        if dataset_type == DatasetType.CLASSIFICATION:
+        if dataset == 'classification':
             self.expected = classification_dataset_answers[test_name]
         else:
             self.expected = representation_dataset_answers[test_name]
-
-
-def compute_metric_value(metric: Metric, test_case: TestCase):
-    for i in range(3):
-        vec = vectors[test_case.params['dataset_type']][3*i : 3*(i + 1)]
-        target = targets[3*i : 3*(i + 1)]
-
-        curr_scores = None
-        curr_queries_idxs = None
-        if test_case.params['dataset_type'] == DatasetType.REPRESENTATION:
-            curr_scores = scores[3*i : 3*(i + 1)]
-            curr_queries_idxs = queries_idxs[3*i : 3*(i + 1)]
-
-        metric.update(vectors=vec, targets=target, scores=curr_scores, queries_idxs=curr_queries_idxs)
-    value = metric.compute()
-    return value
 
 
 def compute_metric_dict(test_case: TestCase):
@@ -137,13 +123,25 @@ def compute_metric_dict(test_case: TestCase):
     answer_dict = {}
     for k in range(1, 5):
         metric = metric_class(**test_case.params, k=k)
-        value = compute_metric_value(metric, test_case)
+        for i in range(3):
+            vec = vectors[test_case.params['dataset']][3*i : 3*(i + 1)]
+            target = targets[test_case.params['dataset']][3*i : 3*(i + 1)]
+
+            score = None
+            is_query = None
+            if test_case.params['dataset'] == 'representation':
+                score = scores[3*i : 3*(i + 1)]
+                is_query = is_queries[3*i : 3*(i + 1)]
+
+            metric.update(vectors=vec, targets=target, scores=score, is_queries=is_query)
+        value = metric.compute()
         answer_dict[k] = float(value)
+    # print(f'ANSWER DICT = {answer_dict}')
     return answer_dict
 
 
 class TestRepresentationMetrics(unittest.TestCase):
-    def test_all_metrics_when_classification_dataset_is_used(self):
+    def test_classification_dataset(self):
         test_cases = [
             TestCase(test_name='recall'),
             TestCase(test_name='precision'),
@@ -162,12 +160,12 @@ class TestRepresentationMetrics(unittest.TestCase):
                 ),
             )
 
-    def test_all_metrics_when_representation_dataset_is_used(self):
+    def test_representation_dataset(self):
         test_cases = [
-            TestCase(test_name='recall', dataset_type=DatasetType.REPRESENTATION),
-            TestCase(test_name='precision', dataset_type=DatasetType.REPRESENTATION),
-            TestCase(test_name='average_precision', dataset_type=DatasetType.REPRESENTATION),
-            TestCase(test_name='ndcg', dataset_type=DatasetType.REPRESENTATION),
+            TestCase(test_name='recall', dataset='representation'),
+            TestCase(test_name='precision', dataset='representation'),
+            TestCase(test_name='average_precision', dataset='representation'),
+            TestCase(test_name='ndcg', dataset='representation'),
         ]
 
         for case in test_cases:
@@ -181,7 +179,7 @@ class TestRepresentationMetrics(unittest.TestCase):
                 ),
             )
 
-    def test_recall_when_different_search_batch_size_and_classification_dataset_was_define(self):
+    def test_classification_dataset_different_search_size(self):
         test_cases = [
             TestCase(test_name='recall', search_batch_size=1),
             TestCase(test_name='recall', search_batch_size=2),
@@ -198,10 +196,10 @@ class TestRepresentationMetrics(unittest.TestCase):
                 ),
             )
 
-    def test_recall_when_different_search_batch_size_and_representation_dataset_was_define(self):
+    def test_representation_dataset_different_search_size(self):
         test_cases = [
-            TestCase(test_name='recall', dataset_type=DatasetType.REPRESENTATION, search_batch_size=1),
-            TestCase(test_name='recall', dataset_type=DatasetType.REPRESENTATION, search_batch_size=2),
+            TestCase(test_name='recall', dataset='representation', search_batch_size=1),
+            TestCase(test_name='recall', dataset='representation', search_batch_size=2),
         ]
 
         for case in test_cases:
@@ -214,14 +212,6 @@ class TestRepresentationMetrics(unittest.TestCase):
                     case.class_name, case.expected, actual
                 ),
             )
-
-    def test_recall_when_k_is_None(self):
-        test_case = TestCase(test_name='recall', dataset_type=DatasetType.REPRESENTATION)
-        metric = RecallAtKMeter(**test_case.params, k=None)
-        value = compute_metric_value(metric, test_case)
-        answer = representation_dataset_answers['recall'][4]
-        self.assertEqual(value, answer, 'k = None is wrong result')
-
 
 if __name__ == '__main__':
     unittest.main()

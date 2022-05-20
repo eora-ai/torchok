@@ -3,7 +3,7 @@ from torch.optim import (
     RMSprop, Rprop, SGD, SparseAdam
 )
 
-from src.registry import OPTIMIZERS
+from src.constructor import OPTIMIZERS
 from . import adafactor
 
 # TODO: add other fresh optimizers from PyTorch

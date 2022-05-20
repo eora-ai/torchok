@@ -76,7 +76,7 @@ class IndexBasedMeter(Metric, ABC):
             self.add_state('targets', default=[], dist_reduce_fx=None)
         else:
             # if representation dataset
-            self.add_state('queries_idxs', default=[], dist_reduce_fx=None)
+            self.add_state('is_queries', default=[], dist_reduce_fx=None)
             self.add_state('scores', default=[], dist_reduce_fx=None)
 
     def update(self, vectors: torch.Tensor, targets: Optional[torch.Tensor] = None, \
@@ -114,8 +114,8 @@ class IndexBasedMeter(Metric, ABC):
             scores = scores.detach().cpu()
             self.scores.append(scores)
 
-    def compute(self) -> float:
-        """Compute metric value.
+    def compute(self):
+        """Build generator with relevant, closest arrays.
         
         Firstly it gathers all tensors in storage (done by torchmetrics). 
         Then it prepares data, separates query and database vectors. 
@@ -140,7 +140,7 @@ class IndexBasedMeter(Metric, ABC):
         else:
             # if representation dataset
             scores = torch.cat(self.scores).numpy()
-            queries_idxs = torch.cat(self.queries_idxs).numpy()
+            is_queries = torch.cat(self.is_queries).numpy()
             # prepare data
             q_vecs, db_vecs, relevants, scores, \
                 db_idxs, q_order_idxs = self.prepare_representation_data(vectors, queries_idxs, scores)
@@ -148,19 +148,19 @@ class IndexBasedMeter(Metric, ABC):
         q_vecs = q_vecs.astype(np.float32)
         db_vecs = db_vecs.astype(np.float32)
 
+        q_vecs = q_vecs.astype(np.float32)
+        db_vecs = db_vecs.astype(np.float32)
+
         index = self.build_index(db_vecs)
+
+        # if search batch size is None, search queries vectors by one request
+        search_batch_size = len(q_vecs) if self.search_batch_size is None else self.search_batch_size
 
         # if k is None set it as database length
         k = len(db_vecs) if self.k is None else self.k
 
-        # create relevant, closest generator
-        generator = self.query_generator(index, relevants, q_vecs, db_idxs, q_order_idxs, k, scores)
-        
-        # compute metric
-        scores = []
-        for relevant_idx, closest_idx in generator:
-            scores += self.metric_func(relevant_idx, closest_idx, k=k).tolist()
-        return np.mean(scores)
+        generator = self.query_generator(index, relevants, q_vecs, scores, db_idxs, search_batch_size, k)
+        return generator
 
     def prepare_representation_data(self, vectors: np.ndarray, queries_idxs: np.ndarray, scores: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -196,18 +196,17 @@ class IndexBasedMeter(Metric, ABC):
         relevant = []
         empty_relevant_idxs = []
         for idx in range(len(q_vecs)):
-            relevant_idxs = np.where(scores[:, queries_idxs[idx]] > 0.)[0]
+            relevant_idxs = np.where(scores[:, idx] > 0.)[0]
             if len(relevant_idxs) == 0:
                 empty_relevant_idxs.append(idx)
             else:
                 relevant.append(relevant_idxs)
         relevant = np.array(relevant)
-        
+
         # remove empty relevant queries
         q_vecs = np.delete(q_vecs, empty_relevant_idxs, axis=0)
-        queries_idxs = np.delete(queries_idxs, empty_relevant_idxs)
 
-        return q_vecs, db_vecs, relevant, scores, db_idxs, queries_idxs
+        return q_vecs, db_vecs, relevant, scores, db_idxs
 
     def prepare_classification_data(self, vectors: np.ndarray, targets: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -260,9 +259,8 @@ class IndexBasedMeter(Metric, ABC):
         return q_vecs, db_vecs, relevant, scores, db_idxs, query_order_idxs
 
     def query_generator(self, index: Union[faiss.swigfaiss_avx2.IndexFlatIP, faiss.swigfaiss_avx2.IndexFlatL2], \
-                        relevants: np.ndarray, queries: np.ndarray, db_ids: np.ndarray, q_order_idxs: np.ndarray, \
-                        k: int, scores: Optional[np.ndarray] = None
-    ) -> Generator[Tuple[List[np.ndarray], List[np.ndarray]], None, None]:
+                        relevants: np.ndarray, queries: np.ndarray, scores: np.ndarray, db_ids: np.ndarray, \
+                        search_batch_size: int, k: int):
         """Create relevants relevant, closest arrays.
 
         Output in relevant array, contain it's index in database and score for current query.
@@ -285,35 +283,11 @@ class IndexBasedMeter(Metric, ABC):
             Closest include searched indexes and distances, size (search_batch_size, , 2).
         """
         def generator():
-            """Generate relevant - y_true, and closest - y_pred for metric calculation with ranx library.
-
-            Returns:
-                relevant: List of relevant indexes with its scores per each queries. Length of list = search_batch_size.
-                    And size of one element of list = (relevant_indexes_size, 2), where last shape 2 for relevant index
-                    and it score. 
-                    Example for 3 search_batch_size, and relevant_sizes = [2, 2, 1] with score = 1 for every \
-                    relevant index:
-                    [
-                        np.array([[6, 1], [7, 1]]), 
-                        np.array([[2, 1], [5, 1]]), 
-                        np.array([[4, 1]])
-                    ].
-                closest: List of numpy arrays, with nearest searched indexes by top k, with its distances.
-                    Example for k = 3:
-                    [
-                        np.array([[4.        , 0.29289323],
-                               [2.        , 0.29289323],
-                               [6.        , 0.42264974]]), 
-                        np.array([[5.        , 0.29289323],
-                               [2.        , 0.29289323],
-                               [6.        , 0.42264974]]), 
-                        np.array([[4.        , 0.29289323],
-                               [5.        , 0.29289323],
-                               [6.        , 0.42264974]])
-                    ].
-            """
-            for i in range(0, len(queries), self.search_batch_size):
-                query_idxs = np.arange(i, min(i + self.search_batch_size, len(queries)))
+            for i in range(0, len(queries), search_batch_size):
+                if i + search_batch_size >= len(queries):
+                    query_idxs = np.arange(i, len(queries))
+                else:
+                    query_idxs = np.arange(i, i + search_batch_size)
 
                 closest_dist, closest_idx = index.search(queries[query_idxs], k=k)
                 relevant = relevants[query_idxs]
@@ -327,7 +301,7 @@ class IndexBasedMeter(Metric, ABC):
                 if scores is None:
                     relevant = map(lambda r: np.stack((r, np.ones_like(r)), axis=1), relevant)
                 else:
-                    relevant = map(lambda r_q: np.stack((r_q[0], scores[r_q[0], q_order_idxs[r_q[1]]]), axis=1), \
+                    relevant = map(lambda r_q: np.stack((r_q[0], scores[r_q[0], r_q[1]]), axis=1), \
                         zip(relevant, query_idxs))
                 
                 relevant = list(relevant)
@@ -363,36 +337,40 @@ class IndexBasedMeter(Metric, ABC):
 
 # @METRICS.register_class
 class PrecisionAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
-        super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
-            metric_func=precision, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
-            **kwargs)
+    def compute(self):
+        scores = []
+        generator = super().compute()
+        for relevant_idx, closest_idx in generator:
+            scores += precision(relevant_idx, closest_idx, k=self.k).tolist()
+        return np.mean(scores)
 
 
 # @METRICS.register_class
 class RecallAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
-        super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
-            metric_func=recall, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
-            **kwargs)
+    def compute(self):
+        scores = []
+        generator = super().compute()
+        for relevant_idx, closest_idx in generator:
+            scores += recall(relevant_idx, closest_idx, k=self.k).tolist()
+        return np.mean(scores)
 
 
 # @METRICS.register_class
 class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
-        super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
-            metric_func=average_precision, k=k, search_batch_size=search_batch_size, \
-            normalize_vectors=normalize_vectors, **kwargs)
+    def compute(self):
+        scores = []
+        generator = super().compute()
+        for relevant_idx, closest_idx in generator:
+            scores += average_precision(relevant_idx, closest_idx, k=self.k).tolist()
+        return np.mean(scores)
 
 
 # @METRICS.register_class
 class NDCGAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
-        super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
-            metric_func=ndcg, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
-            **kwargs)
+    def compute(self):
+        scores = []
+        generator = super().compute()
+        for relevant_idx, closest_idx in generator:
+            scores += ndcg(relevant_idx, closest_idx, k=self.k).tolist()
+        return np.mean(scores)
     
