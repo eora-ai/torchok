@@ -6,41 +6,37 @@ import torch
 from src.constructor import BACKBONES
 
 
-class TestResNet18(unittest.TestCase):
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__(methodName)
-        self.__input = torch.ones(1, 3, 224, 224)
-        self.__timm_model = timm.create_model('resnet18', pretrained=True, in_chans=3)
-        self.__output = {}
+class TestResNet(unittest.TestCase):
 
-    def test_init(self):
-        self.__timm_model.layer4[-1].act2.register_forward_hook(self.get_output('output_last_layer'))
-        self.__timm_model(self.__input)
-        self.__output['output_last_layer']
-        self.__model = BACKBONES.get('resnet18')(pretrained=True, in_chans=3)
-        self.assertTrue(self.__model(self.__input).equal(self.__output['output_last_layer']))
+    def __init__(self, backbone_name, methodName: str = ...) -> None:
+        super().__init__(methodName)
+        self._input = torch.ones(1, 3, 224, 224)
+        self._timm_model = timm.create_model(backbone_name, pretrained=True, in_chans=3)
+        self._model = BACKBONES.get(backbone_name)(pretrained=True, in_chans=3)
+        self._output = {}
 
     def get_output(self, name):
         def hook(model, input, output):
-            self.__output[name] = output.detach()
+            self._output[name] = output.detach()
         return hook
 
 
-class TestResNet50(unittest.TestCase):
+class TestResNet18(TestResNet):
+
     def __init__(self, methodName: str = ...) -> None:
-        super().__init__(methodName)
-        self.__input = torch.ones(1, 3, 224, 224)
-        self.__timm_model = timm.create_model('resnet50', pretrained=True)
-        self.__output = {}
+        super().__init__('resnet18', methodName)
 
-    def test_init(self):
-        self.__timm_model.layer4[-1].act3.register_forward_hook(self.get_output('output_last_layer'))
-        self.__timm_model(self.__input)
-        self.__output['output_last_layer']
-        self.__model = BACKBONES.get('resnet50')(pretrained=True, in_chans=3)
-        self.assertTrue(self.__model(self.__input).equal(self.__output['output_last_layer']))
+    def test_outputs_equals(self):
+        self._timm_model.layer4[-1].act2.register_forward_hook(self.get_output('output_last_layer'))
+        self._timm_model(self._input)
+        self.assertTrue(self._model(self._input).equal(self._output['output_last_layer']))
 
-    def get_output(self, name):
-        def hook(model, input, output):
-            self.__output[name] = output.detach()
-        return hook
+class TestResNet50(TestResNet):
+
+    def __init__(self, methodName: str = 'runTest') -> None:
+        super().__init__('resnet50', methodName)
+
+    def test_outputs_equals(self):
+        self._timm_model.layer4[-1].act3.register_forward_hook(self.get_output('output_last_layer'))
+        self._timm_model(self._input)
+        self.assertTrue(self._model(self._input).equal(self._output['output_last_layer']))
