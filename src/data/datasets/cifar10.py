@@ -5,6 +5,10 @@ import numpy as np
 
 
 import torch
+
+from albumentations.pytorch import ToTensorV2
+from albumentations.core.composition import Compose
+from albumentations import  Normalize
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from src.data.datasets.base import ImageDataset
@@ -40,11 +44,13 @@ class CIFAR10(ImageDataset):
                  train: str,
                  download: bool,
                  data_folder: str,
-                 transform: Optional[Union[BasicTransform, BaseCompose]],
+                 transform: Optional[Union[BasicTransform, BaseCompose]] = None,
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  image_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
+        if transform is None:
+            transform = Compose([Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), ToTensorV2()], p=1.0)
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
         self.__data_folder = Path(data_folder)
         self.__train = train

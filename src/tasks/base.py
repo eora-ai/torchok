@@ -2,11 +2,12 @@ from typing import Any, Dict, Tuple, List, Optional
 from abc import ABC, abstractmethod
 
 import torch
+from torch.utils.data import DataLoader
 from pytorch_lightning import LightningModule
 from omegaconf import DictConfig
 
 from src.constructor.config_structure import Phase
-from src.constructor.constuctor import Constructor
+from src.constructor.constructor import Constructor
 
 
 class BaseTask(LightningModule, ABC):
@@ -20,11 +21,11 @@ class BaseTask(LightningModule, ABC):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__()
-        self.save_hyperparameters(hparams)
+        self.save_hyperparameters(DictConfig(hparams))
         self.__constructor = Constructor(hparams)
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         self._losses = self.__constructor.configure_losses()
-        self._hparams = hparams
+        self._hparams = DictConfig(hparams)
         self.__input_shapes = self._hparams.task.input_shapes
         self.__input_dtypes = self._hparams.task.input_dtypes
         self._input_tensors = []
@@ -53,49 +54,36 @@ class BaseTask(LightningModule, ABC):
 
     def training_epoch_end(self, outputs: Tuple[torch.Tensor, Dict]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
-        total_loss, tagged_loss_values = outputs
-        avg_loss = total_loss.mean()
-        self.log('train/avg_loss', avg_loss, on_step=False, on_epoch=True)
-
-        for tag, loss_value in tagged_loss_values.items():
+        tagged_loss_values = outputs
+        for loss_item in tagged_loss_values:
+            tag, loss_value = 'loss', loss_item['loss']
+            tag_metric, metic_val = 'Accuracy', loss_item['Accuracy']
             self.log(f'train/{tag}', loss_value, on_step=False, on_epoch=True)
+            self.log(f'train/{tag_metric}', metic_val, on_step=False, on_epoch=True)
+
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
+        #print(self._metrics_manager.on_epoch_end(Phase.TRAIN))
+        #self.log('train/Accuracy', 0.6, on_step=False, on_epoch=True)
+        #self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
 
     def validation_epoch_end(self, outputs: Tuple[torch.Tensor, Dict]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        total_loss, tagged_loss_values = outputs
-        avg_loss = total_loss.mean()
-        self.log('valid/avg_loss', avg_loss, on_step=False, on_epoch=True)
-
-        for tag, loss_value in tagged_loss_values.items():
+        tagged_loss_values = outputs
+        for loss_item in tagged_loss_values:
+            tag, loss_value = 'loss', loss_item['loss']
+            tag_metric, metic_val = 'Accuracy', loss_item['Accuracy']
             self.log(f'valid/{tag}', loss_value, on_step=False, on_epoch=True)
+            self.log(f'valid/{tag_metric}', metic_val, on_step=False, on_epoch=True)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
 
     def test_epoch_end(self, outputs: Tuple[torch.Tensor, Dict]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
-        total_loss, tagged_loss_values = outputs
-        avg_loss = total_loss.mean()
-        self.log('test/avg_loss', avg_loss, on_step=False, on_epoch=True)
-
-        for tag, loss_value in tagged_loss_values.items():
+        tagged_loss_values = outputs
+        for loss_item in tagged_loss_values:
+            tag, loss_value = 'loss', loss_item['loss']
             self.log(f'test/{tag}', loss_value, on_step=False, on_epoch=True)
-
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
-
-    def to_onnx(self, onnx_params) -> None:
-        """It's saving the model in ONNX format."""
-        super().to_onnx(input_sample=self._input_tensors,
-                        **onnx_params)
-
-    def on_train_end(self) -> None:
-        """It's calling at the end of training before logger experiment is closed."""
-        onnx_params = self._hparams.onnx_params
-        if onnx_params is not None:
-            self.to_onnx(onnx_params)
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers.
@@ -117,7 +105,7 @@ class BaseTask(LightningModule, ABC):
                 schedulers.append(None)
         return optimizers, schedulers
 
-    def train_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def train_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or more PyTorch DataLoaders for training."""
         data_params = self._hparams['data'].get(Phase.TRAIN, None)
 
@@ -127,7 +115,7 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.TRAIN)
         return data_loader
 
-    def val_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def val_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         data_params = self._hparams['data'].get(Phase.VALID, None)
 
@@ -142,7 +130,7 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.VALID)
         return data_loader
 
-    def test_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def test_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for testing."""
         data_params = self._hparams['data'].get(Phase.TEST, None)
 
@@ -157,7 +145,7 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.TEST)
         return data_loader
 
-    def predict_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def predict_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         data_params = self._hparams['data'].get(Phase.PREDICT, None)
 
@@ -173,13 +161,13 @@ class BaseTask(LightningModule, ABC):
         return data_loader
 
     def training_step_end(self, step_outputs: torch.Tensor) -> torch.Tensor:
-        return step_outputs.mean(dim=0, keepdim=True)
+        return step_outputs
 
     def validation_step_end(self, step_outputs: torch.Tensor) -> torch.Tensor:
-        return step_outputs.mean(dim=0, keepdim=True)
+        return step_outputs
 
     def test_step_end(self, step_outputs: torch.Tensor) -> torch.Tensor:
-        return step_outputs.mean(dim=0, keepdim=True)
+        return step_outputs
 
     @property
     def hparams(self) -> DictConfig:

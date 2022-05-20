@@ -15,18 +15,20 @@ cv2.setNumThreads(0)
 
 from src.constructor.config_structure import ConfigParams
 from src.constructor.runner import create_trainer
-from src.constructor.registry import TASKS
+from src.constructor import TASKS
 
 
-@hydra.main()
-def load_config(config: DictConfig):
+@hydra.main(config_path=None)
+def main(config: DictConfig):
     # Need to add --config-path (-cp) and --config_name (-cn) in run command
     # Example config in configs/classification_cifar10.yaml
     # TODO: add config into the project
     # Then the command line will be:
     # python --config-path configs --config_name classification_cifar10 
-    config_params = ConfigParams(**config)
-    return config_params
+    config = ConfigParams(**config)
+    model = TASKS.get(config.task.name)(config)
+    trainer = create_trainer(config, str(args.job_link))
+    trainer.fit(model)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -38,18 +40,9 @@ if __name__ == '__main__':
     parser.add_argument('-jl', '--job-link', type=str,
                         help="sagemaker job name, if running localy set to 'local'", default='local')
     args = parser.parse_args()
-    
-    # getconfig name
-    config_name = args.config_name
-    config_name = config_name.split('.')[0] if '.' in config_name else config_name
-    structure_name = 'base_' + config_name
 
     # registr ConfigStructure
     cs = ConfigStore.instance()
-    cs.store(name=structure_name, node=ConfigParams)
+    cs.store(name='base_configparams', node=ConfigParams)
 
-    config = load_config()
-
-    model = TASKS.get(config.task.name)(config)
-    trainer = create_trainer(config, str(args.job_link))
-    trainer.fit(model)
+    main()

@@ -148,6 +148,7 @@ class ConfigParams:
 
         # Change dataloaders phase keys to Enum
         data_with_enum = {}
+        
         for key, value in self.data.items():
             phase_enum = phase_mapping[key]
             data_with_enum[phase_enum] = value

@@ -247,11 +247,12 @@ class Constructor:
         """
         loss_modules, mappings, tags, weights = [], [], [], []
         for loss_config in self.__hparams.joint_loss.losses:
-            loss_module = LOSSES.get(loss_config.name)(**loss_config.params)
+            
+            loss_module = LOSSES.get(loss_config.name)()
             loss_modules.append(loss_module)
             mappings.append(loss_config.mapping)
             tags.append(loss_config.tag)
-            weights.append(loss_config.weight)
+            weights.append(loss_config.get('weight', None))
 
         normalize_weights = self.__hparams.joint_loss.normalize_weights
 
