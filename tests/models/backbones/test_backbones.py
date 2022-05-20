@@ -33,7 +33,7 @@ class TestResNet18(TestResNet):
 
 class TestResNet50(TestResNet):
 
-    def __init__(self, methodName: str = 'runTest') -> None:
+    def __init__(self, methodName: str = ...) -> None:
         super().__init__('resnet50', methodName)
 
     def test_outputs_equals(self):
