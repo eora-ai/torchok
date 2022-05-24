@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, List, Optional
+from typing import Any, Dict, Tuple, List, Optional, Union
 from abc import ABC, abstractmethod
 
 import torch
@@ -16,7 +16,7 @@ class BaseTask(LightningModule, ABC):
     def __init__(self, hparams: DictConfig):
         # TODO: change type to ConfigParams
         """Init BaseTask.
-        
+
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
@@ -52,38 +52,47 @@ class BaseTask(LightningModule, ABC):
         # TODO check and load checkpoint
         pass
 
-    def training_epoch_end(self, outputs: Tuple[torch.Tensor, Dict]) -> None:
+    def training_epoch_end(self,
+                           training_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
-        tagged_loss_values = outputs
-        for loss_item in tagged_loss_values:
-            tag, loss_value = 'loss', loss_item['loss']
-            tag_metric, metic_val = 'Accuracy', loss_item['Accuracy']
-            self.log(f'train/{tag}', loss_value, on_step=False, on_epoch=True)
-            self.log(f'train/{tag_metric}', metic_val, on_step=False, on_epoch=True)
+        avg_total_loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
+        self.log('train/avg_total_loss', avg_total_loss, on_step=False, on_epoch=True)
 
+        for tag in training_step_outputs[0]['tagged_loss_values'].keys():
+            avg_loss = torch.stack([x['tagged_loss_values'][tag] for x in training_step_outputs]).mean()
+            self.log(f'train/avg_{tag}', avg_loss)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
-        #print(self._metrics_manager.on_epoch_end(Phase.TRAIN))
-        #self.log('train/Accuracy', 0.6, on_step=False, on_epoch=True)
-        #self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
+        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
 
-    def validation_epoch_end(self, outputs: Tuple[torch.Tensor, Dict]) -> None:
+    def validation_epoch_end(self,
+                             valid_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        tagged_loss_values = outputs
-        for loss_item in tagged_loss_values:
-            tag, loss_value = 'loss', loss_item['loss']
-            tag_metric, metic_val = 'Accuracy', loss_item['Accuracy']
-            self.log(f'valid/{tag}', loss_value, on_step=False, on_epoch=True)
-            self.log(f'valid/{tag_metric}', metic_val, on_step=False, on_epoch=True)
+        avg_total_loss = torch.stack([x['loss'] for x in valid_step_outputs]).mean()
+        self.log('valid/avg_total_loss', avg_total_loss, on_step=False, on_epoch=True)
+
+        for tag in valid_step_outputs[0]['tagged_loss_values'].keys():
+            avg_loss = torch.stack([x['tagged_loss_values'][tag] for x in valid_step_outputs]).mean()
+            self.log(f'valid/avg_{tag}', avg_loss)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
+        self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
 
-    def test_epoch_end(self, outputs: Tuple[torch.Tensor, Dict]) -> None:
+    def test_epoch_end(self,
+                       test_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
-        tagged_loss_values = outputs
-        for loss_item in tagged_loss_values:
-            tag, loss_value = 'loss', loss_item['loss']
-            self.log(f'test/{tag}', loss_value, on_step=False, on_epoch=True)
+        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
+
+    def to_onnx(self, onnx_params) -> None:
+        """It's saving the model in ONNX format."""
+        super().to_onnx(input_sample=(*self._input_tensors,),
+                        **onnx_params)
+
+    def on_train_end(self) -> None:
+        """It's calling at the end of training before logger experiment is closed."""
+        onnx_params = self._hparams.get('onnx_params', None)
+        if onnx_params is not None:
+            self.to_onnx(onnx_params)
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers.
@@ -160,14 +169,13 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.PREDICT)
         return data_loader
 
-    def training_step_end(self, step_outputs: torch.Tensor) -> torch.Tensor:
-        return step_outputs
+    def training_step_end(self, outputs):
+        outputs.update({'loss': outputs['loss'].mean(dim=0, keepdim=True)})
+        return outputs
 
-    def validation_step_end(self, step_outputs: torch.Tensor) -> torch.Tensor:
-        return step_outputs
-
-    def test_step_end(self, step_outputs: torch.Tensor) -> torch.Tensor:
-        return step_outputs
+    def validation_step_end(self, outputs):
+        outputs.update({'loss': outputs['loss'].mean(dim=0, keepdim=True)})
+        return outputs
 
     @property
     def hparams(self) -> DictConfig:
@@ -185,7 +193,7 @@ class BaseTask(LightningModule, ABC):
         return self._losses
 
     @property
-    def input_shapes(self) -> List[Tuple[int, int, int]]:
+    def input_shapes(self) -> List[Tuple[int, int, int, int]]:
         """Input shapes."""
         return self.__input_shapes
 
