@@ -55,14 +55,14 @@ class ClassificationTask(BaseTask):
         else:
             return optimizers[0]
 
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> dict:
+    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> Dict:
         """Complete training loop."""
         output = self.forward_with_gt(batch[0])
         loss = self._losses(**output)
         self._metrics_manager.forward(Phase.TRAIN, **output)
         return {'loss': loss[0], 'tagged_loss_values': loss[1]}
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> dict:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> Dict:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         loss = self._losses(**output)

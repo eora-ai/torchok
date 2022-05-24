@@ -169,11 +169,11 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.PREDICT)
         return data_loader
 
-    def training_step_end(self, outputs):
+    def training_step_end(self, outputs) -> Dict[str, Union[torch.Tensor, Dict[str, Dict]]]:
         outputs.update({'loss': outputs['loss'].mean(dim=0, keepdim=True)})
         return outputs
 
-    def validation_step_end(self, outputs):
+    def validation_step_end(self, outputs) -> Dict[str, Union[torch.Tensor, Dict[str, Dict]]]:
         outputs.update({'loss': outputs['loss'].mean(dim=0, keepdim=True)})
         return outputs
 
