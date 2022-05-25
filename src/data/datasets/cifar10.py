@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional, Any
+from typing import Union, Optional
 import pickle
 import numpy as np
 
@@ -15,6 +15,7 @@ from src.constructor import DATASETS
 
 @DATASETS.register_class
 class CIFAR10(ImageDataset):
+    """A class represent cifar10 dataset."""
     base_folder = 'cifar-10-batches-py'
     url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
     filename = 'cifar-10-python.tar.gz'
@@ -37,7 +38,7 @@ class CIFAR10(ImageDataset):
     }
 
     def __init__(self,
-                 train: str,
+                 train: bool,
                  download: bool,
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
@@ -45,6 +46,23 @@ class CIFAR10(ImageDataset):
                  image_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
+        """Init CIFAR10.
+
+        Args:
+            train: If True, train dataset will be used, else - test dataset.
+            download: If True, data will be download and save to data_folder.
+            data_folder: Directory with all the images.
+            transform: Transform to be applied on a sample. This should have the
+                interface of transforms in `albumentations` library.
+            augment: Optional augment to be applied on a sample.
+                This should have the interface of transforms in `albumentations` library.
+            image_dtype: Data type of of the torch tensors related to the image.
+            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            test_mode: If True, only image without labels will be returned.
+
+        Raises:
+            RuntimeError: if dataset or metadata file not found or corrupted.
+        """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
         self.__data_folder = Path(data_folder)
         self.__train = train
@@ -53,8 +71,7 @@ class CIFAR10(ImageDataset):
             self.__download()
 
         if not self._check_integrity():
-            raise RuntimeError('Dataset not found or corrupted.' +
-                               ' You can use download=True to download it')
+            raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
         if self.__train:
             downloaded_list = self.train_list
@@ -79,18 +96,26 @@ class CIFAR10(ImageDataset):
         self.__images = self.__images.transpose((0, 2, 3, 1))  # convert to HWC
 
         self._load_meta()
-    
+
     def _load_meta(self) -> None:
+        """Load metadata."""
         path = self.__data_folder / self.base_folder / self.meta['filename']
         if not check_integrity(path, self.meta['md5']):
-            raise RuntimeError('Dataset metadata file not found or corrupted.' +
-                               ' You can use download=True to download it')
+            raise RuntimeError('Dataset metadata file not found or corrupted. You can use download=True to download it')
         with open(path, 'rb') as infile:
             data = pickle.load(infile, encoding='latin1')
             self.classes = data[self.meta['key']]
         self.class_to_idx = {_class: i for i, _class in enumerate(self.classes)}
-    
+
     def __getitem__(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['index'] - Index.
+        """
         image = self.__images[idx]
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
@@ -106,9 +131,11 @@ class CIFAR10(ImageDataset):
         return sample
 
     def __len__(self) -> int:
+        """Dataset length."""
         return len(self.__images)
 
     def _check_integrity(self) -> bool:
+        """Check integrity."""
         for fentry in (self.train_list + self.test_list):
             filename, md5 = fentry[0], fentry[1]
             fpath = self.__data_folder / self.base_folder / filename
@@ -122,7 +149,3 @@ class CIFAR10(ImageDataset):
             print('Files already downloaded and verified')
         else:
             download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
-
-    def extra_repr(self) -> str:
-        return "Split: {}".format("Train" if self.__train is True else "Test")
-
