@@ -47,6 +47,7 @@ class FeatureHooks:
         """
         # setup feature hooks
         modules = {k: v for k, v in named_modules}
+        print(modules)
         for feature_info in features_info:
             hook_name = feature_info.module_name
             module = modules[hook_name]

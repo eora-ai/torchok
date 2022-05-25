@@ -29,15 +29,15 @@ class ArcFaceHead(AbstractHead):
         """Init ArcFaceHead class.
 
         Args:
-            in_features: size of each input sample.
-            out_features: size of each output sample.
-            scale: feature scale.
-            margin: angular margin.
-            easy_margin: sometext
+            in_features: Size of each input sample.
+            out_features: Size of each output sample.
+            scale: Feature scale.
+            margin: Angular margin.
+            easy_margin: Easy margin.
             dynamic_margin: If True margin will increase from min_margin to margin,
                 step by step(num_warmup_steps times).
-            num_warmup_steps: number steps with dynamic margin.
-            min_margin: initial margin in dynamic_margin mode.
+            num_warmup_steps: Number steps with dynamic margin.
+            min_margin: Initial margin in dynamic_margin mode.
 
         Raises:
             ValueError: if num_warmup_steps or min_margin is None, when `dynamic_margin` is True.
@@ -66,8 +66,8 @@ class ArcFaceHead(AbstractHead):
         self.__th = torch.scalar_tensor(math.cos(math.pi - self.__margin))
         self.__mm = torch.scalar_tensor(math.sin(math.pi - self.__margin) * self.__margin)
 
-        self.__weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
-        nn.init.xavier_uniform_(self.__weight)
+        self.weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
+        nn.init.xavier_uniform_(self.weight)
 
     def __update_margin(self) -> None:
         if self.__dynamic_margin and self.__step <= self.__num_warmup_steps:
@@ -97,13 +97,14 @@ class ArcFaceHead(AbstractHead):
         return output
 
     def forward(self, input: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
+        """Forward method."""
         if not self.training:
-            return F.linear(input, self.__weight)
+            return F.linear(input, self.weight)
         elif target is None:
             raise ValueError('Target is None in training mode.')
 
         x = F.normalize(input)
-        weight = F.normalize(self.__weight)
+        weight = F.normalize(self.weight)
         cosine = F.linear(x, weight)
         output = self.__add_margin(cosine, target)
 
@@ -136,15 +137,15 @@ class ArcFaceHead(AbstractHead):
 
     @property
     def num_warmup_steps(self) -> Optional[int]:
-        """Is number of warm-up steps."""
+        """It's number of warm-up steps."""
         return self.__num_warmup_steps
 
     @property
     def min_margin(self) -> Optional[float]:
-        """Is initial margin in `dynamic_margin` mode."""
+        """It's initial margin in `dynamic_margin` mode."""
         return self.__min_margin
 
     @property
     def weights(self) -> torch.Tensor:
-        """Is ArcFaceHead weights."""
-        return self.__weight
+        """It's ArcFaceHead weights."""
+        return self.weight
