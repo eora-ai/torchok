@@ -1,3 +1,5 @@
+import datetime
+from pathlib import Path
 from collections.abc import Iterable
 from typing import Any, Dict, List, Optional, Union
 
@@ -9,8 +11,10 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from src.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 from src.losses.base import JointLoss
+from src.metrics.metrics_manager import MetricManager
 
 
 class Constructor:
@@ -90,7 +94,13 @@ class Constructor:
     def __create_scheduler(optimizer: Optimizer, scheduler_params: DictConfig) -> Dict[str, Any]:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
-        pl_params = scheduler_params.pl_params if 'pl_params' in scheduler_params else {}
+        pl_params = scheduler_params.pl_params
+
+        if pl_params is None:
+            pl_params = {}
+        else:
+            # remove None values
+            pl_params = {k: v for k, v in pl_params.items() if v is not None}
 
         return {
             'scheduler': scheduler,
@@ -140,7 +150,7 @@ class Constructor:
             {'params': no_decay, 'weight_decay': 0.},
             {'params': decay}]
 
-    def create_dataloaders(self, phase: str) -> List[DataLoader]:
+    def create_dataloaders(self, phase: Phase) -> List[DataLoader]:
         """Create data loaders.
 
         Each data loader is based on a dataset while dataset consists
@@ -148,7 +158,7 @@ class Constructor:
 
         Args:
             phase: Phase for which the data loaders are to be built.
-            Should be one of: 'train', 'valid', 'test', 'predict'
+            Should be one of: Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICTION
 
         Returns:
             List of data loaders to be used inside `PyTorch Lightning Module`_
@@ -161,13 +171,10 @@ class Constructor:
             - ValueError: When transforms are not specified for composition augmentations of albumentation
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
-        # FIXME: change to Enum when config structure is ready
-        if phase not in ['train', 'valid', 'test', 'predict']:
-            raise ValueError(f'Not support phase for data loaders specification: {phase}')
 
         return [
             self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
-            for phase_params in self.hparams.data[phase]
+            for phase_params in self.hparams.data[phase] if phase_params is not None
         ]
 
     @staticmethod
@@ -233,8 +240,7 @@ class Constructor:
 
         Returns: MetricManager module.
         """
-        # TODO (vladvin)
-        pass
+        return MetricManager(self.__hparams.metrics)
 
     def configure_losses(self) -> JointLoss:
         """Create list of loss modules wrapping them into a JointLoss module.
@@ -242,14 +248,34 @@ class Constructor:
         Returns: JointLoss module
         """
         loss_modules, mappings, tags, weights = [], [], [], []
-        for loss_config in self.__hparams.losses:
-            loss_module = LOSSES.get(loss_config.name)(**loss_config.params)
+        for loss_config in self.__hparams.joint_loss.losses:
+            
+            loss_module = LOSSES.get(loss_config.name)()
             loss_modules.append(loss_module)
             mappings.append(loss_config.mapping)
             tags.append(loss_config.tag)
-            weights.append(loss_config.weight)
+            weights.append(loss_config.get('weight', None))
 
-        return JointLoss(loss_modules, mappings, tags, weights)
+        normalize_weights = self.__hparams.joint_loss.normalize_weights
+
+        return JointLoss(loss_modules, mappings, tags, weights, normalize_weights)
+    
+    def create_output_metadata(self) -> Dict[str, Any]:
+        """Create dict of metadata."""
+        log_dir = self.__hparams.log_dir
+        experiment_name = self.__hparams.experiment_name
+
+        version = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_dir = Path(log_dir)
+        full_outputs_path = log_dir / experiment_name / version
+        full_outputs_path.mkdir(exist_ok=True, parents=True)
+
+        metadata = {'log_dir': log_dir,
+                    'experiment_name': experiment_name,
+                    'version': version,
+                    'full_outputs_path': full_outputs_path}
+
+        return metadata
 
     @property
     def hparams(self) -> DictConfig:
