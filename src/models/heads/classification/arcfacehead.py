@@ -66,8 +66,8 @@ class ArcFaceHead(AbstractHead):
         self.__th = torch.scalar_tensor(math.cos(math.pi - self.__margin))
         self.__mm = torch.scalar_tensor(math.sin(math.pi - self.__margin) * self.__margin)
 
-        self.weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
-        nn.init.xavier_uniform_(self.weight)
+        self.__weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
+        nn.init.xavier_uniform_(self.__weight)
 
     def __update_margin(self) -> None:
         if self.__dynamic_margin and self.__step <= self.__num_warmup_steps:
@@ -97,14 +97,13 @@ class ArcFaceHead(AbstractHead):
         return output
 
     def forward(self, input: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
-        """Forward method."""
         if not self.training:
-            return F.linear(input, self.weight)
+            return F.linear(input, self.__weight)
         elif target is None:
             raise ValueError('Target is None in training mode.')
 
         x = F.normalize(input)
-        weight = F.normalize(self.weight)
+        weight = F.normalize(self.__weight)
         cosine = F.linear(x, weight)
         output = self.__add_margin(cosine, target)
 
@@ -148,4 +147,4 @@ class ArcFaceHead(AbstractHead):
     @property
     def weights(self) -> torch.Tensor:
         """It's ArcFaceHead weights."""
-        return self.weight
+        return self.__weight
