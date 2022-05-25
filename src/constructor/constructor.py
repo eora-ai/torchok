@@ -1,3 +1,5 @@
+import datetime
+from pathlib import Path
 from collections.abc import Iterable
 from typing import Any, Dict, List, Optional, Union
 
@@ -257,6 +259,24 @@ class Constructor:
         normalize_weights = self.__hparams.joint_loss.normalize_weights
 
         return JointLoss(loss_modules, mappings, tags, weights, normalize_weights)
+    
+    def create_output_metadata(self) -> Dict[str, Any]:
+        """Create dict of metadata."""
+        log_dir = self.__hparams.log_dir
+        experiment_name = self.__hparams.experiment_name
+
+        version = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        log_dir = Path(log_dir)
+        full_outputs_path = log_dir / experiment_name / version
+        full_outputs_path.mkdir(exist_ok=True, parents=True)
+
+        metadata = {'log_dir': log_dir,
+                    'experiment_name': experiment_name,
+                    'version': version,
+                    'full_outputs_path': full_outputs_path}
+
+        return metadata
+
 
     @property
     def hparams(self) -> DictConfig:

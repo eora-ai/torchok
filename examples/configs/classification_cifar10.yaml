@@ -42,7 +42,7 @@ data:
         name: CIFAR10
         params:
           train: True
-          download: False
+          download: True
           data_folder: '/workdir/vpatrushev/torchOK2/torchok/cifar10/'
         transform:
         - name: Compose
@@ -70,7 +70,7 @@ data:
         name: CIFAR10
         params:
           train: False
-          download: False
+          download: True
           data_folder: '/workdir/vpatrushev/torchOK2/torchok/cifar10/'
         transform:
         - name: Compose

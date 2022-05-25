@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from functools import partial
 from collections import OrderedDict, defaultdict
 from copy import deepcopy
-from typing import Dict, List, Tuple, Union, Generator, Optional, Any
+from typing import Dict, List, Tuple, Union, Generator, Any
 from enum import Enum
 
 

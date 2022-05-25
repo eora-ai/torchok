@@ -27,7 +27,7 @@ def main(config: DictConfig):
     # python --config-path configs --config_name classification_cifar10 
     config = ConfigParams(**config)
     model = TASKS.get(config.task.name)(config)
-    trainer = create_trainer(config, str(args.job_link))
+    trainer = create_trainer(config, model.metadata, str(args.job_link))
     trainer.fit(model)
 
 if __name__ == '__main__':
