@@ -16,7 +16,7 @@ class Phase(Enum):
 @dataclass
 class OptmizerParams:
     name: str
-    params: Dict = field(default_factory=dict)
+    params: Optional[Dict] = field(default_factory=dict)
     
 @dataclass
 class SchedulerPLParams:
@@ -31,7 +31,7 @@ class SchedulerPLParams:
 @dataclass
 class SchedulerParams:
     name: str
-    params: Dict = field(default_factory=dict)
+    params: Optional[Dict] = field(default_factory=dict)
     pl_params: Optional[SchedulerPLParams] = None
 
 @dataclass
@@ -49,22 +49,14 @@ class AugmentationParams:
 @dataclass
 class DatasetParams:
     name: str
-    params: Dict = field(default_factory=dict)
-    transform: Optional[List[AugmentationParams]] = field(default_factory=list)
+    params: Dict
+    transform: List[AugmentationParams]
     augment: Optional[List[AugmentationParams]] = field(default_factory=list)
 
 @dataclass
-class DataLoaderParams:
-    dataset: DatasetParams
-    dataloader: Dict = field(default_factory=dict)
-
-@dataclass
 class DataParams:
-    # I think it must be list, with Enum Phase inside DataParams
-    train: Optional[List[DataLoaderParams]] = None
-    valid: Optional[List[DataLoaderParams]] = None
-    test: Optional[List[DataLoaderParams]] = None
-    predict: Optional[List[DataLoaderParams]] = None
+    dataset: DatasetParams
+    dataloader: Dict
 
 
 # Losses parameters
@@ -72,7 +64,7 @@ class DataParams:
 class LossParams:
     name: str
     mapping: Dict[str, str]
-    params: Dict = field(default_factory=dict)
+    params: Optional[Dict] = field(default_factory=dict)
     tag: Optional[str] = None
     weight: Optional[float] = None
 
@@ -87,9 +79,8 @@ class JointLossParams:
 class MetricParams:
     name: str
     mapping: Dict[str, str]
-    params: Dict = field(default_factory=dict)
-    # Must be one of [TRAIN, VALID, TEST,]
-    phases: Optional[List[Phase]] = field(default_factory=list)
+    params: Optional[Dict] = field(default_factory=dict)
+    phases: Optional[List[Phase]] = field(default_factory=lambda: [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT])
     prefix: Optional[str] = None
 
 
@@ -129,28 +120,13 @@ class CheckpointParams:
 class ConfigParams:
     # TODO add Logger params
     task: TaskParams
-    data: DataParams
+    data: Dict[Phase, List[DataParams]]
     optimization: List[OptimizationParams]
     joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
     experiment_name: str
     log_dir: str = './logs'
+    job_link: str = 'local'
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
-
-    def __post_init__(self):
-        """Post process for data phases. 
-        
-        Convert string phase keys to enum.
-        Hydra can't call __post_init__ of it's fields, because it's actually OmegaConf dict or list.
-        """
-        phase_mapping = {phase.value: phase for phase in Phase}
-
-        # Change dataloaders phase keys to Enum
-        data_with_enum = {}
-        for key, value in self.data.items():
-            phase_enum = phase_mapping[key]
-            data_with_enum[phase_enum] = value
-
-        self.data = DictConfig(data_with_enum)
     

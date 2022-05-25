@@ -1,7 +1,3 @@
-defaults:
-  - _self_
-  - base_configparams
-
 task:
   name: ClassificationTask
   params:
@@ -18,13 +14,23 @@ task:
 joint_loss:
   losses:
     - name: CrossEntropyLoss
-      params: 
-        mapping:
+      mapping:
           input: prediction
           target: target
+        
+
+optimization:
+  - optimizer: 
+      name: Adam
+      params:
+        lr: 0.0001
+    scheduler:
+      name: ExponentialLR
+      params:
+        gamma: 0.97
 
 data:
-  train:
+  TRAIN:
     - dataset:
         name: ImageClassificationDataset
         data_folder: 'cifar10'
