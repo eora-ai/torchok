@@ -34,17 +34,17 @@ default_cfgs = {
     # ResNet
     'resnet18': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet18-torchok.pth'),
     'resnet34': _cfg(
-        url=''),
+        url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet34-torchok.pth'),
     'resnet50': _cfg(
         url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet50-torchok.pth',
         interpolation='bicubic',
         crop_pct=0.95),
     'resnet101': _cfg(
-        url='',
+        url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet101-torchok.pth',
         interpolation='bicubic',
         crop_pct=0.95),
     'resnet152': _cfg(
-        url='',
+        url='https://torchok-hub.s3.eu-west-1.amazonaws.com/resnet152-torchok.pth',
         interpolation='bicubic',
         crop_pct=0.95),
 
@@ -52,7 +52,7 @@ default_cfgs = {
     'seresnet18': _cfg(interpolation='bicubic'),
     'seresnet34': _cfg(interpolation='bicubic'),
     'seresnet50': _cfg(
-        url='',
+        url='https://torchok-hub.s3.eu-west-1.amazonaws.com/seresnet50-torchok.pth',
         interpolation='bicubic'),
     'seresnet101': _cfg(interpolation='bicubic'),
     'seresnet152': _cfg(interpolation='bicubic')
