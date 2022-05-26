@@ -17,9 +17,8 @@ def main(config: DictConfig):
     schema = OmegaConf.structured(ConfigParams)
     config = OmegaConf.merge(schema, config)
     params = ConfigParams(**config)
-    return params
+    print(params.checkpoint)
  
 
 if __name__ == '__main__':
-    params = main()
-    print(params)
+    main()
