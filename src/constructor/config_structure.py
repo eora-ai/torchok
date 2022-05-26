@@ -22,17 +22,17 @@ class OptmizerParams:
 class SchedulerPLParams:
     # See https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
     # for more information.
-    interval: Optional[str] = None
-    frequency: Optional[int] = None
-    monitor: Optional[str] = None
-    strict: Optional[bool] = None
+    interval: Optional[str] = 'epoch'
+    frequency: Optional[int] = 1
+    monitor: Optional[str] = 'val_loss'
+    strict: Optional[bool] = True
     name: Optional[str] = None
 
 @dataclass
 class SchedulerParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
-    pl_params: Optional[SchedulerPLParams] = None
+    pl_params: Optional[SchedulerPLParams] = field(default_factory=lambda: SchedulerPLParams())
 
 @dataclass
 class OptimizationParams:
@@ -92,12 +92,54 @@ class TaskParams:
 
 
 # Trainer parameters
-# TODO: add all Trainer parameters
 @dataclass
 class TrainerParams:
-    max_epochs: int
+    logger: bool = True
+    enable_checkpointing: bool = True
+    gradient_clip_val: float = 0.0
+    gradient_clip_algorithm: str = 'norm'
+    num_nodes: int = 1
+    num_processes: int = 1
+    auto_select_gpus: bool = False
+    enable_progress_bar: bool = False
+    overfit_batches: float = 0.0
+    track_grad_norm: int = -1
+    check_val_every_n_epoch: int = 1
+    fast_dev_run: bool = False
+    max_steps: int = -1
+    limit_train_batches: float = 1.0
+    limit_val_batches: float = 1.0
+    limit_test_batches: float = 1.0
+    limit_predict_batches: float = 1.0
+    val_check_interval: float = 1.0
+    log_every_n_steps: int = 50
+    sync_batchnorm: bool = False
     precision: int = 32
-    gpus: Optional[List] = field(default_factory=list)
+    enable_model_summary: bool = True
+    num_sanity_val_steps: int = 2
+    deterministic: bool = False
+    reload_dataloaders_every_n_epochs: int = 0
+    auto_lr_find: bool = False
+    replace_sampler_ddp: bool = True
+    detect_anomaly: bool = False
+    auto_scale_batch_size: bool = False
+    amp_backend: str = 'native'
+    amp_level: str = 'O2'
+    move_metrics_to_cpu: bool = False
+    multiple_trainloader_mode: str = 'max_size_cycle'
+    gpus: Optional[List[int]] = None
+    default_root_dir: Optional[str] = None
+    devices: Optional[List[int]] = None
+    tpu_cores: Optional[List[int]] = None
+    ipus: Optional[int] = None
+    accumulate_grad_batches: Optional[Dict[int, int]] = None
+    max_epochs: Optional[int] = None
+    min_epochs: Optional[int] = None
+    min_steps: Optional[int] = None
+    max_time: Optional[str] = None
+    strategy: Optional[str] = None
+    profiler: Optional[str] = None
+    benchmark: Optional[bool] = None 
 
 
 # Checkpoint parameters

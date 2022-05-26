@@ -11,7 +11,7 @@ from typing import *
 from src.constructor.config_structure import ConfigParams, Phase
 
 
-@hydra.main(config_path='/workdir/rbayazitov/torchok/examples/configs/', config_name='classification_cifar10')
+@hydra.main(config_path='/workdir/rbayazitov/torchok/examples/configs/', config_name='example')
 def main(config: DictConfig):
     OmegaConf.resolve(config)
     schema = OmegaConf.structured(ConfigParams)

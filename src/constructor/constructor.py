@@ -71,7 +71,7 @@ class Constructor:
             optimizer = self.__create_optimizer(parameters, optim_params.optimizer)
             opt_sched = {'optimizer': optimizer}
 
-            if 'scheduler' in optim_params:
+            if optim_params.scheduler is not None:
                 scheduler_dict = self.__create_scheduler(optimizer, optim_params.scheduler)
                 opt_sched['lr_scheduler'] = scheduler_dict
 
@@ -93,12 +93,6 @@ class Constructor:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
         pl_params = scheduler_params.pl_params
-
-        if pl_params is None:
-            pl_params = {}
-        else:
-            # remove None values
-            pl_params = {k: v for k, v in pl_params.items() if v is not None}
 
         return {
             'scheduler': scheduler,

@@ -1,64 +1,56 @@
-data:
-  train:
-    - dataset:
-        name: TrainDataset
-      dataloader:
-        batch_size: 8
-        num_workers: 4
-        drop_last: True
-        shuffle: True
-    
-    - dataset:
-        name: TrainDataset2
-      dataloader:
-        batch_size: 8
-        num_workers: 4
-        drop_last: True
-        shuffle: True
+task:
+  name: ClassificationTask
+  params:
+    backbone_name: resnet18
+    backbone_params:
+      pretrained: true
+      in_chans: 3
+    pooling_name: Pooling
+    head_name: ClassificationHead
+    head_params:
+      num_classes: &num_classes 10
+    input_size: [3, &height 32, &width 32]
 
-  valid:
-    - dataset:
-        name: ValidDataset
-      dataloader:
-        batch_size: 8
-        num_workers: 4
-        drop_last: True
-        shuffle: True
+joint_loss:
+  losses:
+    - name: CrossEntropyLoss
+      mapping:
+          input: prediction
+          target: target
+        
 
 optimization:
-  - optimizer:
+  - optimizer: 
       name: Adam
       params:
         lr: 0.0001
     scheduler:
-      name: OneCycleLR
+      name: ExponentialLR
       params:
-        max_lr: 0.001
-        total_steps: 100000
-      pl_params:
-        interval: step
+        gamma: 0.97
 
-  - optimizer:
-      name: Adam
-      params:
-        lr: 0.0001
+data:
+  TRAIN:
+    - dataset:
+        name: ImageClassificationDataset
+        data_folder: 'cifar10'
+        csv_path: 'cifar_train.csv'
+        num_classes: *num_classes
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: True
+        shuffle: True
 
-joint_loss:
-  losses:
-    - name: SmoothL1Loss
-      params:
-        beta: 0.5
-      tag: representation
-      mapping:
-        input: emb_student
-        target: emb_teacher
-      weight: 0.3
-      
-    - name: CrossEntropyLoss
-      tag: classification
-      mapping:
-        input: logist
-        target: target
-      weight: 0.7
-    
-  normalize_weights: false
+trainer:
+  gpus: [0]
+  max_epochs: 10
+
+log_dir: '/workdir/logs/classification'
+experiment_name: cifar10
+
+checkpoint:
+  monitor: train/Accuracy
+  save_last: true
+  mode: max
+
