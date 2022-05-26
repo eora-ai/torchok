@@ -38,3 +38,4 @@ class TestConfigSrucure(unittest.TestCase):
     def test_optional_type_of_metrics_when_config_does_not_have_metrics(self):
         config = load_structured_config('tests/constructor/configs/config_without_metrics.yaml')
         self.assertEqual(len(config.metrics), 0)
+    

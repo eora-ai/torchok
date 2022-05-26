@@ -15,7 +15,7 @@ def create_outputs_path(log_dir, experiment_name):
     return log_dir, experiment_name, version, full_outputs_path
 
 
-def create_trainer(train_config, job_link):
+def create_trainer(train_config):
     outputs_path, experiment_name, version, full_outputs_path = create_outputs_path(train_config.log_dir,
                                                                                     train_config.experiment_name)
     logger = TensorBoardLogger(outputs_path, experiment_name, version)

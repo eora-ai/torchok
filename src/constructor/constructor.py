@@ -150,7 +150,6 @@ class Constructor:
 
         Args:
             phase: Phase for which the data loaders are to be built.
-            Should be one of: Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICTION
 
         Returns:
             List of data loaders to be used inside `PyTorch Lightning Module`_
@@ -159,15 +158,16 @@ class Constructor:
         https://pytorch-lightning.readthedocs.io/en/1.6.2/common/lightning_module.html#train-dataloader
 
         Raises:
-            - ValueError: When requested phase is not from the specified list of supported phases
             - ValueError: When transforms are not specified for composition augmentations of albumentation
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
-
-        return [
-            self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
-            for phase_params in self.hparams.data[phase] if phase_params is not None
-        ]
+        if phase in self.hparams.data:
+            return [
+                self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
+                for phase_params in self.hparams.data[phase] if phase_params is not None
+            ]
+        else:
+            return []
 
     @staticmethod
     def __prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:

@@ -31,8 +31,9 @@ def main(config: DictConfig):
     config = ConfigParams(**config)
     
     model = TASKS.get(config.task.name)(config)
-    trainer = create_trainer(config, config.job_link)
+    trainer = create_trainer(config)
     trainer.fit(model)
 
 if __name__ == '__main__':
     main()
+
