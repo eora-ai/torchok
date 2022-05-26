@@ -155,11 +155,9 @@ class CheckpointParams:
     auto_insert_metric_name: bool = False
     every_n_train_steps: Optional[int] = None
     every_n_val_epochs: Optional[int] = None
+    onnx_to_save: bool = False
+    onnx_params: Dict = field(default_factory=dict)
 
-@dataclass
-class ONNXParams:
-    to_save: bool = False
-    params: Dict = field(default_factory=dict)
 
 # Config parameters
 @dataclass
@@ -171,7 +169,6 @@ class ConfigParams:
     joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
-    onnx: ONNXParams
     experiment_name: str
     log_dir: str = './logs'
     job_link: str = 'local'
