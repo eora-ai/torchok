@@ -23,13 +23,11 @@ def main(config: DictConfig):
 
     # Resolve -> change evn variable to values for example ${oc.env:USER} -> 'root'
     OmegaConf.resolve(config)
-    # Registrate structure
+    # Register structure
     schema = OmegaConf.structured(ConfigParams)
     # Merge sturcture with config
     config = OmegaConf.merge(schema, config)
-    # may be we don't need this line
-    config = ConfigParams(**config)
-    
+    # Create task
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
     trainer.fit(model)
