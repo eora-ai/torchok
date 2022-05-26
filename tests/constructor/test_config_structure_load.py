@@ -39,6 +39,6 @@ class TestConfigSrucure(unittest.TestCase):
         config = load_structured_config('tests/constructor/configs/config_without_metrics.yaml')
         self.assertEqual(len(config.metrics), 0)
 
-    def test_structure_schema_when_add_not_registrated_parameter(self):
+    def test_structure_schema_when_add_not_registrated_parameter_in_yaml_file(self):
         self.assertRaises(KeyError, load_structured_config, 'tests/constructor/configs/config_with_bag.yaml')
     
