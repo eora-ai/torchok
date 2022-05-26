@@ -21,12 +21,12 @@ class BaseTask(LightningModule, ABC):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__()
-        self.save_hyperparameters(DictConfig(hparams))
+        self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         self._losses = self.__constructor.configure_losses()
         self.__metadata = self.__constructor.create_output_metadata()
-        self._hparams = DictConfig(hparams)
+        self._hparams = hparams
         self.__input_shapes = self._hparams.task.input_shapes
         self.__input_dtypes = self._hparams.task.input_dtypes
         self._input_tensors = []
@@ -56,12 +56,12 @@ class BaseTask(LightningModule, ABC):
     def training_epoch_end(self,
                            training_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
-        avg_total_loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
-        self.log('train/avg_total_loss', avg_total_loss, on_step=False, on_epoch=True)
+        total_loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
+        self.log('train/total_loss', total_loss, on_step=False, on_epoch=True)
 
         for tag in training_step_outputs[0]['tagged_loss_values'].keys():
-            avg_loss = torch.stack([x['tagged_loss_values'][tag] for x in training_step_outputs]).mean()
-            self.log(f'train/avg_{tag}', avg_loss, on_step=False, on_epoch=True)
+            loss = torch.stack([x['tagged_loss_values'][tag] for x in training_step_outputs]).mean()
+            self.log(f'train/{tag}', loss, on_step=False, on_epoch=True)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
@@ -69,12 +69,12 @@ class BaseTask(LightningModule, ABC):
     def validation_epoch_end(self,
                              valid_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        avg_total_loss = torch.stack([x['loss'] for x in valid_step_outputs]).mean()
-        self.log('valid/avg_total_loss', avg_total_loss, on_step=False, on_epoch=True)
+        total_loss = torch.stack([x['loss'] for x in valid_step_outputs]).mean()
+        self.log('valid/total_loss', total_loss, on_step=False, on_epoch=True)
 
         for tag in valid_step_outputs[0]['tagged_loss_values'].keys():
-            avg_loss = torch.stack([x['tagged_loss_values'][tag] for x in valid_step_outputs]).mean()
-            self.log(f'valid/avg_{tag}', avg_loss, on_step=False, on_epoch=True)
+            loss = torch.stack([x['tagged_loss_values'][tag] for x in valid_step_outputs]).mean()
+            self.log(f'valid/{tag}', loss, on_step=False, on_epoch=True)
 
         self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
@@ -83,23 +83,6 @@ class BaseTask(LightningModule, ABC):
                        test_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
-
-    def to_onnx(self, onnx_params) -> None:
-        """It's saving the model in ONNX format."""
-        file_path = onnx_params.get('file_path', None)
-
-        if file_path is None:
-            file_path = self.__metadata['full_outputs_path'] / 'last.onnx'
-
-        super().to_onnx(input_sample=(*self._input_tensors,),
-                        file_path = file_path,
-                        **onnx_params)
-
-    def on_train_end(self) -> None:
-        """It's calling at the end of training before logger experiment is closed."""
-        onnx_params = self._hparams.get('onnx_params', {})
-        if onnx_params is not None:
-            self.to_onnx(onnx_params)
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers.
