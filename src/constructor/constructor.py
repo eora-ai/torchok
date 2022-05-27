@@ -9,8 +9,10 @@ from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from src.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 from src.losses.base import JointLoss
+from src.metrics.metrics_manager import MetricManager
 
 
 class Constructor:
@@ -69,7 +71,7 @@ class Constructor:
             optimizer = self.__create_optimizer(parameters, optim_params.optimizer)
             opt_sched = {'optimizer': optimizer}
 
-            if 'scheduler' in optim_params:
+            if optim_params.scheduler is not None:
                 scheduler_dict = self.__create_scheduler(optimizer, optim_params.scheduler)
                 opt_sched['lr_scheduler'] = scheduler_dict
 
@@ -90,7 +92,7 @@ class Constructor:
     def __create_scheduler(optimizer: Optimizer, scheduler_params: DictConfig) -> Dict[str, Any]:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
-        pl_params = scheduler_params.pl_params if 'pl_params' in scheduler_params else {}
+        pl_params = scheduler_params.pl_params
 
         return {
             'scheduler': scheduler,
@@ -140,7 +142,7 @@ class Constructor:
             {'params': no_decay, 'weight_decay': 0.},
             {'params': decay}]
 
-    def create_dataloaders(self, phase: str) -> List[DataLoader]:
+    def create_dataloaders(self, phase: Phase) -> List[DataLoader]:
         """Create data loaders.
 
         Each data loader is based on a dataset while dataset consists
@@ -148,7 +150,6 @@ class Constructor:
 
         Args:
             phase: Phase for which the data loaders are to be built.
-            Should be one of: 'train', 'valid', 'test', 'predict'
 
         Returns:
             List of data loaders to be used inside `PyTorch Lightning Module`_
@@ -157,18 +158,16 @@ class Constructor:
         https://pytorch-lightning.readthedocs.io/en/1.6.2/common/lightning_module.html#train-dataloader
 
         Raises:
-            - ValueError: When requested phase is not from the specified list of supported phases
             - ValueError: When transforms are not specified for composition augmentations of albumentation
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
-        # FIXME: change to Enum when config structure is ready
-        if phase not in ['train', 'valid', 'test', 'predict']:
-            raise ValueError(f'Not support phase for data loaders specification: {phase}')
-
-        return [
-            self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
-            for phase_params in self.hparams.data[phase]
-        ]
+        if phase in self.hparams.data:
+            return [
+                self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
+                for phase_params in self.hparams.data[phase] if phase_params is not None
+            ]
+        else:
+            return []
 
     @staticmethod
     def __prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:
@@ -233,8 +232,7 @@ class Constructor:
 
         Returns: MetricManager module.
         """
-        # TODO (vladvin)
-        pass
+        return MetricManager(self.__hparams.metrics)
 
     def configure_losses(self) -> JointLoss:
         """Create list of loss modules wrapping them into a JointLoss module.
@@ -242,14 +240,16 @@ class Constructor:
         Returns: JointLoss module
         """
         loss_modules, mappings, tags, weights = [], [], [], []
-        for loss_config in self.__hparams.losses:
+        for loss_config in self.__hparams.joint_loss.losses:
             loss_module = LOSSES.get(loss_config.name)(**loss_config.params)
             loss_modules.append(loss_module)
             mappings.append(loss_config.mapping)
             tags.append(loss_config.tag)
             weights.append(loss_config.weight)
 
-        return JointLoss(loss_modules, mappings, tags, weights)
+        normalize_weights = self.__hparams.joint_loss.normalize_weights
+
+        return JointLoss(loss_modules, mappings, tags, weights, normalize_weights)
 
     @property
     def hparams(self) -> DictConfig:
