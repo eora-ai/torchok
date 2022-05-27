@@ -10,7 +10,7 @@ class AbstractHead(BaseModel, ABC):
 
     def __init__(self, in_features, out_features):
         """Init AbstractHead.
-        
+
         Args:
             in_features: Input features.
             out_features: Output features.
