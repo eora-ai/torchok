@@ -5,9 +5,8 @@ from typing import *
 
 from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
 from src.metrics.representation import DatasetType, MetricDistance
-from .envaronment import *
-from .envaronment.envaronment_data import *
-from .envaronment.envaronment import *
+
+from .context import *
 
 
 CPU_COUNT = os.cpu_count()

@@ -195,18 +195,18 @@ class IndexBasedMeter(Metric, ABC):
         
         relevant = []
         empty_relevant_idxs = []
-        # print(f'scores = {scores}')
+
         for idx in range(len(q_vecs)):
             relevant_idxs = np.where(scores[:, queries_idxs[idx]] > 0.)[0]
             if len(relevant_idxs) == 0:
                 empty_relevant_idxs.append(idx)
             else:
-                # Need sort relevant indexes by its scores for NDCG metric
+                # Need to sort relevant indexes by its scores for NDCG metric
                 current_scores = scores[relevant_idxs, queries_idxs[idx]]
                 sort_indexes = np.argsort(current_scores)
                 relevant_idxs = relevant_idxs[sort_indexes[::-1]]
                 relevant.append(relevant_idxs)
-        relevant = np.array(relevant, dtype=np.object)
+        relevant = np.array(relevant)
 
         # remove empty relevant queries
         q_vecs = np.delete(q_vecs, empty_relevant_idxs, axis=0)
