@@ -1,11 +1,8 @@
 from typing import List, Union
 
 import torch
-from torch import nn
 from abc import ABC, abstractmethod
-from src.models.base_model import BaseModel, FeatureInfo
-
-
+from src.models.base_model import BaseModel
 
 
 class AbstractHead(BaseModel, ABC):
