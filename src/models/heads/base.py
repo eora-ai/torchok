@@ -27,14 +27,6 @@ class AbstractHead(BaseModel, ABC):
         """Forward method."""
         pass
 
-    def init_weights(self) -> None:
-        """Weights initialization."""
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-
     def get_forward_output_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self._out_features
