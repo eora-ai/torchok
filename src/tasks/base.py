@@ -2,12 +2,12 @@ from typing import Any, Dict, Tuple, List, Optional
 from abc import ABC, abstractmethod
 
 import torch
+from torch.utils.data import DataLoader, Dataset, random_split
 from pytorch_lightning import LightningModule
 from omegaconf import DictConfig
 
 from src.constructor.config_structure import Phase
-from src.constructor.constuctor import Constructor
-
+from src.constructor.constructor import Constructor
 
 class BaseTask(LightningModule, ABC):
     """An abstract class that represent main methods of tasks."""
@@ -117,7 +117,7 @@ class BaseTask(LightningModule, ABC):
                 schedulers.append(None)
         return optimizers, schedulers
 
-    def train_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def train_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or more PyTorch DataLoaders for training."""
         data_params = self._hparams['data'].get(Phase.TRAIN, None)
 
@@ -127,7 +127,7 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.TRAIN)
         return data_loader
 
-    def val_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def val_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         data_params = self._hparams['data'].get(Phase.VALID, None)
 
@@ -142,7 +142,7 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.VALID)
         return data_loader
 
-    def test_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def test_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for testing."""
         data_params = self._hparams['data'].get(Phase.TEST, None)
 
@@ -157,7 +157,7 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.TEST)
         return data_loader
 
-    def predict_dataloader(self) -> Optional[List[torch.DataLoader]]:
+    def predict_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
         data_params = self._hparams['data'].get(Phase.PREDICT, None)
 

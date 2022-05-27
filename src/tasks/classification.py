@@ -4,7 +4,7 @@ import torch
 from omegaconf import DictConfig
 
 from src.constructor.config_structure import Phase
-from src.registry import BACKBONES, HEADS, POOLINGS, TASKS
+from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
 
