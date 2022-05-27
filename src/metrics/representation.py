@@ -206,11 +206,13 @@ class IndexBasedMeter(Metric, ABC):
                 sort_indexes = np.argsort(current_scores)
                 relevant_idxs = relevant_idxs[sort_indexes[::-1]]
                 relevant.append(relevant_idxs)
+        
         relevant = np.array(relevant)
 
         # remove empty relevant queries
         q_vecs = np.delete(q_vecs, empty_relevant_idxs, axis=0)
         queries_idxs = np.delete(queries_idxs, empty_relevant_idxs)
+        
         return q_vecs, db_vecs, relevant, scores, db_idxs, queries_idxs
 
     def prepare_classification_data(self, vectors: np.ndarray, targets: np.ndarray
