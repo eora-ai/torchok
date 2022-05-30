@@ -183,7 +183,9 @@ class Constructor:
     @staticmethod
     def __create_dataset(dataset_params: DictConfig) -> ImageDataset:
         transform = Constructor.__create_transforms(dataset_params.transform)
-        augment = Constructor.__create_transforms(dataset_params.augment)
+        # TODO remove when OmegaConf is fix bug, write to issue to Omegaconf!
+        augment_params = dataset_params.get('augment', None)
+        augment = Constructor.__create_transforms(augment_params)
 
         dataset_class = DATASETS.get(dataset_params.name)
 
@@ -195,7 +197,7 @@ class Constructor:
 
         for transform_info in transforms:
             transform_name = transform_info.name
-            transform_params = transform_info.params
+            transform_params = transform_info.get('params', dict())
 
             if transform_name == 'Compose' or transform_name == 'OneOf' or transform_name == 'SomeOf' or \
                transform_name == 'PerChannel' or transform_name == 'Sequential':

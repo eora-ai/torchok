@@ -4,7 +4,7 @@ import torch
 from omegaconf import DictConfig
 
 from src.constructor.config_structure import Phase
-from src.registry import BACKBONES, HEADS, POOLINGS, TASKS
+from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
 
@@ -20,13 +20,18 @@ class ClassificationTask(BaseTask):
         """
         super().__init__(hparams)
 
-        self.backbone = BACKBONES.get(self._hparams.backbone_name)(**self._hparams.backbone_params)
+        self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**self._hparams.task.params.backbone_params)
 
-        self._hparams.pooling_params['in_features'] = self.backbone.get_forward_output_channels()
-        self.pooling = POOLINGS.get(self._hparams.pooling_name)(**self._hparams.pooling_params)
-
-        self._hparams.head_params['in_features'] = self.pooling.get_forward_output_channels()
-        self.head = HEADS.get(self._hparams.head_name)(**self._hparams.head_params)
+        pooling_params = self._hparams.task.params.get('pooling_params', dict())
+        pooling_in_features = self.backbone.get_forward_output_channels()
+        pooling_name = self._hparams.task.params.get('pooling_name', 'IdentetyPooling')
+        self.pooling = POOLINGS.get(pooling_name)(in_features=pooling_in_features, **pooling_params)
+        
+        head_params = self._hparams.task.params.get('head_params', dict())
+        head_in_features = self.pooling.get_forward_output_channels()
+        # TODO write IdentetyHead
+        head_name = self._hparams.task.params.get('head_name', 'IdentetyHead')
+        self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
@@ -39,7 +44,9 @@ class ClassificationTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch['image']
         target = batch['target']
-        with torch.set_grad_enabled(not self._hparams.freeze_backbone and self.training):
+        # May be need add config structure
+        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
+        with torch.set_grad_enabled(not freeze_backbone and self.training):
             features = self.backbone(input_data)
         features = self.pooling(features)
         prediction = self.head(features, target)
@@ -55,21 +62,21 @@ class ClassificationTask(BaseTask):
         else:
             return [optimizers[0]]
 
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> torch.Tensor:
+    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> torch.Tensor:
         """Complete training loop."""
-        output = self.forward_with_gt(batch)
+        output = self.forward_with_gt(batch[0])
         loss = self._losses(**output)
-        self._metrics_manager.update(Phase.TRAIN, **output)
-        return loss
+        self._metrics_manager(Phase.TRAIN, **output)
+        return {'loss': loss[0], 'tagged_loss_values': loss[1]}
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> torch.Tensor:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> torch.Tensor:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         loss = self._losses(**output)
-        self._metrics_manager.update(Phase.VALID, **output)
-        return loss
+        self._metrics_manager(Phase.VALID, **output)
+        return {'loss': loss[0], 'tagged_loss_values': loss[1]}
 
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]]) -> None:
+    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        self._metrics_manager.update(Phase.TEST, **output)
+        self._metrics_manager(Phase.TEST, **output)

@@ -13,6 +13,8 @@ from torchmetrics import Metric
 from ranx.metrics import precision, recall, average_precision, ndcg
 from enum import Enum
 
+from src.constructor import METRICS
+
 
 class DatasetType(Enum):
     CLASSIFICATION = 0
@@ -361,7 +363,7 @@ class IndexBasedMeter(Metric, ABC):
         return index
 
 
-# @METRICS.register_class
+@METRICS.register_class
 class PrecisionAtKMeter(IndexBasedMeter):
     def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
         k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
@@ -370,7 +372,7 @@ class PrecisionAtKMeter(IndexBasedMeter):
             **kwargs)
 
 
-# @METRICS.register_class
+@METRICS.register_class
 class RecallAtKMeter(IndexBasedMeter):
     def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
         k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
@@ -379,7 +381,7 @@ class RecallAtKMeter(IndexBasedMeter):
             **kwargs)
 
 
-# @METRICS.register_class
+@METRICS.register_class
 class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
     def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
         k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
@@ -388,7 +390,7 @@ class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
             normalize_vectors=normalize_vectors, **kwargs)
 
 
-# @METRICS.register_class
+@METRICS.register_class
 class NDCGAtKMeter(IndexBasedMeter):
     def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
         k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
