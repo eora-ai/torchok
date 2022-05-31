@@ -81,7 +81,7 @@ class ArcFaceHead(AbstractHead):
 
         self.__weight = nn.Parameter(torch.zeros(num_classes, in_features), requires_grad=True)
 
-        nn.init.kaiming_normal_(self.__weight, mode='fan_out')
+        nn.init.xavier_uniform_(self.__weight)
 
     def __update_margin(self) -> None:
         if self.__dynamic_margin and self.__step <= self.__num_warmup_steps:
