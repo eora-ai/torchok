@@ -4,7 +4,7 @@ from torch.optim.lr_scheduler import (
     CosineAnnealingWarmRestarts
 )
 
-from src.registry import SCHEDULERS
+from src.constructor import SCHEDULERS
 from . import knee_lr_scheduler
 
 SCHEDULERS.register_class(LambdaLR)
