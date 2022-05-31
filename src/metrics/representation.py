@@ -327,6 +327,10 @@ class IndexBasedMeter(Metric, ABC):
                 if self.metric_distance == MetricDistance.IP:
                     closest_dist = 1 - closest_dist
 
+                # NDCG score=distance is needed to sort more relevant examples, but in this part of code we had 
+                # already sorted our examples by faiss. So if we change score = 1 to distance with type float 
+                # the index of relevant will be also float and after that inside ranx it may be fail to compare 
+                # relevant int index with our relevant float index.
                 closest = map(lambda idx: np.stack((db_ids[closest_idx[idx]], [1] * len(closest_idx[idx])), axis=1), \
                     np.arange(len(closest_idx)))
                 
