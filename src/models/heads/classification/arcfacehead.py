@@ -19,7 +19,7 @@ class ArcFaceHead(AbstractHead):
 
     def __init__(self,
                  in_features: int,
-                 out_features: int,
+                 num_classes: int,
                  scale: float = 30.0,
                  margin: float = 0.5,
                  easy_margin: bool = False,
@@ -30,7 +30,7 @@ class ArcFaceHead(AbstractHead):
 
         Args:
             in_features: Size of each input sample.
-            out_features: Size of each output sample.
+            num_classes: Size of each output sample.
             scale: Feature scale.
             margin: Angular margin.
             easy_margin: Easy margin.
@@ -42,7 +42,20 @@ class ArcFaceHead(AbstractHead):
         Raises:
             ValueError: if num_warmup_steps or min_margin is None, when `dynamic_margin` is True.
         """
-        super().__init__(in_features, out_features)
+        super().__init__(in_features, num_classes)
+
+        self.__num_classes = num_classes
+
+        if scale is None:
+            p = .999
+            c_1 = (num_classes - 1)
+            scale = c_1 / num_classes * math.log(c_1 * p / (1 - p)) + 1
+
+        if margin is None:
+            if in_features == 2:
+                margin = .9 - math.cos(2 * math.pi / num_classes)
+            else:
+                margin = .5 * num_classes / (num_classes - 1)
 
         self.__dynamic_margin = dynamic_margin
 
@@ -66,8 +79,9 @@ class ArcFaceHead(AbstractHead):
         self.__th = torch.scalar_tensor(math.cos(math.pi - self.__margin))
         self.__mm = torch.scalar_tensor(math.sin(math.pi - self.__margin) * self.__margin)
 
-        self.__weight = nn.Parameter(torch.FloatTensor(out_features, in_features))
-        nn.init.xavier_uniform_(self.__weight)
+        self.__weight = nn.Parameter(torch.zeros(num_classes, in_features), requires_grad=True)
+
+        nn.init.kaiming_normal_(self.__weight, mode='fan_out')
 
     def __update_margin(self) -> None:
         if self.__dynamic_margin and self.__step <= self.__num_warmup_steps:
@@ -92,11 +106,19 @@ class ArcFaceHead(AbstractHead):
         one_hot.scatter_(1, target.view(-1, 1).long(), 1)
         output = torch.where(one_hot == 1, phi, cosine)
         output *= self.__scale
-        self.__update_margin()
 
         return output
 
-    def forward(self, input: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, target: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """Forward method.
+
+        Args:
+            input: Input tensor.
+            target: Target tensor. May be None, if training mode off (inference stage).
+
+        Raises:
+            ValueError: If training mode on and target is None.
+        """
         if not self.training:
             return F.linear(input, self.__weight)
         elif target is None:
@@ -106,18 +128,14 @@ class ArcFaceHead(AbstractHead):
         weight = F.normalize(self.__weight)
         cosine = F.linear(x, weight)
         output = self.__add_margin(cosine, target)
+        self.__update_margin()
 
         return output
 
     @property
-    def in_features(self) -> int:
-        """Input features(backbone output)."""
-        return self._in_features
-
-    @property
-    def out_features(self) -> int:
+    def num_classes(self) -> int:
         """Output features or number classes."""
-        return self._out_features
+        return self.__num_classes
 
     @property
     def margin(self) -> float:
