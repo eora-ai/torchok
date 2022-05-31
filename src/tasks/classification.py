@@ -18,14 +18,16 @@ class ClassificationTask(BaseTask):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__(hparams)
-
-        self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**self._hparams.task.params.backbone_params)
-
+        backbones_params = self._hparams.task.params.backbone_params
+        self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**backbones_params)
         self._hparams.task.params.pooling_params['in_features'] = self.backbone.get_forward_output_channels()
-        self.pooling = POOLINGS.get(self._hparams.task.params.pooling_name)(**self._hparams.task.params.pooling_params)
 
+        pooling_params = self._hparams.task.params.pooling_params
+        self.pooling = POOLINGS.get(self._hparams.task.params.pooling_name)(**pooling_params)
         self._hparams.task.params.head_params['in_features'] = self.pooling.get_forward_output_channels()
-        self.head = HEADS.get(self._hparams.task.params.head_name)(**self._hparams.task.params.head_params)
+
+        head_params = self._hparams.task.params.head_params
+        self.head = HEADS.get(self._hparams.task.params.head_name)(**head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
