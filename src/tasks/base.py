@@ -14,7 +14,6 @@ class BaseTask(LightningModule, ABC):
     """An abstract class that represent main methods of tasks."""
 
     def __init__(self, hparams: DictConfig):
-        # TODO: change type to ConfigParams
         """Init BaseTask.
 
         Args:
@@ -22,13 +21,13 @@ class BaseTask(LightningModule, ABC):
         """
         super().__init__()
         self.save_hyperparameters(hparams)
-        self.__constructor = Constructor(hparams)
-        self._metrics_manager = self.__constructor.configure_metrics_manager()
+        self._input_tensors = []
         self._losses = self.__constructor.configure_losses()
         self._hparams = hparams
-        self.__input_shapes = self._hparams.task.input_shapes
-        self.__input_dtypes = self._hparams.task.input_dtypes
-        self._input_tensors = []
+        self._metrics_manager = self.__constructor.configure_metrics_manager()
+        self.__constructor = Constructor(hparams)
+        self.__input_shapes = self._hparams.task.params.input_shapes
+        self.__input_dtypes = self._hparams.task.params.input_dtypes
 
         for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
             input_tensor = torch.rand(*input_shape).type(torch.__dict__[input_dtype])
@@ -55,14 +54,6 @@ class BaseTask(LightningModule, ABC):
     def training_epoch_end(self,
                            training_step_outputs: List[Dict[str, Union[torch.Tensor, Dict[str, Dict]]]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
-        total_loss = torch.stack([x['loss'] for x in training_step_outputs]).mean()
-        self.log('train/total_loss', total_loss, on_step=False, on_epoch=True)
-
-        for tag in training_step_outputs[0]['tagged_loss_values'].keys():
-            loss = torch.stack([x['tagged_loss_values'][tag] for x in training_step_outputs]).mean()
-            self.log(f'train/{tag}', loss, on_step=False, on_epoch=True)
-
-        self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
 
     def validation_epoch_end(self,
@@ -71,11 +62,13 @@ class BaseTask(LightningModule, ABC):
         total_loss = torch.stack([x['loss'] for x in valid_step_outputs]).mean()
         self.log('valid/total_loss', total_loss, on_step=False, on_epoch=True)
 
-        for tag in valid_step_outputs[0]['tagged_loss_values'].keys():
-            loss = torch.stack([x['tagged_loss_values'][tag] for x in valid_step_outputs]).mean()
+        for tag in valid_step_outputs[0].keys():
+            if tag == 'loss':
+                continue
+
+            loss = torch.stack([x[tag] for x in valid_step_outputs]).mean()
             self.log(f'valid/{tag}', loss, on_step=False, on_epoch=True)
 
-        self.log('step', self.current_epoch, on_step=False, on_epoch=True)
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
 
     def test_epoch_end(self,
@@ -84,24 +77,9 @@ class BaseTask(LightningModule, ABC):
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
 
     def configure_optimizers(self) -> Tuple[List, List]:
-        """Configure optimizers.
-
-        Returns:
-            This method return two lists.
-            First list - optimizers.
-            Second list - schedulers(elements can be None type).
-        """
+        """Configure optimizers."""
         configure_optimizers = self.__constructor.configure_optimizers(self.parameters())
-        optimizers, schedulers = [], []
-
-        for item in configure_optimizers:
-            optimizers.append(item['optimizer'])
-            lr_scheduler = item.get('lr_scheduler')
-            if lr_scheduler is not None:
-                schedulers.append(lr_scheduler['scheduler'])
-            else:
-                schedulers.append(None)
-        return optimizers, schedulers
+        return configure_optimizers
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or more PyTorch DataLoaders for training."""
@@ -158,13 +136,46 @@ class BaseTask(LightningModule, ABC):
         data_loader = self.__constructor.create_dataloaders(Phase.PREDICT)
         return data_loader
 
+    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> dict:
+        """Complete training loop."""
+        output = self.forward_with_gt(batch[0])
+        loss = self._losses(**output)
+        self._metrics_manager.forward(Phase.TRAIN, **output)
+        output_dict = {'loss': loss[0]}
+        output_dict.update(loss[1])
+
+        return output_dict
+
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> dict:
+        """Complete validation loop."""
+        output = self.forward_with_gt(batch)
+        loss = self._losses(**output)
+        self._metrics_manager.forward(Phase.VALID, **output)
+        output_dict = {'loss': loss[0]}
+        output_dict.update(loss[1])
+
+        return output_dict
+
+    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> None:
+        """Complete test loop."""
+        output = self.forward_with_gt(batch)
+        self._metrics_manager.forward(Phase.TEST, **output)
+
     def training_step_end(self, outputs):
-        outputs.update({'loss': outputs['loss'].mean(dim=0, keepdim=True)})
-        return outputs
+        output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
+
+        for tag, value in output_dict.items():
+            if tag == 'loss':
+                self.log('train/total_loss', value, on_step=True, on_epoch=False)
+            else:
+                self.log(f'train/{tag}', value, on_step=True, on_epoch=False)
+
+        return output_dict
 
     def validation_step_end(self, outputs):
-        outputs.update({'loss': outputs['loss'].mean(dim=0, keepdim=True)})
-        return outputs
+        output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
+
+        return output_dict
 
     @property
     def hparams(self) -> DictConfig:

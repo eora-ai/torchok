@@ -3,7 +3,6 @@ from typing import Dict, Union
 import torch
 from omegaconf import DictConfig
 
-from src.constructor.config_structure import Phase
 from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
@@ -45,31 +44,3 @@ class ClassificationTask(BaseTask):
         prediction = self.head(features, target)
         output = {'target': target, 'embeddings': features, 'prediction': prediction}
         return output
-
-    def configure_optimizers(self):
-        """Define optimizers and LR schedulers."""
-        optimizers, schedulers = super().configure_optimizers()
-
-        if schedulers[0] is not None:
-            return optimizers[0], schedulers[0]
-        else:
-            return optimizers[0]
-
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> Dict:
-        """Complete training loop."""
-        output = self.forward_with_gt(batch[0])
-        loss = self._losses(**output)
-        self._metrics_manager.forward(Phase.TRAIN, **output)
-        return {'loss': loss[0], 'tagged_loss_values': loss[1]}
-
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> Dict:
-        """Complete validation loop."""
-        output = self.forward_with_gt(batch)
-        loss = self._losses(**output)
-        self._metrics_manager.forward(Phase.VALID, **output)
-        return {'loss': loss[0], 'tagged_loss_values': loss[1]}
-
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> None:
-        """Complete test loop."""
-        output = self.forward_with_gt(batch[0])
-        self._metrics_manager.forward(Phase.TEST, **output)
