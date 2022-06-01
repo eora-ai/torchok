@@ -75,7 +75,7 @@ class BaseTask(LightningModule, ABC):
             loss = torch.stack([x['tagged_loss_values'][tag] for x in valid_step_outputs]).mean()
             self.log(f'valid/{tag}', loss, on_step=False, on_epoch=True)
 
-        self.log('step', self.current_epoch, on_step=False, on_epoch=True)
+        self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
 
     def test_epoch_end(self,
