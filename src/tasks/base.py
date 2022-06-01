@@ -45,8 +45,8 @@ class BaseTask(LightningModule, ABC):
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers."""
-        configure_optimizers = self.__constructor.configure_optimizers(self.parameters())
-        return configure_optimizers
+        opt_sched_list = self.__constructor.configure_optimizers(self.parameters())
+        return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or more PyTorch DataLoaders for training."""
@@ -135,10 +135,7 @@ class BaseTask(LightningModule, ABC):
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
 
         for tag, value in output_dict.items():
-            if tag == 'loss':
-                self.log('train/total_loss', value, on_step=True, on_epoch=False)
-            else:
-                self.log(f'train/{tag}', value, on_step=True, on_epoch=False)
+            self.log(f'train/{tag}', value, on_step=True, on_epoch=False)
 
         return output_dict
 
@@ -155,13 +152,7 @@ class BaseTask(LightningModule, ABC):
     def validation_epoch_end(self,
                              valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        total_loss = torch.stack([x['loss'] for x in valid_step_outputs]).mean()
-        self.log('valid/total_loss', total_loss, on_step=False, on_epoch=True)
-
         for tag in valid_step_outputs[0].keys():
-            if tag == 'loss':
-                continue
-
             loss = torch.stack([x[tag] for x in valid_step_outputs]).mean()
             self.log(f'valid/{tag}', loss, on_step=False, on_epoch=True)
 
@@ -188,7 +179,7 @@ class BaseTask(LightningModule, ABC):
         return self._losses
 
     @property
-    def input_shapes(self) -> List[Tuple[int, int, int, int]]:
+    def input_shapes(self) -> List[List[int]]:
         """Input shapes."""
         return self.__input_shapes
 
