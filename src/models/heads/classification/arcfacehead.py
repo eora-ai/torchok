@@ -30,7 +30,7 @@ class ArcFaceHead(AbstractHead):
 
         Args:
             in_features: Size of each input sample.
-            num_classes: Size of each output sample.
+            num_classes: number of classes.
             scale: Feature scale.
             margin: Angular margin.
             easy_margin: Easy margin.
