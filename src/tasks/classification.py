@@ -1,9 +1,12 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Union
 
 import torch
 from omegaconf import DictConfig
 
+<<<<<<< HEAD
 from src.constructor.config_structure import Phase
+=======
+>>>>>>> remotes/origin/feature-base_task
 from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
@@ -19,6 +22,9 @@ class ClassificationTask(BaseTask):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__(hparams)
+        backbones_params = self._hparams.task.params.backbone_params
+        self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**backbones_params)
+        self._hparams.task.params.pooling_params['in_features'] = self.backbone.get_forward_output_channels()
 
         self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**self._hparams.task.params.backbone_params)
 
@@ -52,31 +58,3 @@ class ClassificationTask(BaseTask):
         prediction = self.head(features, target)
         output = {'target': target, 'embeddings': features, 'prediction': prediction}
         return output
-
-    def configure_optimizers(self) -> Union[List, Tuple[List, List]]:
-        """Define optimizers and LR schedulers."""
-        optimizers, schedulers = super().configure_optimizers()
-
-        if schedulers[0] is not None:
-            return [optimizers[0]], [schedulers[0]]
-        else:
-            return [optimizers[0]]
-
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> torch.Tensor:
-        """Complete training loop."""
-        output = self.forward_with_gt(batch[0])
-        loss = self._losses(**output)
-        self._metrics_manager(Phase.TRAIN, **output)
-        return {'loss': loss[0], 'tagged_loss_values': loss[1]}
-
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> torch.Tensor:
-        """Complete validation loop."""
-        output = self.forward_with_gt(batch)
-        loss = self._losses(**output)
-        self._metrics_manager(Phase.VALID, **output)
-        return {'loss': loss[0], 'tagged_loss_values': loss[1]}
-
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx) -> None:
-        """Complete test loop."""
-        output = self.forward_with_gt(batch)
-        self._metrics_manager(Phase.TEST, **output)

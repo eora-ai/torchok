@@ -64,6 +64,7 @@ def run_metric_manager(names: List[str], prefixes: List[str], \
 
     return metric_manager.on_epoch_end(Phase.TRAIN)
 
+
 class TestCase:
     def __init__(self, test_name: str, names: List[str], prefixes: List[str], \
                 mappings: List[Dict], data_generator, expected):

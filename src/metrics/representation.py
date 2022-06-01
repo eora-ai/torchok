@@ -197,18 +197,24 @@ class IndexBasedMeter(Metric, ABC):
         
         relevant = []
         empty_relevant_idxs = []
+
         for idx in range(len(q_vecs)):
             relevant_idxs = np.where(scores[:, queries_idxs[idx]] > 0.)[0]
             if len(relevant_idxs) == 0:
                 empty_relevant_idxs.append(idx)
             else:
+                # Need to sort relevant indexes by its scores for NDCG metric
+                current_scores = scores[relevant_idxs, queries_idxs[idx]]
+                sort_indexes = np.argsort(current_scores)
+                relevant_idxs = relevant_idxs[sort_indexes[::-1]]
                 relevant.append(relevant_idxs)
-        relevant = np.array(relevant)
         
+        relevant = np.array(relevant)
+
         # remove empty relevant queries
         q_vecs = np.delete(q_vecs, empty_relevant_idxs, axis=0)
         queries_idxs = np.delete(queries_idxs, empty_relevant_idxs)
-
+        
         return q_vecs, db_vecs, relevant, scores, db_idxs, queries_idxs
 
     def prepare_classification_data(self, vectors: np.ndarray, targets: np.ndarray
@@ -300,18 +306,18 @@ class IndexBasedMeter(Metric, ABC):
                         np.array([[2, 1], [5, 1]]), 
                         np.array([[4, 1]])
                     ].
-                closest: List of numpy arrays, with nearest searched indexes by top k, with its distances.
+                closest: List of numpy arrays, with nearest searched indexes by top k.
                     Example for k = 3:
                     [
-                        np.array([[4.        , 0.29289323],
-                               [2.        , 0.29289323],
-                               [6.        , 0.42264974]]), 
-                        np.array([[5.        , 0.29289323],
-                               [2.        , 0.29289323],
-                               [6.        , 0.42264974]]), 
-                        np.array([[4.        , 0.29289323],
-                               [5.        , 0.29289323],
-                               [6.        , 0.42264974]])
+                        np.array([[4, 1],
+                               [2, 1],
+                               [6, 1]]), 
+                        np.array([[5, 1],
+                               [2, 1],
+                               [6, 1]]), 
+                        np.array([[4, 1],
+                               [5, 1],
+                               [6, 1]])
                     ].
             """
             for i in range(0, len(queries), self.search_batch_size):
@@ -322,8 +328,12 @@ class IndexBasedMeter(Metric, ABC):
  
                 if self.metric_distance == MetricDistance.IP:
                     closest_dist = 1 - closest_dist
-            
-                closest = map(lambda idx: np.stack((db_ids[closest_idx[idx]], closest_dist[idx]), axis=1), \
+
+                # NDCG score=distance is needed to sort more relevant examples, but in this part of code we had 
+                # already sorted our examples by faiss. So if we change score = 1 to distance with type float 
+                # the index of relevant will be also float and after that inside ranx it may be fail to compare 
+                # relevant int index with our relevant float index.
+                closest = map(lambda idx: np.stack((db_ids[closest_idx[idx]], [1] * len(closest_idx[idx])), axis=1), \
                     np.arange(len(closest_idx)))
                 
                 if scores is None:
@@ -334,6 +344,7 @@ class IndexBasedMeter(Metric, ABC):
                 
                 relevant = list(relevant)
                 closest = list(closest)
+
                 yield relevant, closest
 
         return generator()
@@ -365,8 +376,9 @@ class IndexBasedMeter(Metric, ABC):
 
 @METRICS.register_class
 class PrecisionAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
+    def __init__(self, dataset_type: DatasetType, exact_index: bool = True, \
+                 metric_distance: MetricDistance = MetricDistance.IP, k: Optional[int] = None, \
+                 search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=precision, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
             **kwargs)
@@ -374,8 +386,9 @@ class PrecisionAtKMeter(IndexBasedMeter):
 
 @METRICS.register_class
 class RecallAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
+    def __init__(self, dataset_type: DatasetType, exact_index: bool = True, \
+                 metric_distance: MetricDistance = MetricDistance.IP, k: Optional[int] = None, \
+                 search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=recall, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
             **kwargs)
@@ -383,8 +396,9 @@ class RecallAtKMeter(IndexBasedMeter):
 
 @METRICS.register_class
 class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
+    def __init__(self, dataset_type: DatasetType, exact_index: bool = True, \
+                 metric_distance: MetricDistance = MetricDistance.IP, k: Optional[int] = None, \
+                 search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=average_precision, k=k, search_batch_size=search_batch_size, \
             normalize_vectors=normalize_vectors, **kwargs)
@@ -392,8 +406,9 @@ class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
 
 @METRICS.register_class
 class NDCGAtKMeter(IndexBasedMeter):
-    def __init__(self, exact_index: bool, dataset_type: DatasetType, metric_distance: MetricDistance, \
-        k: Optional[int] = None, search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
+    def __init__(self, dataset_type: DatasetType, exact_index: bool = True, \
+                 metric_distance: MetricDistance = MetricDistance.IP, k: Optional[int] = None, \
+                 search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=ndcg, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
             **kwargs)
