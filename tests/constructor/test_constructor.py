@@ -3,13 +3,15 @@ import unittest
 import albumentations as A
 import numpy as np
 from omegaconf import OmegaConf
+from torchmetrics import Accuracy
 import torch
 from torch.nn import Conv2d, Module, Parameter
 from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 
-from src.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from src.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS, METRICS
 from src.constructor.constructor import Constructor
+from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 
 
@@ -19,6 +21,7 @@ TRANSFORMS.register_class(A.Compose)
 TRANSFORMS.register_class(A.OneOf)
 TRANSFORMS.register_class(A.Blur)
 TRANSFORMS.register_class(A.RandomCrop)
+METRICS.register_class(Accuracy)
 
 
 @DATASETS.register_class
@@ -56,7 +59,7 @@ OPTIM_BASIC_HPARAMS = OmegaConf.create({
 
 DATASETS_BASIC_HPARAMS = OmegaConf.create({
     'data': {
-        'train': [
+        Phase.TRAIN: [
             {
                 'dataset': {
                     'name': 'TestDataset',
@@ -173,7 +176,7 @@ class TestConstructor(unittest.TestCase):
 
     def test_dataloader_creation_when_dataloader_params_specified(self):
         constructor = Constructor(DATASETS_BASIC_HPARAMS)
-        dataloaders = constructor.create_dataloaders('train')
+        dataloaders = constructor.create_dataloaders(Phase.TRAIN)
 
         actual_params = {
             'batch_size': dataloaders[0].batch_size,
@@ -182,7 +185,7 @@ class TestConstructor(unittest.TestCase):
             'shuffle': dataloaders[0].sampler is not None
         }
 
-        self.assertEqual(actual_params, DATASETS_BASIC_HPARAMS['data']['train'][0]['dataloader'])
+        self.assertEqual(actual_params, DATASETS_BASIC_HPARAMS['data'][Phase.TRAIN][0]['dataloader'])
 
     def test_transforms_when_transforms_specified(self):
         self.__test_transforms_augmentations('transform')
@@ -192,7 +195,7 @@ class TestConstructor(unittest.TestCase):
 
     def __test_transforms_augmentations(self, kind):
         hparams = DATASETS_BASIC_HPARAMS.copy()
-        hparams['data']['train'][0]['dataset'][kind] = OmegaConf.create([
+        hparams['data'][Phase.TRAIN][0]['dataset'][kind] = OmegaConf.create([
             {
                 'name': 'OneOf',
                 'params': {
@@ -215,7 +218,7 @@ class TestConstructor(unittest.TestCase):
         ])
 
         constructor = Constructor(hparams)
-        dataloaders = constructor.create_dataloaders('train')
+        dataloaders = constructor.create_dataloaders(Phase.TRAIN)
 
         if kind == 'transform':
             actual_transforms = dataloaders[0].dataset.transform
@@ -229,31 +232,34 @@ class TestConstructor(unittest.TestCase):
 
     def test_losses_creation_when_multiple_losses_specified(self):
         hparams = OmegaConf.create({
-            'losses': [
-                {
-                    'name': 'SmoothL1Loss',
-                    'params': {
-                        'beta': 0.5
+            'joint_loss': {
+                'losses': [
+                    {
+                        'name': 'SmoothL1Loss',
+                        'params': {
+                            'beta': 0.5
+                        },
+                        'tag': 'representation',
+                        'mapping': {
+                            'input': 'emb_student',
+                            'target': 'emb_teacher'
+                        },
+                        'weight': 0.3
                     },
-                    'tag': 'representation',
-                    'mapping': {
-                        'input': 'emb_student',
-                        'target': 'emb_teacher'
-                    },
-                    'weight': 0.3
-                }, {
-                    'name': 'CrossEntropyLoss',
-                    'params': {},
-                    'tag': 'classification',
-                    'mapping': {
-                        'input': 'logits',
-                        'target': 'target'
-                    },
-                    'weight': 0.7
-                }
-            ]
+                    {
+                        'name': 'CrossEntropyLoss',
+                        'params': {},
+                        'tag': 'classification',
+                        'mapping': {
+                            'input': 'logits',
+                            'target': 'target'
+                        },
+                        'weight': 0.7
+                    }
+                ],
+                'normalize_weights': True
+            }
         })
-
         constructor = Constructor(hparams)
         losses = constructor.configure_losses()
 
@@ -273,5 +279,26 @@ class TestConstructor(unittest.TestCase):
         self.assertEqual(losses['representation'].beta, 0.5)
 
     def test_metrics_manager_creation_when_multiple_metrics_specified(self):
-        # TODO: when interface is fixed
-        pass
+        hparams = OmegaConf.create({
+            'metrics': [
+                {
+                    'name': 'Accuracy',
+                    'mapping': {
+                        'input': 'logits',
+                        'target': 'target'
+                    },
+                    'params': {},
+                    'prefix': 'Cls',
+                    'phases': [Phase.TRAIN]
+                }
+            ]
+        })
+
+        constructor = Constructor(hparams)
+        metric_manager = constructor.configure_metrics_manager()
+        phase2metrics = metric_manager.phase2metrics
+        mapping = dict(input='logits', target='target')
+
+        self.assertEqual(list(phase2metrics.keys())[0], Phase.TRAIN.name)
+        self.assertEqual(phase2metrics[Phase.TRAIN.name][0].log_name, 'Cls_Accuracy')
+        self.assertEqual(phase2metrics[Phase.TRAIN.name][0].mapping, mapping)
