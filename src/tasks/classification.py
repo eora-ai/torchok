@@ -3,10 +3,6 @@ from typing import Dict, Union
 import torch
 from omegaconf import DictConfig
 
-<<<<<<< HEAD
-from src.constructor.config_structure import Phase
-=======
->>>>>>> remotes/origin/feature-base_task
 from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
@@ -24,9 +20,6 @@ class ClassificationTask(BaseTask):
         super().__init__(hparams)
         backbones_params = self._hparams.task.params.backbone_params
         self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**backbones_params)
-        self._hparams.task.params.pooling_params['in_features'] = self.backbone.get_forward_output_channels()
-
-        self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**self._hparams.task.params.backbone_params)
 
         pooling_params = self._hparams.task.params.get('pooling_params', dict())
         pooling_in_features = self.backbone.get_forward_output_channels()
@@ -50,11 +43,12 @@ class ClassificationTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch['image']
         target = batch['target']
-        # May be need add config structure
-        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
-        with torch.set_grad_enabled(not freeze_backbone and self.training):
-            features = self.backbone(input_data)
-        features = self.pooling(features)
-        prediction = self.head(features, target)
-        output = {'target': target, 'embeddings': features, 'prediction': prediction}
+        # TODO it's fail when run
+        # freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
+        # with torch.set_grad_enabled(not freeze_backbone and self.training):
+            # features = self.backbone(input_data)
+        features = self.backbone(input_data)
+        embeddings = self.pooling(features)
+        prediction = self.head(embeddings, target)
+        output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}
         return output

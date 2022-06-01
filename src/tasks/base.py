@@ -27,7 +27,7 @@ class BaseTask(LightningModule, ABC):
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         self.__input_shapes = self._hparams.task.params.input_shapes
-        self.__input_dtypes = self._hparams.task.params.input_dtypes
+        self.__input_dtypes = self._hparams.task.params.get('input_dtypes', ['double'])
 
         for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
             input_tensor = torch.rand(*input_shape).type(torch.__dict__[input_dtype])

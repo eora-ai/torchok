@@ -13,7 +13,7 @@ from src.constructor.runner import create_trainer
 from src.constructor import TASKS
 
 
-@hydra.main(config_path='configs')
+@hydra.main(config_path='examples/configs', config_name='representation_arcface_sop')
 def main(config: DictConfig):
     # Need to add --config-path (-cp) and --config_name (-cn) in run command
     # Example config in configs/classification_cifar10.yaml

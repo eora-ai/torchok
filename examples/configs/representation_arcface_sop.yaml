@@ -6,11 +6,10 @@ task:
       pretrained: true
       in_chans: 3
     pooling_name: CustomPooling
-    # head_name: ArcFaceHead
-    head_name: ClassificationHead
+    head_name: ArcFaceHead
     head_params:
       out_features: &num_classes 12
-  input_shapes: [[3, &height 224, &width 224]]
+    input_shapes: [[3, &height 224, &width 224]]
 
 joint_loss:
   losses:
@@ -94,3 +93,25 @@ metrics:
     mapping: 
       preds: prediction
       target: target
+
+  - name: RecallAtKMeter
+    params:
+      k: 50
+      dataset_type: cls
+      normalize_vectors: True
+    mapping:
+      vectors: embeddings
+      targets: target
+    phases: [VALID]
+    
+  - name: PrecisionAtKMeter
+    params:
+      k: 100
+      dataset_type: cls
+      normalize_vectors: True
+    mapping:
+      vectors: embeddings
+      targets: target
+    phases: [VALID]
+    
+

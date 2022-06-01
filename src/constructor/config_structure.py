@@ -88,8 +88,8 @@ class MetricParams:
 @dataclass
 class TaskParams:
     name: str
-    input_shapes: List[List[int]]
-    input_dtypes: List[str] = field(default_factory=lambda: ['double'])
+    # input_shapes: List[List[int]]
+    # input_dtypes: List[str] = field(default_factory=lambda: ['double'])
     params: Optional[Dict] = field(default_factory=dict)
 
 
@@ -126,8 +126,8 @@ class TrainerParams:
     # replace_sampler_ddp: bool = True
     # detect_anomaly: bool = False
     # auto_scale_batch_size: bool = False
-    # amp_backend: str = 'native'
-    # amp_level: Optional[str] = None #'O2'
+    # amp_backend: str = 'native' #'apex'
+    # amp_level: Optional[str] = '02' #None 
     # move_metrics_to_cpu: bool = False
     # multiple_trainloader_mode: str = 'max_size_cycle'
     # gpus: Optional[List[int]] = None
