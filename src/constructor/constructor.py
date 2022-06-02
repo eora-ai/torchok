@@ -183,9 +183,9 @@ class Constructor:
     @staticmethod
     def __create_dataset(dataset_params: DictConfig) -> ImageDataset:
         transform = Constructor.__create_transforms(dataset_params.transform)
-        # TODO remove when OmegaConf is fix bug, write to issue to Omegaconf!
+        # TODO remove when OmegaConf is fixing the bug, write to issue to Omegaconf!
         # Config structure had 'augment' parameter with default value = None, but in loaded config 
-        # 'augment' is not in keys of dataset_params dict. So it must be write like 
+        # 'augment' is not in keys of dataset_params dictionary. So it must be written like
         # augment_params = dataset_params.augment
         augment_params = dataset_params.get('augment', None)
         augment = Constructor.__create_transforms(augment_params)
