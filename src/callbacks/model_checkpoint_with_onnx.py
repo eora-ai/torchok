@@ -34,10 +34,10 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         trainer.save_checkpoint(filepath + self.CKPT_EXTENSION, self.save_weights_only)
         self._last_global_step_saved = trainer.global_step
 
-        if trainer.is_global_zero:
-            for logger in trainer.loggers:
-                logger.after_save_checkpoint(proxy(self))
-
         if self.onnx_to_save:
             input_tensors = trainer.model.input_tensors
             trainer.model.to_onnx(filepath + self.ONNX_EXTENSION, (*input_tensors,), **self.onnx_params)
+
+        if trainer.is_global_zero:
+            for logger in trainer.loggers:
+                logger.after_save_checkpoint(proxy(self))
