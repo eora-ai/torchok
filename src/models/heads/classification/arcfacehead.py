@@ -42,10 +42,6 @@ class ArcFaceHead(AbstractHead):
         Raises:
             ValueError: if num_warmup_steps or min_margin is None, when `dynamic_margin` is True.
         """
-<<<<<<< HEAD
-        super().__init__(in_features, out_features)
-        
-=======
         super().__init__(in_features, num_classes)
 
         self.__num_classes = num_classes
@@ -61,7 +57,6 @@ class ArcFaceHead(AbstractHead):
             else:
                 margin = .5 * num_classes / (num_classes - 1)
 
->>>>>>> remotes/origin/dev
         self.__dynamic_margin = dynamic_margin
 
         if self.__dynamic_margin:
