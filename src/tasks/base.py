@@ -27,7 +27,7 @@ class BaseTask(LightningModule, ABC):
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         self.__input_shapes = self._hparams.task.params.input_shapes
-        self.__input_dtypes = self._hparams.task.params.input_dtypes
+        self.__input_dtypes = self._hparams.task.params.get('input_dtypes', ['double'])
 
         for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
             input_tensor = torch.rand(*input_shape).type(torch.__dict__[input_dtype])
@@ -96,7 +96,7 @@ class BaseTask(LightningModule, ABC):
 
     def __check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
         for data_param in data_params:
-            drop_last = data_param['dataloader']['drop_last']
+            drop_last = data_param['dataloader'].get('drop_last', False)
             if drop_last:
                 raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
 

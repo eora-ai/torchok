@@ -20,14 +20,17 @@ class ClassificationTask(BaseTask):
         super().__init__(hparams)
         backbones_params = self._hparams.task.params.backbone_params
         self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**backbones_params)
-        self._hparams.task.params.pooling_params['in_features'] = self.backbone.get_forward_output_channels()
 
-        pooling_params = self._hparams.task.params.pooling_params
-        self.pooling = POOLINGS.get(self._hparams.task.params.pooling_name)(**pooling_params)
-        self._hparams.task.params.head_params['in_features'] = self.pooling.get_forward_output_channels()
+        pooling_params = self._hparams.task.params.get('pooling_params', dict())
+        pooling_in_features = self.backbone.get_forward_output_channels()
+        pooling_name = self._hparams.task.params.get('pooling_name', 'Identity')
+        self.pooling = POOLINGS.get(pooling_name)(in_features=pooling_in_features, **pooling_params)
+        
+        head_params = self._hparams.task.params.get('head_params', dict())
+        head_in_features = self.pooling.get_forward_output_channels()
 
-        head_params = self._hparams.task.params.head_params
-        self.head = HEADS.get(self._hparams.task.params.head_name)(**head_params)
+        head_name = self._hparams.task.params.get('head_name', 'Identity')
+        self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
@@ -40,9 +43,10 @@ class ClassificationTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch['image']
         target = batch['target']
-        with torch.set_grad_enabled(not self._hparams.task.params.freeze_backbone and self.training):
+        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
+        with torch.set_grad_enabled(not freeze_backbone and self.training):
             features = self.backbone(input_data)
-        features = self.pooling(features)
-        prediction = self.head(features, target)
-        output = {'target': target, 'embeddings': features, 'prediction': prediction}
+        embeddings = self.pooling(features)
+        prediction = self.head(embeddings, target)
+        output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}
         return output

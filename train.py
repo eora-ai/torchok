@@ -10,7 +10,7 @@ cv2.setNumThreads(0)
 
 from src.constructor.config_structure import ConfigParams
 from src.constructor.runner import create_trainer
-from src.constructor.registry import TASKS
+from src.constructor import TASKS
 
 
 @hydra.main(config_path='configs')

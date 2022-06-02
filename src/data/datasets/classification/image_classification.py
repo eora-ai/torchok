@@ -9,8 +9,10 @@ from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
 from src.data.datasets.base import ImageDataset
+from src.constructor import DATASETS
 
 
+@DATASETS.register_class
 class ImageClassificationDataset(ImageDataset):
     """A generic dataset for multilabel/multiclass image classification task.
 

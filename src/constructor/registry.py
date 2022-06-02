@@ -65,6 +65,9 @@ class Registry:
         Raises:
             TypeError: If class_type not type.
             KeyError: If class_type already registered.
+
+        Returns:
+            Input class type.
         """
         if not (isinstance(class_type, type) or callable(class_type)):
             raise TypeError(f'class_type must be class type, but got {type(class_type)}')
@@ -72,3 +75,4 @@ class Registry:
         if class_name in self.__class_dict:
             raise KeyError(f'{class_name} is already registered in {self.__name}')
         self.__class_dict[class_name] = class_type
+        return class_type

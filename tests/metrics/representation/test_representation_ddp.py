@@ -18,7 +18,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
             return
         metric_class = RecallAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
@@ -31,7 +31,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
             return
         metric_class = PrecisionAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
@@ -44,7 +44,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
             return
         metric_class = MeanAveragePrecisionAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
@@ -57,7 +57,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
             return
         metric_class = NDCGAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
@@ -70,7 +70,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
             return
         metric_class = RecallAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
             'search_batch_size': 2
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)

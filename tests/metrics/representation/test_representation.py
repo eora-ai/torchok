@@ -16,7 +16,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_precision_when_dataset_is_representation(self):
         metric_class = PrecisionAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['precision']
@@ -26,7 +26,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_precision_when_dataset_is_classification(self):
         metric_class = PrecisionAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.CLASSIFICATION,
+            'dataset_type': 'classification',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['precision']
@@ -36,7 +36,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_recall_when_dataset_is_representation(self):
         metric_class = RecallAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['recall']
@@ -46,7 +46,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_recall_when_dataset_is_classification(self):
         metric_class = RecallAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.CLASSIFICATION,
+            'dataset_type': 'classification',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['recall']
@@ -56,7 +56,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_average_precision_when_dataset_is_representation(self):
         metric_class = MeanAveragePrecisionAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['average_precision']
@@ -66,7 +66,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_average_precision_when_dataset_is_classification(self):
         metric_class = MeanAveragePrecisionAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.CLASSIFICATION,
+            'dataset_type': 'classification',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['average_precision']
@@ -76,7 +76,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_ndcg_when_dataset_is_representation(self):
         metric_class = NDCGAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
         answer = ANSWERS['ndcg']
@@ -86,7 +86,7 @@ class TestRepresentationMetrics(unittest.TestCase):
     def test_search_bach_size_when_metric_recall_and_data_representation(self):
         metric_class = RecallAtKMeter
         metric_params = {
-            'dataset_type': DatasetType.REPRESENTATION,
+            'dataset_type': 'representation',
             'search_batch_size': 2
         }
         metrics = run_model(metric_class, metric_params)
