@@ -17,23 +17,23 @@ from src.constructor import METRICS
 
 
 class DatasetType(Enum):
-    CLASSIFICATION = 'cls'
+    CLASSIFICATION = 'classification'
     REPRESENTATION = 'representation'
 
 
 class MetricDistance(Enum):
-    IP = 'ip'
-    L2 = 'l2'
+    IP = 'IP'
+    L2 = 'L2'
 
 
 dataset_enum_mapping = {
-    'cls': DatasetType.CLASSIFICATION,
+    'classification': DatasetType.CLASSIFICATION,
     'representation': DatasetType.REPRESENTATION,
 }
 
 distance_enum_mapping = {
-    'ip': MetricDistance.IP,
-    'l2': MetricDistance.L2
+    'IP': MetricDistance.IP,
+    'L2': MetricDistance.L2
 }
 
 
@@ -389,7 +389,7 @@ class IndexBasedMeter(Metric, ABC):
 @METRICS.register_class
 class PrecisionAtKMeter(IndexBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True, \
-                 metric_distance: str = 'ip', k: Optional[int] = None, \
+                 metric_distance: str = 'IP', k: Optional[int] = None, \
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=precision, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
@@ -399,7 +399,7 @@ class PrecisionAtKMeter(IndexBasedMeter):
 @METRICS.register_class
 class RecallAtKMeter(IndexBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True, \
-                 metric_distance: str = 'ip', k: Optional[int] = None, \
+                 metric_distance: str = 'IP', k: Optional[int] = None, \
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=recall, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
@@ -409,7 +409,7 @@ class RecallAtKMeter(IndexBasedMeter):
 @METRICS.register_class
 class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True, \
-                 metric_distance: str = 'ip', k: Optional[int] = None, \
+                 metric_distance: str = 'IP', k: Optional[int] = None, \
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=average_precision, k=k, search_batch_size=search_batch_size, \
@@ -419,7 +419,7 @@ class MeanAveragePrecisionAtKMeter(IndexBasedMeter):
 @METRICS.register_class
 class NDCGAtKMeter(IndexBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True, \
-                 metric_distance: str = 'ip', k: Optional[int] = None, \
+                 metric_distance: str = 'IP', k: Optional[int] = None, \
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
             metric_func=ndcg, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \

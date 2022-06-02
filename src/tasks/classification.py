@@ -43,11 +43,9 @@ class ClassificationTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch['image']
         target = batch['target']
-        # TODO it's fail when run
-        # freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
-        # with torch.set_grad_enabled(not freeze_backbone and self.training):
-            # features = self.backbone(input_data)
-        features = self.backbone(input_data)
+        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
+        with torch.set_grad_enabled(not freeze_backbone and self.training):
+            features = self.backbone(input_data)
         embeddings = self.pooling(features)
         prediction = self.head(embeddings, target)
         output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}

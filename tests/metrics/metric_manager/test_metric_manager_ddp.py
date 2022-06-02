@@ -107,7 +107,6 @@ class TestCase:
 
 
 class DDPMetricManagerTest(unittest.TestCase):
-    METRICS.register_class(Accuracy)
     accuracy_mapping = dict(preds='predict', target='target')
     accuracy_params = MetricParams(
         name='Accuracy', mapping=accuracy_mapping,

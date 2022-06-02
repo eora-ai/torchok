@@ -96,8 +96,8 @@ metrics:
 
   - name: RecallAtKMeter
     params:
-      k: 50
-      dataset_type: cls
+      k: 1000
+      dataset_type: classification
       normalize_vectors: True
     mapping:
       vectors: embeddings
@@ -107,7 +107,7 @@ metrics:
   - name: PrecisionAtKMeter
     params:
       k: 100
-      dataset_type: cls
+      dataset_type: classification
       normalize_vectors: True
     mapping:
       vectors: embeddings
