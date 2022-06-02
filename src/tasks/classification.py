@@ -23,13 +23,13 @@ class ClassificationTask(BaseTask):
 
         pooling_params = self._hparams.task.params.get('pooling_params', dict())
         pooling_in_features = self.backbone.get_forward_output_channels()
-        pooling_name = self._hparams.task.params.get('pooling_name', 'IdentetyPooling')
+        pooling_name = self._hparams.task.params.get('pooling_name', 'Identity')
         self.pooling = POOLINGS.get(pooling_name)(in_features=pooling_in_features, **pooling_params)
         
         head_params = self._hparams.task.params.get('head_params', dict())
         head_in_features = self.pooling.get_forward_output_channels()
-        # TODO write IdentetyHead
-        head_name = self._hparams.task.params.get('head_name', 'IdentetyHead')
+
+        head_name = self._hparams.task.params.get('head_name', 'Identity')
         self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
