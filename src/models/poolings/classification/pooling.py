@@ -39,7 +39,7 @@ def select_adaptive_pool2d(x, pool_type='avg', flatten: bool = True, output_size
 
 
 @POOLINGS.register_class
-class CustomPooling(BaseModel):
+class Pooling(BaseModel):
     def __init__(self, in_features: int, pooling_type: str = 'avg', flatten: bool = True, output_size=1):
         super().__init__()
         self.output_size = output_size
