@@ -4,7 +4,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - hydra-core=1.2.0
   - faiss=1.7.2
   - pandas=1.3.5
   - pillow=9.1.0
@@ -16,6 +15,7 @@ dependencies:
   - pytorch-lightning=1.6.2
   - torchmetrics=0.8.2
   - pip:
+      - albumentations==1.1.0
+      - hydra-core==1.2.0
       - opencv-python==4.5.3.56
-      - albumentations>=1.0.3
       - ranx==0.1.12
