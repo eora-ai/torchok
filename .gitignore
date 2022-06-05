@@ -112,6 +112,9 @@ cython_debug/
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 .idea
 
+# Visual Studio Code
+.vscode/
+
 # DVC
 .dvc/cache
 .dvc/tmp
