@@ -36,7 +36,7 @@ class FeatureHooks:
 
     This module helps with the setup and extraction of hooks for extracting features from
     internal nodes in a model by node name. This works quite well in eager Python but needs
-    redesign for torcscript.
+    redesign for torch script.
     """
     def __init__(self, features_info: List[FeatureInfo], named_modules: Generator[Tuple[str, nn.Module], None, None]):
         """Initialize feature hooks.

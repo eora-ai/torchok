@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 
 from src.constructor.config_structure import Phase
 from src.constructor.constructor import Constructor
+from src.constructor.load import load_checkpoint
 
 
 class BaseTask(LightningModule, ABC):
@@ -28,7 +29,10 @@ class BaseTask(LightningModule, ABC):
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         self.__input_shapes = self._hparams.task.params.input_shapes
         self.__input_dtypes = self._hparams.task.params.get('input_dtypes', ['double'])
-
+        self.__base_checkpoint = hparams.task.base_checkpoint
+        self.__override_checkpoints = hparams.task.override_checkpoints
+        self.__exclude_names = hparams.task.exclude_names
+        
         for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
             input_tensor = torch.rand(*input_shape).type(torch.__dict__[input_dtype])
             self._input_tensors.append(input_tensor)
@@ -102,11 +106,15 @@ class BaseTask(LightningModule, ABC):
 
     def on_train_start(self) -> None:
         # TODO check and load checkpoint
-        pass
+        load_checkpoint(self, base_ckpt_path=self.__base_checkpoint, 
+                        override_name2ckpt_path=self.__override_checkpoints,
+                        exclude_names=self.__exclude_names)
 
     def on_test_start(self) -> None:
         # TODO check and load checkpoint
-        pass
+        load_checkpoint(self, base_ckpt_path=self.__base_checkpoint, 
+                        override_name2ckpt_path=self.__override_checkpoints,
+                        exclude_names=self.__exclude_names)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""

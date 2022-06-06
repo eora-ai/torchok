@@ -1,7 +1,5 @@
 import hydra
-import omegaconf
 from omegaconf import OmegaConf, DictConfig
-from pathlib import Path
 
 # Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
 # (more info: https://github.com/pytorch/pytorch/issues/1355)
@@ -25,12 +23,12 @@ def main(config: DictConfig):
     OmegaConf.resolve(config)
     # Register structure
     schema = OmegaConf.structured(ConfigParams)
-    # Merge sturcture with config
+    # Merge structure with config
     config = OmegaConf.merge(schema, config)
     # Create task
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
-    trainer.fit(model)
+    trainer.fit(model, ckpt_path=config.resume_path)
 
 if __name__ == '__main__':
     main()
