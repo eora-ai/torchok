@@ -36,13 +36,14 @@ class ImageSegmentationDataset(ImageDataset):
             data_folder: Directory with all the images.
             csv_path: Path to the csv file with path to images and masks.
                 Path to images must be under column `image_path` and annotations must be under `mask` column.
+                User can change column names, if the `csv_columns_mapping` is given.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             image_dtype: Data type of of the torch tensors related to the image.
             target_dtype: Data type of of the torch tensors related to the target.
-            csv_columns_mapping: Matches maping column names. Key - TorchOK column name, Value - csv column name.
+            csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
                 default value: {'image_path': 'image_path',
                                 'target': 'mask'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
