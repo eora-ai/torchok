@@ -90,7 +90,7 @@ class TaskParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
     base_checkpoint: Optional[str] = None
-    override_checkpoints: Optional[Dict[str]] = None
+    override_checkpoints: Optional[Dict[str, str]] = None
     exclude_names: Optional[List[str]] = None
 
 
@@ -175,5 +175,5 @@ class ConfigParams:
     log_dir: str = './logs'
     job_link: str = 'local'
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
-    resume_path: str = None
+    resume_path: Optional[str] = None
     

@@ -85,7 +85,7 @@ class StateDictWithDepthStructure:
         return self.__state_dict_depth
 
     
-def create_override_state_dict(override_name2state_dict: Dict[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+def create_override_state_dict(override_name2state_dict: Dict[str, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
     """Create one state dict from dictionary of override state dicts.
     
     If override state dicts have many weights of one straighten key then the weight with the biggest depth
@@ -151,7 +151,8 @@ def generate_require_state_dict(model_state_dict: Dict[str, torch.Tensor], base_
     return base_state_dict
 
 
-def load_checkpoint(model, base_ckpt_path: Optional[str] = None, override_name2ckpt_path: Optional[Dict[str]] = None, 
+def load_checkpoint(model: "pl.LightningModule", base_ckpt_path: Optional[str] = None, 
+                    override_name2ckpt_path: Optional[Dict[str, str]] = None, 
                     exclude_names: Optional[List[str]] = None):
     """Load checkpoint to model.
     
