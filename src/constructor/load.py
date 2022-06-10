@@ -30,6 +30,9 @@ def create_straighten_keys(require_key: str, model_keys: List[str]):
     Args:
         require_key: The key to being straightened.
         model_keys: The model keys.
+    
+    Returns:
+        straighten_keys: Straightened keys.
     """
     straighten_keys = []
     for key in model_keys:
@@ -85,7 +88,8 @@ class StateDictWithDepthStructure:
         return self.__state_dict_depth
 
     
-def create_override_state_dict(override_name2state_dict: Dict[str, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+def create_override_state_dict(override_name2state_dict: Dict[str, Dict[str, torch.Tensor]], 
+                               model_keys: List[str]) -> Dict[str, torch.Tensor]:
     """Create one state dict from dictionary of override state dicts.
     
     If override state dicts have many weights of one straighten key then the weight with the biggest depth
@@ -108,40 +112,60 @@ def create_override_state_dict(override_name2state_dict: Dict[str, Dict[str, tor
 
     Args: 
         override_name2state_dict: Dictionary of module name to it's state_dict.
+        model_keys: Load model keys.
 
     Returns:
         override_state_dict: Created state dictionary.
+
+    Raises:
+        ValueError: If override checkpoint key not in model keys.
     """
     state_dict_with_depth = StateDictWithDepthStructure()
     for key, state_dict in override_name2state_dict.items():
-        straighten_keys = create_straighten_keys(key)
+        straighten_keys = create_straighten_keys(key, model_keys)
         depth = len(key.split('.'))
+        if len(straighten_keys) == 0:
+            raise ValueError(f'Error in load checkpoint function. '
+                             f'Key `{key}` in ovrride checkpoint not in model state dict')
         for straighten_key in straighten_keys:
-            weight = state_dict[straighten_key]
+            prefix_len = len(key) + 1
+            override_key = straighten_key[prefix_len: ]
+            # If override_key not in state dict i.e override checkpoint not contain full weights for module
+            if override_key not in state_dict:
+                raise ValueError(f'Error in load checkpoint function. '
+                                 f'Key `{straighten_key}` in ovrride checkpoint not in model state dict')
+            weight = state_dict[override_key]
             state_dict_with_depth.add(straighten_key, weight, depth)
 
     override_state_dict = state_dict_with_depth.state_dict
     return override_state_dict
 
 
-def generate_require_state_dict(model_state_dict: Dict[str, torch.Tensor], base_state_dict: Dict[str, torch.Tensor], 
-                                override_name2state_dict: Dict[str, torch.Tensor], exclude_names: List[str]):
+def generate_require_state_dict(model_keys: List[str], base_state_dict: Dict[str, torch.Tensor], 
+                                override_name2state_dict: Dict[str, Dict[str, torch.Tensor]], exclude_names: List[str]):
     """Create load state dict from base_state_dict, override_name2state_dict, exclude_names.
 
     Args:
-        model_state_dict: Current model state dict.
+        model_keys: Load model keys.
         base_state_dict: Base state dict that must be loaded.
         override_name2state_dict: State dicts that must be override base_state_dict.
         exclude_names: Keys that should not be loaded.
 
     Returns:
         base_state_dict: Generated final state dict.
+
+    Raises:
+        ValueError: If exclude or override name not in model keys.
     """
-    model_keys = list(model_state_dict.keys())
     straighten_exclude_names = [create_straighten_keys(name, model_keys) for name in exclude_names]
+    # Check if every exclude name in state dict
+    for i, names in enumerate(straighten_exclude_names):
+        if len(names) == 0:
+            raise ValueError((f'Error in load checkpoint function. '
+                              f'Key `{exclude_names[i]}` in exclude names not in model state dict'))
     # Concatenate list of list
     straighten_exclude_names = functools.reduce(operator.iconcat, straighten_exclude_names, [])
-    override_state_dict = create_override_state_dict(override_name2state_dict)
+    override_state_dict = create_override_state_dict(override_name2state_dict, model_keys)
     # Merge state dicts
     base_state_dict.update(override_state_dict)
     # Remove exclude keys
@@ -161,15 +185,28 @@ def load_checkpoint(model: "pl.LightningModule", base_ckpt_path: Optional[str] =
         base_ckpt_path: Base checkpoint path that must be loaded.
         override_name2ckpt_path: Dicts module key to checkpoint path, that must be override base checkpoint.
         exclude_names: Module keys that should not be loaded.
+
+    Raises:
+        ValueError: If exclude names, base or override checkpoint keys not in model keys.
     """
     # If no checkpoints to load
     if base_ckpt_path is None and override_name2ckpt_path is None:
         return
 
     model_state_dict = model.state_dict()
+    model_keys = list(model_state_dict.keys())
+
+    if exclude_names is None:
+        exclude_names = list()
 
     # Load state dicts
     base_state_dict = load_state_dict(base_ckpt_path, map_location='cpu') if base_ckpt_path is not None else dict()
+
+    # Compare base_state_dict keys with model keys
+    bad_keys = set(base_state_dict.keys()) - set(model_keys)
+    if len(bad_keys) != 0:
+        raise ValueError(f'Error in load checkpoint function. '
+                         f'Keys `{bad_keys}` in base checkpoint not in model state dict')
 
     if override_name2ckpt_path is None:
         override_name2state_dict = dict()
@@ -177,7 +214,7 @@ def load_checkpoint(model: "pl.LightningModule", base_ckpt_path: Optional[str] =
         override_name2state_dict = {name: load_state_dict(ckpt_path) 
                                     for name, ckpt_path in override_name2ckpt_path.items()}
 
-    load_state_dict = generate_require_state_dict(model_state_dict, base_state_dict, 
-                                                  override_name2state_dict, exclude_names)
+    rquire_state_dict = generate_require_state_dict(model_keys, base_state_dict, 
+                                                    override_name2state_dict, exclude_names)
 
-    model.load_state_dict(load_state_dict, strict=False)
+    model.load_state_dict(rquire_state_dict, strict=False)
