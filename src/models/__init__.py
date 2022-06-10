@@ -2,6 +2,7 @@ from . import backbones
 from . import base_model
 from . import identity_model
 from . import heads
+from . import necks
 from . import poolings
 
 

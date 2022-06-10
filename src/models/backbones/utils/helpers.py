@@ -14,6 +14,7 @@ from torch.hub import load_state_dict_from_url
 def build_model_with_cfg(model_cls: Callable,
                          pretrained: bool,
                          default_cfg: Dict[str, Any],
+                         model_cfg: Dict[str, Any] = None,
                          **model_args) -> nn.Module:
     """Build model with specified default_cfg and optional model_args.
 
@@ -23,7 +24,7 @@ def build_model_with_cfg(model_cls: Callable,
         default_cfg: model's default pretrained/task config
         **model_args: model args passed through to model __init__
     """
-    model = model_cls(**model_args)
+    model = model_cls(**model_args) if model_cfg is None else model_cls(cfg=model_cfg, **model_args)
     pretrained_url = default_cfg.get('url', None)
 
     if pretrained and pretrained_url is not None:
