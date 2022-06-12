@@ -1,2 +1,1 @@
-from . import arcfacehead
-from . import classification_head
+from . import arcface_head
