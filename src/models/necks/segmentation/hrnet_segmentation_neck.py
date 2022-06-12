@@ -20,11 +20,6 @@ class HRNetSegmentationNeck(BaseModel):
         """
         super().__init__()
         self.in_channels = sum(in_channels)
-        self.last_layer = ConvBnAct(self.in_channels,
-                                    self.in_channels,
-                                    kernel_size=1,
-                                    padding=0,
-                                    stride=1)
 
     def forward(self, features: List[Tensor]) -> Tensor:
         """Forward method."""
@@ -35,8 +30,7 @@ class HRNetSegmentationNeck(BaseModel):
             interpolated_feat.append(interpolated)
 
         feats = torch.cat(interpolated_feat, 1)
-        x = self.last_layer(feats)
-        return x
+        return feats
 
     def get_forward_output_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
