@@ -4,14 +4,13 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple, Union, Dict
 
-import torch
 import torch.nn as nn
 from torch import Tensor
 
 from src.constructor import BACKBONES
-from src.models.base_model import BaseModel, FeatureInfo
+from src.models.base_model import BaseModel
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
@@ -338,31 +337,30 @@ cfg_cls = dict(
 
 
 class HighResolutionModule(nn.Module):
-    def __init__(self, num_branches: int, blocks, num_blocks: Tuple[int], num_inchannels: Tuple[int],
-                 num_channels: Tuple[int], multi_scale_output=True):
+    """HighResolutionModule is logical module of HighResolutionNet."""
+    def __init__(self,
+                 num_branches: int,
+                 blocks: Union[Bottleneck, BasicBlock],
+                 num_blocks: Tuple[int],
+                 num_inchannels: Tuple[int],
+                 num_outchannels: Tuple[int]):
+        """Init HighResolutionModule.
+
+        Args:
+            num_branches: Number of branches.
+            blocks: Type of block.
+            num_blocks: Number of blocks.
+            num_inchannels: Number of input channels.
+            num_outchannels: Number of output channels.
+        """
         super().__init__()
-        self._check_branches(
-            num_branches, blocks, num_blocks, num_inchannels, num_channels)
 
         self.num_inchannels = num_inchannels
         self.num_branches = num_branches
 
-        self.multi_scale_output = multi_scale_output
-
-        self.branches = self._make_branches(num_branches, blocks, num_blocks, num_channels)
+        self.branches = self._make_branches(num_branches, blocks, num_blocks, num_outchannels)
         self.fuse_layers = self._make_fuse_layers()
         self.fuse_act = nn.ReLU()
-
-    def _check_branches(self, num_branches, blocks, num_blocks, num_inchannels, num_channels):
-        error_msg = ''
-        if num_branches != len(num_blocks):
-            error_msg = 'NUM_BRANCHES({}) <> NUM_BLOCKS({})'.format(num_branches, len(num_blocks))
-        elif num_branches != len(num_channels):
-            error_msg = 'NUM_BRANCHES({}) <> NUM_CHANNELS({})'.format(num_branches, len(num_channels))
-        elif num_branches != len(num_inchannels):
-            error_msg = 'NUM_BRANCHES({}) <> NUM_INCHANNELS({})'.format(num_branches, len(num_inchannels))
-        if error_msg:
-            raise ValueError(error_msg)
 
     def _make_one_branch(self, branch_index, block, num_blocks, num_channels, stride=1):
         downsample = None
@@ -374,7 +372,7 @@ class HighResolutionModule(nn.Module):
                                    stride=stride,
                                    bias=False,
                                    act_layer=None)
-    
+
         layers = [block(self.num_inchannels[branch_index], num_channels[branch_index], stride, downsample)]
         self.num_inchannels[branch_index] = expanded_channels
         for i in range(1, num_blocks[branch_index]):
@@ -396,7 +394,7 @@ class HighResolutionModule(nn.Module):
         num_branches = self.num_branches
         num_inchannels = self.num_inchannels
         fuse_layers = []
-        for i in range(num_branches if self.multi_scale_output else 1):
+        for i in range(num_branches):
             fuse_layer = []
             for j in range(num_branches):
                 if j > i:
@@ -416,23 +414,20 @@ class HighResolutionModule(nn.Module):
                     for k in range(i - j):
                         num_outchannels_conv3x3 = num_inchannels[i] if k == i - j - 1 else num_inchannels[j]
                         act_layer = None if k == i - j - 1 else nn.ReLU
-                        conv3x3s.append(
-                                ConvBnAct(in_channels=num_inchannels[j],
-                                          out_channels=num_outchannels_conv3x3,
-                                          kernel_size=3,
-                                          padding=1,
-                                          stride=2,
-                                          bias=False,
-                                          act_layer=act_layer))
+                        conv3x3s.append(ConvBnAct(in_channels=num_inchannels[j],
+                                                  out_channels=num_outchannels_conv3x3,
+                                                  kernel_size=3,
+                                                  padding=1,
+                                                  stride=2,
+                                                  bias=False,
+                                                  act_layer=act_layer))
                     fuse_layer.append(nn.Sequential(*conv3x3s))
             fuse_layers.append(nn.ModuleList(fuse_layer))
 
         return nn.ModuleList(fuse_layers)
 
-    def get_num_inchannels(self):
-        return self.num_inchannels
-
-    def forward(self, x: List[Tensor]):
+    def forward(self, x: List[Tensor]) -> List[Tensor]:
+        """Forward method."""
         if self.num_branches == 1:
             return [self.branches[0](x[0])]
 
@@ -451,6 +446,10 @@ class HighResolutionModule(nn.Module):
 
         return x_fuse
 
+    def get_num_inchannels(self) -> List[int]:
+        """Number of input channels."""
+        return self.num_inchannels
+
 
 blocks_dict = {
     'BASIC': BasicBlock,
@@ -462,7 +461,7 @@ class HighResolutionNet(BaseModel):
     """HighResolutionNet model."""
 
     def __init__(self,
-                 cfg,
+                 cfg: Dict[str, Any],
                  in_chans: int = 3):
         """Init HighResolutionNet.
 
@@ -492,32 +491,32 @@ class HighResolutionNet(BaseModel):
         num_channels = self.stage1_cfg['NUM_CHANNELS'][0]
         block = blocks_dict[self.stage1_cfg['BLOCK']]
         num_blocks = self.stage1_cfg['NUM_BLOCKS'][0]
-        self.layer1 = self._make_layer(block, 64, num_channels, num_blocks)
+        self.layer1 = self.__make_layer(block, 64, num_channels, num_blocks)
         stage1_out_channel = block.expansion * num_channels
 
         self.stage2_cfg = cfg['STAGE2']
         num_channels = self.stage2_cfg['NUM_CHANNELS']
         block = blocks_dict[self.stage2_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
-        self.transition1 = self._make_transition_layer([stage1_out_channel], num_channels)
-        self.stage2, pre_stage_channels = self._make_stage(self.stage2_cfg, num_channels)
+        self.transition1 = self.__make_transition_layer([stage1_out_channel], num_channels)
+        self.stage2, pre_stage_channels = self.__make_stage(self.stage2_cfg, num_channels)
 
         self.stage3_cfg = cfg['STAGE3']
         num_channels = self.stage3_cfg['NUM_CHANNELS']
         block = blocks_dict[self.stage3_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
-        self.transition2 = self._make_transition_layer(pre_stage_channels, num_channels)
-        self.stage3, pre_stage_channels = self._make_stage(self.stage3_cfg, num_channels)
+        self.transition2 = self.__make_transition_layer(pre_stage_channels, num_channels)
+        self.stage3, pre_stage_channels = self.__make_stage(self.stage3_cfg, num_channels)
 
         self.stage4_cfg = cfg['STAGE4']
         num_channels = self.stage4_cfg['NUM_CHANNELS']
         block = blocks_dict[self.stage4_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
-        self.transition3 = self._make_transition_layer(pre_stage_channels, num_channels)
-        self.stage4, self.out_channels = self._make_stage(self.stage4_cfg, num_channels, multi_scale_output=True)
+        self.transition3 = self.__make_transition_layer(pre_stage_channels, num_channels)
+        self.stage4, self.out_channels = self.__make_stage(self.stage4_cfg, num_channels)
 
         self.__init_weights()
-    
+
     def __init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -527,7 +526,7 @@ class HighResolutionNet(BaseModel):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def _make_transition_layer(self, num_channels_pre_layer, num_channels_cur_layer):
+    def __make_transition_layer(self, num_channels_pre_layer, num_channels_cur_layer):
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
 
@@ -560,7 +559,7 @@ class HighResolutionNet(BaseModel):
 
         return nn.ModuleList(transition_layers)
 
-    def _make_layer(self, block, inplanes, planes, blocks, stride=1):
+    def __make_layer(self, block, inplanes, planes, blocks, stride=1):
         downsample = None
 
         if stride != 1 or inplanes != planes * block.expansion:
@@ -579,7 +578,7 @@ class HighResolutionNet(BaseModel):
 
         return nn.Sequential(*layers)
 
-    def _make_stage(self, layer_config, num_inchannels, multi_scale_output=True):
+    def __make_stage(self, layer_config, num_inchannels):
         num_modules = layer_config['NUM_MODULES']
         num_branches = layer_config['NUM_BRANCHES']
         num_blocks = layer_config['NUM_BLOCKS']
@@ -588,16 +587,14 @@ class HighResolutionNet(BaseModel):
 
         modules = []
         for i in range(num_modules):
-            # multi_scale_output is only used last module
-            reset_multi_scale_output = multi_scale_output or i < num_modules - 1
             modules.append(HighResolutionModule(
-                num_branches, block, num_blocks, num_inchannels, num_channels, reset_multi_scale_output)
+                num_branches, block, num_blocks, num_inchannels, num_channels)
             )
             num_inchannels = modules[-1].get_num_inchannels()
 
         return nn.Sequential(*modules), num_inchannels
 
-    def _stages(self, x: Tensor) -> List[Tensor]:
+    def __stages(self, x: Tensor) -> List[Tensor]:
         x = self.layer1(x)
 
         xl = [t(x) for i, t in enumerate(self.transition1)]
@@ -611,16 +608,32 @@ class HighResolutionNet(BaseModel):
         return yl
 
     def forward(self, x):
-        """Forward method."""
+        """Forward method.
+
+        Args:
+            x: Input tensor.
+        """
         x = self.convbnact1(x)
         x = self.convbnact2(x)
 
-        yl = self._stages(x)
+        yl = self.__stages(x)
+
         return yl
+
+    def forward_backbone_features(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
+        """Forward backbone features and input tensor.
+
+        Args:
+            x: Input tensor.
+        """
+        features = self.forward(x)
+        features = [x] + features
+        return features[1:], features
 
     def get_forward_output_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.out_channels
+
 
 def _create_hrnet(variant, pretrained=False, **model_kwargs):
     """Create HighResolutionNet base model."""
@@ -628,45 +641,54 @@ def _create_hrnet(variant, pretrained=False, **model_kwargs):
         HighResolutionNet, pretrained, default_cfg=default_cfgs[variant],
         model_cfg=cfg_cls[variant], **model_kwargs)
 
+
 @BACKBONES.register_class
 def hrnet_w18_small(pretrained=False, **kwargs):
     """It's constructing a hrnet_w18_small model."""
     return _create_hrnet('hrnet_w18_small', pretrained, **kwargs)
+
 
 @BACKBONES.register_class
 def hrnet_w18_small_v2(pretrained=False, **kwargs):
     """It's constructing a hrnet_w18_small_v2 model."""
     return _create_hrnet('hrnet_w18_small_v2', pretrained, **kwargs)
 
+
 @BACKBONES.register_class
 def hrnet_w18(pretrained=False, **kwargs):
     """It's constructing a hrnet_w18 model."""
     return _create_hrnet('hrnet_w18', pretrained, **kwargs)
+
 
 @BACKBONES.register_class
 def hrnet_w30(pretrained=False, **kwargs):
     """It's constructing a hrnet_w30 model."""
     return _create_hrnet('hrnet_w30', pretrained, **kwargs)
 
+
 @BACKBONES.register_class
 def hrnet_w32(pretrained=False, **kwargs):
     """It's constructing a hrnet_w32 model."""
     return _create_hrnet('hrnet_w32', pretrained, **kwargs)
+
 
 @BACKBONES.register_class
 def hrnet_w40(pretrained=False, **kwargs):
     """It's constructing a hrnet_w40 model."""
     return _create_hrnet('hrnet_w40', pretrained, **kwargs)
 
+
 @BACKBONES.register_class
 def hrnet_w44(pretrained=False, **kwargs):
     """It's constructing a hrnet_w44 model."""
     return _create_hrnet('hrnet_w44', pretrained, **kwargs)
 
+
 @BACKBONES.register_class
 def hrnet_w48(pretrained=False, **kwargs):
     """It's constructing a hrnet_w48 model."""
     return _create_hrnet('hrnet_w48', pretrained, **kwargs)
+
 
 @BACKBONES.register_class
 def hrnet_w64(pretrained=False, **kwargs):

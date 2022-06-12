@@ -14,16 +14,15 @@ class HRNetClassificationNeck(BaseModel):
     """HRNet neck for classification task."""
     def __init__(self, in_channels):
         """Init HRNetClassificationNeck.
-        
+
         Args:
             in_channels: Input channels.
         """
         super().__init__()
         self.num_features = 2048
-        self.incre_modules, self.downsamp_modules, self.final_layer = self._make_neck(in_channels)
-        
+        self.incre_modules, self.downsamp_modules, self.final_layer = self.__make_neck(in_channels)
 
-    def _make_neck(self, in_channels):
+    def __make_neck(self, in_channels):
         head_block = Bottleneck
         self.head_channels = [32, 64, 128, 256]
 
@@ -31,7 +30,7 @@ class HRNetClassificationNeck(BaseModel):
         # from C, 2C, 4C, 8C to 128, 256, 512, 1024
         incre_modules = []
         for i, channels in enumerate(in_channels):
-            incre_modules.append(self._make_layer(head_block, channels, self.head_channels[i], 1, stride=1))
+            incre_modules.append(self.__make_layer(head_block, channels, self.head_channels[i], 1, stride=1))
         incre_modules = nn.ModuleList(incre_modules)
 
         # downsampling modules
@@ -55,7 +54,7 @@ class HRNetClassificationNeck(BaseModel):
 
         return incre_modules, downsamp_modules, final_layer
 
-    def _make_layer(self, block, inplanes, planes, blocks, stride=1):
+    def __make_layer(self, block, inplanes, planes, blocks, stride=1):
         downsample = None
 
         if stride != 1 or inplanes != planes * block.expansion:
@@ -73,7 +72,7 @@ class HRNetClassificationNeck(BaseModel):
             layers.append(block(inplanes, planes))
 
         return nn.Sequential(*layers)
-    
+
     def forward(self, x: List[Tensor]) -> Tensor:
         """Forward method."""
         y = self.incre_modules[0](x[0])
@@ -87,5 +86,3 @@ class HRNetClassificationNeck(BaseModel):
     def get_forward_output_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.num_features
-
-    

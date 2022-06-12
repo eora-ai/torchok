@@ -1,7 +1,6 @@
 from typing import List, Union
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
 import torch.nn.functional as F
@@ -27,19 +26,18 @@ class HRNetSegmentationNeck(BaseModel):
                                     padding=0,
                                     stride=1)
 
-    def forward(self, x: List[Tensor]) -> Tensor:
-        x0_h, x0_w = x[0].size(2), x[0].size(3)
+    def forward(self, features: List[Tensor]) -> Tensor:
+        """Forward method."""
+        input_image, *features = features
+        interpolated_feat = []
+        for feature in features:
+            interpolated = F.interpolate(feature, size=input_image.shape[2:], mode='bilinear', align_corners=True)
+            interpolated_feat.append(interpolated)
 
-        x1 = F.interpolate(x[1], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x2 = F.interpolate(x[2], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x3 = F.interpolate(x[3], size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-
-        x = torch.cat([x[0], x1, x2, x3], 1)
-
-        x = self.last_layer(x)
+        feats = torch.cat(interpolated_feat, 1)
+        x = self.last_layer(feats)
         return x
 
     def get_forward_output_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.in_channels
-
