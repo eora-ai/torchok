@@ -22,6 +22,7 @@ def build_model_with_cfg(model_cls: Callable,
         model_cls: model class
         pretrained: load pretrained weights
         default_cfg: model's default pretrained/task config
+        model_cfg: Configuration for creating the model.
         **model_args: model args passed through to model __init__
     """
     model = model_cls(**model_args) if model_cfg is None else model_cls(cfg=model_cfg, **model_args)

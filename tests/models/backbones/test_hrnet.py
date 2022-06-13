@@ -1,13 +1,18 @@
 import unittest
+from pathlib import Path
+
+import onnx
 import torch
-from src.constructor import HEADS, NECKS, BACKBONES
 import torch.nn.functional as F
+
+from src.constructor import HEADS, NECKS, BACKBONES
 
 
 class TestHRNetSegmentation(unittest.TestCase):
 
     def __init__(self, backbone_name, methodName: str = ...) -> None:
         super().__init__(methodName)
+        self._onnx_model = Path(__file__).parent / f'{backbone_name}.onnx'
         self._input = torch.ones(1, 3, 224, 224)
         self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_chans=3)
         neck_in_features = self.backbone.get_forward_output_channels()
@@ -22,10 +27,19 @@ class TestHRNetSegmentation_W18(TestHRNetSegmentation):
         super().__init__('hrnet_w18', methodName)
 
     def test_outputs_equals(self):
-        last_features, backbone_features = self.backbone.forward_backbone_features(self._input)
+        _, backbone_features = self.backbone.forward_backbone_features(self._input)
         x = self.neck(backbone_features)
         x = self.head(x)
         self.assertTupleEqual(x.shape, (1, 10, 224, 224))
+    
+    def test_onnx(self):
+        torch.onnx.export(self.backbone,
+                          self._input,
+                          self._onnx_model,
+                          opset_version=11)
+        model = onnx.load(self._onnx_model)
+        onnx.checker.check_model(model)
+        self._onnx_model.unlink()
 
 
 class TestHRNetSegmentation_W48(TestHRNetSegmentation):
@@ -34,10 +48,19 @@ class TestHRNetSegmentation_W48(TestHRNetSegmentation):
         super().__init__('hrnet_w48', methodName)
 
     def test_outputs_equals(self):
-        last_features, backbone_features = self.backbone.forward_backbone_features(self._input)
+        _, backbone_features = self.backbone.forward_backbone_features(self._input)
         x = self.neck(backbone_features)
         x = self.head(x)
         self.assertTupleEqual(x.shape, (1, 10, 224, 224))
+
+    def test_onnx(self):
+        torch.onnx.export(self.backbone,
+                          self._input,
+                          self._onnx_model,
+                          opset_version=11)
+        model = onnx.load(self._onnx_model)
+        onnx.checker.check_model(model)
+        self._onnx_model.unlink()
 
 
 class TestHRNetClassification(unittest.TestCase):
