@@ -1,28 +1,25 @@
 <div align="center">
 
-# TorchOk
+# TorchOk 🥤
 
 **The toolkit for fast Deep Learning experiments in Computer Vision**
 
 </div>
 
-## What is it?
-The toolkit consists of:
-- Popular neural network models and custom modules implementations used in our company
-- Metrics used in CV such that mIoU, mAP, etc.
-- Commonly used datasets and data loaders
+## A day-to-day Computer Vision Engineer backpack
+TorchOk is based on [PyTorch](https://github.com/pytorch/pytorch) and utilizes [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning) for training pipeline routines.
 
-The framework is based on [PyTorch](https://github.com/pytorch/pytorch) and 
-utilizes [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning) for 
-training pipeline routines.
+The toolkit consists of:
+- Neural Network models which are proved to be the best not only on [PapersWithCode](https://paperswithcode.com/) but in practice. All models are under plug&play interface that easily connects backbones, necks and heads for reuse across tasks
+- Out-of-the-box support of common Computer Vision tasks: classification, segmentation, image representation and detection coming soon
+- Commonly used datasets, image augmentations and transformations (from [Albumentations](https://albumentations.ai/))
+- Fast implementations of retrieval metrics (with the help of [ranx](https://github.com/AmenRa/ranx)) and lots of other metrics from [torchmetrics](https://torchmetrics.readthedocs.io/)
+- Export models to ONNX and ability to test the exported model without changing the datasets
+- All components can be customized inheriting the unified interfaces: Lightning's training loop, tasks, models, datasets, augmentations and transformations, metrics, loss functions, optimizers and LR schedulers
+- Training, validation and testing configurations are represented by YAML config files and managed by [Hydra](https://hydra.cc/)
+- Only straightforward training techniques are implemented. No whistles and bells
 
 ## Installation
-### Docker
-One of the ways to install TorchOk is to use Docker:
-```bash
-docker build -t torchok --build-arg SSH_PUBLIC_KEY="<public key>" .
-docker run -d --name <username>_torchok --gpus=all -v <path/to/workdir>:/workdir -p <ssh_port>:22 -p <jupyter_port>:8888 -p <tensorboard_port>:6006 torchok
-```
 ### Conda
 To remove previous installation of TorchOk environment, run:
 ```bash
@@ -33,109 +30,70 @@ To install TorchOk locally, run:
 conda env create -f environment.yml
 ```
 This will create a new conda environment **torchok** with all dependencies.
-## Getting started
-Training is configured by YAML configuration files which each forked project should store inside `configs` folder 
-(see `configs/cifar10.yml` for example). The configuration supports environment variables substitution, 
-so that you can easily change base directory paths without changing the config file for each environment. 
-The most common environment variables are:  
-**SM_CHANNEL_TRAINING** — directory to all training data  
-**SM_OUTPUT_DATA_DIR** — directory where logs for all runs will be stored
-**SM_NUM_CPUS** - number of used CPUs for dataloader
-### Start training locally
-Download CIFAR10 dataset running all cells in `notebooks/Cifar10.ipynb`, 
-the dataset will appear in `data/cifar10` folder.
+### Docker
+Another way to install TorchOk is through Docker. The built image supports SSH access, Jupyter Lab and Tensorboard ports exposing. If you don't need any of this, just omit the corresponding arguments. Build the image and run the container:
 ```bash
-docker exec -it torchok bash
-cd torchok
-SM_NUM_CPUS=8 SM_CHANNEL_TRAINING=./data/cifar10 SM_OUTPUT_DATA_DIR=/tmp python train.py --config config/classification_resnet_example.yml
+docker build -t torchok --build-arg SSH_PUBLIC_KEY="<public key>" .
+docker run -d --name <username>_torchok --gpus=all -v <path/to/workdir>:/workdir -p <ssh_port>:22 -p <jupyter_port>:8888 -p <tensorboard_port>:6006 torchok
 ```
-### Start SageMaker Training Jobs
-Start the job using one of the 
-[AWS SageMaker instances](https://docs.aws.amazon.com/sagemaker/latest/dg/notebooks-available-instance-types.html).
-You have 2 ways to provide data inside your training container:
-- Slow downloaded S3 bucket: `s3://<bucket-name>/<dirpath>`. Volume size is needed to be set when you use S3 bucket. 
-  For other cases it can be omitted.
-- Fast FSx access: `fsx://<file-system-id>/<mount-name>/<directory>`. To create FSx filesystem follow 
-  [this instructions](https://aws.amazon.com/blogs/machine-learning/speed-up-training-on-amazon-sagemaker-using-amazon-efs-or-amazon-fsx-for-lustre-file-systems/)
 
-Example with S3:
+## Getting started
+The folder `examples/configs` contains YAML config files with some predefined training and inference configurations.
+### Train
+For training example we can use the default configuration `examples/configs/classification_cifar10.yml`, where the CIFAR-10 dataset and the classification task are specified. The CIFAR-10 dataset will be automatically downloaded into your `~/.cache/torchok/data/cifar10` folder (341 MB).
+
+**To train on all available GPU devices (default config):**
 ```bash
-python run_sagemaker.py --config configs/cifar10.yml --input_path s3://sagemaker-mlflow-main/cifar10 --instance_type ml.g4dn.xlarge --volume_size 5
+python train.py -cp examples/configs -cn classification_cifar10
 ```
-Example with FSx:
+**To train on all available CPU cores:**
 ```bash
-python run_sagemaker.py --input_path fsx://fs-0f79df302dcbd29bd/z6duzbmv/tz_jpg --config configs/siloiz_pairwise_xbm_resnet50_512d.yml --instance_type ml.g4dn.xlarge
+train.py -cp examples/configs -cn classification_cifar10 trainer.accelerator='cpu'
 ```
-In case something isn't working inside the Sagemaker container you can debug your model locally. 
-Specify `local_gpu` instance type when starting the job:
+During the training you can access the training and validation logs by starting a local TensorBoard:
 ```bash
-python run_sagemaker.py --config configs/cifar10.yml --instance_type local_gpu --volume_size 5 --input_path file://../data/cifar10
-``` 
+tensorboard --logdir ~/.cache/torchok/logs/cifar10
+```
+### Export to ONNX
+TODO
+### Test ONNX model
+TODO
 
 ## Run tests
 ```bash
-docker exec -it torchok bash
-cd torchok
 python -m unittest discover -s tests/ -p "test_*.py"
 ```
+## To be added soon (TODO)
+Tasks
+- MOBY (unsupervised training)
+- DetectionTask
+- InstanceSegmentationTask
 
-## Differences in configs sagemaker vs local machine
-### 1. Path to data folder
-#### Sagemaker
-```yml
-data:
-  dataset_name: ExampleDataset
-  common_params:
-    data_folder: "${SM_CHANNEL_TRAINING}"
-```
-#### Local machine
-```yml
-data:
-  dataset_name: ExampleDataset
-  common_params:
-    data_folder: "/path/to/data"
-```
+Backbones
+- Swin-v2
+- HRNet
+- ViT
+- EfficientNet
+- MobileNetV3
 
-### 2. Path to artifacts dir
-#### Sagemaker
-```yml
-log_dir: '/opt/ml/checkpoints'
-```
+Segmentation models
+- HRNet neck + OCR head
+- U-Net neck
 
-#### Local machine
-```yml
-log_dir: '/tmp/logs'
-```
-### 3. Restore path
-`do_restore` is a special indicator which was designed to be used for SageMaker spot instances training. 
-With this indicator you can debug your model locally and be free to leave the `restore_path` pointing to some
-common directory like `/opt/ml/checkpoints`, where TorchOk will search the checkpoints for.
-#### Sagemaker
-```yml
-restore_path: '/opt/ml/checkpoints'
-do_restore: '${SM_USER_ENTRY_POINT}'
-```
+Detection models
+- YOLOR neck + head
+- DETR neck + head
 
-#### Local machine
-```yml
-restore_path: '/opt/ml/checkpoints'
-do_restore: '<true-if-continue-training>'
-```
+Datasets
+- Stanford Online Products
+- Cityscapes
+- COCO
 
-## Mlflow
-To have more convenient logs it is recommended to name your experiment as ```project_name-developer_name```, so that all your experiments related to this project will be under one tag in mlflow
-```yml
-experiment_name: &experiment_name test-yourname
-```
-State all the model parameters in ```mlflow.runName``` in logger params
-```yml
-logger:
-  logger: mlflow
-  experiment_name: *experiment_name
-  tags:
-    mlflow.runName: "simclr_swinb_512d"
-  save_dir: "s3://sagemaker-mlflow-main/mlruns"
-  secrets_manager:
-    region: "eu-west-1"
-    mlflow_secret: "acme/mlflow"
-```
+Losses
+- Pytorch Metric Learning losses
+- NT-ext (for unsupervised training)
+
+Metrics
+- Segmentation IoU
+- Segmentation Dice
+- Detection metrics

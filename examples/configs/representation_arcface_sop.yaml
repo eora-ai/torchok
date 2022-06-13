@@ -5,11 +5,13 @@ task:
     backbone_params:
       pretrained: true
       in_chans: 3
-    pooling_name: CustomPooling
+    pooling_name: Pooling
     head_name: ArcFaceHead
     head_params:
       num_classes: &num_classes 12
-    input_shapes: [[3, &height 224, &width 224]]
+    inputs:
+      - shape: [3, &height 224, &width 224]
+        dtype: 'float32'
 
 joint_loss:
   losses:
@@ -113,5 +115,3 @@ metrics:
       vectors: embeddings
       targets: target
     phases: [VALID]
-    
-

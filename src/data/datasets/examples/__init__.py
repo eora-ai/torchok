@@ -1,1 +1,1 @@
-from . import cifar
+from . import cifar10   # noqa F401

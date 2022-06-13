@@ -27,11 +27,9 @@ class BaseTask(LightningModule, ABC):
         self._losses = self.__constructor.configure_losses()
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
-        self.__input_shapes = self._hparams.task.params.input_shapes
-        self.__input_dtypes = self._hparams.task.params.get('input_dtypes', ['double'])
-        
-        for input_shape, input_dtype in zip(self.__input_shapes, self.__input_dtypes):
-            input_tensor = torch.rand(*input_shape).type(torch.__dict__[input_dtype])
+
+        for input_params in hparams.task.params.inputs:
+            input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
             self._input_tensors.append(input_tensor)
 
     @abstractmethod
@@ -99,7 +97,8 @@ class BaseTask(LightningModule, ABC):
         for data_param in data_params:
             drop_last = data_param['dataloader'].get('drop_last', False)
             if drop_last:
-                raise ValueError(f'DataLoader parametrs `drop_last` must be False in {phase} phase.')
+                # TODO: create logger and print a warning instead
+                raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
     def on_train_start(self) -> None:
         if self.current_epoch == 0:
@@ -146,6 +145,9 @@ class BaseTask(LightningModule, ABC):
     def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
 
+        for tag, value in output_dict.items():
+            self.log(f'valid/{tag}', value, on_step=True, on_epoch=False)
+
         return output_dict
 
     def training_epoch_end(self,
@@ -156,10 +158,6 @@ class BaseTask(LightningModule, ABC):
     def validation_epoch_end(self,
                              valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        for tag in valid_step_outputs[0].keys():
-            loss = torch.stack([x[tag] for x in valid_step_outputs]).mean()
-            self.log(f'valid/{tag}', loss, on_step=False, on_epoch=True)
-
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
 
     def test_epoch_end(self,

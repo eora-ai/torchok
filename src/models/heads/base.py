@@ -1,6 +1,6 @@
 from typing import List, Union
 
-import torch
+from torch import Tensor
 from abc import ABC, abstractmethod
 from src.models.base_model import BaseModel
 
@@ -20,7 +20,7 @@ class AbstractHead(BaseModel, ABC):
         self._out_features = out_features
 
     @abstractmethod
-    def forward(self, *args, **kwargs) -> torch.Tensor:
+    def forward(self, *args, **kwargs) -> Tensor:
         """Forward method."""
         pass
 
