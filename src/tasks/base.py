@@ -103,14 +103,14 @@ class BaseTask(LightningModule, ABC):
 
     def on_train_start(self) -> None:
         if self.current_epoch == 0:
-            load_checkpoint(self, base_ckpt_path=self.hparams.task.base_checkpoint, 
-                            override_name2ckpt_path=self.hparams.task.override_checkpoints,
-                            exclude_names=self.hparams.task.exclude_names)
+            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+                            override_name2ckpt_path=self._hparams.task.override_checkpoints,
+                            exclude_names=self._hparams.task.exclude_names)
 
     def on_test_start(self) -> None:
-        load_checkpoint(self, base_ckpt_path=self.hparams.task.base_checkpoint, 
-                        override_name2ckpt_path=self.hparams.task.override_checkpoints,
-                        exclude_names=self.hparams.task.exclude_names)
+        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+                        override_name2ckpt_path=self._hparams.task.override_checkpoints,
+                        exclude_names=self._hparams.task.exclude_names)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""

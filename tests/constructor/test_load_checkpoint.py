@@ -51,28 +51,23 @@ class TestCheckpoint(unittest.TestCase):
         'linear.weight',
     ]
     
+    base_state_dict = {
+        'layer1.module.conv1.weight': 1, 
+        'layer1.linear.weight': 2,
+        'linear.weight': 3,
+    }
 
     def test_generate_require_state_dict_when_only_base_checkpoint_was_defined(self):
-        base_state_dict = {
-            'layer1.module.conv1.weight': 1, 
-            'layer1.linear.weight': 2,
-            'linear.weight': 3,
-        }
+        
         override_state_dict = dict()
         exclude_names = list()
-        answer_state_dict = base_state_dict
-        generated_state_dict = generate_require_state_dict(self.model_keys, base_state_dict, 
+        answer_state_dict = self.base_state_dict
+        generated_state_dict = generate_require_state_dict(self.model_keys, self.base_state_dict, 
                                                            override_state_dict, exclude_names)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
     def test_generate_require_state_dict_when_base_and_override_checkpoints_was_defined(self):
-        base_state_dict = {
-            'layer1.module.conv1.weight': 1, 
-            'layer1.linear.weight': 2,
-            'linear.weight': 3,
-        }
-
         override_state_dict = {
             'layer1': {
                 'module.conv1.weight': 11,
@@ -88,18 +83,12 @@ class TestCheckpoint(unittest.TestCase):
             'linear.weight': 3,
         }
 
-        generated_state_dict = generate_require_state_dict(self.model_keys, base_state_dict, 
+        generated_state_dict = generate_require_state_dict(self.model_keys, self.base_state_dict, 
                                                            override_state_dict, exclude_names)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
     def test_generate_require_state_dict_when_base_and_override_checkpoints_was_defined(self):
-        base_state_dict = {
-            'layer1.module.conv1.weight': 1, 
-            'layer1.linear.weight': 2,
-            'linear.weight': 3,
-        }
-
         override_state_dict = {
             'layer1': {
                 'module.conv1.weight': 11,
@@ -115,18 +104,12 @@ class TestCheckpoint(unittest.TestCase):
             'linear.weight': 3,
         }
 
-        generated_state_dict = generate_require_state_dict(self.model_keys, base_state_dict, 
+        generated_state_dict = generate_require_state_dict(self.model_keys, self.base_state_dict, 
                                                            override_state_dict, exclude_names)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
     def test_generate_require_state_dict_when_full_parameters_was_defined(self):
-        base_state_dict = {
-            'layer1.module.conv1.weight': 1, 
-            'layer1.linear.weight': 2,
-            'linear.weight': 3,
-        }
-
         override_state_dict = {
             'layer1': {
                 'module.conv1.weight': 11,
@@ -141,18 +124,12 @@ class TestCheckpoint(unittest.TestCase):
             'linear.weight': 3,
         }
 
-        generated_state_dict = generate_require_state_dict(self.model_keys, base_state_dict, 
+        generated_state_dict = generate_require_state_dict(self.model_keys, self.base_state_dict, 
                                                            override_state_dict, exclude_names)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
     def test_generate_require_state_dict_when_override_checkpoints_with_ambiguous_was_defined(self):
-        base_state_dict = {
-            'layer1.module.conv1.weight': 1, 
-            'layer1.linear.weight': 2,
-            'linear.weight': 3,
-        }
-
         override_state_dict = {
             'layer1': {
                 'module.conv1.weight': 11,
@@ -170,18 +147,12 @@ class TestCheckpoint(unittest.TestCase):
             'linear.weight': 3,
         }
 
-        generated_state_dict = generate_require_state_dict(self.model_keys, base_state_dict, 
+        generated_state_dict = generate_require_state_dict(self.model_keys, self.base_state_dict, 
                                                            override_state_dict, exclude_names)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
     def test_generate_require_state_dict_when_override_checkpoints_was_not_had_all_keys(self):
-        base_state_dict = {
-            'layer1.module.conv1.weight': 1, 
-            'layer1.linear.weight': 2,
-            'linear.weight': 3,
-        }
-
         override_state_dict = {
             'layer1': {
                 'module.conv1.weight': 11,
@@ -194,7 +165,7 @@ class TestCheckpoint(unittest.TestCase):
         exclude_names = ['layer1.module']
 
         with self.assertRaises(Exception):
-            generate_require_state_dict(self.model_keys, base_state_dict, override_state_dict, exclude_names)
+            generate_require_state_dict(self.model_keys, self.base_state_dict, override_state_dict, exclude_names)
 
     def test_checkpoint_load_when_full_parameters_was_defined(self):
         model = Model()
