@@ -367,7 +367,7 @@ class HighResolutionModule(nn.Module):
                          block: Union[Bottleneck, BasicBlock],
                          num_blocks: Tuple[int],
                          num_channels: Tuple[int],
-                         stride: int = 1):
+                         stride: int = 1) -> nn.Sequential:
         """The method creates one branch in the HRNet.
 
         Args:
@@ -413,7 +413,7 @@ class HighResolutionModule(nn.Module):
 
         return nn.ModuleList(branches)
 
-    def _make_fuse_layers(self):
+    def _make_fuse_layers(self) -> nn.ModuleList:
         """The method creates fuse layers in the HRNet."""
         if self.num_branches == 1:
             return nn.Identity()
@@ -555,7 +555,7 @@ class HighResolutionNet(BaseModel):
 
     def __make_transition_layer(self,
                                 num_channels_pre_layer: List[int],
-                                num_channels_cur_layer: List[int]):
+                                num_channels_cur_layer: List[int]) -> nn.ModuleList:
         """The method creates transiton_layer in the HRNet.
 
         Args:
@@ -599,7 +599,7 @@ class HighResolutionNet(BaseModel):
                      in_channels: int,
                      out_channels: int,
                      num_blocks: int,
-                     stride: int = 1):
+                     stride: int = 1) -> nn.Sequential:
         """The method creates layer in the HRNet.
 
         Args:
@@ -629,7 +629,7 @@ class HighResolutionNet(BaseModel):
 
     def __make_stage(self,
                      layer_config: Dict[str, Any],
-                     num_inchannels: Tuple[int]):
+                     num_inchannels: Tuple[int]) -> nn.Sequential:
         """The method creates stage in the HRNet.
 
         Args:
@@ -669,7 +669,7 @@ class HighResolutionNet(BaseModel):
         yl = self.stage4(xl)
         return yl
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> List[Tensor]:
         """Forward method.
 
         Args:
@@ -697,8 +697,15 @@ class HighResolutionNet(BaseModel):
         return self.out_channels
 
 
-def _create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
-    """Create HighResolutionNet base model."""
+def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
+    """Create HighResolutionNet base model.
+
+    Args:
+        variant: Backbone type.
+        pretrained: If True backbone weights will be download
+        model_kwargs: Kwargs for model.
+
+    """
     return build_model_with_cfg(
         HighResolutionNet, pretrained, default_cfg=default_cfgs[variant],
         model_cfg=cfg_cls[variant], **model_kwargs)
@@ -707,52 +714,52 @@ def _create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
 @BACKBONES.register_class
 def hrnet_w18_small(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w18_small model."""
-    return _create_hrnet('hrnet_w18_small', pretrained, **kwargs)
+    return create_hrnet('hrnet_w18_small', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w18_small_v2(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w18_small_v2 model."""
-    return _create_hrnet('hrnet_w18_small_v2', pretrained, **kwargs)
+    return create_hrnet('hrnet_w18_small_v2', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w18(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w18 model."""
-    return _create_hrnet('hrnet_w18', pretrained, **kwargs)
+    return create_hrnet('hrnet_w18', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w30(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w30 model."""
-    return _create_hrnet('hrnet_w30', pretrained, **kwargs)
+    return create_hrnet('hrnet_w30', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w32(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w32 model."""
-    return _create_hrnet('hrnet_w32', pretrained, **kwargs)
+    return create_hrnet('hrnet_w32', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w40(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w40 model."""
-    return _create_hrnet('hrnet_w40', pretrained, **kwargs)
+    return create_hrnet('hrnet_w40', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w44(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w44 model."""
-    return _create_hrnet('hrnet_w44', pretrained, **kwargs)
+    return create_hrnet('hrnet_w44', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w48(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w48 model."""
-    return _create_hrnet('hrnet_w48', pretrained, **kwargs)
+    return create_hrnet('hrnet_w48', pretrained, **kwargs)
 
 
 @BACKBONES.register_class
 def hrnet_w64(pretrained: bool = False, **kwargs):
     """It's constructing a hrnet_w64 model."""
-    return _create_hrnet('hrnet_w64', pretrained, **kwargs)
+    return create_hrnet('hrnet_w64', pretrained, **kwargs)

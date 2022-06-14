@@ -55,16 +55,3 @@ class TestHRNetClassification_W18(TestHRNetClassification):
         x = F.avg_pool2d(x, kernel_size=x.size()[2:]).view(x.size(0), -1)
         x = self.head(x)
         self.assertTupleEqual(x.shape, (1, 10))
-
-
-class TestHRNetClassification_W48(TestHRNetClassification):
-
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__('hrnet_w48', methodName)
-
-    def test_outputs_equals(self):
-        x = self.backbone(self._input)
-        x = self.neck(x)
-        x = F.avg_pool2d(x, kernel_size=x.size()[2:]).view(x.size(0), -1)
-        x = self.head(x)
-        self.assertTupleEqual(x.shape, (1, 10))
