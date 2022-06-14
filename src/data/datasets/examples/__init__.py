@@ -1,1 +1,6 @@
-from . import cifar10   # noqa F401
+from src.data.datasets.examples.cifar10 import CIFAR10
+
+
+__all__ = [
+    'CIFAR10',
+]

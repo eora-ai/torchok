@@ -5,7 +5,7 @@ from torch import Tensor
 
 import torch.nn.functional as F
 from src.constructor import NECKS
-from src.models.base_model import BaseModel
+from src.models.base import BaseModel
 from src.models.modules.bricks.convbnact import ConvBnAct
 
 

@@ -12,7 +12,7 @@ from src.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
 from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 from src.losses.base import JointLoss
-from src.metrics.metrics_manager import MetricManager
+from src.metrics.metrics_manager import MetricsManager
 
 
 class Constructor:
@@ -237,7 +237,7 @@ class Constructor:
 
         Returns: MetricManager module.
         """
-        return MetricManager(self.__hparams.metrics)
+        return MetricsManager(self.__hparams.metrics)
 
     def configure_losses(self) -> JointLoss:
         """Create list of loss modules wrapping them into a JointLoss module.

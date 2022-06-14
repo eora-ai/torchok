@@ -44,7 +44,7 @@ class MetricWithUtils(nn.Module):
         return self.__metric.compute()
 
 
-class MetricManager(nn.Module):
+class MetricsManager(nn.Module):
     """Manages all metrics for a Task."""
     def __init__(self, params: List[MetricParams]):
         """Initialize MetricManager.
@@ -111,8 +111,8 @@ class MetricManager(nn.Module):
             phase: Run metric phase.
 
         Returns:
-            log: log: Logging dictionary, where key is `<phase>/<metric_name>` and value is metric value for 
-                a given phase.
+            log: Logging dictionary, where key is `<phase>/<metric_name>` and value is metric value for
+            a given phase.
 
         Raises:
             ValueError: If metric.compute() returns not numerical value.
@@ -155,7 +155,7 @@ class MetricManager(nn.Module):
             task_output: Output after task forward pass.
 
         Returns:
-            metric_input: Metric input dictionary like **kwargs for metric forward pass.
+            metric_input: Metric input dictionary like ``**kwargs`` for metric forward pass.
 
         Raises:
             ValueError: If not found mapping_source in task_output keys.
