@@ -1,6 +1,6 @@
 <div align="center">
 
-# TorchOk 🥤
+<img src="docs/source/_static/TorchOk_logo.png" alt="TorchOk" style="width:300px; horizontal-align:middle"/>
 
 **The toolkit for fast Deep Learning experiments in Computer Vision**
 
