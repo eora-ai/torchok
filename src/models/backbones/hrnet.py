@@ -702,9 +702,8 @@ def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
 
     Args:
         variant: Backbone type.
-        pretrained: If True backbone weights will be download
-        model_kwargs: Kwargs for model.
-
+        pretrained: If True the pretrained weights will be loaded.
+        model_kwargs: Kwargs for model (for example in_chans).
     """
     return build_model_with_cfg(
         HighResolutionNet, pretrained, default_cfg=default_cfgs[variant],
