@@ -24,7 +24,7 @@ class BasicBlock(nn.Module):
             out_channels: Number of output channels.
             stride: Stride.
             downsample: Downsample module.
-            attn_layer: Attention block.
+            attn_layer: Attention block. SEModule or None.
         """
         super().__init__()
         out_block_channels = out_channels * self.expansion
