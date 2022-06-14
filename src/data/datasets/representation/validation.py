@@ -26,28 +26,31 @@ class RetrievalDataset(ImageDataset):
     a higher score corresponds to a greater similarity(must be float value > 0.).
 
     .. csv-table:: Match csv example
-    :header: query, relevant, scores
-    1194917,601566 554492 224125 2001716519,4 3 2 2
-    1257924,456490,4
+        :header: query, relevant, scores
+
+        1194917,601566 554492 224125 2001716519,4 3 2 2
+        1257924,456490,4
 
     Example img_list csv:
     img_list.csv maps the id's of query and relevant elements to image paths
 
     .. csv-table:: Image csv example
-    :header: id, image_path
-    1194917,data/img_1.jpg
-    601566,data/img_2.jpg
-    554492,data/img_3.jpg
-    224125,data/img_4.jpg
-    2001716519,data/img_5.jpg
-    1257924,data/img_6.jpg
-    456490,data/img_7.jpg
+        :header: id, image_path
+
+        1194917,data/img_1.jpg
+        601566,data/img_2.jpg
+        554492,data/img_3.jpg
+        224125,data/img_4.jpg
+        2001716519,data/img_5.jpg
+        1257924,data/img_6.jpg
+        456490,data/img_7.jpg
 
     .. csv-table:: Gallery Image csv example
-    :header: id, image_paths
-    8,data/db/img_1.jpg
-    10,data/db/img_2.jpg
-    12,data/db/img_3.jpg
+        :header: id, image_paths
+
+        8,data/db/img_1.jpg
+        10,data/db/img_2.jpg
+        12,data/db/img_3.jpg
     """
 
     def __init__(self,
@@ -79,16 +82,12 @@ class RetrievalDataset(ImageDataset):
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
             image_dtype: Data type of of the torch tensors related to the image.
-            img_list_map_column: Image maping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'image_path': 'image_path',
-                                'img_id': 'id'}
-            matches_map_column: Matches maping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'query': 'query',
-                                'relevant': 'relevant',
-                                'scores': 'scores'}
-            gallery_map_column: Gallery maping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'gallery_path': 'image_path',
-                                'gallery_id': 'id'}
+            img_list_map_column: Image mapping column names. Key - TorchOk column name, Value - csv column name.
+                default value: {'image_path': 'image_path', 'img_id': 'id'}
+            matches_map_column: Matches mapping column names. Key - TorchOk column name, Value - csv column name.
+                default value: {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
+            gallery_map_column: Gallery mapping column names. Key - TorchOk column name, Value - csv column name.
+                default value: {'gallery_path': 'image_path', 'gallery_id': 'id'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
 
         Raises:

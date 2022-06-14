@@ -16,16 +16,18 @@ from src.constructor import DATASETS
 class ImageClassificationDataset(ImageDataset):
     """A generic dataset for multilabel/multiclass image classification task.
 
-     .. csv-table:: Multiclass task csv example.
-     :header: image_path, label
-     cat_1.jpg, 1
-     dog_1.jpg, 0
+    .. csv-table:: Multiclass task csv example.
+        :header: image_path, label
+        
+        cat_1.jpg, 1
+        dog_1.jpg, 0
 
     .. csv-table:: Multilabel task csv example.
-     :header: image_path, label
-     cat_dog_1.jpg, '0,1'
-     cat_dog_2.jpg, '0,1'
-     dog_1.jpg, 0
+        :header: image_path, label
+
+        cat_dog_1.jpg, 0 1
+        cat_dog_2.jpg, 0 1
+        dog_1.jpg, 0
     """
 
     def __init__(self,
@@ -46,23 +48,25 @@ class ImageClassificationDataset(ImageDataset):
         Args:
             data_folder: Directory with all the images.
             csv_path: Path to the csv file with path to images and annotations.
-                Path to images must be under column `input_column` and annotations must be under `target_column` column.
+                Path to images must be under column ``input_column`` and
+                annotations must be under ``target_column`` column.
             num_classes: Number of classes (i.e. maximum class index in the dataset).
             transform: Transform to be applied on a sample. This should have the
-                interface of transforms in `albumentations` library.
+                interface of transforms in `albumentations`_ library.
             augment: Optional augment to be applied on a sample.
-                This should have the interface of transforms in `albumentations` library.
+                This should have the interface of transforms in `albumentations`_ library.
             image_dtype: Data type of of the torch tensors related to the image.
             target_dtype: Data type of of the torch tensors related to the target.
-            csv_columns_mapping: Matches maping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'image_path': 'image_path',
-                                'label': 'label'}
+            csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
+                default value: {'image_path': 'image_path', 'label': 'label'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
             multilabel: If True, targets are being converted to multihot vector for multilabel task.
                         If False, dataset prepares targets for multiclass classification.
-            lazy_init: If True, the target variable is converted to multihot when __getitem__ is called (multilabel).
-                       For multiclass will check the class index to fit the range when __getitem__ is called.
+            lazy_init: If True, the target variable is converted to multihot when ``__getitem__`` is called (multilabel).
+                       For multiclass will check the class index to fit the range when ``__getitem__`` is called.
+
+        .. _albumentations: https://albumentations.ai/docs/
         """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
 

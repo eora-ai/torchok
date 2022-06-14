@@ -51,12 +51,18 @@ from torchmetrics.regression import (  # noqa: E402
     WeightedMeanAbsolutePercentageError,
 )
 
-from .classification import *
-from .segmentation import *
-from .representation import *
-from .metrics_manager import *
+from src.metrics.classification import *
+from src.metrics.segmentation import *
+from src.metrics.representation import (
+    PrecisionAtKMeter,
+    RecallAtKMeter,
+    MeanAveragePrecisionAtKMeter,
+    NDCGAtKMeter,
+)
+from src.metrics.metrics_manager import *
 
 from src.constructor import METRICS
+from src.metrics.metrics_manager import MetricsManager, MetricWithUtils
 
 METRICS.register_class(AUC)
 METRICS.register_class(AUROC)
@@ -105,3 +111,13 @@ METRICS.register_class(SpearmanCorrCoef)
 METRICS.register_class(SymmetricMeanAbsolutePercentageError)
 METRICS.register_class(TweedieDevianceScore)
 METRICS.register_class(WeightedMeanAbsolutePercentageError)
+
+
+__all__ = [
+    'MetricsManager',
+    'MetricWithUtils',
+    'PrecisionAtKMeter',
+    'RecallAtKMeter',
+    'MeanAveragePrecisionAtKMeter',
+    'NDCGAtKMeter',
+]

@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.constructor import NECKS
-from src.models.base_model import BaseModel
+from src.models.base import BaseModel
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.bottleneck import Bottleneck
 

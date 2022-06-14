@@ -15,10 +15,11 @@ class ImageSegmentationDataset(ImageDataset):
     """A dataset for image segmentation task.
 
     .. csv-table:: Segmentation csv example.
-     :header: image_path, mask
-     image1.png, mask1.png
-     image2.png, mask2.png
-     image3.png, mask3.png
+        :header: image_path, mask
+        
+        image1.png, mask1.png
+        image2.png, mask2.png
+        image3.png, mask3.png
     """
     def __init__(self,
                  data_folder: str,
@@ -44,8 +45,7 @@ class ImageSegmentationDataset(ImageDataset):
             image_dtype: Data type of of the torch tensors related to the image.
             target_dtype: Data type of of the torch tensors related to the target.
             csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'image_path': 'image_path',
-                                'target': 'mask'}
+                default value: {'image_path': 'image_path', 'target': 'mask'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """

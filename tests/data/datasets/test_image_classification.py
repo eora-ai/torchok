@@ -7,7 +7,7 @@ from albumentations.pytorch import ToTensorV2
 from albumentations.core.composition import Compose
 from albumentations import Resize, HorizontalFlip, VerticalFlip
 
-from src.data.datasets.classification.image_classification import ImageClassificationDataset
+from src.data.datasets.classification.classification import ImageClassificationDataset
 
 
 class TestImageDataset:
