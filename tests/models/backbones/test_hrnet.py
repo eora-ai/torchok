@@ -1,7 +1,6 @@
 import unittest
 from pathlib import Path
 
-import onnx
 import torch
 import torch.nn.functional as F
 
@@ -31,36 +30,6 @@ class TestHRNetSegmentation_W18(TestHRNetSegmentation):
         x = self.neck(backbone_features)
         x = self.head(x)
         self.assertTupleEqual(x.shape, (1, 10, 224, 224))
-    
-    def test_onnx(self):
-        torch.onnx.export(self.backbone,
-                          self._input,
-                          self._onnx_model,
-                          opset_version=11)
-        model = onnx.load(self._onnx_model)
-        onnx.checker.check_model(model)
-        self._onnx_model.unlink()
-
-
-class TestHRNetSegmentation_W48(TestHRNetSegmentation):
-
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__('hrnet_w48', methodName)
-
-    def test_outputs_equals(self):
-        _, backbone_features = self.backbone.forward_backbone_features(self._input)
-        x = self.neck(backbone_features)
-        x = self.head(x)
-        self.assertTupleEqual(x.shape, (1, 10, 224, 224))
-
-    def test_onnx(self):
-        torch.onnx.export(self.backbone,
-                          self._input,
-                          self._onnx_model,
-                          opset_version=11)
-        model = onnx.load(self._onnx_model)
-        onnx.checker.check_model(model)
-        self._onnx_model.unlink()
 
 
 class TestHRNetClassification(unittest.TestCase):

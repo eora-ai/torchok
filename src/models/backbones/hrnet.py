@@ -34,15 +34,15 @@ def _cfg(url: str = '', **kwargs):
 
 
 default_cfgs = {
-    'hrnet_w18_small': _cfg(url='TODO insert'),
-    'hrnet_w18_small_v2': _cfg(url='TODO insert'),
-    'hrnet_w18': _cfg(url='TODO insert'),
-    'hrnet_w30': _cfg(url='TODO insert'),
-    'hrnet_w32': _cfg(url='TODO insert'),
-    'hrnet_w40': _cfg(url='TODO insert'),
-    'hrnet_w44': _cfg(url='TODO insert'),
-    'hrnet_w48': _cfg(url='TODO insert'),
-    'hrnet_w64': _cfg(url='TODO insert'),
+    'hrnet_w18_small': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small-torchok.pth'),
+    'hrnet_w18_small_v2': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small_v2-torchok.pth'),
+    'hrnet_w18': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18-torchok.pth'),
+    'hrnet_w30': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w30-torchok.pth'),
+    'hrnet_w32': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w32-torchok.pth'),
+    'hrnet_w40': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w40-torchok.pth'),
+    'hrnet_w44': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w44-torchok.pth'),
+    'hrnet_w48': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w48-torchok.pth'),
+    'hrnet_w64': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w64-torchok.pth'),
 }
 
 cfg_cls = dict(
