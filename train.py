@@ -16,16 +16,15 @@ from src.constructor import TASKS
 @hydra.main(config_path='configs')
 def main(config: DictConfig):
     # Need to add --config-path (-cp) and --config_name (-cn) in run command
-    # Example config in configs/classification_cifar10.yaml
-    # TODO: add config into the project
-    # Then the command line will be:
+    # Example config: examples/configs/classification_cifar10.yaml
+    # Then the command will be:
     # python --config-path configs --config_name classification_cifar10
 
     # Resolve -> change evn variable to values for example ${oc.env:USER} -> 'root'
     OmegaConf.resolve(config)
     # Register structure
     schema = OmegaConf.structured(ConfigParams)
-    # Merge sturcture with config
+    # Merge structure with config
     config = OmegaConf.merge(schema, config)
     # Create task
     model = TASKS.get(config.task.name)(config)
@@ -34,4 +33,3 @@ def main(config: DictConfig):
 
 if __name__ == '__main__':
     main()
-    

@@ -1,16 +1,20 @@
+import os
 import unittest
 
-import omegaconf
-from omegaconf import OmegaConf, DictConfig
-from dataclasses import dataclass, field
-from typing import *
+from omegaconf import OmegaConf
 
 from src.constructor.config_structure import ConfigParams, Phase
 
 
 SCHEMA = OmegaConf.structured(ConfigParams)
 
-def load_structured_config(path):
+
+def load_structured_config(path: str):
+    """Load YAML config using OmegaConf.
+    
+    Args:
+        path: path to YAML configuration file
+    """
     config = OmegaConf.load(path)
     OmegaConf.resolve(config)
     schema = OmegaConf.structured(ConfigParams)
@@ -32,13 +36,14 @@ class TestConfigStructure(unittest.TestCase):
         self.assertEqual(metric_phase_type, Phase)
 
     def test_env_variable_when_full_config_was_defined(self):
+        logdir = '~/.cache/torchok/logs/cifar10'
+        os.environ['LOGDIR'] = logdir
         config = load_structured_config('tests/constructor/configs/config_with_env_variable.yaml')
-        self.assertEqual(config.job_link, 'root')
+        self.assertEqual(config.log_dir, logdir)
 
     def test_optional_type_of_metrics_when_config_does_not_have_metrics(self):
         config = load_structured_config('tests/constructor/configs/config_without_metrics.yaml')
         self.assertEqual(len(config.metrics), 0)
 
-    def test_structure_schema_when_add_not_registrated_parameter_in_yaml_file(self):
+    def test_structure_schema_when_add_not_registered_parameter_in_yaml_file(self):
         self.assertRaises(KeyError, load_structured_config, 'tests/constructor/configs/config_with_bag.yaml')
-    

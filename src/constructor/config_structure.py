@@ -17,7 +17,8 @@ class Phase(Enum):
 class OptmizerParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
-    
+
+
 @dataclass
 class SchedulerPLParams:
     # See https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
@@ -28,11 +29,13 @@ class SchedulerPLParams:
     strict: Optional[bool] = True
     name: Optional[str] = None
 
+
 @dataclass
 class SchedulerParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
     pl_params: Optional[SchedulerPLParams] = field(default_factory=lambda: SchedulerPLParams())
+
 
 @dataclass
 class OptimizationParams:
@@ -46,12 +49,14 @@ class AugmentationParams:
     name: str
     params: Dict = field(default_factory=dict)
 
+
 @dataclass
 class DatasetParams:
     name: str
     params: Dict
     transform: List[AugmentationParams]
     augment: Optional[List[AugmentationParams]] = field(default_factory=list)
+
 
 @dataclass
 class DataParams:
@@ -67,6 +72,7 @@ class LossParams:
     params: Optional[Dict] = field(default_factory=dict)
     tag: Optional[str] = None
     weight: Optional[float] = None
+
 
 @dataclass
 class JointLossParams:
@@ -101,7 +107,6 @@ class TrainerParams:
     num_nodes: int = 1
     num_processes: Optional[int] = None  # TODO: Remove in 2.0
     devices: Optional[List[int]] = None
-    gpus: Optional[List[int]] = None  # TODO: Remove in 2.0
     auto_select_gpus: bool = False
     tpu_cores: Optional[List[int]] = None  # TODO: Remove in 2.0
     ipus: Optional[int] = None  # TODO: Remove in 2.0
@@ -170,6 +175,4 @@ class ConfigParams:
     checkpoint: CheckpointParams
     experiment_name: str
     log_dir: str = './logs'
-    job_link: str = 'local'
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
-    

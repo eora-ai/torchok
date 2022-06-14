@@ -9,7 +9,9 @@ task:
     head_name: ClassificationHead
     head_params:
       num_classes: &num_classes 10
-    input_size: [3, &height 32, &width 32]
+    inputs:
+      - shape: [3, &height 32, &width 32]
+        dtype: 'float32'
 
 joint_loss:
   losses:
@@ -46,7 +48,7 @@ trainer:
   gpus: [0]
   max_epochs: 10
 
-log_dir: '/workdir/logs/classification'
+log_dir: '${oc.env:LOGDIR}'
 experiment_name: cifar10
 
 checkpoint:
@@ -59,5 +61,3 @@ metrics:
     mapping: 
       preds: prediction
       target: target
-
-job_link: ${oc.env:USER}
