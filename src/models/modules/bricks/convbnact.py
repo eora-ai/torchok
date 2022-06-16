@@ -15,6 +15,7 @@ class ConvBnAct(nn.Module):
                  padding: int,
                  stride: int = 1,
                  bias: bool = False,
+                 groups: int = 1,
                  act_layer: Optional[nn.Module] = nn.ReLU):
         """Init ConvBnAct.
 
@@ -36,6 +37,7 @@ class ConvBnAct(nn.Module):
                               kernel_size=kernel_size,
                               stride=stride,
                               padding=padding,
+                              groups=groups,
                               bias=bias)
         self.bn = nn.BatchNorm2d(out_channels)
         self.act = act_layer(inplace=True) if act_layer is not None else None
