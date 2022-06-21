@@ -26,6 +26,13 @@ from src.models.backbones.hrnet import (
     hrnet_w64,
 )
 
+from src.models.backbones.mobilenetv3 import (
+
+    create_mobilenetv3,
+    mobilenet_v3_large,
+    mobilenet_v3_small
+)
+
 __all__ = [
     'ResNet',
     'create_resnet',
@@ -49,4 +56,7 @@ __all__ = [
     'hrnet_w44',
     'hrnet_w48',
     'hrnet_w64',
+    'create_mobilenetv3',
+    'mobilenet_v3_small',
+    'mobilenet_v3_large'
 ]

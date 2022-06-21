@@ -4,9 +4,13 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import Optional, Union
+from typing import Optional
 
 from torch import nn as nn
+import torch.nn.functional as F
+
+from src.models.backbones.utils.utils import make_divisible
+from src.models.modules.bricks.convbnact import ConvBnAct
 
 
 class SEModule(nn.Module):
@@ -18,7 +22,10 @@ class SEModule(nn.Module):
                  reduction_ratio: Optional[float] = None,
                  reduction_channels: Optional[int] = None,
                  min_channels: int = 8,
-                 divisor: int = 1):
+                 divisor: int = 1,
+                 use_pooling: bool = False,
+                 use_norm: bool = False,
+                 gate: nn.Module = nn.Sigmoid):
         """Init SEModule.
 
         Args:
@@ -30,38 +37,25 @@ class SEModule(nn.Module):
             divisor: `reduction_channels` must be a multiple of `divisor`.
         """
         super().__init__()
-
+        self.use_pooling = use_pooling
         if reduction_channels is not None:
             reduction_channels = reduction_channels
         elif reduction_ratio is not None:
-            reduction_channels = self.__make_divisible(channels * reduction_ratio, divisor, min_channels)
+            reduction_channels = make_divisible(channels * reduction_ratio, divisor, min_channels)
         else:
-            reduction_channels = self.__make_divisible(channels // reduction, divisor, min_channels)
-        self.fc1 = nn.Conv2d(channels, reduction_channels, kernel_size=1, bias=True)
-        self.act = nn.ReLU(inplace=True)
-        self.fc2 = nn.Conv2d(reduction_channels, channels, kernel_size=1, bias=True)
-        self.gate = nn.Sigmoid()
+            reduction_channels = make_divisible(channels // reduction, divisor, min_channels)
 
-    def __make_divisible(self, value: Union[int, float], divisor: int = 8, min_value: Optional[int] = None):
-        """Make divisible function.
-
-        This function rounds the channel number to the nearest value that can be divisible by the divisor.
-
-        Args:
-            value: The original channel number.
-            divisor: The divisor to fully divide the channel number.
-            min_value: The minimum value of the output channel.
-        """
-        min_value = min_value or divisor
-        new_value = max(min_value, int(value + divisor / 2) // divisor * divisor)
-        if new_value < 0.9 * value:
-            new_value += divisor
-        return new_value
+        self.convbnact1 = ConvBnAct(channels, reduction_channels, kernel_size=1, padding=0, use_norm=use_norm)
+        self.convbnact2 = ConvBnAct(reduction_channels, channels, kernel_size=1,
+                                    padding=0, use_norm=use_norm, act_layer=None)
+        self.gate = gate()
 
     def forward(self, x):
         """Forward method."""
-        x_se = x.mean((2, 3), keepdim=True)
-        x_se = self.fc1(x_se)
-        x_se = self.act(x_se)
-        x_se = self.fc2(x_se)
+        if self.use_pooling:
+            x_se = F.adaptive_avg_pool2d(x, 1)
+        else:
+            x_se = x.mean((2, 3), keepdim=True)
+        x_se = self.convbnact1(x_se)
+        x_se = self.convbnact2(x_se)
         return x * self.gate(x_se)
