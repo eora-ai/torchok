@@ -1,0 +1,79 @@
+# defaults:
+#   - _self_
+#   - base_configparams
+
+task:
+  name: ONNXTask
+  params:
+    path_to_onnx: '<model_name>.onnx'
+    inputs:
+      - shape: [3, &height 32, &width 32]
+        dtype: 'float32'
+
+data:
+  TEST:
+    - dataloader:
+        batch_size: 1
+        num_workers: 4
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: CIFAR10
+        params:
+          train: false
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/cifar10
+        transform:
+          - &resize
+            name: Resize
+            params:
+              height: *height
+              width: *width
+          - &normalize
+            name: Normalize
+            params:
+              mean: [ 0.485, 0.456, 0.406 ]
+              std: [ 0.229, 0.224, 0.225 ]
+          - &totensor
+            name: ToTensorV2
+  
+  PREDICT:
+    - dataloader:
+        batch_size: 1
+        num_workers: 1
+        drop_last: False
+        shuffle: False
+
+      dataset:
+        name: CIFAR10
+        params:
+          train: False
+          download: True
+          test_mode: true
+          data_folder: *data_folder
+        transform:
+          - *resize
+          - *normalize
+          - *totensor
+
+trainer:
+  accelerator: "cpu"
+  max_epochs: 1
+
+log_dir: '/workdir/logs/classification'
+experiment_name: cifar10
+
+checkpoint:
+  monitor: valid/F1Score
+  save_last: true
+  mode: max
+
+metrics:
+  - name: Accuracy
+    mapping: 
+      preds: prediction
+      target: target
+  - name: F1Score
+    mapping: 
+      preds: prediction
+      target: target
