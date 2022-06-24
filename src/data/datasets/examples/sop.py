@@ -18,7 +18,7 @@ class SOP(ImageDataset):
     """A class represent Stanford Online Products - SOP dataset."""
     base_folder = 'Stanford_Online_Products'
     filename = 'Stanford_Online_Products.tar.gz'
-    # TODO change
+
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/Stanford_Online_Products.tar.gz'
     tgz_md5 = '26513716999698fd361a21c93f77ed32'
 
@@ -105,7 +105,7 @@ class SOP(ImageDataset):
         return len(self.__csv)
 
     def _check_integrity(self) -> bool:
-        """Check integrity."""            # sample['target'] = record[self.__train_target_column] - 1
+        """Check integrity."""
         if os.path.exists(self.__path):
             return True
         else:
