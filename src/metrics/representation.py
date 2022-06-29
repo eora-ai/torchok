@@ -1,16 +1,15 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from sklearn.preprocessing import normalize
-from typing import Callable, List, Optional, Union, Dict, Tuple, Generator
+from typing import Callable, List, Optional, Union, Tuple, Generator
 
 import torch
 import faiss
-import pandas as pd
 import numpy as np
 import math
 
 from torchmetrics import Metric
-from ranx.metrics import precision, recall, average_precision, ndcg
+from ranx.metrics import precision, recall, average_precision, ndcg, hit_rate
 from enum import Enum
 
 from src.constructor import METRICS
@@ -55,8 +54,8 @@ class IndexBasedMeter(Metric, ABC):
     contain it's relevant index with scores for current query. And the closest contain closest index with it's distance.
     """
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str, \
-        metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None, \
-        normalize_vectors: bool = False, **kwargs):
+                 metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None, \
+                 normalize_vectors: bool = False, **kwargs):
         """Initialize IndexBasedMeter.
 
         Args:
@@ -149,7 +148,6 @@ class IndexBasedMeter(Metric, ABC):
             Metric value.
         """
         vectors = torch.cat(self.vectors).numpy()
-        
         if self.normalize_vectors:
             vectors = normalize(vectors)
 
@@ -157,35 +155,32 @@ class IndexBasedMeter(Metric, ABC):
             # if classification dataset
             targets = torch.cat(self.targets).numpy()
             # prepare data
-            q_vecs, db_vecs, relevants, scores, \
-                db_idxs, q_order_idxs = self.prepare_classification_data(vectors, targets)
+            relevants, scores, db_idxs, queries_idxs = self.prepare_classification_data(vectors, targets)
         else:
             # if representation dataset
             scores = torch.cat(self.scores).numpy()
             queries_idxs = torch.cat(self.queries_idxs).numpy()
             # prepare data
-            q_vecs, db_vecs, relevants, scores, \
-                db_idxs, q_order_idxs = self.prepare_representation_data(vectors, queries_idxs, scores)
+            relevants, scores, db_idxs, queries_idxs = self.prepare_representation_data(vectors, queries_idxs, scores)
 
-        q_vecs = q_vecs.astype(np.float32)
-        db_vecs = db_vecs.astype(np.float32)
-
-        index = self.build_index(db_vecs)
+        # build idex
+        vectors = vectors.astype(np.float32)
+        index = self.build_index(vectors[db_idxs])
 
         # if k is None set it as database length
-        k = len(db_vecs) if self.k is None else self.k
+        k = len(db_idxs) if self.k is None else self.k
 
         # create relevant, closest generator
-        generator = self.query_generator(index, relevants, q_vecs, db_idxs, q_order_idxs, k, scores)
+        generator = self.query_generator(index, vectors, relevants, db_idxs, queries_idxs, k, scores)
         
         # compute metric
-        scores = []
+        metrics = []
         for relevant_idx, closest_idx in generator:
-            scores += self.metric_func(relevant_idx, closest_idx, k=k).tolist()
-        return np.mean(scores)
+            metrics += self.metric_func(relevant_idx, closest_idx, k=k).tolist()
+        return np.mean(metrics)
 
-    def prepare_representation_data(self, vectors: np.ndarray, queries_idxs: np.ndarray, scores: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def prepare_representation_data(self, queries_idxs: np.ndarray, scores: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Prepare data for faiss build index, and following search, in representation dataset case.
         
         Separate query and database vectors from storage vectors.
@@ -201,8 +196,6 @@ class IndexBasedMeter(Metric, ABC):
                 size (batch_size, total_num_queries).
 
         Returns:
-            q_vecs: Queries vectors, size (queries_size, embedding_size).
-            db_vecs: Database vectors, for faiss build index, size (database_size, embedding_size).
             relevant: Array of arrays relevant indexes in database for every query request, size (queries_size, ).
             scores: Array of scores related to queries that have at least one relevant item.
             db_idxs: Array with all database indexes.
@@ -210,21 +203,19 @@ class IndexBasedMeter(Metric, ABC):
         """
         is_queries = queries_idxs >= 0
         queries_idxs = queries_idxs[is_queries]
-        q_vecs = vectors[is_queries]
-        db_vecs = vectors[~is_queries]
-        db_idxs = np.arange(len(db_vecs))
+        db_idxs = queries_idxs[~is_queries]
         scores = scores[~is_queries]
         
         relevant = []
         empty_relevant_idxs = []
 
-        for idx in range(len(q_vecs)):
-            relevant_idxs = np.where(scores[:, queries_idxs[idx]] > 0.)[0]
+        for q_idx in range(queries_idxs):
+            relevant_idxs = np.where(scores[:, q_idx] > 0.)[0]
             if len(relevant_idxs) == 0:
-                empty_relevant_idxs.append(idx)
+                empty_relevant_idxs.append(q_idx)
             else:
                 # Need to sort relevant indexes by its scores for NDCG metric
-                current_scores = scores[relevant_idxs, queries_idxs[idx]]
+                current_scores = scores[relevant_idxs, queries_idxs[q_idx]]
                 sort_indexes = np.argsort(current_scores)
                 relevant_idxs = relevant_idxs[sort_indexes[::-1]]
                 relevant.append(relevant_idxs)
@@ -232,13 +223,12 @@ class IndexBasedMeter(Metric, ABC):
         relevant = np.array(relevant)
 
         # remove empty relevant queries
-        q_vecs = np.delete(q_vecs, empty_relevant_idxs, axis=0)
         queries_idxs = np.delete(queries_idxs, empty_relevant_idxs)
         
-        return q_vecs, db_vecs, relevant, scores, db_idxs, queries_idxs
+        return relevant, scores, db_idxs, queries_idxs
 
     def prepare_classification_data(self, vectors: np.ndarray, targets: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Prepare data for faiss build index, and following search, in classification dataset case.
         
         Separate query and database vectors from storage vectors.
@@ -252,43 +242,24 @@ class IndexBasedMeter(Metric, ABC):
             targets: Targets in classification task for every vector, size (database_size).
 
         Retruns:
-            q_vecs: Queries vectors, size (queries_size, embedding_size).
-            db_vecs: Database vectors, for faiss build index, size (database_size, embedding_size).
             relevant: Array of relevant indexes in database for every query request, size (queries_size, ).
             scores: Array of scores without queries empty scores.
             db_idxs: Array with all database indexes.
             queries_idxs: Array of queries order number.
         """
-        ts = pd.Series(targets)
+        target_values, target_counts = np.unique(targets, return_counts=True)
+        relevants = []
+        for target, count in zip(target_values, target_counts):
+            relevants += [np.where(targets == target)[0]] * count
 
-        # Group item indices of the same class
-        groups = pd.Series(ts.groupby(ts).groups)
-
-        # Take the first index of the group as a query
-        # If there is only one element in the group, ignore this group
-        query_idxs = groups.apply(lambda x: x[0] if len(x) > 1 else -1)
-
-        # Rest indices are used as a relevant/database elements
-        relevant = groups.apply(lambda x: x[1:].values if len(x) > 1 else x.values)
-
-        # Create mapping from database index to original index
-        db_idxs = np.array(sorted([i for j in relevant for i in j]))
-
-        # Filter groups with more than one sample per group
-        correct_classes = query_idxs != -1
-        relevant = relevant[correct_classes]
-        query_idxs = query_idxs[correct_classes]
-
-        # Retrieve query and database vectors and build index base on latter.
-        q_vecs = vectors[query_idxs]
-        db_vecs = vectors[db_idxs]
-
+        relevants = np.array(relevants)
         scores = None
-        query_order_idxs = np.arange(len(q_vecs))
-        return q_vecs, db_vecs, relevant, scores, db_idxs, query_order_idxs
+        queries_idxs = np.arange(len(vectors))
+        
+        return relevants, scores, queries_idxs, queries_idxs
 
     def query_generator(self, index: Union[faiss.swigfaiss_avx2.IndexFlatIP, faiss.swigfaiss_avx2.IndexFlatL2], \
-                        relevants: np.ndarray, queries: np.ndarray, db_ids: np.ndarray, q_order_idxs: np.ndarray, \
+                        vectors: np.ndarray, relevants: np.ndarray, db_ids: np.ndarray, queries_idxs: np.ndarray, \
                         k: int, scores: Optional[np.ndarray] = None
     ) -> Generator[Tuple[List[np.ndarray], List[np.ndarray]], None, None]:
         """Create relevants relevant, closest arrays.
@@ -298,8 +269,8 @@ class IndexBasedMeter(Metric, ABC):
         
         Args:
             index: Faiss database built index.
-            relevants: Relevant indexes for every query, size (total_num_queries, ) and the second shape is can be different
-                for every query request.
+            relevants: Relevant indexes for every query, size (total_num_queries, ) and the second shape is 
+                can be different for every query request.
             queries: Vectors for every query request, size (total_num_queries, embedding_size).
             scores: Scores for every relevant index per each query request, size (database_size, total_num_queries).
                 See representation dataset for more information.
@@ -312,6 +283,10 @@ class IndexBasedMeter(Metric, ABC):
             Relevant include relevant indexes and scores, size (search_batch_size, , 2).
             Closest include searched indexes and distances, size (search_batch_size, , 2).
         """
+        # to remove 
+        if k != len(vectors) and self.dataset_type == DatasetType.CLASSIFICATION:
+            k += 1
+
         def generator():
             """Generate relevant - y_true, and closest - y_pred for metric calculation with ranx library.
 
@@ -340,11 +315,16 @@ class IndexBasedMeter(Metric, ABC):
                                [6, 1]])
                     ].
             """
-            for i in range(0, len(queries), self.search_batch_size):
-                query_idxs = np.arange(i, min(i + self.search_batch_size, len(queries)))
+            for i in range(0, len(queries_idxs), self.search_batch_size):
+                idxs = np.arange(i, min(i + self.search_batch_size, len(queries_idxs)))
 
-                closest_dist, closest_idx = index.search(queries[query_idxs], k=k)
-                relevant = relevants[query_idxs]
+                closest_dist, closest_idx = index.search(vectors[idxs], k=k)
+                # remove first element which is actually is it's classification dataset
+                if self.dataset_type == DatasetType.CLASSIFICATION:
+                    closest_dist = np.delete(closest_dist, 0, axis=1)
+                    closest_idx = np.delete(closest_idx, 0, axis=1)
+
+                batch_relevant = relevants[idxs]
  
                 if self.metric_distance == MetricDistance.IP:
                     closest_dist = 1 - closest_dist
@@ -357,15 +337,15 @@ class IndexBasedMeter(Metric, ABC):
                     np.arange(len(closest_idx)))
                 
                 if scores is None:
-                    relevant = map(lambda r: np.stack((r, np.ones_like(r)), axis=1), relevant)
+                    batch_relevant = map(lambda r: np.stack((r, np.ones_like(r)), axis=1), batch_relevant)
                 else:
-                    relevant = map(lambda r_q: np.stack((r_q[0], scores[r_q[0], q_order_idxs[r_q[1]]]), axis=1), \
-                        zip(relevant, query_idxs))
+                    batch_relevant = map(lambda r_q: np.stack((r_q[0], scores[r_q[0], queries_idxs[r_q[1]]]), axis=1), \
+                        zip(batch_relevant, idxs))
                 
-                relevant = list(relevant)
+                batch_relevant = list(batch_relevant)
                 closest = list(closest)
 
-                yield relevant, closest
+                yield batch_relevant, closest
 
         return generator()
 
@@ -392,6 +372,16 @@ class IndexBasedMeter(Metric, ABC):
 
         index.add(vectors)
         return index
+
+
+@METRICS.register_class
+class HitAtKMeter(IndexBasedMeter):
+    def __init__(self, dataset_type: str, exact_index: bool = True, \
+                 metric_distance: str = 'IP', k: Optional[int] = None, \
+                 search_batch_size: Optional[int] = None, normalize_vectors: bool = False, **kwargs):
+        super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance, \
+            metric_func=hit_rate, k=k, search_batch_size=search_batch_size, normalize_vectors=normalize_vectors, \
+            **kwargs)
 
 
 @METRICS.register_class

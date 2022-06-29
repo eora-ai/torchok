@@ -41,7 +41,9 @@ class MetricWithUtils(nn.Module):
         return self.__metric(*args, **kwargs)
 
     def compute(self):
-        return self.__metric.compute()
+        value = self.__metric.compute()
+        self.__metric.reset()
+        return value
 
 
 class MetricsManager(nn.Module):
@@ -55,7 +57,7 @@ class MetricsManager(nn.Module):
         super().__init__()
         self.__phase2metrics = nn.ModuleDict()
         for phase in Phase:
-            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase) 
+            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase)
 
     def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """Generate metric list for current phase.

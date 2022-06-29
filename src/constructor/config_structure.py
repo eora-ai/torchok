@@ -107,6 +107,7 @@ class TrainerParams:
     num_nodes: int = 1
     num_processes: Optional[int] = None  # TODO: Remove in 2.0
     devices: Optional[List[int]] = None
+    gpus: Optional[List[int]] = None
     auto_select_gpus: bool = False
     tpu_cores: Optional[List[int]] = None  # TODO: Remove in 2.0
     ipus: Optional[int] = None  # TODO: Remove in 2.0
