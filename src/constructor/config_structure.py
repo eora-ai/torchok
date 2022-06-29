@@ -107,6 +107,7 @@ class TrainerParams:
     num_nodes: int = 1
     num_processes: Optional[int] = None  # TODO: Remove in 2.0
     devices: Optional[List[int]] = None
+    gpus: Optional[List[int]] = None
     auto_select_gpus: bool = False
     tpu_cores: Optional[List[int]] = None  # TODO: Remove in 2.0
     ipus: Optional[int] = None  # TODO: Remove in 2.0
@@ -169,10 +170,10 @@ class ConfigParams:
     # TODO add Logger params
     task: TaskParams
     data: Dict[Phase, List[DataParams]]
-    optimization: List[OptimizationParams]
-    joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
     experiment_name: str
     log_dir: str = './logs'
+    optimization: Optional[List[OptimizationParams]] = field(default_factory=list)
+    joint_loss: Optional[JointLossParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
