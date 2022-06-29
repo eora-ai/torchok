@@ -159,7 +159,7 @@ class CheckpointParams:
     save_weights_only: bool = False
     mode: str = 'min'
     auto_insert_metric_name: bool = False
-    onnx_to_save: bool = False
+    export_to_onnx: bool = False
     onnx_params: Dict = field(default_factory=dict)
 
 

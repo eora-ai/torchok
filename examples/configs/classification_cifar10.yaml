@@ -85,7 +85,7 @@ checkpoint:
   monitor: valid/F1Score
   save_last: true
   mode: max
-  onnx_to_save: true
+  export_to_onnx: true
 
 metrics:
   - name: Accuracy
