@@ -126,11 +126,10 @@ class BaseTask(LightningModule, ABC):
         if self._hparams.task.compute_loss_on_valid:
             total_loss, tagged_loss_values = self._losses(**output)
             output_dict = {'loss': total_loss}
+            output_dict.update(tagged_loss_values)
         else:
-            tagged_loss_values = {}
-            output_dict = {'loss': torch.tensor(0.)}
-            
-        output_dict.update(tagged_loss_values)
+            output_dict = {}
+        
         return output_dict
 
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
