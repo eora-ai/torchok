@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Union, Optional
 import os
-import numpy as np
 import pandas as pd
 
 import torch

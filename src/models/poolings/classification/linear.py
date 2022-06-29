@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.constructor import POOLINGS
 from src.models.base import BaseModel
