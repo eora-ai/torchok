@@ -139,6 +139,7 @@ metrics:
       k: 1
       dataset_type: classification
       normalize_vectors: True
+      search_batch_size: 256
     mapping:
       vectors: embeddings
       targets: target
