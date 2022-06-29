@@ -67,8 +67,7 @@ class SOP(ImageDataset):
         else:
             self.__csv = pd.read_csv(self.__path / self.test_txt, sep=' ')
 
-        self.__valid_target_column = 'class_id'
-        self.__train_target_column = 'super_class_id'
+        self.__target_column = 'class_id'
         self.__path_column = 'path'
 
     def __getitem__(self, idx: int) -> dict:
@@ -93,11 +92,10 @@ class SOP(ImageDataset):
 
         if self.__train:
             # The labels starts with 1 for train
-            # sample['target'] = record[self.__train_target_column] - 1
-            sample['target'] = record[self.__valid_target_column] - 1
+            sample['target'] = record[self.__target_column] - 1
         else:
             # The labels starts with 11319 for train
-            sample['target'] = record[self.__valid_target_column] - 11319
+            sample['target'] = record[self.__target_column] - 11319
 
         return sample
 

@@ -1,5 +1,6 @@
 task:
   name: ClassificationTask
+  compute_loss_on_valid: False
   params:
     backbone_name: resnet50
     backbone_params:
