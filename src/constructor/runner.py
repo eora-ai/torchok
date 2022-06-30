@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
 from src.constructor.logger import create_logger
-from src.callbacks.upload_weights_after_exception import UploadWeightsAfterException
+from src.callbacks.finalize_logger import FinalizeLogger
 
 
 def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_subdir: bool):
@@ -33,8 +33,8 @@ def create_trainer(train_config):
                            job_link=train_config.job_link)
                            
     checkpoint_callback = ModelCheckpoint(**train_config.checkpoint, dirpath=str(full_outputs_path))
-    upload_weights_after_exception = UploadWeightsAfterException()
-    callbacks = [checkpoint_callback, upload_weights_after_exception]
+    finalize_logger_callback = FinalizeLogger()
+    callbacks = [checkpoint_callback, finalize_logger_callback]
 
     trainer = Trainer(logger=logger, callbacks=callbacks, **train_config.trainer)
     return trainer
