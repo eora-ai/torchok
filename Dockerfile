@@ -1,8 +1,6 @@
-# Approximately 10 min to build
+# Approximately 15 min to build
 
-FROM nvidia/cuda:11.1-devel-ubuntu18.04
-# Python
-ARG python_version=3.7
+FROM nvidia/cuda:11.7.0-runtime-ubuntu22.04
 ARG SSH_PASSWORD=password
 
 # https://docs.docker.com/engine/examples/running_ssh_service/
@@ -20,22 +18,23 @@ ENV NOTVISIBLE "in users profile"
 ENV CONDA_DIR /opt/conda
 ENV PATH $CONDA_DIR/bin:$PATH
 
+# Install essentials + awscli + DVC
+RUN apt-get install -y wget git vim htop zip libhdf5-dev g++ graphviz libgtk2.0-dev libgl1-mesa-glx \
+    openmpi-bin nano cmake libopenblas-dev liblapack-dev libx11-dev && \
+    wget "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -O "awscliv2.zip" && \
+    unzip awscliv2.zip && ./aws/install && rm -r aws && rm awscliv2.zip && \
+    wget https://dvc.org/deb/dvc.list -O /etc/apt/sources.list.d/dvc.list && apt-get update && apt-get install dvc
+
 # Install Miniconda
 RUN mkdir -p $CONDA_DIR && \
     apt-get update && \
-    apt-get install -y wget git vim htop zip libhdf5-dev g++ graphviz libgtk2.0-dev libgl1-mesa-glx \
-    openmpi-bin nano cmake libopenblas-dev liblapack-dev libx11-dev && \
     wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     /bin/bash /Miniconda3-latest-Linux-x86_64.sh -f -b -p $CONDA_DIR && \
     rm Miniconda3-latest-Linux-x86_64.sh
 
-RUN wget "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -O "awscliv2.zip" && \
-    unzip awscliv2.zip && ./aws/install && rm -r aws && rm awscliv2.zip && \
-    wget https://dvc.org/deb/dvc.list -O /etc/apt/sources.list.d/dvc.list && apt-get update && apt-get install dvc
-
 COPY ./environment.yml /torchok/environment.yml
 
-# Install Data Science essential
+# Install TorchOk dependencies
 RUN conda config --set remote_read_timeout_secs 100000.0 && \
     conda init && \
     conda update -n base -c defaults conda && \
@@ -43,11 +42,6 @@ RUN conda config --set remote_read_timeout_secs 100000.0 && \
     conda clean -yt && \
     echo "conda activate torchok" >> /root/.bashrc && \
     echo "cd /" >> /root/.bashrc
-
-RUN git clone https://github.com/NVIDIA/apex && \
-    cd apex && \
-    /opt/conda/envs/torchok/bin/python -m pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./ && \
-    cd /
 
 ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
 ENV LIBRARY_PATH /usr/local/cuda/lib64:/lib/x86_64-linux-gnu:$LIBRARY_PATH
