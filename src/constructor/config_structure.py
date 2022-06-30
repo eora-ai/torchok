@@ -12,6 +12,12 @@ class Phase(Enum):
     PREDICT = 'predict'
 
 
+# Logger utils
+class LoggerType(Enum):
+    TENSORBOARD = 'tensorboard'
+    MLFLOW = 'mlflow'
+
+
 # Optimization parameters
 @dataclass
 class OptmizerParams:
@@ -94,6 +100,7 @@ class MetricParams:
 @dataclass
 class TaskParams:
     name: str
+    compute_loss_on_valid: bool = True
     params: Optional[Dict] = field(default_factory=dict)
 
 
@@ -164,16 +171,26 @@ class CheckpointParams:
     # onnx_params: Dict = field(default_factory=dict)
 
 
+# Logger
+@dataclass
+class LoggerParams:
+    logger: LoggerType
+    params: Optional[Dict] = field(default_factory=dict)
+
+
 # Config parameters
 @dataclass
 class ConfigParams:
     # TODO add Logger params
     task: TaskParams
     data: Dict[Phase, List[DataParams]]
+    optimization: List[OptimizationParams]
+    joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
     experiment_name: str
     log_dir: str = './logs'
-    optimization: Optional[List[OptimizationParams]] = field(default_factory=list)
-    joint_loss: Optional[JointLossParams] = None
+    job_link: str = 'local'
+    logger: Optional[LoggerParams] = None
+    create_datetime_log_subdir: bool = True
     metrics: Optional[List[MetricParams]] = field(default_factory=list)

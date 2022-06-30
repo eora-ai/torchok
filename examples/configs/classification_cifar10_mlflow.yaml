@@ -82,7 +82,15 @@ log_dir: '${oc.env:HOME}/.cache/torchok/logs/cifar10'
 experiment_name: cifar10
 
 logger:
-  logger: TENSORBOARD
+  logger: MLFLOW
+  params:
+    experiment_name: *experiment_name
+    tags:
+      mlflow.runName: "AVG pooling"
+    save_dir: "s3://ml-mlflow/mlruns"
+    secrets_manager:
+      region: "eu-west-1"
+      mlflow_secret: "acme/ml-mlflow"
 
 checkpoint:
   monitor: valid/F1Score
