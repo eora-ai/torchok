@@ -28,7 +28,7 @@ class ONNXTask(BaseTask):
 
         self._check_integrity_onnx_model(model_path)
 
-        self._sess = onnxrt.InferenceSession(model_path)
+        self._sess = onnxrt.InferenceSession(model_path, providers=['CUDAExecutionProvider'])
         self.__binding = self._sess.io_binding()
 
         self.__input_name = self._sess.get_inputs()[0].name
