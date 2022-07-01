@@ -1,6 +1,6 @@
 # Approximately 15 min to build
 
-FROM nvidia/cuda:11.6.2-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:11.5.0-cudnn8-runtime-ubuntu20.04
 ARG SSH_PASSWORD=password
 
 # https://docs.docker.com/engine/examples/running_ssh_service/
