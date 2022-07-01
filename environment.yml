@@ -17,6 +17,8 @@ dependencies:
   - pytorch-lightning=1.6.4
   - torchmetrics=0.8.2
   - pip:
+      - onnx==1.12.0
+      - onnxruntime-gpu==1.11.1
       - albumentations==1.2.0
       - hydra-core==1.2.0
       - opencv-python==4.6.0.*
