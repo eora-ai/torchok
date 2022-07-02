@@ -2,11 +2,11 @@ import unittest
 
 import torch
 import copy
-from typing import *
+from typing import List, Dict, Optional
 from collections import OrderedDict
 
 from .checkpoints.model import Model
-from src.constructor.load import load_checkpoint, generate_require_state_dict
+from src.constructor.load import load_checkpoint
 
 
 def compare_state_dicts(current_state_dict: Dict[str, torch.Tensor], load_state_dict: Dict[str, torch.Tensor], 
@@ -88,27 +88,6 @@ class TestCheckpoint(unittest.TestCase):
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
-    def test_generate_require_state_dict_when_base_and_override_checkpoints_was_defined(self):
-        override_state_dict = {
-            'layer1': {
-                'module.conv1.weight': 11,
-                'linear.weight': 22
-            }
-        }
-
-        exclude_names = list()
-
-        answer_state_dict = {
-            'layer1.module.conv1.weight': 11, 
-            'layer1.linear.weight': 22,
-            'linear.weight': 3,
-        }
-
-        generated_state_dict = generate_require_state_dict(self.model_keys, self.base_state_dict, 
-                                                           override_state_dict, exclude_names)
-
-        self.assertDictEqual(answer_state_dict, generated_state_dict)
-
     def test_generate_require_state_dict_when_full_parameters_was_defined(self):
         override_state_dict = {
             'layer1': {
@@ -135,7 +114,7 @@ class TestCheckpoint(unittest.TestCase):
                 'module.conv1.weight': 11,
                 'linear.weight': 22
             },
-            'layer1.linear':{
+            'layer1.linear': {
                 'weight': 222
             }
         }
@@ -157,7 +136,7 @@ class TestCheckpoint(unittest.TestCase):
             'layer1': {
                 'module.conv1.weight': 11,
             },
-            'layer1.linear':{
+            'layer1.linear': {
                 'weight': 222
             }
         }
