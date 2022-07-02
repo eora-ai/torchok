@@ -7,7 +7,7 @@ from typing import Optional, Dict, List, Callable, OrderedDict, Union
 
 def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Callable, torch.device]] = 'cpu'):
     """Loads a checkpoint state_dict.
-    
+
     Args:
         checkpoint_path: Path or URL of the checkpoint, it can be S3 on AWS, GCS on Google Cloud, or ADL on Azure.
         map_location: How to remap storage locations.
@@ -23,6 +23,36 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
     return state_dict
 
 
+def check_state_dict_keys(checked_state_dict: OrderedDict[str, torch.Tensor], model_keys: List[str], 
+                          checked_module_name: str = ''):
+    """Checks dictionary keys against model keys.
+    
+    Args:
+        checked_state_dict: Checked state dict.
+        model_keys: Model state dict keys.
+        checked_module_name: The name of the module to be checked.
+
+    Raises:
+        ValueError: If checked_state_dict keys do not completely intersect with model_keys for current 
+            checked_module_name.
+    """
+    if checked_module_name != '':
+        module_straighten_keys = set(get_straighten_keys(checked_module_name, model_keys))
+    else:
+        module_straighten_keys = set(model_keys)
+
+    checked_keys = set(checked_state_dict.keys())
+    intersection_keys = checked_keys.intersection(module_straighten_keys)
+
+    if len(checked_keys) != len(intersection_keys):
+        missing_keys = module_straighten_keys - checked_keys
+        extra_keys = checked_keys - module_straighten_keys
+        module_part = checked_module_name if checked_module_name != '' else 'all the model'
+        raise ValueError(f'Load checkpoint module, check_state_dict_keys function. found a mismatch between loaded '
+                         f'keys and model keys in {module_part}. Missing keys = {missing_keys}. '
+                         f'Extra keys = {extra_keys}.')
+
+    
 def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[OrderedDict[str, torch.Tensor]]]:
     """Generate sorted by depth list of state dict list with the current depth.
     Where depth is calculated as the number of dots in the dictionary key.
@@ -44,9 +74,10 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
 
     sorted_state_dicts = sorted_state_dicts[: max_depth + 1]
     return sorted_state_dicts
-    
 
-def state_dict_with_prefix(prefix: str, state_dict: OrderedDict[str, torch.Tensor]) -> OrderedDict[str, torch.Tensor]:
+
+def get_state_dict_with_prefix(prefix: str, 
+                               state_dict: OrderedDict[str, torch.Tensor]) -> OrderedDict[str, torch.Tensor]:
     """Generate state dict with prefixed keys. If input state dict keys startswith prefix then no prefix added.
 
     Args:
@@ -68,11 +99,11 @@ def state_dict_with_prefix(prefix: str, state_dict: OrderedDict[str, torch.Tenso
 
 def get_straighten_keys(require_key: str, model_keys: List[str]) -> List[str]:
     """Create straighten model keys from require.
-    
+
     Args:
         require_key: The key to being straightened.
         model_keys: The model keys.
-    
+
     Returns:
         straighten_keys: Straightened keys.
     """
@@ -87,9 +118,17 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
                                  overridden_name2state_dict: Dict[str, OrderedDict[str, torch.Tensor]], 
                                  exclude_keys: List[str],
                                  model_keys: List[str]) -> OrderedDict[str, torch.Tensor]:
-    """Generate state dict, which should be loaded from 3 main components: base state dict, overridden state dicts and
-    exclude keys.
-    
+    """Generate state dict, which should be loaded from 4 main components: base state dict, overridden state dicts,
+    exclude keys and model_keys.
+
+    Base state dict values are overridden with overridden_name2state_dict, where the key in overridden_name2state_dict - 
+    module name which should be overridden.
+    If overridden_name2state_dict has many state dicts for one key in the base state dict, then the state dict is 
+    selected whose overridden_name module is closer to the key i.e. choose the deepest overridden_name, where depth 
+    is the number of dots.
+    After the base state dict had been overridden, it is necessary to remove keys whose names begin with any
+    key in exclude_keys.
+
     Args:
         base_state_dict: Base state dict that should be loaded.
         overridden_name2state_dict: Dicts of module key to state dict, which should override base state dict.
@@ -99,27 +138,46 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
     Returns:
         required_state_dict: State dict obtained by override base state dict by overridden state dict, which not 
             contain the keys starting with exclude keys.
+
+    Raises:
+        ValueError: If base_state_dict, overridden_name2state_dict or exclude_keys not match with the model keys.
     """
     required_state_dict = OrderedDict()
-    overridden_full_name2state_dict = dict()
+
+    # Check base state dict
+    check_state_dict_keys(base_state_dict, model_keys)
+
     # Add prefix for every overridden state dict
+    overridden_full_name2state_dict = dict()
     for overridden_name, state_dict in overridden_name2state_dict.items():
-        overridden_full_name2state_dict[overridden_name] = state_dict_with_prefix(prefix=overridden_name,
-                                                                                  state_dict=state_dict)
+        prefixed_state_dict = get_state_dict_with_prefix(prefix=overridden_name, state_dict=state_dict)
+        overridden_full_name2state_dict[overridden_name] = prefixed_state_dict
+        # Check current state dict 
+        check_state_dict_keys(prefixed_state_dict, model_keys, overridden_name)
+
     # Get sorted by depth state dict list that must be overridden
-    sorted_state_dicts = sort_state_dict_by_depth(overridden_name2state_dict)
+    sorted_state_dicts = sort_state_dict_by_depth(overridden_full_name2state_dict)
     
     # Firstly change model state dict by base state dict
     required_state_dict.update(base_state_dict)
     
     # Then change model state dict with overridden state dicts, in order of it's depths
-    for depth in range(len(sorted_state_dicts)):
-        for state_dicts in sorted_state_dicts[depth]:
-            for state_dict in state_dicts:
-                required_state_dict.update(base_state_dict)
+    for depth_state_dicts in sorted_state_dicts:
+        for state_dict in depth_state_dicts:
+            required_state_dict.update(state_dict)
 
-    straightened_exclude_keys = [get_straighten_keys(exclude_key, model_keys) for exclude_key in exclude_keys]
-    required_state_dict.pop(straightened_exclude_keys, None)
+    # Create straightened exclude keys
+    straightened_exclude_keys = []
+    for exclude_key in exclude_keys:
+        exclude_straighten_keys = get_straighten_keys(exclude_key, model_keys)
+        if len(exclude_straighten_keys) == 0:
+            raise ValueError(f'Load checkpoint module, generate_required_state_dict function. Found exclude key ' 
+                             f'{exclude_key} which not in model_keys.')
+        straightened_exclude_keys += exclude_straighten_keys
+
+    # Remove exclude keys
+    for exclude_key in straightened_exclude_keys:
+        required_state_dict.pop(exclude_key, None)
     return required_state_dict
 
 

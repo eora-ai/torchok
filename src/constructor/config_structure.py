@@ -1,5 +1,4 @@
-from omegaconf import DictConfig, ListConfig
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -96,8 +95,8 @@ class TaskParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
     base_checkpoint: Optional[str] = None
-    override_checkpoints: Optional[Dict[str, str]] = None
-    exclude_names: Optional[List[str]] = None
+    overridden_checkpoints: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
 
 
 # Trainer parameters
