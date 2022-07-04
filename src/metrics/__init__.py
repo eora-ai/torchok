@@ -35,7 +35,7 @@ from torchmetrics.image import (  # noqa: E402
     SpectralDistortionIndex,
     StructuralSimilarityIndexMeasure,
     UniversalImageQualityIndex,
-# )
+)
 from torchmetrics.regression import (  # noqa: E402
     CosineSimilarity,
     ExplainedVariance,
