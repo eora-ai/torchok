@@ -11,35 +11,50 @@ from src.constructor.config_structure import MetricParams, Phase
 
 class MetricWithUtils(nn.Module):
     """Union class for metric and metric utils parameters."""
-    def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
+    def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str, compute_on_step: bool = False):
         """Initalize MetricWithUtils.
         
         Args:
             metric: Metric written with TorchMetrics.
             mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
             log_name: The metric name used in logs.
+            compute_on_step: If true run metric forward method in self.forward method, else run update. Note that 
+                the metric forward method calls update and compute method, so it slows down the computing speed.
         """
         super().__init__()
-        self.__metric = metric
-        self.__mapping = mapping
-        self.__log_name = log_name
+        self._metric = metric
+        self._mapping = mapping
+        self._log_name = log_name
+        self._compute_on_step = compute_on_step
+
+    @property
+    def log_name(self) -> Metric:
+        """The metric."""
+        return self._metric
 
     @property
     def log_name(self) -> str:
         """The metric name used in logs."""
-        return self.__log_name
+        return self._log_name
 
     @property
     def mapping(self) -> Dict[str, str]:
         """Dictionary for mapping Metric forward input keys with Task output dictionary keys."""
-        return self.__mapping
+        return self._mapping
+    
+    @property
+    def compute_on_step(self) -> bool:
+        """If true run metric forward method in self.forward method, else run update."""
+        return self._mapping
 
     def forward(self, *args, **kwargs):
-        return self.__metric.update(*args, **kwargs)
+        if self._compute_on_step:
+            return self._metric(*args, **kwargs)
+        else:
+            self._metric.update(*args, **kwargs)
 
     def compute(self):
-        value = self.__metric.compute()
-        self.__metric.reset()
+        value = self._metric.compute()
         return value
 
 
@@ -138,10 +153,13 @@ class MetricsManager(nn.Module):
             if not (is_number or isinstance(metric_value, Tensor) or isinstance(metric_value, np.ndarray)):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
                                  f'not numpy array element with dtype {metric_value.dtype}.')
-            
+
             metric_key = f'{phase.value}/{metric_with_utils.log_name}'
             log[metric_key] = metric_value
-
+            
+            # Do reset
+            metric_with_utils.reset()
+            
         return log
 
     @staticmethod
