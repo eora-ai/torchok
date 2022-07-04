@@ -137,7 +137,6 @@ class TestCheckpoint(unittest.TestCase):
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
-
     def test_checkpoint_load_when_full_parameters_was_defined(self):
         model = Model()
         current_state_dict = copy.deepcopy(model.state_dict())
