@@ -63,11 +63,11 @@ class TestCheckpoint(unittest.TestCase):
     def test_generate_required_state_dict_when_only_base_checkpoint_was_defined(self):
 
         overridden_state_dict = dict()
-        exclude_names = list()
+        exclude_keys = list()
         answer_state_dict = self.base_state_dict
         
         generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
-                                                            exclude_names, self.model_keys, self.initial_state_dict)
+                                                            exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
@@ -79,7 +79,7 @@ class TestCheckpoint(unittest.TestCase):
             }
         }
 
-        exclude_names = list()
+        exclude_keys = list()
 
         answer_state_dict = {
             'layer1.module.conv1.weight': 11, 
@@ -88,7 +88,7 @@ class TestCheckpoint(unittest.TestCase):
         }
 
         generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
-                                                            exclude_names, self.model_keys, self.initial_state_dict)
+                                                            exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
@@ -100,7 +100,7 @@ class TestCheckpoint(unittest.TestCase):
             }
         }
 
-        exclude_names = ['layer1.module']
+        exclude_keys = ['layer1.module']
 
         answer_state_dict = {
             'layer1.linear.weight': 22,
@@ -109,7 +109,7 @@ class TestCheckpoint(unittest.TestCase):
         }
 
         generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
-                                                            exclude_names, self.model_keys, self.initial_state_dict)
+                                                            exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
@@ -124,7 +124,7 @@ class TestCheckpoint(unittest.TestCase):
             }
         }
 
-        exclude_names = ['layer1.module']
+        exclude_keys = ['layer1.module']
 
         answer_state_dict = {
             'layer1.linear.weight': 222,
@@ -133,7 +133,7 @@ class TestCheckpoint(unittest.TestCase):
         }
 
         generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
-                                                            exclude_names, self.model_keys, self.initial_state_dict)
+                                                            exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
 
@@ -143,9 +143,9 @@ class TestCheckpoint(unittest.TestCase):
         override_name2path = {
             'layer': self.layer_path
         }
-        exclude_names = ['layer.block2']
+        exclude_keys = ['layer.block2']
 
-        load_checkpoint(model, self.base_path, override_name2path, exclude_names)
+        load_checkpoint(model, self.base_path, override_name2path, exclude_keys)
 
         # Partition comparing
         loaded_state_dict = model.state_dict()
@@ -168,7 +168,7 @@ class TestCheckpoint(unittest.TestCase):
         overridden_state_dict = load_state_dict_with_prefix(self.layer_path, 'layer')
         compare_state_dicts(overridden_state_dict, loaded_state_dict, check_keys=full_overridden_keys)
 
-        # Compare weights exclude name
+        # Compare weights exclude keys
         compare_state_dicts(current_state_dict, loaded_state_dict, check_keys=full_exclude_keys)
 
     def test_checkpoint_load_when_base_checkpoint_was_not_full(self):
@@ -176,26 +176,26 @@ class TestCheckpoint(unittest.TestCase):
 
         base_path = self.layer_path
         full_overridden_keys = dict() 
-        exclude_names = list()
+        exclude_keys = list()
 
         with self.assertRaises(Exception):
-            load_checkpoint(model, base_path, full_overridden_keys, exclude_names)
+            load_checkpoint(model, base_path, full_overridden_keys, exclude_keys)
 
     def test_checkpoint_load_when_overridden_key_was_not_in_model_state_dict(self):
         model = Model()
         full_overridden_keys = {'loyer': self.layer_path}
-        exclude_names = ['layer.block2']
+        exclude_keys = ['layer.block2']
 
         with self.assertRaises(Exception):
-            load_checkpoint(model, self.base_path, full_overridden_keys, exclude_names)
+            load_checkpoint(model, self.base_path, full_overridden_keys, exclude_keys)
 
     def test_checkpoint_load_when_exclude_key_was_not_right(self):
         model = Model()
         full_overridden_keys = {
             'layer': self.layer_path
         }
-        exclude_names = ['loyer.block2']
+        exclude_keys = ['loyer.block2']
 
         with self.assertRaises(Exception):
-            load_checkpoint(model, self.base_path, full_overridden_keys, exclude_names)
+            load_checkpoint(model, self.base_path, full_overridden_keys, exclude_keys)
     
