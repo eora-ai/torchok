@@ -70,7 +70,8 @@ class Model(LightningModule):
                 metric.update(vectors=batch['vectors'], targets=batch['targets'])
             else:
                 # representation
-                metric.update(vectors=batch['vectors'], scores=batch['scores'], query_numbers=batch['queries_idxs'])
+                metric.update(vectors=batch['vectors'], scores=batch['scores'], 
+                              query_order_numbers=batch['queries_idxs'])
         return loss
 
     def configure_optimizers(self):
