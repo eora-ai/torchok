@@ -22,36 +22,6 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
         state_dict = checkpoint
     return state_dict
 
-
-def check_state_dict_keys(checked_state_dict: OrderedDict[str, torch.Tensor], model_keys: List[str], 
-                          checked_module_name: str = ''):
-    """Checks dictionary keys against model keys.
-    
-    Args:
-        checked_state_dict: Checked state dict.
-        model_keys: Model state dict keys.
-        checked_module_name: The name of the module to be checked.
-
-    Raises:
-        ValueError: If checked_state_dict keys do not completely intersect with model_keys for current 
-            checked_module_name.
-    """
-    if checked_module_name != '':
-        module_straighten_keys = set(get_straighten_keys(checked_module_name, model_keys))
-    else:
-        module_straighten_keys = set(model_keys)
-
-    checked_keys = set(checked_state_dict.keys())
-    intersection_keys = checked_keys.intersection(module_straighten_keys)
-
-    if len(checked_keys) != len(intersection_keys):
-        missing_keys = module_straighten_keys - checked_keys
-        extra_keys = checked_keys - module_straighten_keys
-        module_part = checked_module_name if checked_module_name != '' else 'all the model'
-        raise ValueError(f'Load checkpoint module, check_state_dict_keys function. found a mismatch between loaded '
-                         f'keys and model keys in {module_part}. Missing keys = {missing_keys}. '
-                         f'Extra keys = {extra_keys}.')
-
     
 def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[OrderedDict[str, torch.Tensor]]]:
     """Generate sorted by depth list of state dict list with the current depth.
@@ -97,27 +67,31 @@ def get_state_dict_with_prefix(prefix: str,
     return state_dict_with_prefix
 
 
-def get_straighten_keys(require_key: str, model_keys: List[str]) -> List[str]:
-    """Create straighten model keys from require.
+def get_absolute_keys(require_key: str, model_keys: List[str]) -> List[str]:
+    """Create absolute model keys from require.
+
+    The keys belong to the model state dict called absolute.
 
     Args:
         require_key: The key to being straightened.
         model_keys: The model keys.
 
     Returns:
-        straighten_keys: Straightened keys.
+        absolute_keys: Absolute keys.
     """
-    straightened_keys = []
+    absolute_keys = []
     for key in model_keys:
         if key.startswith(require_key):
-            straightened_keys.append(key)
-    return straightened_keys
+            absolute_keys.append(key)
+    return absolute_keys
 
 
 def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor], 
                                  overridden_name2state_dict: Dict[str, OrderedDict[str, torch.Tensor]], 
                                  exclude_keys: List[str],
-                                 model_keys: List[str]) -> OrderedDict[str, torch.Tensor]:
+                                 model_keys: List[str],
+                                 initial_state_dict: OrderedDict[str, torch.Tensor]
+                                 ) -> OrderedDict[str, torch.Tensor]:
     """Generate state dict, which should be loaded from 4 main components: base state dict, overridden state dicts,
     exclude keys and model_keys.
 
@@ -132,28 +106,24 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
     Args:
         base_state_dict: Base state dict that should be loaded.
         overridden_name2state_dict: Dicts of module key to state dict, which should override base state dict.
-        exclude_keys: Module keys that should not be loaded.
+        exclude_keys: Module keys that would be loaded from the initial model state dict.
         model_keys: Model state dict keys.
+        model_state_dict: Model initial state dict.
 
     Returns:
         required_state_dict: State dict obtained by override base state dict by overridden state dict, which not 
             contain the keys starting with exclude keys.
 
     Raises:
-        ValueError: If base_state_dict, overridden_name2state_dict or exclude_keys not match with the model keys.
+        ValueError: If any exclude_key not in model.
     """
     required_state_dict = OrderedDict()
-
-    # Check base state dict
-    check_state_dict_keys(base_state_dict, model_keys)
 
     # Add prefix for every overridden state dict
     overridden_full_name2state_dict = dict()
     for overridden_name, state_dict in overridden_name2state_dict.items():
         prefixed_state_dict = get_state_dict_with_prefix(prefix=overridden_name, state_dict=state_dict)
         overridden_full_name2state_dict[overridden_name] = prefixed_state_dict
-        # Check current state dict 
-        check_state_dict_keys(prefixed_state_dict, model_keys, overridden_name)
 
     # Get sorted by depth state dict list that must be overridden
     sorted_state_dicts = sort_state_dict_by_depth(overridden_full_name2state_dict)
@@ -167,17 +137,21 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
             required_state_dict.update(state_dict)
 
     # Create straightened exclude keys
-    straightened_exclude_keys = []
+    absolute_exclude_keys = []
     for exclude_key in exclude_keys:
-        exclude_straighten_keys = get_straighten_keys(exclude_key, model_keys)
-        if len(exclude_straighten_keys) == 0:
-            raise ValueError(f'Load checkpoint module, generate_required_state_dict function. Found exclude key ' 
-                             f'{exclude_key} which not in model_keys.')
-        straightened_exclude_keys += exclude_straighten_keys
+        absolute_keys = get_absolute_keys(exclude_key, model_keys)
+        if len(absolute_keys) == 0:
+            raise ValueError(f'Load checkpoint. Found exclude key {exclude_key} which not in model_keys.')
+        absolute_exclude_keys += absolute_keys
 
-    # Remove exclude keys
-    for exclude_key in straightened_exclude_keys:
-        required_state_dict.pop(exclude_key, None)
+    # Create exclude state dict
+    exclude_state_dict = OrderedDict()
+    for key in absolute_exclude_keys:
+        exclude_state_dict[key] = initial_state_dict[key]
+
+    # Update require state dict with exclude state dict
+    required_state_dict.update(exclude_state_dict)
+
     return required_state_dict
 
 
@@ -198,8 +172,8 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
                         'checkpoint path and overridden checkpoint paths!')
         return
 
-    model_state_dict = model.state_dict()
-    model_keys = list(model_state_dict.keys())
+    initial_state_dict = model.state_dict()
+    model_keys = list(initial_state_dict.keys())
 
     if exclude_keys is None:
         exclude_keys = list()
@@ -215,7 +189,6 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
                                       for name, ckpt_path in overridden_name2ckpt_path.items()}
 
     required_state_dict = generate_required_state_dict(base_state_dict, overridden_name2state_dict, 
-                                                       exclude_keys, model_keys)
+                                                       exclude_keys, model_keys, initial_state_dict)
 
-    model_state_dict.update(required_state_dict)
-    model.load_state_dict(model_state_dict, strict=True)
+    model.load_state_dict(required_state_dict, strict=True)

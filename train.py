@@ -1,14 +1,15 @@
 import hydra
-from omegaconf import OmegaConf, DictConfig
-
-# Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
-# (more info: https://github.com/pytorch/pytorch/issues/1355)
 import cv2
-cv2.setNumThreads(0)
+from omegaconf import OmegaConf, DictConfig
 
 from src.constructor.config_structure import ConfigParams
 from src.constructor.runner import create_trainer
 from src.constructor import TASKS
+
+
+# Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
+# (more info: https://github.com/pytorch/pytorch/issues/1355)
+cv2.setNumThreads(0)
 
 
 @hydra.main(config_path='configs')
@@ -28,6 +29,7 @@ def main(config: DictConfig):
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
     trainer.fit(model, ckpt_path=config.resume_path)
+
 
 if __name__ == '__main__':
     main()
