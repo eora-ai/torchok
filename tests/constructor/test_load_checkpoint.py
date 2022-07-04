@@ -116,11 +116,11 @@ class TestCheckpoint(unittest.TestCase):
     def test_generate_required_state_dict_when_overridden_state_dict_had_intersection_keys(self):
         overridden_state_dict = {
             'layer1': {
-                'layer1.module.conv1.weight': 11,
-                'layer1.linear.weight': 22
+                'module.conv1.weight': 11,
+                'linear.weight': 22
             },
             'layer1.linear': {
-                'layer1.linear.weight': 222
+                'weight': 222
             }
         }
 
@@ -136,40 +136,38 @@ class TestCheckpoint(unittest.TestCase):
                                                             exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
-
+    
     def test_checkpoint_load_when_full_parameters_was_defined(self):
         model = Model()
-        current_state_dict = copy.deepcopy(model.state_dict())
+        initial_state_dict = copy.deepcopy(model.state_dict())
         override_name2path = {
             'layer': self.layer_path
         }
-        exclude_keys = ['layer.block2']
+        exclude_names = ['layer.block2']
 
-        load_checkpoint(model, self.base_path, override_name2path, exclude_keys)
+        load_checkpoint(model, self.base_path, override_name2path, exclude_names)
 
         # Partition comparing
         loaded_state_dict = model.state_dict()
 
-        # names which not loaded
+        answer_state_dict = OrderedDict()
+        override_state_dict = load_state_dict_with_prefix(self.layer_path, 'layer')
+        base_state_dict = torch.load(self.base_path)
+
         full_exclude_keys = [
             'layer.block2.conv.weight', 'layer.block2.conv.bias', 
             'layer.block2.linear.weight', 'layer.block2.linear.bias', 
         ]
-        # Names which load from base checkpoints
-        full_base_keys = ['linear.weight', 'linear.bias']
-        # Names which load from override checkpoints
-        full_overridden_keys = ['layer.linear.weight', 'layer.linear.bias']
 
-        # Compare weights for base checkpoint i.e which not in override keys and not in exclude keys
-        base_state_dict = torch.load(self.base_path)
-        compare_state_dicts(base_state_dict, loaded_state_dict, check_keys=full_base_keys)
+        answer_state_dict.update(base_state_dict)
+        for key in initial_state_dict:
+            if key.startswith('layer') and key in override_state_dict:
+                answer_state_dict[key] = override_state_dict[key]
 
-        # Compare weights in override_dict
-        overridden_state_dict = load_state_dict_with_prefix(self.layer_path, 'layer')
-        compare_state_dicts(overridden_state_dict, loaded_state_dict, check_keys=full_overridden_keys)
+        for key in full_exclude_keys:
+            answer_state_dict[key] = initial_state_dict[key]
 
-        # Compare weights exclude keys
-        compare_state_dicts(current_state_dict, loaded_state_dict, check_keys=full_exclude_keys)
+        compare_state_dicts(loaded_state_dict, answer_state_dict)
 
     def test_checkpoint_load_when_base_checkpoint_was_not_full(self):
         model = Model()
