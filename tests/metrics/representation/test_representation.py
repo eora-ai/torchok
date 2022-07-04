@@ -1,13 +1,11 @@
 import unittest
 import numpy as np
 import os
-from typing import *
 
 from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
-from src.metrics.representation import DatasetType, MetricDistance
 
-from .context import *
-
+from .data import CLASSIFICATION_ANSWERS, REPRESENTATION_ANSWERS
+from .context import run_model, MAX_K
 
 CPU_COUNT = os.cpu_count()
 
@@ -19,7 +17,8 @@ class TestRepresentationMetrics(unittest.TestCase):
             'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['precision']
+        answer = REPRESENTATION_ANSWERS['precision']
+        
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
     
@@ -27,9 +26,10 @@ class TestRepresentationMetrics(unittest.TestCase):
         metric_class = PrecisionAtKMeter
         metric_params = {
             'dataset_type': 'classification',
+            'normalize_vectors': True
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['precision']
+        answer = CLASSIFICATION_ANSWERS['precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
     
@@ -39,7 +39,7 @@ class TestRepresentationMetrics(unittest.TestCase):
             'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['recall']
+        answer = REPRESENTATION_ANSWERS['recall']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
     
@@ -47,9 +47,10 @@ class TestRepresentationMetrics(unittest.TestCase):
         metric_class = RecallAtKMeter
         metric_params = {
             'dataset_type': 'classification',
+            'normalize_vectors': True
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['recall']
+        answer = CLASSIFICATION_ANSWERS['recall']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -59,7 +60,7 @@ class TestRepresentationMetrics(unittest.TestCase):
             'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['average_precision']
+        answer = REPRESENTATION_ANSWERS['average_precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -67,9 +68,10 @@ class TestRepresentationMetrics(unittest.TestCase):
         metric_class = MeanAveragePrecisionAtKMeter
         metric_params = {
             'dataset_type': 'classification',
+            'normalize_vectors': True
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['average_precision']
+        answer = CLASSIFICATION_ANSWERS['average_precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -79,18 +81,6 @@ class TestRepresentationMetrics(unittest.TestCase):
             'dataset_type': 'representation',
         }
         metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['ndcg']
+        answer = REPRESENTATION_ANSWERS['ndcg']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
-
-    def test_search_bach_size_when_metric_recall_and_data_representation(self):
-        metric_class = RecallAtKMeter
-        metric_params = {
-            'dataset_type': 'representation',
-            'search_batch_size': 2
-        }
-        metrics = run_model(metric_class, metric_params)
-        answer = ANSWERS['recall']
-        for k in range(1, MAX_K + 1):
-            np.testing.assert_almost_equal(answer[k], metrics[k])
-    

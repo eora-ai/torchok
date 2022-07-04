@@ -1,12 +1,9 @@
 import numbers
 import numpy as np
-
-from torch import Tensor, tensor, nn
+import torch.nn as nn
+from torch import Tensor
 from torchmetrics import Metric
-
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from src.constructor import METRICS
 from src.constructor.config_structure import MetricParams, Phase
@@ -38,7 +35,7 @@ class MetricWithUtils(nn.Module):
         return self.__mapping
 
     def forward(self, *args, **kwargs):
-        return self.__metric(*args, **kwargs)
+        return self.__metric.update(*args, **kwargs)
 
     def compute(self):
         value = self.__metric.compute()
@@ -132,13 +129,13 @@ class MetricsManager(nn.Module):
                                  f'not numpy array with shape {metric_value.shape}.')
             # If it numpy array with one element but wrong dtype
             if (isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and 
-                np.issubdtype(metric_value.dtype, np.number)):
+                    np.issubdtype(metric_value.dtype, np.number)):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
                                  f'not numpy array element with dtype {metric_value.dtype}.')
 
             is_number = isinstance(metric_value, numbers.Number)
             # If not numeric type.
-            if not (is_number or isinstance(metric_value, Tensor) or  isinstance(metric_value, np.ndarray)):
+            if not (is_number or isinstance(metric_value, Tensor) or isinstance(metric_value, np.ndarray)):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
                                  f'not numpy array element with dtype {metric_value.dtype}.')
             

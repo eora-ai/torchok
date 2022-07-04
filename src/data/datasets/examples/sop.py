@@ -1,20 +1,23 @@
 from pathlib import Path
 from typing import Union, Optional
-import os
 import pandas as pd
 
 import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from src.data.datasets.base import ImageDataset
-from torchvision.datasets.utils import download_and_extract_archive
+from torchvision.datasets.utils import check_integrity, download_and_extract_archive
 
 from src.constructor import DATASETS
 
 
 @DATASETS.register_class
 class SOP(ImageDataset):
-    """A class represent Stanford Online Products - SOP dataset."""
+    """A class represent Stanford Online Products - SOP dataset.
+    
+    Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products 
+    for metric learning. The homepage of SOP is https://cvgl.stanford.edu/projects/lifted_struct/.
+    """
     base_folder = 'Stanford_Online_Products'
     filename = 'Stanford_Online_Products.tar.gz'
     
@@ -103,16 +106,9 @@ class SOP(ImageDataset):
         """Dataset length."""
         return len(self.__csv)
 
-    def _check_integrity(self) -> bool:
-        """Check integrity."""
-        if os.path.exists(self.__path):
-            return True
-        else:
-            return False
-
     def __download(self) -> None:
         """Download archive by url to specific folder."""
-        if self._check_integrity():
+        if check_integrity(self.__path):
             print('Files already downloaded and verified')
         else:
             download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)

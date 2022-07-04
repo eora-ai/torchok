@@ -1,12 +1,11 @@
 import unittest
 import numpy as np
 import os
-from typing import *
 
 from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
-from src.metrics.representation import DatasetType, MetricDistance
 
-from .context import *
+from .data import CLASSIFICATION_ANSWERS, REPRESENTATION_ANSWERS
+from .context import run_model, MAX_K
 
 
 CPU_COUNT = os.cpu_count()
@@ -22,7 +21,21 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
-        answer = ANSWERS['recall']
+        answer = REPRESENTATION_ANSWERS['recall']
+        for k in range(1, MAX_K + 1):
+            np.testing.assert_almost_equal(answer[k], metrics[k])
+
+    def test_ddp_mode_when_metric_recall_data_classification(self):
+        if CPU_COUNT < 3:
+            return
+        metric_class = RecallAtKMeter
+        metric_params = {
+            'dataset_type': 'classification',
+            'normalize_vectors': True
+        }
+        trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
+        metrics = run_model(metric_class, metric_params, trainer_params)
+        answer = CLASSIFICATION_ANSWERS['recall']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -35,7 +48,21 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
-        answer = ANSWERS['precision']
+        answer = REPRESENTATION_ANSWERS['precision']
+        for k in range(1, MAX_K + 1):
+            np.testing.assert_almost_equal(answer[k], metrics[k])
+
+    def test_ddp_mode_when_metric_precision_data_classification(self):
+        if CPU_COUNT < 3:
+            return
+        metric_class = PrecisionAtKMeter
+        metric_params = {
+            'dataset_type': 'classification',
+            'normalize_vectors': True
+        }
+        trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
+        metrics = run_model(metric_class, metric_params, trainer_params)
+        answer = CLASSIFICATION_ANSWERS['precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -48,7 +75,21 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
-        answer = ANSWERS['average_precision']
+        answer = REPRESENTATION_ANSWERS['average_precision']
+        for k in range(1, MAX_K + 1):
+            np.testing.assert_almost_equal(answer[k], metrics[k])
+
+    def test_ddp_mode_when_metric_average_precision_data_classification(self):
+        if CPU_COUNT < 3:
+            return
+        metric_class = MeanAveragePrecisionAtKMeter
+        metric_params = {
+            'dataset_type': 'classification',
+            'normalize_vectors': True
+        }
+        trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
+        metrics = run_model(metric_class, metric_params, trainer_params)
+        answer = CLASSIFICATION_ANSWERS['average_precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -61,7 +102,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
-        answer = ANSWERS['ndcg']
+        answer = REPRESENTATION_ANSWERS['ndcg']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
 
@@ -75,7 +116,7 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
         }
         trainer_params = dict(accelerator="cpu", strategy="ddp", num_processes=3)
         metrics = run_model(metric_class, metric_params, trainer_params)
-        answer = ANSWERS['recall']
+        answer = REPRESENTATION_ANSWERS['recall']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
     
