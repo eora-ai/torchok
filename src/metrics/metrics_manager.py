@@ -57,6 +57,9 @@ class MetricWithUtils(nn.Module):
         value = self._metric.compute()
         return value
 
+    def reset(self):
+        self._metric.reset()
+
 
 class MetricsManager(nn.Module):
     """Manages all metrics for a Task."""
