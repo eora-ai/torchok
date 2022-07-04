@@ -22,28 +22,29 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
         state_dict = checkpoint
     return state_dict
 
-    
+
 def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[OrderedDict[str, torch.Tensor]]]:
-    """Generate sorted by depth list of state dict list with the current depth.
+    # TODO: fix docstring
+    """Generate sorted by depth list of state dict list with the current depth. 
     Where depth is calculated as the number of dots in the dictionary key.
 
     Args:
         override_name2state_dict: Dicts of module key to state dict, which should override base checkpoint.
 
     Returns:
-        sorted_state_dicts: Sorted by depth list of state dicts list. Where the positional index means the depth 
-            for each state dicts at this position.
+        depth2override_state_dicts: Sorted by depth dict, where key - depth, value - list of all state dicts with 
+            current depth.
     """
-    max_depth = 0
-    sorted_state_dicts = [[]] * len(override_name2state_dict)
+    depth2override_state_dicts = dict()
 
     for override_key, override_state_dict in override_name2state_dict.items():
         depth = len(override_key.split('.')) - 1
-        sorted_state_dicts[depth].append(override_state_dict)
-        max_depth = depth if depth > max_depth else max_depth
-
-    sorted_state_dicts = sorted_state_dicts[: max_depth + 1]
-    return sorted_state_dicts
+        if depth not in depth2override_state_dicts:
+            depth2override_state_dicts[depth] = [override_state_dict]
+        else:
+            depth2override_state_dicts[depth].append(override_state_dict)
+    depth2override_state_dicts = OrderedDict(sorted(depth2override_state_dicts.items()))
+    return depth2override_state_dicts
 
 
 def get_state_dict_with_prefix(prefix: str, 
@@ -60,9 +61,10 @@ def get_state_dict_with_prefix(prefix: str,
     state_dict_with_prefix = OrderedDict()
     # remove spaces and dots
     prefix = prefix.strip(' .')
+    prefix = prefix + '.'
     for key, value in state_dict.items():
         if not key.startswith(prefix):
-            key = prefix + '.' + key
+            key = prefix + key
         state_dict_with_prefix[key] = value
     return state_dict_with_prefix
 
@@ -126,17 +128,17 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
         overridden_full_name2state_dict[overridden_name] = prefixed_state_dict
 
     # Get sorted by depth state dict list that must be overridden
-    sorted_state_dicts = sort_state_dict_by_depth(overridden_full_name2state_dict)
+    depth2state_dicts = sort_state_dict_by_depth(overridden_full_name2state_dict)
     
     # Firstly change model state dict by base state dict
     required_state_dict.update(base_state_dict)
     
     # Then change model state dict with overridden state dicts, in order of it's depths
-    for depth_state_dicts in sorted_state_dicts:
+    for _, depth_state_dicts in depth2state_dicts.items():
         for state_dict in depth_state_dicts:
             required_state_dict.update(state_dict)
 
-    # Create straightened exclude keys
+    # Create absolute exclude keys
     absolute_exclude_keys = []
     for exclude_key in exclude_keys:
         absolute_keys = get_absolute_keys(exclude_key, model_keys)
