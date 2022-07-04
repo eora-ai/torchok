@@ -6,7 +6,7 @@ import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from src.data.datasets.base import ImageDataset
-from torchvision.datasets.utils import check_integrity, download_and_extract_archive
+from torchvision.datasets.utils import download_and_extract_archive
 
 from src.constructor import DATASETS
 
@@ -62,7 +62,7 @@ class SOP(ImageDataset):
         if download:
             self.__download()
 
-        if not self._check_integrity():
+        if not self.__path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
         if self.__train:
@@ -108,7 +108,7 @@ class SOP(ImageDataset):
 
     def __download(self) -> None:
         """Download archive by url to specific folder."""
-        if check_integrity(self.__path):
+        if self.__path.is_dir():
             print('Files already downloaded and verified')
         else:
             download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)

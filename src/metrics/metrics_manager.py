@@ -28,7 +28,7 @@ class MetricWithUtils(nn.Module):
         self._compute_on_step = compute_on_step
 
     @property
-    def log_name(self) -> Metric:
+    def metric(self) -> Metric:
         """The metric."""
         return self._metric
 
@@ -159,7 +159,7 @@ class MetricsManager(nn.Module):
             
             # Do reset
             metric_with_utils.reset()
-            
+
         return log
 
     @staticmethod
