@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 import albumentations as A
 from omegaconf import DictConfig, ListConfig
 from torch import Tensor
-from torch.nn import Module, Parameter
+from torch.nn import Parameter
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
