@@ -22,7 +22,7 @@ def build_model_with_cfg(model_cls: Callable,
         model_cfg: Configuration for creating the model.
         **model_args: model args passed through to model __init__
     """
-    model = model_cls(**model_args) if model_cfg is None else model_cls(cfg=model_cfg, **model_args)
+    model = model_cls(**model_args) if model_cfg is None else model_cls(**model_cfg, **model_args)
     pretrained_url = default_cfg.get('url', None)
 
     if pretrained and pretrained_url is not None:

@@ -4,7 +4,7 @@ Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 import math
-from typing import Union, Dict, Any, List
+from typing import Union, List
 
 import torch.nn as nn
 from torch import Tensor
@@ -15,68 +15,50 @@ from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.backbones.utils.utils import round_channels
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.modules.blocks.inverted_residual import InvertedResidualBlock
-from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
-
-
-def _cfg(url='', **kwargs):
-    return {
-        'url': url, 'input_size': (3, 224, 224), 'pool_size': (7, 7),
-        'crop_pct': 0.875, 'interpolation': 'bicubic',
-        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
-    }
-
 
 default_cfgs = {
-    'efficientnet_b0': _cfg(url=''),
-    'efficientnet_b1': _cfg(url=''),
-    'efficientnet_b2': _cfg(url=''),
-    'efficientnet_b3': _cfg(url=''),
-    'efficientnet_b4': _cfg(url=''),
-    'efficientnet_b5': _cfg(url=''),
-    'efficientnet_b6': _cfg(url=''),
-    'efficientnet_b7': _cfg(url='')
+    'efficientnet_b0': dict(url=''),
+    'efficientnet_b1': dict(url=''),
+    'efficientnet_b2': dict(url=''),
+    'efficientnet_b3': dict(url=''),
+    'efficientnet_b4': dict(url=''),
+    'efficientnet_b5': dict(url=''),
+    'efficientnet_b6': dict(url=''),
+    'efficientnet_b7': dict(url='')
 }
 
 cfg_cls = dict(
     efficientnet_b0=dict(
-        WIDTH_COEFFICIENT=1.0,
-        DEPTH_COEFFICIENT=1.0,
-        DROPOUT_RATE=0.2
+        width_coefficient=1.0,
+        depth_coefficient=1.0
     ),
     efficientnet_b1=dict(
-        WIDTH_COEFFICIENT=1.0,
-        DEPTH_COEFFICIENT=1.1,
-        DROPOUT_RATE=0.2
+        width_coefficient=1.0,
+        depth_coefficient=1.1
     ),
     efficientnet_b2=dict(
-        WIDTH_COEFFICIENT=1.1,
-        DEPTH_COEFFICIENT=1.2,
-        DROPOUT_RATE=0.3
+        width_coefficient=1.1,
+        depth_coefficient=1.2
     ),
     efficientnet_b3=dict(
-        WIDTH_COEFFICIENT=1.2,
-        DEPTH_COEFFICIENT=1.4,
-        DROPOUT_RATE=0.3
+        width_coefficient=1.2,
+        depth_coefficient=1.4
     ),
     efficientnet_b4=dict(
-        WIDTH_COEFFICIENT=1.4,
-        DEPTH_COEFFICIENT=1.8,
-        DROPOUT_RATE=0.4
+        width_coefficient=1.4,
+        depth_coefficient=1.8
     ),
     efficientnet_b5=dict(
-        WIDTH_COEFFICIENT=1.6,
-        DEPTH_COEFFICIENT=2.2,
-        DROPOUT_RATE=0.4
+        width_coefficient=1.6,
+        depth_coefficient=2.2
     ),
     efficientnet_b6=dict(
-        WIDTH_COEFFICIENT=1.8,
-        DEPTH_COEFFICIENT=2.6,
-        DROPOUT_RATE=0.5
+        width_coefficient=1.8,
+        depth_coefficient=2.6
     ),
     efficientnet_b7=dict(
-        WIDTH_COEFFICIENT=2.0,
-        DEPTH_COEFFICIENT=3.1,
-        DROPOUT_RATE=0.5
+        width_coefficient=2.0,
+        depth_coefficient=3.1
     )
 )
 
@@ -94,17 +76,17 @@ class EfficientNet(BaseModel):
         [6, 320, 1, 1, 3]
     ]
 
-    def __init__(self, cfg: Dict[str, Any], in_chans: int = 3):
+    def __init__(self, width_coefficient, depth_coefficient, in_chans: int = 3):
         """Init EfficientNet.
 
         Args:
-            cfg: Model config.
+            width_coefficient: Channels multiplier.
+            depth_coefficient: Layer repeat multiplier.
             in_chans: Input channels.
         """
         super().__init__()
         self.in_chans = in_chans
-        width_coefficient, depth_coefficient = cfg['WIDTH_COEFFICIENT'], cfg['DEPTH_COEFFICIENT']
-        self.last_channels = round_channels(1280, width_coefficient)
+        self.out_channels = round_channels(1280, width_coefficient)
         self.blocks = self.__create_blocks(width_coefficient, depth_coefficient)
 
     def __create_blocks(self, width_coefficient: float, depth_coefficient: float) -> nn.Sequential:
@@ -114,11 +96,11 @@ class EfficientNet(BaseModel):
             width_coefficient: Channels multiplier.
             depth_coefficient: Layer repeat multiplier.
         """
-        in_channels = round_channels(32, width_coefficient, 2)
+        in_channels = round_channels(32, width_coefficient, 8)
         blocks = [ConvBnAct(self.in_chans, in_channels, 3, stride=2, padding=1, act_layer=nn.SiLU)]
 
         for expand_ratio, channels, repeats, stride, kernel_size in self.base_model:
-            out_channels = round_channels(channels, width_coefficient, divisor=4)
+            out_channels = round_channels(channels, width_coefficient, divisor=8)
             layers_repeats = int(math.ceil(repeats * depth_coefficient))
 
             for layer in range(layers_repeats):
@@ -136,7 +118,7 @@ class EfficientNet(BaseModel):
                 in_channels = out_channels
 
         blocks.append(
-            ConvBnAct(in_channels, self.last_channels, kernel_size=1, stride=1, padding=0)
+            ConvBnAct(in_channels, self.out_channels, kernel_size=1, stride=1, padding=0)
         )
 
         return nn.Sequential(*blocks)
@@ -148,7 +130,7 @@ class EfficientNet(BaseModel):
 
     def get_forward_output_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
-        return self.last_channels
+        return self.out_channels
 
 
 def create_effnet(variant: str, pretrained: bool = False, **model_kwargs):
