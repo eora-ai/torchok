@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import torch
 from omegaconf import DictConfig
@@ -32,6 +32,13 @@ class ClassificationTask(BaseTask):
         head_name = self._hparams.task.params.get('head_name', 'Identity')
         self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
 
+    def no_weight_decay(self) -> List[str]:
+        backbone_no_weight_decay = ['backbone.' + name for name in self.backbone.no_weight_decay()]
+        pooling_no_weight_decay = ['polling.' + name for name in self.polling.no_weight_decay()]
+        head_no_weight_decay = ['head.' + name for name in self.head.no_weight_decay()]
+        no_weight_decay_names = backbone_no_weight_decay + pooling_no_weight_decay + head_no_weight_decay
+        return no_weight_decay_names
+   
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone(x)
