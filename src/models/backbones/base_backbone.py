@@ -1,5 +1,3 @@
-import torch
-import torch.nn as nn
 from abc import ABC, abstractmethod
 from typing import List, Union
 
@@ -20,10 +18,10 @@ class BaseBackbone(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def get_forward_feature_output_channels(self) -> Union[int, List[int]]:
+    def get_forward_feature_channels(self) -> Union[int, List[int]]:
         """Set output channels for forward features pass.
         
-        Returns: Outpus channels.
+        Returns: Outputs channels.
         """
         pass
     

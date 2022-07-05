@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from abc import ABC, abstractmethod
 from typing import List, Union
@@ -11,10 +10,17 @@ class BaseModel(nn.Module, ABC):
         super().__init__()
 
     @abstractmethod
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
+    def get_forward_channels(self) -> Union[int, List[int]]:
         """Set output channels for Module forward pass.
         
-        Returns: Outpus channels.
+        Returns: Outputs channels.
         """
         pass
     
+    @abstractmethod
+    def no_weight_decay(self) -> List[str]:
+        """Create module names for which weights decay will not be used.
+        
+        Returns: Module names for which weights decay will not be used.
+        """
+        pass
