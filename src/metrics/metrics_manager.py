@@ -40,6 +40,15 @@ class MetricWithUtils(nn.Module):
         return self._mapping
     
     def forward(self, *args, **kwargs):
+        """Forward metric.
+        
+        This method cache the states, then call update function for current *args and **kwargs,
+        then call compute to calculate the metric result and then restore cached states and call update for *args
+        and **kwargs. For more information see forward method of Metric class in torchmetrics.
+        """
+        return self._metric(*args, **kwargs)
+
+    def update(self, *args, **kwargs):
         """Update metric states."""
         self._metric.update(*args, **kwargs)
 
@@ -104,6 +113,9 @@ class MetricsManager(nn.Module):
     def forward(self, phase: Phase, *args, **kwargs):
         """Update states of all metrics on phase loop.
 
+        MetricsManager forward method use only update method of metrics. Because metric forward method  
+        increases computation time (see MetricWithUtils forward method for more information).
+
         Args:
             phase: Phase Enum.
         """
@@ -111,7 +123,7 @@ class MetricsManager(nn.Module):
 
         for metric_with_utils in self.__phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
-            metric_with_utils(*args, **targeted_kwargs)
+            metric_with_utils.update(*args, **targeted_kwargs)
             
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
         """Summarize epoch values and return log.
