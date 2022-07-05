@@ -81,7 +81,7 @@ class IndexBasedMeter(Metric, ABC):
         Raises:
             ValueError: If metric or dataset is not correct write.
         """
-        super().__init__(compute_on_step=False, **kwargs)
+        super().__init__(**kwargs)
         self.exact_index = exact_index
         
         self.dataset_type = dataset_enum_mapping[dataset_type]

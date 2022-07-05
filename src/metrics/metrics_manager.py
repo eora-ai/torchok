@@ -11,21 +11,18 @@ from src.constructor.config_structure import MetricParams, Phase
 
 class MetricWithUtils(nn.Module):
     """Union class for metric and metric utils parameters."""
-    def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str, compute_on_step: bool = False):
+    def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
         """Initalize MetricWithUtils.
         
         Args:
             metric: Metric written with TorchMetrics.
             mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
             log_name: The metric name used in logs.
-            compute_on_step: If true run metric forward method in self.forward method, else run update. Note that 
-                the metric forward method calls update and compute method, so it slows down the computing speed.
         """
         super().__init__()
         self._metric = metric
         self._mapping = mapping
         self._log_name = log_name
-        self._compute_on_step = compute_on_step
 
     @property
     def metric(self) -> Metric:
@@ -42,22 +39,17 @@ class MetricWithUtils(nn.Module):
         """Dictionary for mapping Metric forward input keys with Task output dictionary keys."""
         return self._mapping
     
-    @property
-    def compute_on_step(self) -> bool:
-        """If true run metric forward method in self.forward method, else run update."""
-        return self._mapping
-
     def forward(self, *args, **kwargs):
-        if self._compute_on_step:
-            return self._metric(*args, **kwargs)
-        else:
-            self._metric.update(*args, **kwargs)
+        """Update metric states."""
+        self._metric.update(*args, **kwargs)
 
     def compute(self):
+        """Compute metric."""
         value = self._metric.compute()
         return value
 
     def reset(self):
+        """Reset metric states."""
         self._metric.reset()
 
 
