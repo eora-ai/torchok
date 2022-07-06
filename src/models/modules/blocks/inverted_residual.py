@@ -34,7 +34,7 @@ class InvertedResidualBlock(nn.Module):
         self.drop_connect_rate = drop_connect_rate
         hidden_dim = round_channels(in_channels, expand_ratio, divisor=2)
         self.use_res_connect = stride == 1 and in_channels == out_channels
-        reduction_channels = int(in_channels / reduction)
+        reduction_channels = round_channels(in_channels // 4, divisor=2)
 
         layers = []
         if expand_ratio != 1:
