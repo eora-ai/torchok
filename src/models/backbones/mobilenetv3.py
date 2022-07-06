@@ -7,34 +7,19 @@ Licensed under The Apache 2.0 License [see LICENSE for details]
 from typing import List, Union
 
 import torch.nn as nn
-from torch.nn import init
 from torch import Tensor
 
 from src.models.base import BaseModel
-from src.models.modules.bricks.activations import HSigmoid, HSwish
+from src.models.modules.bricks.activations import HSigmoid
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.se import SEModule
 from src.models.backbones.utils.helpers import build_model_with_cfg
-from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 from src.constructor import BACKBONES
 
 
-def _cfg(url: str = '', **kwargs):
-    return {
-        'url': url,
-        'input_size': (3, 224, 224),
-        'pool_size': (7, 7),
-        'crop_pct': 0.875,
-        'interpolation': 'bilinear',
-        'mean': IMAGENET_DEFAULT_MEAN,
-        'std': IMAGENET_DEFAULT_STD,
-        **kwargs
-    }
-
-
 default_cfgs = {
-    'mobilenet_v3_large': _cfg(url=''),
-    'mobilenet_v3_small': _cfg(url='')
+    'mobilenet_v3_large': dict(url=''),
+    'mobilenet_v3_small': dict(url='')
 }
 
 
@@ -61,21 +46,27 @@ class Block(nn.Module):
         super().__init__()
         self.stride = stride
         self.se = semodule
+        self.use_res_connect = stride == 1 and in_channels == out_channels
+        
+        layers = []
 
-        self.convbnact1 = ConvBnAct(in_channels, expand_channels, 1, 0, 1, bias=False, act_layer=act_layer)
-        self.convbnact2 = ConvBnAct(expand_channels, expand_channels, kernel_size, kernel_size//2, stride,
-                                    bias=False, groups=expand_channels, act_layer=act_layer)
-        self.convbnact3 = ConvBnAct(expand_channels, out_channels, 1, 0, 1, bias=False, act_layer=None)
+        if in_channels != expand_channels:
+            layers.append(ConvBnAct(in_channels, expand_channels, 1, 0, 1, bias=False, act_layer=act_layer))
+        
+        layers.append(ConvBnAct(expand_channels, expand_channels, kernel_size, kernel_size//2, stride,
+                                    bias=False, groups=expand_channels, act_layer=act_layer))
+                        
+        layers.append(ConvBnAct(expand_channels, out_channels, 1, 0, 1, bias=False, act_layer=None))
 
-        self.shortcut = nn.Sequential()
+        self.inverted_residual =  nn.Sequential(*layers)
+
+        #shortcut
         if stride == 1 and in_channels != out_channels:
             self.shortcut = nn.Sequential(ConvBnAct(in_channels, out_channels, 1, 0, 1, bias=False, act_layer=None))
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward method."""
-        out = self.convbnact1(x)
-        out = self.convbnact2(out)
-        out = self.convbnact3(out)
+        out = self.inverted_residual(x)
 
         if self.se is not None:
             out = self.se(out)
@@ -93,7 +84,7 @@ class MobileNetV3_Large(BaseModel):
         """
         super().__init__()
         self.out_channels = 960
-        self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=HSwish)
+        self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
 
         self.bneck = nn.Sequential(
             Block(3, 16, 16, 16, nn.ReLU, None, 1),
@@ -105,38 +96,23 @@ class MobileNetV3_Large(BaseModel):
                   SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
             Block(5, 40, 120, 40, nn.ReLU,
                   SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(3, 40, 240, 80, HSwish, None, 2),
-            Block(3, 80, 200, 80, HSwish, None, 1),
-            Block(3, 80, 184, 80, HSwish, None, 1),
-            Block(3, 80, 184, 80, HSwish, None, 1),
-            Block(3, 80, 480, 112, HSwish,
+            Block(3, 40, 240, 80, nn.Hardswish, None, 2),
+            Block(3, 80, 200, 80, nn.Hardswish, None, 1),
+            Block(3, 80, 184, 80, nn.Hardswish, None, 1),
+            Block(3, 80, 184, 80, nn.Hardswish, None, 1),
+            Block(3, 80, 480, 112, nn.Hardswish,
                   SEModule(112, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(3, 112, 672, 112, HSwish,
+            Block(3, 112, 672, 112, nn.Hardswish,
                   SEModule(112, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 112, 672, 160, HSwish,
+            Block(5, 112, 672, 160, nn.Hardswish,
                   SEModule(160, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 160, 672, 160, HSwish,
+            Block(5, 160, 672, 160, nn.Hardswish,
                   SEModule(160, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 2),
-            Block(5, 160, 960, 160, HSwish,
+            Block(5, 160, 960, 160, nn.Hardswish,
                   SEModule(160, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
         )
 
-        self.convbnact = ConvBnAct(160, self.out_channels, 1, 0, 1, act_layer=HSwish)
-        self.__init_weights()
-
-    def __init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                init.kaiming_normal_(m.weight, mode='fan_out')
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                init.constant_(m.weight, 1)
-                init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                init.normal_(m.weight, std=0.001)
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
+        self.convbnact = ConvBnAct(160, self.out_channels, 1, 0, 1, act_layer=nn.Hardswish)
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward method."""
@@ -159,47 +135,32 @@ class MobileNetV3_Small(BaseModel):
         """
         super(MobileNetV3_Small, self).__init__()
         self.out_channels = 576
-        self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=HSwish)
+        self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
 
         self.bneck = nn.Sequential(
             Block(3, 16, 16, 16, nn.ReLU,
                   SEModule(16, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 2),
             Block(3, 16, 72, 24, nn.ReLU, None, 2),
             Block(3, 24, 88, 24, nn.ReLU, None, 1),
-            Block(5, 24, 96, 40, HSwish,
+            Block(5, 24, 96, 40, nn.Hardswish,
                   SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 2),
-            Block(5, 40, 240, 40, HSwish,
+            Block(5, 40, 240, 40, nn.Hardswish,
                   SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 40, 240, 40, HSwish,
+            Block(5, 40, 240, 40, nn.Hardswish,
                   SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 40, 120, 48, HSwish,
+            Block(5, 40, 120, 48, nn.Hardswish,
                   SEModule(48, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 48, 144, 48, HSwish,
+            Block(5, 48, 144, 48, nn.Hardswish,
                   SEModule(48, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 48, 288, 96, HSwish,
+            Block(5, 48, 288, 96, nn.Hardswish,
                   SEModule(96, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 2),
-            Block(5, 96, 576, 96, HSwish,
+            Block(5, 96, 576, 96, nn.Hardswish,
                   SEModule(96, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 96, 576, 96, HSwish,
+            Block(5, 96, 576, 96, nn.Hardswish,
                   SEModule(96, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
         )
 
-        self.convbnact = ConvBnAct(96, 576, 1, 0, 1, act_layer=HSwish)
-        self.__init_weights()
-
-    def __init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                init.kaiming_normal_(m.weight, mode='fan_out')
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                init.constant_(m.weight, 1)
-                init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                init.normal_(m.weight, std=0.001)
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
+        self.convbnact = ConvBnAct(96, 576, 1, 0, 1, act_layer=nn.Hardswish)
 
     def forward(self, x: Tensor) -> Tensor:
         out = self.convbnact_stem(x)
