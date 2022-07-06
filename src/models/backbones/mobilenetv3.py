@@ -13,6 +13,7 @@ from src.models.base import BaseModel
 from src.models.modules.bricks.activations import HSigmoid
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.se import SEModule
+from src.models.modules.blocks.inverted_residual import InvertedResidualBlock
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.constructor import BACKBONES
 
@@ -86,30 +87,32 @@ class MobileNetV3_Large(BaseModel):
         self.out_channels = 960
         self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
 
+        se_kwargs = dict(use_pooling=True, gate=HSigmoid, bias=True)
+
         self.bneck = nn.Sequential(
-            Block(3, 16, 16, 16, nn.ReLU, None, 1),
-            Block(3, 16, 64, 24, nn.ReLU, None, 2),
-            Block(3, 24, 72, 24, nn.ReLU, None, 1),
-            Block(5, 24, 72, 40, nn.ReLU,
-                  SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 2),
-            Block(5, 40, 120, 40, nn.ReLU,
-                  SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 40, 120, 40, nn.ReLU,
-                  SEModule(40, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(3, 40, 240, 80, nn.Hardswish, None, 2),
-            Block(3, 80, 200, 80, nn.Hardswish, None, 1),
-            Block(3, 80, 184, 80, nn.Hardswish, None, 1),
-            Block(3, 80, 184, 80, nn.Hardswish, None, 1),
-            Block(3, 80, 480, 112, nn.Hardswish,
-                  SEModule(112, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(3, 112, 672, 112, nn.Hardswish,
-                  SEModule(112, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 112, 672, 160, nn.Hardswish,
-                  SEModule(160, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
-            Block(5, 160, 672, 160, nn.Hardswish,
-                  SEModule(160, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 2),
-            Block(5, 160, 960, 160, nn.Hardswish,
-                  SEModule(160, reduction=4, use_norm=True, use_pooling=True, gate=HSigmoid), 1),
+            InvertedResidualBlock(16, 16, 3, 1, expand_channels=16, act_layer=nn.ReLU, use_se=False),
+            InvertedResidualBlock(16, 24, 3, 2, expand_channels=64, act_layer=nn.ReLU, use_se=False),
+            InvertedResidualBlock(24, 24, 3, 1, expand_channels=72, act_layer=nn.ReLU, use_se=False),
+            InvertedResidualBlock(24, 40, 5, 2, expand_channels=72,
+                                  act_layer=nn.ReLU, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(40, 40, 5, 1, expand_channels=120,
+                                  act_layer=nn.ReLU, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(40, 40, 5, 1, expand_channels=120,
+                                  act_layer=nn.ReLU, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(40, 80, 3, 2, expand_channels=240, act_layer=nn.Hardswish, use_se=False),
+            InvertedResidualBlock(80, 80, 3, 1, expand_channels=200, act_layer=nn.Hardswish, use_se=False),
+            InvertedResidualBlock(80, 80, 3, 1, expand_channels=184, act_layer=nn.Hardswish, use_se=False),
+            InvertedResidualBlock(80, 80, 3, 1, expand_channels=184, act_layer=nn.Hardswish, use_se=False),
+            InvertedResidualBlock(80, 112, 3, 1, expand_channels=480,
+                                  act_layer=nn.Hardswish, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(112, 112, 3, 1, expand_channels=672,
+                                  act_layer=nn.Hardswish, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(112, 160, 5, 1, expand_channels=672,
+                                  act_layer=nn.Hardswish, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(160, 160, 5, 2, expand_channels=960,
+                                  act_layer=nn.Hardswish, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
+            InvertedResidualBlock(160, 160, 5, 1, expand_channels=960,
+                                  act_layer=nn.Hardswish, use_se=True, reduction_divisor=8, se_kwargs=se_kwargs),
         )
 
         self.convbnact = ConvBnAct(160, self.out_channels, 1, 0, 1, act_layer=nn.Hardswish)

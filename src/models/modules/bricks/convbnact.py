@@ -33,6 +33,9 @@ class ConvBnAct(nn.Module):
                 default: relu.
         """
         super().__init__()
+        self.stride = stride
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self.conv = nn.Conv2d(in_channels,
                               out_channels,
                               kernel_size=kernel_size,

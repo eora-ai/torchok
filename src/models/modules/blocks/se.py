@@ -25,6 +25,7 @@ class SEModule(nn.Module):
                  divisor: int = 1,
                  use_pooling: bool = False,
                  use_norm: bool = False,
+                 bias: bool = False,
                  gate: nn.Module = nn.Sigmoid):
         """Init SEModule.
 
@@ -45,9 +46,8 @@ class SEModule(nn.Module):
         else:
             reduction_channels = make_divisible(channels // reduction, divisor, min_channels)
 
-        self.convbnact1 = ConvBnAct(channels, reduction_channels, kernel_size=1, padding=0, use_norm=use_norm)
-        self.convbnact2 = ConvBnAct(reduction_channels, channels, kernel_size=1,
-                                    padding=0, use_norm=use_norm, act_layer=None)
+        self.convbnact1 = ConvBnAct(channels, reduction_channels, 1, 0, use_norm=use_norm, bias=bias)
+        self.convbnact2 = ConvBnAct(reduction_channels, channels, 1, 0, use_norm=use_norm, act_layer=None, bias=bias)
         self.gate = gate()
 
     def forward(self, x):
