@@ -16,8 +16,7 @@ class InvertedResidualBlock(nn.Module):
                  expand_channels: int = None,
                  act_layer: nn.Module = nn.SiLU,
                  use_se: bool = True,
-                 se_kwargs:dict = {},
-                 reduction_divisor: int = 2,
+                 se_kwargs: dict = None,
                  drop_connect_rate: float = 0.2):
         """Init InvertedResidualBlock.
 
@@ -34,6 +33,7 @@ class InvertedResidualBlock(nn.Module):
         """
         super().__init__()
         self.drop_connect_rate = drop_connect_rate
+        se_kwargs = {} if se_kwargs is None else se_kwargs
         expand_channels = round_channels(in_channels, expand_ratio, divisor=2) if expand_channels is None else expand_channels
         self.use_res_connect = stride == 1 and in_channels == out_channels
         self.use_expand_block = expand_channels != in_channels

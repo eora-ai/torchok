@@ -17,14 +17,14 @@ from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.modules.blocks.inverted_residual import InvertedResidualBlock
 
 default_cfgs = {
-    'efficientnet_b0': dict(url=''),
-    'efficientnet_b1': dict(url=''),
-    'efficientnet_b2': dict(url=''),
-    'efficientnet_b3': dict(url=''),
-    'efficientnet_b4': dict(url=''),
-    'efficientnet_b5': dict(url=''),
-    'efficientnet_b6': dict(url=''),
-    'efficientnet_b7': dict(url='')
+    'efficientnet_b0': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b0_torchok.pth'),
+    'efficientnet_b1': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b1_torchok.pth'),
+    'efficientnet_b2': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b2_torchok.pth'),
+    'efficientnet_b3': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b3_torchok.pth'),
+    'efficientnet_b4': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b4_torchok.pth'),
+    'efficientnet_b5': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b5_torchok.pth'),
+    'efficientnet_b6': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b6_torchok.pth'),
+    'efficientnet_b7': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/efficientnet-b7_torchok.pth')
 }
 
 cfg_cls = dict(
@@ -105,7 +105,7 @@ class EfficientNet(BaseModel):
 
             for layer in range(layers_repeats):
                 # generate new reduction_channels every step
-                se_kwargs = dict(reduction_channels=round_channels(in_channels//4, divisor=2), bias=True)
+                se_kwargs = dict(reduction_channels=round_channels(in_channels // 4, divisor=2), bias=True)
                 blocks.append(
                     InvertedResidualBlock(
                         in_channels,
@@ -114,7 +114,7 @@ class EfficientNet(BaseModel):
                         stride=stride if layer == 0 else 1,
                         kernel_size=kernel_size,
                         drop_connect_rate=0.2,
-                        se_kwargs = se_kwargs
+                        se_kwargs=se_kwargs
                     )
                 )
                 in_channels = out_channels
