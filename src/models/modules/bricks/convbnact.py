@@ -15,6 +15,7 @@ class ConvBnAct(nn.Module):
                  padding: int,
                  stride: int = 1,
                  bias: bool = False,
+                 use_norm: bool = True,
                  groups: int = 1,
                  act_layer: Optional[nn.Module] = nn.ReLU):
         """Init ConvBnAct.
@@ -32,6 +33,9 @@ class ConvBnAct(nn.Module):
                 default: relu.
         """
         super().__init__()
+        self.stride = stride
+        self.in_channels = in_channels
+        self.out_channels = out_channels
         self.conv = nn.Conv2d(in_channels,
                               out_channels,
                               kernel_size=kernel_size,
@@ -39,13 +43,15 @@ class ConvBnAct(nn.Module):
                               padding=padding,
                               groups=groups,
                               bias=bias)
-        self.bn = nn.BatchNorm2d(out_channels)
+        self.bn = nn.BatchNorm2d(out_channels) if use_norm else None
         self.act = act_layer(inplace=True) if act_layer is not None else None
 
     def forward(self, x: torch.Tensor):
         """Forward method."""
         x = self.conv(x)
-        x = self.bn(x)
+
+        if self.bn is not None:
+            x = self.bn(x)
 
         if self.act is not None:
             x = self.act(x)
