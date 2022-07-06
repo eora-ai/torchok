@@ -104,6 +104,8 @@ class EfficientNet(BaseModel):
             layers_repeats = int(math.ceil(repeats * depth_coefficient))
 
             for layer in range(layers_repeats):
+                # generate new reduction_channels every step
+                se_kwargs = dict(reduction_channels=round_channels(in_channels//4, divisor=2))
                 blocks.append(
                     InvertedResidualBlock(
                         in_channels,
@@ -111,8 +113,8 @@ class EfficientNet(BaseModel):
                         expand_ratio=expand_ratio,
                         stride=stride if layer == 0 else 1,
                         kernel_size=kernel_size,
-                        padding=kernel_size // 2,
-                        drop_connect_rate=0.2
+                        drop_connect_rate=0.2,
+                        se_kwargs = se_kwargs
                     )
                 )
                 in_channels = out_channels

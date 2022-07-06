@@ -36,7 +36,6 @@ class InvertedResidualBlock(nn.Module):
         self.drop_connect_rate = drop_connect_rate
         expand_channels = round_channels(in_channels, expand_ratio, divisor=2) if expand_channels is None else expand_channels
         self.use_res_connect = stride == 1 and in_channels == out_channels
-        reduction_channels = round_channels(expand_channels//4, divisor=reduction_divisor)
         self.use_expand_block = expand_channels != in_channels
 
         layers = []
@@ -49,7 +48,7 @@ class InvertedResidualBlock(nn.Module):
                       stride, groups=expand_channels, act_layer=act_layer))
 
         if use_se:
-            layers.append(SEModule(expand_channels, reduction_channels=reduction_channels, **se_kwargs))
+            layers.append(SEModule(expand_channels, **se_kwargs))
 
         layers.append(ConvBnAct(expand_channels, out_channels, 1, 0, 1, bias=False, act_layer=None))
 
