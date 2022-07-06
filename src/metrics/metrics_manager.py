@@ -42,18 +42,22 @@ class MetricWithUtils(nn.Module):
     def forward(self, *args, **kwargs):
         """Forward metric.
         
-        This method cache the states, then call update function for current *args and **kwargs,
+        This method cache the states, then do reset current metric state,
+        then call update function for current *args and **kwargs (usually it is batch),
         then call compute to calculate the metric result and then restore cached states and call update for *args
         and **kwargs. For more information see forward method of Metric class in torchmetrics.
         """
         return self._metric(*args, **kwargs)
 
     def update(self, *args, **kwargs):
-        """Update metric states."""
+        """Update metric states.
+
+        Add *args and **kwargs (usually it is batch) to current state. 
+        """
         self._metric.update(*args, **kwargs)
 
     def compute(self):
-        """Compute metric."""
+        """Compute metric on the whole current state."""
         value = self._metric.compute()
         return value
 

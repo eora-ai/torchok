@@ -245,10 +245,10 @@ class IndexBasedMeter(Metric, ABC):
 
         relevants = []
         # with cycle run through query_order_numbers which corresponding with queries_idxs, so the relevants array
-        # would be corresponding with queries_idxs. As a result we will have 3 arrays: 
+        # would be corresponding with queries_idxs. As a result we will have 3 arrays:
         # clear_query_order_numbers, queries_idxs and relevants with the same sizes, and for any index i
-        # we will have 
-        # it's order_number = clear_query_order_numbers[i] in score matrix, 
+        # we will have
+        # it's order_number = clear_query_order_numbers[i] in score matrix,
         # it's index in vectors = queries_idxs[i]
         # it's relevants indexes in gallery data = relevants[i]
         for query_number in clear_query_order_numbers:
@@ -265,11 +265,11 @@ class IndexBasedMeter(Metric, ABC):
         relevants = np.array(relevants)
         return relevants, clear_scores, gallery_idxs, queries_idxs, clear_query_order_numbers
 
-    def prepare_classification_data(self, 
+    def prepare_classification_data(self,
                                     targets: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Prepare data for faiss build index, and following search, in classification dataset case.
         
-        In the classification case, ll the vectors would be used as queries, and the relevants vectors will be vectors 
+        In the classification case, ll the vectors would be used as queries, and the relevants vectors will be vectors
         that have the same label as the query.
 
         Args:
