@@ -15,14 +15,14 @@ class TestMobileNetV3(unittest.TestCase):
         self._output = {}
 
 
-# class TestMobileNetV3Small(TestMobileNetV3):
+class TestMobileNetV3Small(TestMobileNetV3):
 
-#     def __init__(self, methodName: str = ...) -> None:
-#         super().__init__('mobilenet_v3_small', methodName)
+    def __init__(self, methodName: str = ...) -> None:
+        super().__init__('mobilenet_v3_small', methodName)
 
-#     def test_shape(self):
-#         x = self._model(self._input)
-#         self.assertTupleEqual(x.shape, (2, 576, 7, 7))
+    def test_shape(self):
+        x = self._model(self._input)
+        self.assertTupleEqual(x.shape, (2, 576, 7, 7))
 
 
 class TestMobileNetV3Large(TestMobileNetV3):
