@@ -12,11 +12,11 @@ class InvertedResidualBlock(nn.Module):
                  out_channels: int,
                  kernel_size: int,
                  stride: int,
-                 padding: int,
                  expand_ratio: int = None,
                  expand_channels: int = None,
                  act_layer: nn.Module = nn.SiLU,
                  use_se: bool = True,
+                 se_kwargs:dict = {},
                  reduction_divisor: int = 2,
                  drop_connect_rate: float = 0.2):
         """Init InvertedResidualBlock.
@@ -34,24 +34,24 @@ class InvertedResidualBlock(nn.Module):
         """
         super().__init__()
         self.drop_connect_rate = drop_connect_rate
-        hidden_dim = round_channels(in_channels, expand_ratio, divisor=2)
+        expand_channels = round_channels(in_channels, expand_ratio, divisor=2) if expand_channels is None else expand_channels
         self.use_res_connect = stride == 1 and in_channels == out_channels
-        reduction_channels = round_channels(in_channels // 4, divisor=reduction_divisor)
-        self.use_expand_block = expand_channels is not None and expand_channels != in_channels or\
-                                expand_ratio is not None and expand_ratio != 1
+        reduction_channels = round_channels(expand_channels//4, divisor=reduction_divisor)
+        self.use_expand_block = expand_channels != in_channels
 
         layers = []
 
         if self.use_expand_block:
-            layers.append(ConvBnAct(in_channels, hidden_dim, kernel_size=1, padding=0, act_layer=act_layer))
+            layers.append(ConvBnAct(in_channels, expand_channels, kernel_size=1, padding=0, act_layer=act_layer))
 
         layers.append(
-            ConvBnAct(hidden_dim, hidden_dim, kernel_size, padding, stride, groups=hidden_dim, act_layer=act_layer))
+            ConvBnAct(expand_channels, expand_channels, kernel_size, kernel_size // 2,
+                      stride, groups=expand_channels, act_layer=act_layer))
 
         if use_se:
-            layers.append(SEModule(hidden_dim, reduction_channels=reduction_channels))
+            layers.append(SEModule(expand_channels, reduction_channels=reduction_channels, **se_kwargs))
 
-        layers.append(ConvBnAct(hidden_dim, out_channels, 1, 1, 0, bias=False, act_layer=None))
+        layers.append(ConvBnAct(expand_channels, out_channels, 1, 0, 1, bias=False, act_layer=None))
 
         self.inverted_residual = nn.Sequential(*layers)
 
