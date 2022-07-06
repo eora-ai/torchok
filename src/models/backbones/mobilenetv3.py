@@ -19,8 +19,8 @@ from src.constructor import BACKBONES
 
 
 default_cfgs = {
-    'mobilenet_v3_large': dict(url=''),
-    'mobilenet_v3_small': dict(url='')
+    'mobilenet_v3_large': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_large_torchok.pth'),
+    'mobilenet_v3_small': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_small_torchok.pth')
 }
 
 
