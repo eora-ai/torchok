@@ -13,9 +13,11 @@ class InvertedResidualBlock(nn.Module):
                  kernel_size: int,
                  stride: int,
                  padding: int,
-                 expand_ratio: int,
+                 expand_ratio: int = None,
+                 expand_channels: int = None,
                  act_layer: nn.Module = nn.SiLU,
-                 reduction: int = 4,
+                 use_se: bool = True,
+                 reduction_divisor: int = 2,
                  drop_connect_rate: float = 0.2):
         """Init InvertedResidualBlock.
 
@@ -34,17 +36,23 @@ class InvertedResidualBlock(nn.Module):
         self.drop_connect_rate = drop_connect_rate
         hidden_dim = round_channels(in_channels, expand_ratio, divisor=2)
         self.use_res_connect = stride == 1 and in_channels == out_channels
-        reduction_channels = round_channels(in_channels // 4, divisor=2)
+        reduction_channels = round_channels(in_channels // 4, divisor=reduction_divisor)
+        self.use_expand_block = expand_channels is not None and expand_channels != in_channels or\
+                                expand_ratio is not None and expand_ratio != 1
 
         layers = []
-        if expand_ratio != 1:
+
+        if self.use_expand_block:
             layers.append(ConvBnAct(in_channels, hidden_dim, kernel_size=1, padding=0, act_layer=act_layer))
-        layers.extend([
-            ConvBnAct(hidden_dim, hidden_dim, kernel_size, padding, stride, groups=hidden_dim, act_layer=act_layer),
-            SEModule(hidden_dim, reduction_channels=reduction_channels),
-            nn.Conv2d(hidden_dim, out_channels, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(out_channels)
-        ])
+
+        layers.append(
+            ConvBnAct(hidden_dim, hidden_dim, kernel_size, padding, stride, groups=hidden_dim, act_layer=act_layer))
+
+        if use_se:
+            layers.append(SEModule(hidden_dim, reduction_channels=reduction_channels))
+
+        layers.append(ConvBnAct(hidden_dim, out_channels, 1, 1, 0, bias=False, act_layer=None))
+
         self.inverted_residual = nn.Sequential(*layers)
 
     def forward(self, x: Tensor) -> Tensor:
