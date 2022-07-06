@@ -3,6 +3,7 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning.utilities.cloud_io import load
 from typing import Optional, Dict, List, Callable, OrderedDict, Union
+from collections import defaultdict
 
 
 def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Callable, torch.device]] = 'cpu'):
@@ -24,7 +25,6 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
 
 
 def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[OrderedDict[str, torch.Tensor]]]:
-    # TODO: fix docstring
     """Generate sorted by depth list of state dict list with the current depth. 
     Where depth is calculated as the number of dots in the dictionary key.
 
@@ -35,14 +35,12 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
         depth2override_state_dicts: Sorted by depth dict, where key - depth, value - list of all state dicts with 
             current depth.
     """
-    depth2override_state_dicts = dict()
+    depth2override_state_dicts = defaultdict(list)
 
     for override_key, override_state_dict in override_name2state_dict.items():
         depth = len(override_key.split('.')) - 1
-        if depth not in depth2override_state_dicts:
-            depth2override_state_dicts[depth] = [override_state_dict]
-        else:
-            depth2override_state_dicts[depth].append(override_state_dict)
+        depth2override_state_dicts[depth].append(override_state_dict)
+    # Sort depth2override_state_dicts by it key - depth
     depth2override_state_dicts = OrderedDict(sorted(depth2override_state_dicts.items()))
     return depth2override_state_dicts
 
@@ -59,7 +57,7 @@ def get_state_dict_with_prefix(prefix: str,
         state_dict_with_prefix: Prefixed state dict.
     """
     state_dict_with_prefix = OrderedDict()
-    # remove spaces and dots
+    # Remove spaces and dots
     prefix = prefix.strip(' .')
     prefix = prefix + '.'
     for key, value in state_dict.items():
