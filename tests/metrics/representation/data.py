@@ -28,8 +28,8 @@ database = [[0.0256, 0.2660, 0.5239, 0.0042],
 # So Data would be sum of query and database list, do some shuffle.
 # Shuffle must be done with condition that queries must be at first place by targets.
 VECTORS = torch.tensor([
-    queries[0], 
-    database[4], 
+    queries[0],
+    database[4],
     queries[1],
     queries[2],
     database[0],
@@ -223,5 +223,57 @@ REPRESENTATION_ANSWERS = {
         4: 0.42421699,
         5: 0.51373735,
         6: 0.55886806
+    }
+}
+
+SCORES_QUERY_AS_RELEVANT = torch.tensor(
+    [
+        [0, 0, 0],
+        [1, 0, 0],
+        [0, 0, 3],
+        [0, 1, 0],
+        [0, 2, 0],
+        [0, 0, 1],
+        [0, 0, 2],
+        [0, 0, 4],
+        [0, 4, 0],
+    ]
+)
+
+# SCORES_QUERY_AS_RELEVANT - where the query with rows 0 not in gallery and 2,3 in gallery
+# Nearest query 0 =  [5, 6, 1, 3, 2, 4, 7, 8] - global indexes 
+# Nearest query 1 = [5, 8, 6, 3, 4, 1, 7] - global indexes with remove first =
+# Nearest query 2 = [6, 5, 1, 8, 2, 7, 4]
+
+# Precision@1 = 0 + 0 + 1 = 1/3
+# Precision@2 = 0 + 1/2 + 1 = 1/2
+# Precision@3 = 1/3 + 1/3 + 2/3 = 4/9
+# Precision@4 = 1/4 + 1/2 + 1/2 = 5/12
+# Precision@5 = 1/5 + 3/5 + 3/5 = 7/15
+# Precision@6 = 1/6 + 3/6 + 4/6 = 4/9
+
+# Recall@1 = 0 + 0 + 1/4 = 1/12
+# Recall@2 = 0 + 1/3 + 1/2 = 5/18
+# Recall@3 = 1 + 1/3 + 1/2 = 11/18
+# Recall@4 = 1 + 2/3 + 1/2 = 13/18
+# Recall@5 = 1 + 1 + 3/4 = 11/12
+# Recall@6 = 1 + 1 + 1 = 1
+
+REPRESENTATION_QUERY_AS_RELEVANT_ANSWERS = {
+    'precision': {
+        1: 1 / 3,
+        2: 1 / 2,
+        3: 4 / 9,
+        4: 5 / 12,
+        5: 7 / 15,
+        6: 4 / 9
+    },
+    'recall': {
+        1: 1 / 12, 
+        2: 5 / 18, 
+        3: 11 / 18,
+        4: 13 / 18,
+        5: 11 / 12,
+        6: 1
     }
 }

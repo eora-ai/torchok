@@ -6,7 +6,7 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 
-from .data import VECTORS, TARGETS, SCORES, QUERIES_IDX
+from .data import VECTORS, TARGETS, SCORES, SCORES_QUERY_AS_RELEVANT, QUERIES_IDX
 
 
 MAX_K = 6
@@ -71,7 +71,7 @@ class Model(LightningModule):
             else:
                 # representation
                 metric.update(vectors=batch['vectors'], scores=batch['scores'], 
-                              query_order_numbers=batch['queries_idxs'])
+                              query_idxs=batch['queries_idxs'])
         return loss
 
     def configure_optimizers(self):
@@ -82,7 +82,11 @@ def run_model(metric_class: type, metric_params: Dict, trainer_params: Optional[
     if metric_params['dataset_type'] == 'classification':
         train_ds = ClassificationData()
     else:
-        train_ds = RepresentationData()
+        score_type = metric_params.get('score_type', 'normal')
+        if score_type == 'query_as_relevant':
+            train_ds = RepresentationData(scores=SCORES_QUERY_AS_RELEVANT)
+        else:
+            train_ds = RepresentationData(scores=SCORES)
 
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE)
 
