@@ -20,7 +20,7 @@ database = [[0.0256, 0.2660, 0.5239, 0.0042],
 
 # Create relevant
 # {
-#     0: [4], # third 
+#     0: [4], # third
 #     1: [1, 0], # second and fourth
 #     2: [3, 2, 5], # first, second and fourth
 # }
@@ -127,7 +127,7 @@ CLASSIFICATION_ANSWERS = {
         6: 15 / 54
     },
     'recall': {
-        1: 13 / 54, 
+        1: 13 / 54,
         2: 19 / 54,
         3: 5 / 9,
         4: 16 / 27,
@@ -145,7 +145,7 @@ CLASSIFICATION_ANSWERS = {
 }
 
 # Retrieval dataset
-# query 1 
+# query 1
 # - relevant = [0]
 # - closest  = [2, 3, 0, 4, 5, 1]
 
@@ -201,8 +201,8 @@ REPRESENTATION_ANSWERS = {
         6: 1 / 3
     },
     'recall': {
-        1: 1 / 9, 
-        2: 2 / 9, 
+        1: 1 / 9,
+        2: 2 / 9,
         3: 13 / 18,
         4: 13 / 18,
         5: 5 / 6,
@@ -241,7 +241,7 @@ SCORES_QUERY_AS_RELEVANT = torch.tensor(
 )
 
 # SCORES_QUERY_AS_RELEVANT - where the query with rows 0 not in gallery and 2,3 in gallery
-# Nearest query 0 =  [5, 6, 1, 3, 2, 4, 7, 8] - global indexes 
+# Nearest query 0 =  [5, 6, 1, 3, 2, 4, 7, 8] - global indexes
 # Nearest query 1 = [5, 8, 6, 3, 4, 1, 7] - global indexes with remove first =
 # Nearest query 2 = [6, 5, 1, 8, 2, 7, 4]
 
@@ -269,8 +269,8 @@ REPRESENTATION_QUERY_AS_RELEVANT_ANSWERS = {
         6: 4 / 9
     },
     'recall': {
-        1: 1 / 12, 
-        2: 5 / 18, 
+        1: 1 / 12,
+        2: 5 / 18,
         3: 11 / 18,
         4: 13 / 18,
         5: 11 / 12,

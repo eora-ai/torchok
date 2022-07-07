@@ -70,7 +70,7 @@ class Model(LightningModule):
                 metric.update(vectors=batch['vectors'], targets=batch['targets'])
             else:
                 # representation
-                metric.update(vectors=batch['vectors'], scores=batch['scores'], 
+                metric.update(vectors=batch['vectors'], scores=batch['scores'],
                               query_idxs=batch['queries_idxs'])
         return loss
 
@@ -108,4 +108,3 @@ def run_model(metric_class: type, metric_params: Dict, trainer_params: Optional[
         metric_dict[k + 1] = metric.compute()
 
     return metric_dict
-    

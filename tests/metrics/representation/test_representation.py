@@ -32,7 +32,7 @@ class TestRepresentationMetrics(unittest.TestCase):
         answer = REPRESENTATION_QUERY_AS_RELEVANT_ANSWERS['precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
-    
+
     def test_precision_when_dataset_is_classification(self):
         metric_class = PrecisionAtKMeter
         metric_params = {
@@ -43,7 +43,7 @@ class TestRepresentationMetrics(unittest.TestCase):
         answer = CLASSIFICATION_ANSWERS['precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
-    
+
     def test_recall_when_dataset_is_representation(self):
         metric_class = RecallAtKMeter
         metric_params = {
@@ -65,7 +65,7 @@ class TestRepresentationMetrics(unittest.TestCase):
         answer = REPRESENTATION_QUERY_AS_RELEVANT_ANSWERS['recall']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
-    
+
     def test_recall_when_dataset_is_classification(self):
         metric_class = RecallAtKMeter
         metric_params = {

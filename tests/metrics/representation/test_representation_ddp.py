@@ -149,4 +149,3 @@ class TestDDPRepresentationMetrics(unittest.TestCase):
         answer = REPRESENTATION_ANSWERS['recall']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
-    
