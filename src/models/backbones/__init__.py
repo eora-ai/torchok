@@ -23,6 +23,11 @@ from src.models.backbones.hrnet import (
     hrnet_w48,
     hrnet_w64,
 )
+from src.models.backbones.davit import (
+    davit_t,
+    davit_s,
+    davit_b
+)
 
 __all__ = [
     'ResNet',
@@ -47,4 +52,7 @@ __all__ = [
     'hrnet_w44',
     'hrnet_w48',
     'hrnet_w64',
+    'davit_t',
+    'davit_s',
+    'davit_b'
 ]
