@@ -10,7 +10,6 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.models.base import BaseModel
-from src.models.modules.bricks.activations import HSigmoid
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.se import SEModule
 from src.models.modules.blocks.inverted_residual import InvertedResidualBlock
@@ -22,57 +21,6 @@ default_cfgs = {
     'mobilenet_v3_large': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_large_torchok.pth'),
     'mobilenet_v3_small': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_small_torchok.pth')
 }
-
-
-class Block(nn.Module):
-    def __init__(self,
-                 kernel_size: int,
-                 in_channels: int,
-                 expand_channels: int,
-                 out_channels: int,
-                 act_layer: nn.Module = nn.ReLU,
-                 semodule: SEModule = None,
-                 stride: int = 1):
-        """Init Block.
-
-        Args:
-            kernel_size: Kernel size.
-            in_channels: Input channels.
-            expand_channels: Expand channels.
-            out_channels: Output channels.
-            act_layer: Activation layer.
-            semodule: SEModule.
-            stride: Stride.
-        """
-        super().__init__()
-        self.stride = stride
-        self.se = semodule
-        self.use_res_connect = stride == 1 and in_channels == out_channels
-        
-        layers = []
-
-        if in_channels != expand_channels:
-            layers.append(ConvBnAct(in_channels, expand_channels, 1, 0, 1, bias=False, act_layer=act_layer))
-        
-        layers.append(ConvBnAct(expand_channels, expand_channels, kernel_size, kernel_size//2, stride,
-                                    bias=False, groups=expand_channels, act_layer=act_layer))
-                        
-        layers.append(ConvBnAct(expand_channels, out_channels, 1, 0, 1, bias=False, act_layer=None))
-
-        self.inverted_residual =  nn.Sequential(*layers)
-
-        #shortcut
-        if stride == 1 and in_channels != out_channels:
-            self.shortcut = nn.Sequential(ConvBnAct(in_channels, out_channels, 1, 0, 1, bias=False, act_layer=None))
-
-    def forward(self, x: Tensor) -> Tensor:
-        """Forward method."""
-        out = self.inverted_residual(x)
-
-        if self.se is not None:
-            out = self.se(out)
-        out = out + self.shortcut(x) if self.stride == 1 else out
-        return out
 
 
 class MobileNetV3_Large(BaseModel):
