@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 
 from src.constructor.config_structure import Phase
 from src.constructor.constructor import Constructor
+from src.constructor.load import load_checkpoint
 
 
 class BaseTask(LightningModule, ABC):
@@ -100,12 +101,15 @@ class BaseTask(LightningModule, ABC):
                 raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
     def on_train_start(self) -> None:
-        # TODO check and load checkpoint
-        pass
+        if self.current_epoch == 0:
+            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+                            overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
+                            exclude_keys=self._hparams.task.exclude_keys)
 
     def on_test_start(self) -> None:
-        # TODO check and load checkpoint
-        pass
+        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+                        overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
+                        exclude_keys=self._hparams.task.exclude_keys)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
