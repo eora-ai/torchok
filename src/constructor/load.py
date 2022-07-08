@@ -103,6 +103,37 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
     After the base state dict had been overridden, it is necessary to remove keys whose names begin with any
     key in exclude_keys.
 
+    Example:
+        >>> model_keys = ['backbone.linear.1', 'backbone.linear.2', 'head.linear.1', 'head.linear.2']
+        >>> exclude_keys = ['head.linear.2']
+        >>> initial_state_dict = {
+        >>>    'backbone.linear.1': torch.tensor(0),
+        >>>    'backbone.linear.2': torch.tensor(0),
+        >>>    'head.linear.1': torch.tensor(0),
+        >>>    'head.linear.2': torch.tensor(0)
+        >>> }
+        >>> base_state_dict = {
+        >>>    'backbone.linear.1': torch.tensor(1),
+        >>>    'backbone.linear.2': torch.tensor(1),
+        >>>    'head.linear.1': torch.tensor(1),
+        >>>    'head.linear.2': torch.tensor(1)
+        >>> }
+        >>> override_backbone = {
+        >>>     'backbone.linear.1': torch.tensor(5),
+        >>>     'backbone.linear.2': torch.tensor(3)
+        >>> }
+        >>> override_backbone_linear_1 = {
+        >>>     'backbone.linear.1': torch.tensor(10)
+        >>> }
+        >>> override_name2state_dict = {
+        >>>     'backbone': override_backbone,
+        >>>     'backbone.linear.1': override_backbone_linear_1
+        >>> }
+        >>> generate_required_state_dict(base_state_dict, override_name2state_dict,
+        >>>                              exclude_keys, model_keys, initial_state_dict)
+        {'backbone.linear.1': tensor(10), 'backbone.linear.2': tensor(3),
+         'head.linear.1': tensor(1), 'head.linear.2': tensor(0)}
+
     Args:
         base_state_dict: Base state dict that should be loaded.
         overridden_name2state_dict: Dicts of module key to state dict, which should override base state dict.
