@@ -25,14 +25,14 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
 
 
 def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[OrderedDict[str, torch.Tensor]]]:
-    """Generate sorted by depth list of state dict list with the current depth. 
+    """Generate sorted by depth list of state dict list with the current depth.
     Where depth is calculated as the number of dots in the dictionary key.
 
     Args:
         override_name2state_dict: Dicts of module key to state dict, which should override base checkpoint.
 
     Returns:
-        depth2override_state_dicts: Sorted by depth dict, where key - depth, value - list of all state dicts with 
+        depth2override_state_dicts: Sorted by depth dict, where key - depth, value - list of all state dicts with
             current depth.
     """
     depth2override_state_dicts = defaultdict(list)
@@ -45,7 +45,7 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
     return depth2override_state_dicts
 
 
-def get_state_dict_with_prefix(prefix: str, 
+def get_state_dict_with_prefix(prefix: str,
                                state_dict: OrderedDict[str, torch.Tensor]) -> OrderedDict[str, torch.Tensor]:
     """Generate state dict with prefixed keys. If input state dict keys startswith prefix then no prefix added.
 
@@ -86,8 +86,8 @@ def get_absolute_keys(require_key: str, model_keys: List[str]) -> List[str]:
     return absolute_keys
 
 
-def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor], 
-                                 overridden_name2state_dict: Dict[str, OrderedDict[str, torch.Tensor]], 
+def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor],
+                                 overridden_name2state_dict: Dict[str, OrderedDict[str, torch.Tensor]],
                                  exclude_keys: List[str],
                                  model_keys: List[str],
                                  initial_state_dict: OrderedDict[str, torch.Tensor]
@@ -95,10 +95,10 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
     """Generate state dict, which should be loaded from 4 main components: base state dict, overridden state dicts,
     exclude keys and model_keys.
 
-    Base state dict values are overridden with overridden_name2state_dict, where the key in overridden_name2state_dict - 
+    Base state dict values are overridden with overridden_name2state_dict, where the key in overridden_name2state_dict -
     module name which should be overridden.
-    If overridden_name2state_dict has many state dicts for one key in the base state dict, then the state dict is 
-    selected whose overridden_name module is closer to the key i.e. choose the deepest overridden_name, where depth 
+    If overridden_name2state_dict has many state dicts for one key in the base state dict, then the state dict is
+    selected whose overridden_name module is closer to the key i.e. choose the deepest overridden_name, where depth
     is the number of dots.
     After the base state dict had been overridden, it is necessary to remove keys whose names begin with any
     key in exclude_keys.
@@ -142,7 +142,7 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
         model_state_dict: Model initial state dict.
 
     Returns:
-        required_state_dict: State dict obtained by override base state dict by overridden state dict, which not 
+        required_state_dict: State dict obtained by override base state dict by overridden state dict, which not
             contain the keys starting with exclude keys.
 
     Raises:
@@ -158,10 +158,10 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
 
     # Get sorted by depth state dict list that must be overridden
     depth2state_dicts = sort_state_dict_by_depth(overridden_full_name2state_dict)
-    
+
     # Firstly change model state dict by base state dict
     required_state_dict.update(base_state_dict)
-    
+
     # Then change model state dict with overridden state dicts, in order of it's depths
     for _, depth_state_dicts in depth2state_dicts.items():
         for state_dict in depth_state_dicts:
@@ -186,11 +186,11 @@ def generate_required_state_dict(base_state_dict: OrderedDict[str, torch.Tensor]
     return required_state_dict
 
 
-def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = None, 
-                    overridden_name2ckpt_path: Optional[Dict[str, str]] = None, 
+def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = None,
+                    overridden_name2ckpt_path: Optional[Dict[str, str]] = None,
                     exclude_keys: Optional[List[str]] = None):
     """Load checkpoint to model.
-    
+
     Args:
         model: Module to load checkpoint into.
         base_ckpt_path: Base checkpoint path that should be loaded.
@@ -211,7 +211,7 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
 
     # Load base state dict
     base_state_dict = load_state_dict(base_ckpt_path, map_location='cpu') if base_ckpt_path is not None else dict()
-    
+
     # Load overridden state dicts
     if overridden_name2ckpt_path is None:
         overridden_name2state_dict = dict()
@@ -219,7 +219,7 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
         overridden_name2state_dict = {name: load_state_dict(ckpt_path)
                                       for name, ckpt_path in overridden_name2ckpt_path.items()}
 
-    required_state_dict = generate_required_state_dict(base_state_dict, overridden_name2state_dict, 
+    required_state_dict = generate_required_state_dict(base_state_dict, overridden_name2state_dict,
                                                        exclude_keys, model_keys, initial_state_dict)
 
     model.load_state_dict(required_state_dict, strict=True)
