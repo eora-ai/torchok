@@ -248,7 +248,7 @@ class IndexBasedMeter(Metric, ABC):
         query_row_idxs = np.where(is_query)[0]
         # gallery idxs in vectors storage, which row sum > 0
         # TODO: try to get gallery indexes from Dataset
-        gallery_idxs = np.where(np.any(np.abs(scores), axis=-1))[0]
+        gallery_idxs = np.where(np.any(scores > 0, axis=-1))[0]
         # found query row indexes which are in relevant, i.e belong to queries and gallery simultaneously
         query_as_relevant = np.in1d(query_row_idxs, gallery_idxs)
 
