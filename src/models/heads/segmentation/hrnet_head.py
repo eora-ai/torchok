@@ -4,14 +4,15 @@ https://github.com/HRNet/HRNet-Semantic-Segmentation
 """
 import torch.nn as nn
 from torch import Tensor
+from typing import List, Union
 
 from src.constructor import HEADS
-from src.models.heads.base import AbstractHead
+from src.models.base import BaseModel
 from src.models.modules.bricks.convbnact import ConvBnAct
 
 
 @HEADS.register_class
-class HRNetSegmentationHead(AbstractHead):
+class HRNetSegmentationHead(BaseModel):
     """HRNet head for segmentation tasks."""
     def __init__(self, in_features: int, num_classes: int):
         """Init HRNetSegmentationHead.
@@ -38,3 +39,9 @@ class HRNetSegmentationHead(AbstractHead):
         x = self.convbnact(x)
         x = self.final_conv_layer(x)
         return x
+
+    def get_forward_channels(self) -> Union[int, List[int]]:
+        return self.num_classes
+
+    def no_weight_decay(self) -> List[str]:
+        return list()

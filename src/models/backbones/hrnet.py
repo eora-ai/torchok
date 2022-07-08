@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.constructor import BACKBONES
-from src.models.base import BaseModel
+from src.models.backbones import BaseBackbone
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
@@ -484,7 +484,7 @@ blocks_dict = {
 }
 
 
-class HighResolutionNet(BaseModel):
+class HighResolutionNet(BaseBackbone):
     """HighResolutionNet model."""
 
     def __init__(self,
@@ -541,7 +541,7 @@ class HighResolutionNet(BaseModel):
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
         self.transition3 = self.__make_transition_layer(pre_stage_channels, num_channels)
         self.stage4, self.out_channels = self.__make_stage(self.stage4_cfg, num_channels)
-
+        self.out_channels = [in_chans] + self.out_channels
         self.__init_weights()
 
     def __init_weights(self):
@@ -682,7 +682,7 @@ class HighResolutionNet(BaseModel):
 
         return yl
 
-    def forward_backbone_features(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
+    def forward_features(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
         """Forward backbone features and input tensor.
 
         Args:
@@ -692,7 +692,7 @@ class HighResolutionNet(BaseModel):
         features = [x] + features
         return features[1:], features
 
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
+    def get_forward_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.out_channels
 

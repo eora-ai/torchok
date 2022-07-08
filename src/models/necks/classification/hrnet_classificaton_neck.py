@@ -83,6 +83,6 @@ class HRNetClassificationNeck(BaseModel):
         y = self.final_layer(y)
         return y
 
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
+    def get_forward_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.num_features

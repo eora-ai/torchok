@@ -32,6 +32,9 @@ class HRNetSegmentationNeck(BaseModel):
         feats = torch.cat(interpolated_feat, 1)
         return feats
 
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
+    def no_weight_decay(self) -> List[str]:
+        return list()
+
+    def get_forward_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.in_channels

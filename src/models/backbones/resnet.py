@@ -131,7 +131,7 @@ class ResNet(BaseBackbone):
         return nn.Sequential(*layers)
 
     def no_weight_decay(self):
-        return []
+        return list()
 
     def forward(self, x: torch.Tensor):
         """Forward method."""

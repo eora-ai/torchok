@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Union, Optional
 import math
 
 import torch
@@ -6,11 +6,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.constructor import HEADS
-from src.models.heads.base import AbstractHead
+from src.models.base import BaseModel
 
 
 @HEADS.register_class
-class ArcFaceHead(AbstractHead):
+class ArcFaceHead(BaseModel):
     """Implement of arc margin distance. Classification head.
 
     ArcFace paper: https://arxiv.org/pdf/1801.07698.pdf
@@ -42,7 +42,7 @@ class ArcFaceHead(AbstractHead):
         Raises:
             ValueError: if num_warmup_steps or min_margin is None, when `dynamic_margin` is True.
         """
-        super().__init__(in_features, num_classes)
+        super().__init__()
 
         self.__num_classes = num_classes
 
@@ -131,6 +131,12 @@ class ArcFaceHead(AbstractHead):
         self.__update_margin()
 
         return output
+
+    def get_forward_channels(self) -> Union[int, List[int]]:
+        return self.__num_classes
+
+    def no_weight_decay(self) -> List[str]:
+        return list()
 
     @property
     def num_classes(self) -> int:

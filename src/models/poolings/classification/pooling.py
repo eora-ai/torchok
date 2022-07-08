@@ -1,6 +1,6 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from typing import List
 
 from src.constructor import POOLINGS
 from src.models.base import BaseModel
@@ -49,5 +49,8 @@ class Pooling(BaseModel):
     def forward(self, x):
         return select_adaptive_pool2d(x, self.pooling_type, self.output_size)
 
-    def get_forward_output_channels(self):
+    def no_weight_decay(self) -> List[str]:
+        return list()
+
+    def get_forward_channels(self):
         return self.out_features

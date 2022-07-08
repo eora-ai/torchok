@@ -53,9 +53,7 @@ class BaseTask(LightningModule, ABC):
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers."""
         modules = self.train_modules()
-        opt_sched_list = []
-        for module in modules:
-            opt_sched_list += self.__constructor.configure_optimizers(module)
+        opt_sched_list = self.__constructor.configure_optimizers(modules)
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:

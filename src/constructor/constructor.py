@@ -123,7 +123,10 @@ class Constructor:
     @staticmethod
     def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
         # Module names for which weights decay will not be used.
-        no_weight_decay_list = model.no_weight_decay()
+        no_weight_decay_list = []
+        
+        if hasattr(model, 'no_weight_decay'):
+           no_weight_decay_list = model.no_weight_decay()
 
         decay = []
         no_decay = []
