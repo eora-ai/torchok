@@ -1,12 +1,40 @@
 import glob
-import json
-import boto3
+import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
-from pytorch_lightning.loggers import mlflow, tensorboard
+from typing import Any, Dict, Optional, Union, Tuple
+from pytorch_lightning.loggers.base import LightningLoggerBase
+from pytorch_lightning.loggers import mlflow
+from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.loggers.csv_logs import CSVLogger
+from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.mlflow import rank_zero_only
 
-from src.constructor.config_structure import LoggerType
+
+def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_subdir: bool
+                        ) -> Tuple[str, str]:
+    """Create directory for saving checkpoints and logging metrics.
+
+    Args:
+        log_dir: Base path.
+        experiment_name: Sub directory for log_dir.
+        create_datetime_log_subdir: If create datetime sub directory for log_dir / experiment_name directory. This
+            datetime would be some kind a version of experiment.
+
+    Returns:
+        experiment_subdir: A string of created datetime sub directory for log_dir / experiment_name.
+        full_outputs_path: Directory path to save checkpoints and logging metrics.
+    """
+    if create_datetime_log_subdir:
+        experiment_subdir = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    else:
+        experiment_subdir = ''
+
+    log_dir = Path(log_dir)
+    full_outputs_path = log_dir / experiment_name / experiment_subdir
+    full_outputs_path.mkdir(exist_ok=True, parents=True)
+
+    return experiment_subdir, full_outputs_path
 
 
 class MLFlowLogger(mlflow.MLFlowLogger):
@@ -65,6 +93,7 @@ class MLFlowLogger(mlflow.MLFlowLogger):
 
     @rank_zero_only
     def finalize(self, status: str = 'FINISHED') -> None:
+        """Call finalize of pytorch lightning MlFlowLogger and logs *.ckpt and *.onnx artifacts in artifact_location."""
         super(mlflow.MLFlowLogger, self).finalize(status)
         status = 'FINISHED' if status == 'success' else status
 
@@ -77,40 +106,66 @@ class MLFlowLogger(mlflow.MLFlowLogger):
             self.experiment.set_terminated(self._run_id, status)
 
 
-def create_mlflow_logger(logger_params, outputs_path, experiment_name, version, job_link):
-    save_dir = outputs_path / experiment_name / version
-    remote_save_dir = logger_params.save_dir
-
-    secretsmanager = logger_params.secrets_manager
-    if secretsmanager:
-        session = boto3.session.Session()
-        client = session.client(service_name="secretsmanager", region_name=secretsmanager.region)
-        mlflow_secret = client.get_secret_value(SecretId=secretsmanager.mlflow_secret)
-        mlflowdb_conf = json.loads(mlflow_secret["SecretString"])
-        tracking_uri = (f"mysql+pymysql://{mlflowdb_conf['username']}:"
-                        f"{mlflowdb_conf['password']}@{mlflowdb_conf['host']}/mlflow")
-    else:
-        tracking_uri = logger_params.tracking_uri
-
-    if job_link != 'local':
-        logger_params.tags['mlflow.source.name'] = job_link
-        logger_params.tags['mlflow.source.type'] = 'JOB'
-
-    logger = MLFlowLogger(
-        experiment_name=experiment_name,
-        run_name=logger_params.tags['mlflow.runName'],
-        tracking_uri=tracking_uri,
-        tags=logger_params.tags,
-        save_dir=str(save_dir),
-        artifact_location=str(remote_save_dir)
-    )
-
-    return logger
-
-
-def create_logger(logger_params, outputs_path, experiment_name, experiment_subdir, job_link):
-    if logger_params.logger == LoggerType.TENSORBOARD:
-        return tensorboard.TensorBoardLogger(outputs_path, experiment_name, experiment_subdir, **logger_params.params)
-    else:
-        return create_mlflow_logger(logger_params.params, outputs_path, experiment_name, experiment_subdir, job_link)
+def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
+                  experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
+                  full_outputs_path: Union[str, Path]) -> LightningLoggerBase:
+    """
     
+    Args:
+        logger_class_name: Logger class name.
+        logger_class_params: Logger class constructor parameters.
+        outputs_path: Base directory for parameters logging. 
+        experiment_name: Sub directory for output_path for parameters logging, the name means experiment name.
+        experiment_subdir: Sub directory for experiment_name for parameters logging, the name means experiment 
+            start datetime, some kind of experiment version. 
+        full_outputs_path: Directory path for parameters logging.
+
+    Raises:
+        ValueError: If logger_class_name not in support logger names. Specifically TorchOk support next loggers:
+            TensorBoardLogger, MlFlowLogger, WandbLogger, CSVLogger, NeptuneLogger
+
+    Returns:
+        Logger.
+    """
+    if logger_class_name == 'TensorBoardLogger':
+        logger_params = {
+            'save_dir': outputs_path,
+            'name': experiment_name,
+            'version': experiment_subdir
+        }
+        logger_params.update(logger_class_params)
+        return TensorBoardLogger(**logger_params)
+    elif logger_class_name == 'MlFlowLogger':
+        logger_params = {
+            'save_dir': full_outputs_path,
+            'experiment_name': experiment_name
+        }
+        logger_params.update(logger_class_params)
+        return MLFlowLogger(**logger_params)
+    elif logger_class_name == 'WandbLogger':
+        logger_params = {
+            'save_dir': full_outputs_path,
+            'name': experiment_name,
+            'version': experiment_subdir
+        }
+        logger_params.update(logger_class_params)
+        return WandbLogger(**logger_params)
+    elif logger_class_name == 'CSVLogger':
+        logger_params = {
+            'save_dir': full_outputs_path,
+            'name': experiment_name,
+            'version': experiment_subdir
+        }
+        logger_params.update(logger_class_params)
+        return CSVLogger(**logger_params)
+    elif logger_class_name == 'NeptuneLogger':
+        logger_params = {
+            'project': full_outputs_path,
+            'name': experiment_name,
+        }
+        logger_params.update(logger_class_params)
+        return NeptuneLogger(**logger_params)
+    else:
+        raise ValueError(f'Create Logger method. TorchOk not support logger with name {logger_class_name}. '
+                         f'TorchOk supports the following names: TensorBoardLogger, MlFlowLogger, WandbLogger, '
+                         f'CSVLogger, NeptuneLogger.')

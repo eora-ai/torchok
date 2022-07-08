@@ -1,5 +1,4 @@
-from omegaconf import DictConfig, ListConfig
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -10,12 +9,6 @@ class Phase(Enum):
     VALID = 'valid'
     TEST = 'test'
     PREDICT = 'predict'
-
-
-# Logger utils
-class LoggerType(Enum):
-    TENSORBOARD = 'tensorboard'
-    MLFLOW = 'mlflow'
 
 
 # Optimization parameters
@@ -167,14 +160,17 @@ class CheckpointParams:
     save_weights_only: bool = False
     mode: str = 'min'
     auto_insert_metric_name: bool = False
-    # onnx_to_save: bool = False
+    # onnx_to_save: bool = True
     # onnx_params: Dict = field(default_factory=dict)
 
 
 # Logger
 @dataclass
 class LoggerParams:
-    logger: LoggerType
+    name: str
+    log_dir: str
+    experiment_name: str = 'default'
+    create_datetime_log_subdir: bool = True
     params: Optional[Dict] = field(default_factory=dict)
 
 
@@ -188,9 +184,5 @@ class ConfigParams:
     joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
-    experiment_name: str
-    log_dir: str = './logs'
-    job_link: str = 'local'
     logger: Optional[LoggerParams] = None
-    create_datetime_log_subdir: bool = True
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
