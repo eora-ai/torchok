@@ -8,11 +8,14 @@ from typing import Optional, Union, List, Dict
 
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 from src.constructor import BACKBONES
 from src.models.modules.blocks.se import SEModule
+from src.models.modules.blocks.basicblock import BasicBlock
+from src.models.modules.blocks.bottleneck import Bottleneck
 from src.models.modules.bricks.convbnact import ConvBnAct
-from src.models.base_model import BaseModel, FeatureInfo
+from src.models.base import BaseModel, FeatureInfo
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 
@@ -57,105 +60,6 @@ default_cfgs = {
     'seresnet101': _cfg(interpolation='bicubic'),
     'seresnet152': _cfg(interpolation='bicubic')
 }
-
-
-class BasicBlock(nn.Module):
-    """BasicBlock bulding block for ResNet architecture."""
-
-    expansion = 1
-
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 stride: int = 1,
-                 downsample: Optional[nn.Module] = None,
-                 attn_layer: Optional[nn.Module] = None):
-        """Init BasicBlock.
-
-        Args:
-            in_channels: Number of input channels.
-            out_channels: Number of output channels.
-            stride: Stride.
-            downsample: Downsample module.
-            attn_layer: Attention block.
-        """
-        super().__init__()
-        out_block_channels = out_channels * self.expansion
-
-        self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
-        self.convbnact2 = ConvBnAct(out_channels, out_block_channels, kernel_size=3, padding=1, act_layer=None)
-        self.se = attn_layer(out_block_channels) if attn_layer is not None else None
-        self.act = nn.ReLU(inplace=True)
-        self.downsample = downsample
-
-    def forward(self, x: torch.Tensor):
-        """Forward method."""
-        identity = x
-
-        out = self.convbnact1(x)
-        out = self.convbnact2(out)
-
-        if self.se is not None:
-            out = self.se(out)
-
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        out += identity
-        out = self.act(out)
-
-        return out
-
-
-class Bottleneck(nn.Module):
-    """Bottleneck building block for ResNet architecture."""
-
-    expansion = 4
-
-    def __init__(self,
-                 in_channels: int,
-                 out_channels: int,
-                 stride: int = 1,
-                 downsample: Optional[nn.Module] = None,
-                 attn_layer: Optional[nn.Module] = None):
-        """Init Bottleneck.
-
-        Args:
-            in_channels: Number of input channels.
-            out_channels: Number of output channels.
-            stride: Stride.
-            downsample: Downsample module.
-            attn_layer: Attention block.
-        """
-        super().__init__()
-        out_block_channels = out_channels * self.expansion
-
-        self.convbnact1 = ConvBnAct(in_channels, out_channels, kernel_size=1, padding=0, stride=1)
-        self.convbnact2 = ConvBnAct(out_channels, out_channels, kernel_size=3, padding=1, stride=stride)
-        self.convbnact3 = ConvBnAct(out_channels, out_block_channels, kernel_size=1, padding=0, act_layer=None)
-        self.act = nn.ReLU(inplace=True)
-        self.se = attn_layer(out_block_channels) if attn_layer is not None else None
-        self.downsample = downsample
-
-    def forward(self, x: torch.Tensor):
-        """Forward method."""
-        identity = x
-
-        out = self.convbnact1(x)
-        out = self.convbnact2(out)
-        out = self.convbnact3(out)
-
-        if self.se is not None:
-            out = self.se(out)
-
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        out += identity
-        out = self.act(out)
-
-        return out
-
 
 class ResNet(BaseModel):
     """ResNet model."""

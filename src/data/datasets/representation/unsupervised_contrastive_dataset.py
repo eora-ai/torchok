@@ -15,9 +15,10 @@ class UnsupervisedContrastiveDataset(ImageDataset):
     One image is transformed twice so that they are positive to each other.
 
     .. csv-table:: UnsupervisedContrastive csv example
-     :header: image_path
-     cat_1.jpg
-     dog_1.jpg
+        :header: image_path
+        
+        cat_1.jpg
+        dog_1.jpg
     """
 
     def __init__(self,

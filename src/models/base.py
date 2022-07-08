@@ -95,7 +95,7 @@ class BaseModel(nn.Module, ABC):
 
     This class supports adding feature hooks to some model layers.
     Class has feature info to describe hooks.
-    To create hooks, method `self.get_features_info()` must be overriden, and the function `self.create_hooks()` 
+    To create hooks, method `self.get_features_info()` must be overridden, and the function `self.create_hooks()` 
     must be called in the end line of initialization method of inherited class!
     Method `self.create_hooks(*args, **kwargs)` called `self.get_features_info(*args, **kwargs)` with 
     the same parameters! 

@@ -1,7 +1,7 @@
 import unittest
 
 from src.constructor import METRICS
-from src.metrics.metrics_manager import MetricParams, MetricManager, Phase
+from src.metrics.metrics_manager import MetricParams, MetricsManager, Phase
 
 import torch
 from torchmetrics import Metric
@@ -58,7 +58,7 @@ def run_metric_manager(names: List[str], prefixes: List[str], \
         params = MetricParams(name=names[i], mapping=mappings[i], prefix=prefixes[i], phases=[Phase.TRAIN])
         metric_params.append(params)
 
-    metric_manager = MetricManager(metric_params)
+    metric_manager = MetricsManager(metric_params)
     for i in range(len(data_generator)):
         metric_manager(Phase.TRAIN, **data_generator[i])
 

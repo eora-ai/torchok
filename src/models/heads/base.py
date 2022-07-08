@@ -2,7 +2,7 @@ from typing import List, Union
 
 from torch import Tensor
 from abc import ABC, abstractmethod
-from src.models.base_model import BaseModel
+from src.models.base import BaseModel
 
 
 class AbstractHead(BaseModel, ABC):

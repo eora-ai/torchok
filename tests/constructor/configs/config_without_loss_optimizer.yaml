@@ -1,0 +1,44 @@
+task:
+  name: ClassificationTask
+  params:
+    backbone_name: resnet18
+    backbone_params:
+      pretrained: true
+      in_chans: 3
+    pooling_name: Pooling
+    head_name: ClassificationHead
+    head_params:
+      num_classes: &num_classes 10
+    input_size: [3, &height 32, &width 32]
+
+data:
+  TRAIN:
+    - dataset:
+        name: ImageClassificationDataset
+        data_folder: 'cifar10'
+        csv_path: 'cifar_train.csv'
+        num_classes: *num_classes
+      dataloader:
+        batch_size: 8
+        num_workers: 4
+        drop_last: True
+        shuffle: True
+
+trainer:
+  gpus: [0]
+  max_epochs: 10
+  log_every_n_steps: 1
+
+log_dir: '/workdir/logs/classification'
+experiment_name: cifar10
+
+checkpoint:
+  monitor: train/Accuracy
+  save_last: true
+  mode: max
+
+metrics:
+  - name: Accuracy
+    mapping: 
+      preds: prediction
+      target: target
