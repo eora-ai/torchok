@@ -26,10 +26,6 @@ class ClassificationTask(BaseTask):
         backbones_params = self._hparams.task.params.get('backbone_params', dict())
 
         backbone = BACKBONES.get(backbone_name)
-
-        if backbone is None:
-            raise NotImplementedError(f'Backbone - {backbone_name} is not implemented.')
-
         self.backbone = backbone(**backbones_params)
 
         # NECK
