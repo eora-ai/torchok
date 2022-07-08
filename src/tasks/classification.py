@@ -35,10 +35,6 @@ class ClassificationTask(BaseTask):
 
         if neck_name is not None:
             neck = NECKS.get(neck_name)
-
-            if neck is None:
-                raise NotImplementedError(f'Head - {neck_name} is not implemented.')
-
             self.neck = neck(in_features=neck_in_features, **neck_params)
             pooling_in_features = self.neck.get_forward_output_channels()
         else:
@@ -50,10 +46,6 @@ class ClassificationTask(BaseTask):
         pooling_name = self._hparams.task.params.get('pooling_name')
 
         pooling = POOLINGS.get(pooling_name)
-
-        if pooling is None:
-            raise NotImplementedError(f'Pooling - {pooling_name} is not implemented.')
-
         self.pooling = pooling(in_features=pooling_in_features, **pooling_params)
 
         # HEAD
@@ -61,11 +53,7 @@ class ClassificationTask(BaseTask):
         head_params = self._hparams.task.params.get('head_params', dict())
         head_in_features = self.pooling.get_forward_output_channels()
 
-        head = HEADS.get(self._hparams.task.params.head_name)
-
-        if head is None:
-            raise NotImplementedError(f'Head - {head_name} is not implemented.')
-
+        head = HEADS.get(head_name)
         self.head = head(in_features=head_in_features, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
