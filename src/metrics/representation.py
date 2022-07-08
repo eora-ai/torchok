@@ -248,7 +248,7 @@ class IndexBasedMeter(Metric, ABC):
         query_row_idxs = np.where(is_query)[0]
         # gallery idxs in vectors storage, which row sum > 0
         # TODO: try to get gallery indexes from Dataset
-        gallery_idxs = np.where(np.sum(np.abs(scores), axis=-1) > 0.)[0]
+        gallery_idxs = np.where(np.any(np.abs(scores), axis=-1))[0]
         # found query row indexes which are in relevant, i.e belong to queries and gallery simultaneously
         query_as_relevant = np.in1d(query_row_idxs, gallery_idxs)
 
@@ -305,7 +305,7 @@ class IndexBasedMeter(Metric, ABC):
         query_row_idxs = np.array(query_row_idxs)
         gallery_idxs = np.arange(len(targets))
         # all query vectors is in relevant, so create array with True elements
-        query_as_relevant = np.array([True] * len(gallery_idxs))
+        query_as_relevant = np.full((len(gallery_idxs),), fill_value=True, dtype=np.bool)
         return relevant_idxs, gallery_idxs, query_row_idxs, query_as_relevant
 
     def query_generator(self, index: Union[faiss.swigfaiss_avx2.IndexFlatIP, faiss.swigfaiss_avx2.IndexFlatL2],
