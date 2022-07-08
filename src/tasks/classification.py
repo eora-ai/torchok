@@ -16,9 +16,6 @@ class ClassificationTask(BaseTask):
 
         Args:
             hparams: Hyperparameters that set in yaml file.
-
-        Raises:
-            NotImplementedError: if backbone, neck, pooling or head is not implemented.
         """
         super().__init__(hparams)
         # BACKBONE
