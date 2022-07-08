@@ -15,7 +15,7 @@ from src.models.modules.blocks.se import SEModule
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
 from src.models.modules.bricks.convbnact import ConvBnAct
-from src.models.base import BaseModel, FeatureInfo
+from src.models.backbones import BaseBackbone
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 
@@ -61,7 +61,8 @@ default_cfgs = {
     'seresnet152': _cfg(interpolation='bicubic')
 }
 
-class ResNet(BaseModel):
+
+class ResNet(BaseBackbone):
     """ResNet model."""
 
     def __init__(self,
@@ -92,9 +93,7 @@ class ResNet(BaseModel):
         self.layer3 = self.__make_layer(block, self.channels[2], layers[2], stride=2, **self.block_args)
         self.layer4 = self.__make_layer(block, self.channels[3], layers[3], stride=2, **self.block_args)
 
-        self.create_hooks(output_channels=self.channels * block.expansion,
-                          module_names=['layer1', 'layer2', 'layer3', 'layer4'],
-                          strides=[1, 2, 2, 2])
+        self.feature_output_channels = [in_chans] + self.channels * block.expansion,
 
     def __make_layer(self,
                      block: Union[BasicBlock, Bottleneck],
@@ -131,6 +130,9 @@ class ResNet(BaseModel):
 
         return nn.Sequential(*layers)
 
+    def no_weight_decay(self):
+        return []
+
     def forward(self, x: torch.Tensor):
         """Forward method."""
         x = self.convbnact(x)
@@ -143,17 +145,33 @@ class ResNet(BaseModel):
 
         return x
 
-    def get_features_info(self, output_channels: List[int], module_names: List[int], strides: List[int]):
-        """See documentation in constructor."""
-        features_info = []
-        for num_channels, module_name, stride in zip(output_channels, module_names, strides):
-            feature_info = FeatureInfo(module_name=module_name, num_channels=num_channels, stride=stride)
-            features_info.append(feature_info)
-        return features_info
+    def forward_features(self, x: torch.Tensor):
+        """Forward method."""
+        features = [x]
+        x = self.convbnact(x)
+        x = self.maxpool(x)
 
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
+        x = self.layer1(x)
+        features.append(x)
+
+        x = self.layer2(x)
+        features.append(x)
+
+        x = self.layer3(x)
+        features.append(x)
+
+        x = self.layer4(x)
+        features.append(x)
+
+        return tuple(features)
+
+    def get_forward_channels(self) -> Union[int, List[int]]:
         """Return number of output channels."""
         return self.num_features
+
+    def get_forward_feature_channels(self) -> Union[int, List[int]]:
+        """Return number of output channels."""
+        return self.feature_output_channels
 
 
 def create_resnet(variant, pretrained=False, **kwargs):

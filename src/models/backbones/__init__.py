@@ -1,3 +1,5 @@
+from .base_backbone import BaseBackbone
+
 from src.models.backbones.resnet import (
     create_resnet,
     resnet18,

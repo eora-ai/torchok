@@ -20,8 +20,7 @@ class BaseBackbone(BaseModel, ABC):
     @abstractmethod
     def get_forward_feature_channels(self) -> Union[int, List[int]]:
         """Set output channels for forward features pass.
-        
+
         Returns: Outputs channels.
         """
         pass
-    

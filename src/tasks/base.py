@@ -41,17 +41,21 @@ class BaseTask(LightningModule, ABC):
         """Abstract forward method for training(with ground truth labels)."""
         pass
 
-    @abstractmethod
-    def no_weight_decay(self) -> List[str]:
-        """Create module names for which weights decay will not be used.
+    def train_modules(self) -> List[str]:
+        """Create a list of modules that need to train. Method used to apply optimizer for returned modules.
+
+        By default, it would be self.children().
         
-        Returns: Module names for which weights decay will not be used.
+        Returns: List of modules that need to train.
         """
-        pass
+        return self.children()
 
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers."""
-        opt_sched_list = self.__constructor.configure_optimizers(self)
+        modules = self.train_modules()
+        opt_sched_list = []
+        for module in modules:
+            opt_sched_list += self.__constructor.configure_optimizers(module)
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 import albumentations as A
 from omegaconf import DictConfig, ListConfig
 from torch import Tensor
-from torch.nn import Parameter
+from torch.nn import Module, Parameter
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
@@ -13,7 +13,6 @@ from src.constructor.config_structure import Phase
 from src.data.datasets.base import ImageDataset
 from src.losses.base import JointLoss
 from src.metrics.metrics_manager import MetricsManager
-from src.tasks.base import BaseTask
 
 
 class Constructor:
@@ -32,7 +31,7 @@ class Constructor:
         """
         self.__hparams = hparams
 
-    def configure_optimizers(self, parameters: Union[BaseTask, Tensor, List[Union[BaseTask, Tensor]]],
+    def configure_optimizers(self, parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
                              optim_idx: int = -1) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
         """Create optimizers and learning rate schedulers from a pre-defined configuration.
 
@@ -81,7 +80,7 @@ class Constructor:
         return opt_sched_list
 
     @staticmethod
-    def __create_optimizer(parameters: Union[BaseTask, Tensor, List[Union[BaseTask, Tensor]]],
+    def __create_optimizer(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
                            optimizer_params: DictConfig) -> Optimizer:
         optimizer_class = OPTIMIZERS.get(optimizer_params.name)
         parameters = Constructor.__set_weight_decay_for_parameters(parameters)
@@ -101,9 +100,9 @@ class Constructor:
         }
 
     @staticmethod
-    def __set_weight_decay_for_parameters(parameters: Union[BaseTask, Tensor, List[Union[BaseTask, Tensor]]]) -> List[
+    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]) -> List[
             Dict[str, Union[Tensor, float]]]:
-        if not isinstance(parameters, Iterable) and not isinstance(parameters, BaseTask) and \
+        if not isinstance(parameters, Iterable) and not isinstance(parameters, Module) and \
            not isinstance(parameters, Tensor):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):
@@ -111,7 +110,7 @@ class Constructor:
 
         param_groups = []
         for model in parameters:
-            if isinstance(model, BaseTask):
+            if isinstance(model, Module):
                 param_groups.extend(Constructor.__param_groups_weight_decay(model))
             elif isinstance(model, Tensor) and model.requires_grad:
                 param_groups.append({'params': model})
@@ -122,7 +121,7 @@ class Constructor:
     # Copyright 2019 Ross Wightman
     # Licensed under The Apache 2.0 License [see LICENSE for details]
     @staticmethod
-    def __param_groups_weight_decay(model: BaseTask) -> List[Dict[str, Union[Parameter, float]]]:
+    def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
         # Module names for which weights decay will not be used.
         no_weight_decay_list = model.no_weight_decay()
 
