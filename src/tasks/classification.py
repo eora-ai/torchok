@@ -1,6 +1,8 @@
-from typing import Dict, Union
+from typing import Dict, Union, Iterable
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import DictConfig
 
 from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
@@ -28,7 +30,6 @@ class ClassificationTask(BaseTask):
         
         head_params = self._hparams.task.params.get('head_params', dict())
         head_in_features = self.pooling.get_forward_output_channels()
-
         head_name = self._hparams.task.params.get('head_name', 'Identity')
         self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
 

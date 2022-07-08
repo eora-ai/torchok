@@ -94,6 +94,7 @@ class MetricParams:
 @dataclass
 class TaskParams:
     name: str
+    compute_loss_on_valid: bool = True
     params: Optional[Dict] = field(default_factory=dict)
 
 
