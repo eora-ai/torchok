@@ -161,8 +161,8 @@ class CheckpointParams:
     save_weights_only: bool = False
     mode: str = 'min'
     auto_insert_metric_name: bool = False
-    # onnx_to_save: bool = False
-    # onnx_params: Dict = field(default_factory=dict)
+    export_to_onnx: bool = False
+    onnx_params: Dict = field(default_factory=dict)
 
 
 # Config parameters
@@ -171,10 +171,10 @@ class ConfigParams:
     # TODO add Logger params
     task: TaskParams
     data: Dict[Phase, List[DataParams]]
-    optimization: List[OptimizationParams]
-    joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
     experiment_name: str
     log_dir: str = './logs'
+    optimization: Optional[List[OptimizationParams]] = field(default_factory=list)
+    joint_loss: Optional[JointLossParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)

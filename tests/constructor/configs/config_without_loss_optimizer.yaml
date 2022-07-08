@@ -9,27 +9,7 @@ task:
     head_name: ClassificationHead
     head_params:
       num_classes: &num_classes 10
-    inputs:
-      - shape: [3, &height 32, &width 32]
-        dtype: 'float32'
-
-joint_loss:
-  losses:
-    - name: CrossEntropyLoss
-      mapping:
-          input: prediction
-          target: target
-        
-
-optimization:
-  - optimizer: 
-      name: Adam
-      params:
-        lr: 0.0001
-    scheduler:
-      name: ExponentialLR
-      params:
-        gamma: 0.97
+    input_size: [3, &height 32, &width 32]
 
 data:
   TRAIN:
@@ -49,7 +29,7 @@ trainer:
   max_epochs: 10
   log_every_n_steps: 1
 
-log_dir: '${oc.env:LOGDIR}'
+log_dir: '/workdir/logs/classification'
 experiment_name: cifar10
 
 checkpoint:

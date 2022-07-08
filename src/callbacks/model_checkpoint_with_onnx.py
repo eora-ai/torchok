@@ -11,11 +11,11 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
     CKPT_EXTENSION = '.ckpt'
     ONNX_EXTENSION = '.onnx'
 
-    def __init__(self, *args, onnx_to_save=False, onnx_params=None, **kwargs):
+    def __init__(self, *args, export_to_onnx=False, onnx_params=None, **kwargs):
         """Init ModelCheckpointWithOnnx."""
         super().__init__(*args, **kwargs)
         self.onnx_params = onnx_params if onnx_params is not None else {}
-        self.onnx_to_save = onnx_to_save
+        self.export_to_onnx = export_to_onnx
 
     def format_checkpoint_name(
         self, metrics: Dict[str, _METRIC], filename: Optional[str] = None, ver: Optional[int] = None
@@ -34,7 +34,7 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         trainer.save_checkpoint(filepath + self.CKPT_EXTENSION, self.save_weights_only)
         self._last_global_step_saved = trainer.global_step
 
-        if self.onnx_to_save:
+        if self.export_to_onnx:
             input_tensors = trainer.model.input_tensors
             trainer.model.to_onnx(filepath + self.ONNX_EXTENSION, (*input_tensors,), **self.onnx_params)
 
