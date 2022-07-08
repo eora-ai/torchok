@@ -25,17 +25,19 @@ class ONNXTask(BaseTask):
         super().__init__(hparams)
         self.__infer_params = self._hparams.task.params
         model_path = self.__infer_params.path_to_onnx
+        self.device_id = self.__infer_params.device_id
 
-        self._check_integrity_onnx_model(model_path)
+        onnx_model = onnx.load(model_path)
+        onnx.checker.check_model(onnx_model)
 
         self._sess = onnxrt.InferenceSession(model_path, providers=['CUDAExecutionProvider'])
         self.__binding = self._sess.io_binding()
 
-        self.__input_name = self._sess.get_inputs()[0].name
-        self.__input_shape = self._sess.get_inputs()[0].shape
+        self.__input_names = [input_name.name for input_name in self._sess.get_inputs()]
+        self.__input_shapes = [input_shape.shape for input_shape in self._sess.get_inputs()]
 
-        self.__label_name = self._sess.get_outputs()[0].name
-        self.__output_shape = self._sess.get_outputs()[0].shape
+        self.__label_names = [output_name.name for output_name in self._sess.get_outputs()]
+        self.__output_shapes = [output_shape.shape for output_shape in self._sess.get_outputs()]
 
     def forward(self, x: Tensor) -> Tensor:
         pass
@@ -51,21 +53,21 @@ class ONNXTask(BaseTask):
     def _forward_onnx(self, x: Tensor) -> Tensor:
         """Forward onnx model."""
         self.__binding.bind_input(
-                name=self.__input_name,
+                name=self.__input_names,
                 device_type=self.device,
-                device_id=0,
+                device_id=self.device_id,
                 element_type=np.float32,
-                shape=self.__input_shape,
-                buffer_ptr=x.data_ptr())
+                shape=self.__input_shapes,
+                buffer_ptr=[x.data_ptr()])
 
-        output_tensor = torch.empty(self.__output_shape, dtype=torch.float32, device=self.device).contiguous()
+        output_tensor = [torch.empty(self.__output_shapes[0], dtype=torch.float32, device=self.device).contiguous()]
 
         self.__binding.bind_output(
-            name=self.__label_name,
+            name=self.__label_names,
             device_type=self.device,
-            device_id=0,
+            device_id=self.device_id,
             element_type=np.float32,
-            shape=self.__output_shape,
+            shape=self.__output_shapes,
             buffer_ptr=output_tensor.data_ptr())
 
         self._sess.run_with_iobinding(self.__binding)
@@ -88,7 +90,3 @@ class ONNXTask(BaseTask):
         """Complete predict loop."""
         output = self.foward_infer(batch['image'])
         return output
-
-    def _check_integrity_onnx_model(self, model_path: str):
-        onnx_model = onnx.load(model_path)
-        onnx.checker.check_model(onnx_model)

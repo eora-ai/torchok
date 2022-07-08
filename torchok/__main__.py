@@ -28,8 +28,12 @@ def entrypoint(config: DictConfig):
     # Create task
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
+<<<<<<< HEAD:torchok/__main__.py
     trainer.fit(model, ckpt_path=config.resume_path)
 
+=======
+    trainer.predict(model)
+>>>>>>> change onnx:train.py
 
 if __name__ == '__main__':
     entrypoint()
