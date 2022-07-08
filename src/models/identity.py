@@ -1,6 +1,6 @@
 from torch import nn, Tensor
 
-from src.models.base_model import BaseModel
+from src.models.base import BaseModel
 
 
 class Identity(BaseModel):

@@ -1,6 +1,6 @@
 <div align="center">
 
-# TorchOk 🥤
+<img src="docs/source/_static/TorchOk_logo.png" alt="TorchOk" style="width:300px; horizontal-align:middle"/>
 
 **The toolkit for fast Deep Learning experiments in Computer Vision**
 
@@ -13,7 +13,7 @@ The toolkit consists of:
 - Neural Network models which are proved to be the best not only on [PapersWithCode](https://paperswithcode.com/) but in practice. All models are under plug&play interface that easily connects backbones, necks and heads for reuse across tasks
 - Out-of-the-box support of common Computer Vision tasks: classification, segmentation, image representation and detection coming soon
 - Commonly used datasets, image augmentations and transformations (from [Albumentations](https://albumentations.ai/))
-- Fast implementations of retrieval metrics (with the help of [ranx](https://github.com/AmenRa/ranx)) and lots of other metrics from [torchmetrics](https://torchmetrics.readthedocs.io/)
+- Fast implementations of retrieval metrics (with the help of [FAISS](https://github.com/facebookresearch/faiss) and [ranx](https://github.com/AmenRa/ranx)) and lots of other metrics from [torchmetrics](https://torchmetrics.readthedocs.io/)
 - Export models to ONNX and ability to test the exported model without changing the datasets
 - All components can be customized inheriting the unified interfaces: Lightning's training loop, tasks, models, datasets, augmentations and transformations, metrics, loss functions, optimizers and LR schedulers
 - Training, validation and testing configurations are represented by YAML config files and managed by [Hydra](https://hydra.cc/)

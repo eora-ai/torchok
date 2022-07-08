@@ -30,7 +30,7 @@ class TestJointLoss(unittest.TestCase):
 
         total_loss, tagged_loss_values = joint_loss.forward(x=torch.ones(1), y=torch.full((1,), fill_value=5.))
 
-        torch.testing.assert_allclose(total_loss, torch.tensor([8.]))
+        torch.testing.assert_close(total_loss, torch.tensor([8.]))
 
     def test_weighted_loss_when_two_losses_without_weights_specified(self):
         joint_loss = JointLoss(
@@ -45,7 +45,7 @@ class TestJointLoss(unittest.TestCase):
 
         total_loss, tagged_loss_values = joint_loss.forward(x=torch.ones(1), y=torch.full((1,), fill_value=5.))
 
-        torch.testing.assert_allclose(total_loss, torch.tensor([10.]))
+        torch.testing.assert_close(total_loss, torch.tensor([10.]))
 
     def test_value_error_when_weights_specified_not_for_each_loss(self):
         with self.assertRaises(ValueError):
@@ -72,6 +72,6 @@ class TestJointLoss(unittest.TestCase):
 
         total_loss, tagged_loss_values = joint_loss.forward(x=torch.ones(1), y=torch.full((1,), fill_value=5.))
 
-        torch.testing.assert_allclose(total_loss, torch.tensor([8.]))
-        torch.testing.assert_allclose(tagged_loss_values['loss1'], torch.tensor([5.]))
-        torch.testing.assert_allclose(tagged_loss_values['loss2'], torch.tensor([15.]))
+        torch.testing.assert_close(total_loss, torch.tensor([8.]))
+        torch.testing.assert_close(tagged_loss_values['loss1'], torch.tensor([5.]))
+        torch.testing.assert_close(tagged_loss_values['loss2'], torch.tensor([15.]))

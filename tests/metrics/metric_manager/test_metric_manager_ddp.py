@@ -1,7 +1,7 @@
 import unittest
 import os
 from src.constructor import METRICS
-from src.metrics.metrics_manager import MetricParams, MetricManager, Phase
+from src.metrics.metrics_manager import MetricParams, MetricsManager, Phase
 
 from pytorch_lightning import LightningModule, Trainer
 import torch
@@ -60,7 +60,7 @@ class Model(LightningModule):
     def __init__(self, metric_params: List[MetricParams]):
         super().__init__()
         self.l1 = torch.nn.Linear(INPUT_DATA_SHAPE, uniq_label_count)
-        self.metric_manager = MetricManager(metric_params)
+        self.metric_manager = MetricsManager(metric_params)
 
     def forward(self, x):
         return torch.relu(self.l1(x.view(x.size(0), -1)))

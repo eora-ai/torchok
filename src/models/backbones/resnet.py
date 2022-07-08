@@ -15,7 +15,7 @@ from src.models.modules.blocks.se import SEModule
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
 from src.models.modules.bricks.convbnact import ConvBnAct
-from src.models.base_model import BaseModel, FeatureInfo
+from src.models.base import BaseModel, FeatureInfo
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 

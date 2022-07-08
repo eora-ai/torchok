@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.constructor import POOLINGS
-from src.models.base_model import BaseModel
+from src.models.base import BaseModel
 
 
 def adaptive_avgmax_pool2d(x, output_size=1):
