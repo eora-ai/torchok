@@ -5,7 +5,7 @@ task:
     backbone_name: resnet50
     backbone_params:
       pretrained: true
-      in_chans: 3
+      in_channels: 3
     pooling_name: PoolingLinear
     pooling_params:
       out_features: 512

@@ -126,7 +126,7 @@ class Constructor:
         no_weight_decay_list = []
         
         if hasattr(model, 'no_weight_decay'):
-           no_weight_decay_list = model.no_weight_decay()
+            no_weight_decay_list = model.no_weight_decay()
 
         decay = []
         no_decay = []

@@ -181,4 +181,3 @@ class ConfigParams:
     joint_loss: Optional[JointLossParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     resume_path: Optional[str] = None
-    

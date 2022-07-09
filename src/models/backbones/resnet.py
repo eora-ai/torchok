@@ -67,24 +67,24 @@ class ResNet(BaseBackbone):
     def __init__(self,
                  block: Union[BasicBlock, Bottleneck],
                  layers: List[int],
-                 in_chans: int = 3,
+                 in_channels: int = 3,
                  block_args: Dict = None):
         """Init ResNet.
 
         Args:
             block: Block type class.
             layers: Number of layers.
-            in_chans: Input channels.
+            in_channels: Input channels.
             block_args: Arguments for block_args.
         """
-        super().__init__(in_channels=in_chans)
+        super().__init__(in_channels=in_channels)
         self.block_args = block_args or dict()
         self.inplanes = 64
         self.channels = [64, 128, 256, 512]
         self._out_channels = 512 * block.expansion
-        self._out_feature_channels = [in_chans] + self.channels * block.expansion,
+        self._out_feature_channels = [in_channels] + self.channels * block.expansion,
 
-        self.convbnact = ConvBnAct(in_chans, self.channels[0], kernel_size=7, stride=2, padding=3)
+        self.convbnact = ConvBnAct(in_channels, self.channels[0], kernel_size=7, stride=2, padding=3)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.layer1 = self.__make_layer(block, self.channels[0], layers[0], **self.block_args)

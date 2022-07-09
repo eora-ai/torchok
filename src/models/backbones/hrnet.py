@@ -489,18 +489,18 @@ class HighResolutionNet(BaseBackbone):
 
     def __init__(self,
                  cfg: Dict[str, Any],
-                 in_chans: int = 3):
+                 in_channels: int = 3):
         """Init HighResolutionNet.
 
         Args:
             cfg: Model config.
-            in_chans: Input channels.
+            in_channels: Input channels.
         """
-        super().__init__(in_channels=in_chans)
+        super().__init__(in_channels=in_channels)
 
         stem_width = cfg['STEM_WIDTH']
 
-        self.convbnact1 = ConvBnAct(in_channels=in_chans,
+        self.convbnact1 = ConvBnAct(in_channels=in_channels,
                                     out_channels=stem_width,
                                     kernel_size=3,
                                     padding=1,
@@ -544,7 +544,7 @@ class HighResolutionNet(BaseBackbone):
         self.__init_weights()
 
         self._out_channels = out_channels
-        self._out_feature_channels = [in_chans] + out_channels
+        self._out_feature_channels = [in_channels] + out_channels
 
     def __init_weights(self):
         for m in self.modules():
