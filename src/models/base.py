@@ -32,19 +32,15 @@ class BaseModel(nn.Module, ABC):
         return list()
 
     @property
-    def in_channels(self) -> Union[int, List[int]]:
+    def in_channels(self) -> Union[int, List[int], Tuple[int, ...]]:
         """Number of input channels."""
         if self._in_channels is None:
             raise ValueError('TorchOk Models must have self._in_channels attribute.')
-        if isinstance(self._in_channels, tuple):
-            return list(self._in_channels)
         return self._in_channels
 
     @property
-    def out_channels(self) -> Union[int, List[int]]:
+    def out_channels(self) -> Union[int, List[int], Tuple[int, ...]]:
         """Number of output channels - channels after forward method."""
         if self._out_channels is None:
             raise ValueError('TorchOk Models must have self._out_channels attribute.')
-        if isinstance(self._out_channels, tuple):
-            return list(self._out_channels)
         return self._out_channels
