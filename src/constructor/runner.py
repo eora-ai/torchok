@@ -1,9 +1,9 @@
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pathlib import Path
 
 from src.constructor.logger import create_logger, create_outputs_path
 from src.callbacks.finalize_logger import FinalizeLogger
+from src.callbacks.model_checkpoint_with_onnx import ModelCheckpointWithOnnx
 
 
 def create_trainer(train_config):
@@ -23,7 +23,7 @@ def create_trainer(train_config):
                                experiment_subdir=experiment_subdir,
                                full_outputs_path=full_outputs_path)
 
-        checkpoint_callback = ModelCheckpoint(**train_config.checkpoint, dirpath=str(full_outputs_path))
+        checkpoint_callback = ModelCheckpointWithOnnx(**train_config.checkpoint, dirpath=str(full_outputs_path))
         finalize_logger_callback = FinalizeLogger()
         callbacks = [checkpoint_callback, finalize_logger_callback]
     else:

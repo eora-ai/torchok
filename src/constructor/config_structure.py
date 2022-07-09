@@ -95,6 +95,9 @@ class TaskParams:
     name: str
     compute_loss_on_valid: bool = True
     params: Optional[Dict] = field(default_factory=dict)
+    base_checkpoint: Optional[str] = None
+    overridden_checkpoints: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
 
 
 # Trainer parameters
@@ -160,8 +163,8 @@ class CheckpointParams:
     save_weights_only: bool = False
     mode: str = 'min'
     auto_insert_metric_name: bool = False
-    # onnx_to_save: bool = True
-    # onnx_params: Dict = field(default_factory=dict)
+    export_to_onnx: bool = False
+    onnx_params: Dict = field(default_factory=dict)
 
 
 # Logger
@@ -186,3 +189,5 @@ class ConfigParams:
     checkpoint: CheckpointParams
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
+    resume_path: Optional[str] = None
+    
