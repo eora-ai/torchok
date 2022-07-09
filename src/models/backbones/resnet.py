@@ -139,11 +139,13 @@ class ResNet(BaseBackbone):
 
         return x
 
-    def forward_features(self, x: torch.Tensor):
+    def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
         """Forward method."""
         features = [x]
+
         x = self.convbnact(x)
         x = self.maxpool(x)
+        features.append(x)
 
         x = self.layer1(x)
         features.append(x)

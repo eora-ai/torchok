@@ -653,7 +653,7 @@ class HighResolutionNet(BaseBackbone):
 
         return nn.Sequential(*modules), num_inchannels
 
-    def __stages(self, x: Tensor) -> List[Tensor]:
+    def forward_stages(self, x: Tensor) -> List[Tensor]:
         """The method forward the tensor through all stages.
 
         Args:
@@ -677,12 +677,15 @@ class HighResolutionNet(BaseBackbone):
         Args:
             x: Input tensor.
         """
-        x = self.convbnact1(x)
-        x = self.convbnact2(x)
-
-        yl = self.__stages(x)
+        x = self.forward_stem(x)
+        yl = self.forward_stages(x)
 
         return yl
+
+    def forward_stem(self, x: Tensor) -> Tensor:
+        x = self.convbnact1(x)
+        x = self.convbnact2(x)
+        return x
 
     def forward_features(self, x: Tensor) -> List[Tensor]:
         """Forward backbone features and input tensor.
@@ -690,8 +693,13 @@ class HighResolutionNet(BaseBackbone):
         Args:
             x: Input tensor.
         """
-        features = self.forward(x)
-        features = [x] + features
+        features = [x]
+
+        x = self.forward_stem(x)
+        features.append(x)
+
+        stage_features = self.forward_stages(x)
+        features += stage_features
         return features
 
 

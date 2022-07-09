@@ -1,14 +1,14 @@
 import torch.nn as nn
 from abc import ABC, abstractmethod
 from torch import Tensor
-from typing import List, Union, Optional
+from typing import List, Tuple, Union, Optional
 
 
 class BaseModel(nn.Module, ABC):
     """Base model for all TorchOk Models - Neck, Pooling and Head."""
     def __init__(self,
-                 in_channels: Optional[Union[int, List[int]]] = None,
-                 out_channels: Optional[Union[int, List[int]]] = None):
+                 in_channels: Optional[Union[int, List[int], Tuple[int, ...]]] = None,
+                 out_channels: Optional[Union[int, List[int], Tuple[int, ...]]] = None):
         """Init BaseModel.
 
         Args:
@@ -25,9 +25,9 @@ class BaseModel(nn.Module, ABC):
         pass
 
     def no_weight_decay(self) -> List[str]:
-        """Create module names for which weights decay will not be used.
+        """Create module names for which weight decay will not be used.
 
-        Returns: Module names for which weights decay will not be used.
+        Returns: Module names for which weight decay will not be used.
         """
         return list()
 
@@ -36,6 +36,8 @@ class BaseModel(nn.Module, ABC):
         """Number of input channels."""
         if self._in_channels is None:
             raise ValueError('TorchOk Models must have self._in_channels attribute.')
+        if isinstance(self._in_channels, tuple):
+            return list(self._in_channels)
         return self._in_channels
 
     @property
@@ -43,4 +45,6 @@ class BaseModel(nn.Module, ABC):
         """Number of output channels - channels after forward method."""
         if self._out_channels is None:
             raise ValueError('TorchOk Models must have self._out_channels attribute.')
+        if isinstance(self._out_channels, tuple):
+            return list(self._out_channels)
         return self._out_channels

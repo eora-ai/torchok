@@ -43,11 +43,12 @@ class BaseTask(LightningModule, ABC):
         pass
 
     def train_modules(self) -> List[str]:
-        """Create a list of modules that need to train. Method used to apply optimizer for returned modules.
+        """Create a list of 1st-level modules that need to be optimized. The method is used to apply an optimizer
+        for the returned modules.
 
         By default, it would be self.children().
-        
-        Returns: List of modules that need to train.
+
+        Returns: List of modules that need to be optimized.
         """
         return self.children()
 
