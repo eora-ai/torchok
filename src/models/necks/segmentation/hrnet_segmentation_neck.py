@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 
 import torch
 from torch import Tensor
@@ -6,7 +6,6 @@ from torch import Tensor
 import torch.nn.functional as F
 from src.constructor import NECKS
 from src.models.base import BaseModel
-from src.models.modules.bricks.convbnact import ConvBnAct
 
 
 @NECKS.register_class
@@ -18,8 +17,8 @@ class HRNetSegmentationNeck(BaseModel):
         Args:
             in_channels: Input channels.
         """
-        super().__init__()
-        self.in_channels = sum(in_channels)
+        out_channels = sum(in_channels)
+        super().__init__(in_channels, out_channels)
 
     def forward(self, features: List[Tensor]) -> Tensor:
         """Forward method."""
@@ -31,10 +30,3 @@ class HRNetSegmentationNeck(BaseModel):
 
         feats = torch.cat(interpolated_feat, 1)
         return feats
-
-    def no_weight_decay(self) -> List[str]:
-        return list()
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.in_channels

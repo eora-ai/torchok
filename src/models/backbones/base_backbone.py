@@ -1,14 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Union, Optional
 
 from src.models.base import BaseModel
 
 
 class BaseBackbone(BaseModel, ABC):
-    """Base model for all TorchOk Backbone."""
-    def __init__(self):
-        """Initialize BaseModel."""
-        super().__init__()
+    """Base model for TorchOk Backbones"""
+    def __init__(self,
+                 in_channels: Optional[Union[int, List[int]]] = None,
+                 out_channels: Optional[Union[int, List[int]]] = None,
+                 out_feature_channels: Optional[List[int]] = None):
+        """Init BaseBackbone.
+
+        Args:
+            in_channels: Number of input channels.
+            out_features: Number of output channels - channels after forward method.
+            out_feature_channels: Number of output feature channels - channels after forward_features method.
+        """
+        super().__init__(in_channels, out_channels)
+        self._out_feature_channels = out_feature_channels
 
     @abstractmethod
     def forward_features(self, *args, **kwargs):
@@ -17,10 +27,9 @@ class BaseBackbone(BaseModel, ABC):
         """
         pass
 
-    @abstractmethod
-    def get_forward_feature_channels(self) -> Union[int, List[int]]:
-        """Set output channels for forward features pass.
-
-        Returns: Outputs channels.
-        """
-        pass
+    @property
+    def out_feature_channels(self):
+        """Number of output feature channels - channels after forward_features method."""
+        if self._out_feature_channels is None:
+            raise ValueError('TorchOk Backbones must have self._out_feature_channels attribute.')
+        return self._out_feature_channels

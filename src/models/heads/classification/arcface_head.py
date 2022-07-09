@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import Optional
 import math
 
 import torch
@@ -42,9 +42,7 @@ class ArcFaceHead(BaseModel):
         Raises:
             ValueError: if num_warmup_steps or min_margin is None, when `dynamic_margin` is True.
         """
-        super().__init__()
-
-        self.__num_classes = num_classes
+        super().__init__(in_features, out_channels=num_classes)
 
         if scale is None:
             p = .999
@@ -131,17 +129,6 @@ class ArcFaceHead(BaseModel):
         self.__update_margin()
 
         return output
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        return self.__num_classes
-
-    def no_weight_decay(self) -> List[str]:
-        return list()
-
-    @property
-    def num_classes(self) -> int:
-        """Output features or number classes."""
-        return self.__num_classes
 
     @property
     def margin(self) -> float:

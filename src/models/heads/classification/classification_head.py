@@ -1,5 +1,4 @@
 from torch import nn, Tensor
-from typing import List, Union
 import torch.nn.functional as F
 
 from src.constructor import HEADS
@@ -24,31 +23,22 @@ class ClassificationHead(BaseModel):
             drop_rate: dropout rate (applied before linear layer)
             bias: whether to use bias in the linear layer
         """
-        super().__init__()
-        self.num_classes = num_classes
-        self.num_classes = num_classes
+        super().__init__(in_features, out_channels=num_classes)
         self.drop_rate = drop_rate
         self.fc = nn.Linear(in_features, num_classes, bias=bias)
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """Forward single input ``x``.
 
         Args:
-            x: input features of shape (\*, in_features), where \* means any number of dimensions,
-            in_features - number of features configured for the head
+            x: Input tensor. 
         """
         if self.drop_rate > 0.:
             x = F.dropout(x, p=self.drop_rate, training=self.training)
 
         x = self.fc(x)
 
-        if self.num_classes == 1:
+        if self._out_channels == 1:
             x = x[..., 0]
 
         return x
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        return self.num_classes
-
-    def no_weight_decay(self) -> List[str]:
-        return list()

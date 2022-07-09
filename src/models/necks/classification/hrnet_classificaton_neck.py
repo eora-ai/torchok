@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 
 import torch.nn as nn
 from torch import Tensor
@@ -18,8 +18,8 @@ class HRNetClassificationNeck(BaseModel):
         Args:
             in_channels: Input channels.
         """
-        super().__init__()
-        self.num_features = 2048
+        out_channels = 2048
+        super().__init__(in_channels, out_channels)
         self.incre_modules, self.downsamp_modules, self.final_layer = self.__make_neck(in_channels)
 
     def __make_neck(self, in_channels):
@@ -47,7 +47,7 @@ class HRNetClassificationNeck(BaseModel):
         downsamp_modules = nn.ModuleList(downsamp_modules)
 
         final_layer = ConvBnAct(in_channels=self.head_channels[3] * head_block.expansion,
-                                out_channels=self.num_features,
+                                out_channels=self.out_channels,
                                 kernel_size=1,
                                 padding=0,
                                 stride=1)
@@ -82,7 +82,3 @@ class HRNetClassificationNeck(BaseModel):
                 y = self.incre_modules[i + 1](x[i + 1])
         y = self.final_layer(y)
         return y
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.num_features

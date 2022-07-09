@@ -4,7 +4,6 @@ https://github.com/HRNet/HRNet-Semantic-Segmentation
 """
 import torch.nn as nn
 from torch import Tensor
-from typing import List, Union
 
 from src.constructor import HEADS
 from src.models.base import BaseModel
@@ -21,7 +20,7 @@ class HRNetSegmentationHead(BaseModel):
             in_features: Size of each input sample.
             num_classes: Number of classes.
         """
-        super().__init__(in_features, num_classes)
+        super().__init__(in_features, out_channels=num_classes)
         self.num_classes = num_classes
         self.convbnact = ConvBnAct(in_features,
                                    in_features,
@@ -39,9 +38,3 @@ class HRNetSegmentationHead(BaseModel):
         x = self.convbnact(x)
         x = self.final_conv_layer(x)
         return x
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        return self.num_classes
-
-    def no_weight_decay(self) -> List[str]:
-        return list()

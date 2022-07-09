@@ -496,7 +496,7 @@ class HighResolutionNet(BaseBackbone):
             cfg: Model config.
             in_chans: Input channels.
         """
-        super().__init__()
+        super().__init__(in_channels=in_chans)
 
         stem_width = cfg['STEM_WIDTH']
 
@@ -540,9 +540,11 @@ class HighResolutionNet(BaseBackbone):
         block = blocks_dict[self.stage4_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
         self.transition3 = self.__make_transition_layer(pre_stage_channels, num_channels)
-        self.stage4, self.out_channels = self.__make_stage(self.stage4_cfg, num_channels)
-        self.out_channels = [in_chans] + self.out_channels
+        self.stage4, out_channels = self.__make_stage(self.stage4_cfg, num_channels)
         self.__init_weights()
+
+        self._out_channels = out_channels
+        self._out_feature_channels = [in_chans] + out_channels
 
     def __init_weights(self):
         for m in self.modules():
@@ -682,7 +684,7 @@ class HighResolutionNet(BaseBackbone):
 
         return yl
 
-    def forward_features(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
+    def forward_features(self, x: Tensor) -> List[Tensor]:
         """Forward backbone features and input tensor.
 
         Args:
@@ -690,11 +692,7 @@ class HighResolutionNet(BaseBackbone):
         """
         features = self.forward(x)
         features = [x] + features
-        return features[1:], features
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.out_channels
+        return features
 
 
 def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):

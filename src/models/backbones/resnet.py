@@ -4,11 +4,10 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import Optional, Union, List, Dict
+from typing import Union, List, Dict
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 
 from src.constructor import BACKBONES
 from src.models.modules.blocks.se import SEModule
@@ -78,12 +77,12 @@ class ResNet(BaseBackbone):
             in_chans: Input channels.
             block_args: Arguments for block_args.
         """
+        super().__init__(in_channels=in_chans)
         self.block_args = block_args or dict()
         self.inplanes = 64
         self.channels = [64, 128, 256, 512]
-        self.num_features = 512 * block.expansion
-
-        super().__init__()
+        self._out_channels = 512 * block.expansion
+        self._out_feature_channels = [in_chans] + self.channels * block.expansion,
 
         self.convbnact = ConvBnAct(in_chans, self.channels[0], kernel_size=7, stride=2, padding=3)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -92,8 +91,6 @@ class ResNet(BaseBackbone):
         self.layer2 = self.__make_layer(block, self.channels[1], layers[1], stride=2, **self.block_args)
         self.layer3 = self.__make_layer(block, self.channels[2], layers[2], stride=2, **self.block_args)
         self.layer4 = self.__make_layer(block, self.channels[3], layers[3], stride=2, **self.block_args)
-
-        self.feature_output_channels = [in_chans] + self.channels * block.expansion,
 
     def __make_layer(self,
                      block: Union[BasicBlock, Bottleneck],
@@ -130,9 +127,6 @@ class ResNet(BaseBackbone):
 
         return nn.Sequential(*layers)
 
-    def no_weight_decay(self):
-        return list()
-
     def forward(self, x: torch.Tensor):
         """Forward method."""
         x = self.convbnact(x)
@@ -163,15 +157,7 @@ class ResNet(BaseBackbone):
         x = self.layer4(x)
         features.append(x)
 
-        return tuple(features)
-
-    def get_forward_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.num_features
-
-    def get_forward_feature_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.feature_output_channels
+        return features
 
 
 def create_resnet(variant, pretrained=False, **kwargs):
