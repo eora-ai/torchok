@@ -1,11 +1,9 @@
 from typing import Dict, Union
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from omegaconf import DictConfig
 
-from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS
+from src.constructor import BACKBONES, HEADS, NECKS, POOLINGS, TASKS
 from src.tasks.base import BaseTask
 
 
@@ -20,23 +18,50 @@ class ClassificationTask(BaseTask):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__(hparams)
-        backbones_params = self._hparams.task.params.backbone_params
-        self.backbone = BACKBONES.get(self._hparams.task.params.backbone_name)(**backbones_params)
+        # BACKBONE
+        backbone_name = self._hparams.task.params.get('backbone_name')
+        backbones_params = self._hparams.task.params.get('backbone_params', dict())
+        self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
 
+        # NECK
+        neck_name = self._hparams.task.params.get('neck_name')
+        neck_params = self._hparams.task.params.get('neck_params', dict())
+        neck_in_features = self.backbone.get_forward_output_channels()
+
+        if neck_name is not None:
+            self.neck = NECKS.get(neck_name)(in_features=neck_in_features, **neck_params)
+            pooling_in_features = self.neck.get_forward_output_channels()
+        else:
+            self.neck = None
+            pooling_in_features = neck_in_features
+
+        # POOLING
         pooling_params = self._hparams.task.params.get('pooling_params', dict())
+<<<<<<< HEAD
         pooling_in_features = self.backbone.get_forward_channels()
         pooling_name = self._hparams.task.params.get('pooling_name', 'Identity')
+=======
+        pooling_name = self._hparams.task.params.get('pooling_name')
+>>>>>>> origin/dev
         self.pooling = POOLINGS.get(pooling_name)(in_features=pooling_in_features, **pooling_params)
-        
+
+        # HEAD
+        head_name = self._hparams.task.params.get('head_name')
         head_params = self._hparams.task.params.get('head_params', dict())
+<<<<<<< HEAD
         head_in_features = self.pooling.get_forward_channels()
 
         head_name = self._hparams.task.params.get('head_name', 'Identity')
+=======
+        head_in_features = self.pooling.get_forward_output_channels()
+>>>>>>> origin/dev
         self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone(x)
+        if self.neck is not None:
+            x = self.neck(x)
         x = self.pooling(x)
         x = self.head(x)
         return x
