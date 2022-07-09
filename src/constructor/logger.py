@@ -1,9 +1,9 @@
-import glob
 import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, Tuple
+from itertools import chain
+from typing import Any, Dict, Optional, Union
 from pytorch_lightning.loggers.base import LightningLoggerBase
-from pytorch_lightning.loggers import mlflow
+from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.loggers.csv_logs import CSVLogger
@@ -11,18 +11,16 @@ from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.mlflow import rank_zero_only
 
 
-def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_subdir: bool
-                        ) -> Tuple[str, str]:
+def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_subdir: bool) -> Path:
     """Create directory for saving checkpoints and logging metrics.
 
     Args:
         log_dir: Base path.
         experiment_name: Sub directory for log_dir.
-        create_datetime_log_subdir: If create datetime sub directory for log_dir / experiment_name directory. This
-            datetime would be some kind a version of experiment.
+        create_datetime_log_subdir: Whether to create log_dir/experiment_name/%Y-%m-%d_%H-%M-%S or
+            log_dir/experiment_name/ folders. This datetime would be some kind a version of experiment.
 
     Returns:
-        experiment_subdir: A string of created datetime sub directory for log_dir / experiment_name.
         full_outputs_path: Directory path to save checkpoints and logging metrics.
     """
     if create_datetime_log_subdir:
@@ -34,32 +32,13 @@ def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_
     full_outputs_path = log_dir / experiment_name / experiment_subdir
     full_outputs_path.mkdir(exist_ok=True, parents=True)
 
-    return experiment_subdir, full_outputs_path
+    return full_outputs_path
 
 
-class MLFlowLogger(mlflow.MLFlowLogger):
-    """
-    Log using `MLflow <https://mlflow.org>`_.
-    Install it with pip:
-    .. code-block:: bash
-        pip install mlflow
-    .. code-block:: python
-        from pytorch_lightning import Trainer
-        from pytorch_lightning.loggers import MLFlowLogger
-        mlf_logger = MLFlowLogger(
-            experiment_name="default",
-            tracking_uri="file:./ml-runs"
-        )
-        trainer = Trainer(logger=mlf_logger)
-    Use the logger anywhere in your :class:`~pytorch_lightning.core.lightning.LightningModule` as follows:
-    .. code-block:: python
-        from pytorch_lightning import LightningModule
-        class LitModel(LightningModule):
-            def training_step(self, batch, batch_idx):
-                # example
-                self.logger.experiment.whatever_ml_flow_supports(...)
-            def any_lightning_module_function_or_hook(self):
-                self.logger.experiment.whatever_ml_flow_supports(...)
+class MLFlowLoggerX(MLFlowLogger):
+    """This logger completely repeats the functionality of Pytorch Lightning MLFlowLogger. But unlike the Lightning
+    logger it upload *.onnx and *.ckpt artifacts to artifact_location path.
+
     Args:
         experiment_name: The name of the experiment
         tracking_uri: Address of local or remote tracking server.
@@ -76,7 +55,6 @@ class MLFlowLogger(mlflow.MLFlowLogger):
         ImportError:
             If required MLFlow package is not installed on the device.
     """
-
     def __init__(
             self,
             experiment_name: str = 'default',
@@ -94,11 +72,10 @@ class MLFlowLogger(mlflow.MLFlowLogger):
     @rank_zero_only
     def finalize(self, status: str = 'FINISHED') -> None:
         """Call finalize of pytorch lightning MlFlowLogger and logs *.ckpt and *.onnx artifacts in artifact_location."""
-        super(mlflow.MLFlowLogger, self).finalize(status)
+        super().finalize(status)
         status = 'FINISHED' if status == 'success' else status
 
-        base_dir = str(self._save_dir)
-        upload_file_paths = glob.glob(base_dir + '/*.ckpt') + glob.glob(base_dir + '/*.onnx')
+        upload_file_paths = chain(self._save_dir.glob('*.ckpt'), self._save_dir.glob('*.onnx'))
         for file_path in upload_file_paths:
             self.experiment.log_artifact(self._run_id, file_path)
 
@@ -109,15 +86,15 @@ class MLFlowLogger(mlflow.MLFlowLogger):
 def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
                   experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
                   full_outputs_path: Union[str, Path]) -> LightningLoggerBase:
-    """
-    
+    """Create logger.
+
     Args:
         logger_class_name: Logger class name.
         logger_class_params: Logger class constructor parameters.
-        outputs_path: Base directory for parameters logging. 
+        outputs_path: Base directory for parameters logging.
         experiment_name: Sub directory for output_path for parameters logging, the name means experiment name.
-        experiment_subdir: Sub directory for experiment_name for parameters logging, the name means experiment 
-            start datetime, some kind of experiment version. 
+        experiment_subdir: Sub directory for experiment_name for parameters logging, the name means experiment
+            start datetime, some kind of experiment version.
         full_outputs_path: Directory path for parameters logging.
 
     Raises:
@@ -135,6 +112,13 @@ def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_pat
         }
         logger_params.update(logger_class_params)
         return TensorBoardLogger(**logger_params)
+    elif logger_class_name == 'MlFlowLoggerX':
+        logger_params = {
+            'save_dir': full_outputs_path,
+            'experiment_name': experiment_name
+        }
+        logger_params.update(logger_class_params)
+        return MLFlowLoggerX(**logger_params)
     elif logger_class_name == 'MlFlowLogger':
         logger_params = {
             'save_dir': full_outputs_path,
