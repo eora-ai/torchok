@@ -99,7 +99,7 @@ def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_pat
 
     Raises:
         ValueError: If logger_class_name not in support logger names. Specifically TorchOk support next loggers:
-            TensorBoardLogger, MlFlowLogger, WandbLogger, CSVLogger, NeptuneLogger
+            TensorBoardLogger, MlFlowLogger, MLFlowLoggerX, WandbLogger, CSVLogger, NeptuneLogger
 
     Returns:
         Logger.
@@ -112,14 +112,14 @@ def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_pat
         }
         logger_params.update(logger_class_params)
         return TensorBoardLogger(**logger_params)
-    elif logger_class_name == 'MlFlowLoggerX':
+    elif logger_class_name == 'MLFlowLoggerX':
         logger_params = {
             'save_dir': full_outputs_path,
             'experiment_name': experiment_name
         }
         logger_params.update(logger_class_params)
         return MLFlowLoggerX(**logger_params)
-    elif logger_class_name == 'MlFlowLogger':
+    elif logger_class_name == 'MLFlowLogger':
         logger_params = {
             'save_dir': full_outputs_path,
             'experiment_name': experiment_name
@@ -151,5 +151,5 @@ def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_pat
         return NeptuneLogger(**logger_params)
     else:
         raise ValueError(f'Create Logger method. TorchOk not support logger with name {logger_class_name}. '
-                         f'TorchOk supports the following names: TensorBoardLogger, MlFlowLogger, WandbLogger, '
-                         f'CSVLogger, NeptuneLogger.')
+                         f'TorchOk supports the following names: TensorBoardLogger, MlFlowLogger, MLFlowLoggerX, '
+                         f'WandbLogger, CSVLogger, NeptuneLogger.')
