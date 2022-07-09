@@ -1,5 +1,4 @@
-from omegaconf import DictConfig, ListConfig
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -94,7 +93,11 @@ class MetricParams:
 @dataclass
 class TaskParams:
     name: str
+    compute_loss_on_valid: bool = True
     params: Optional[Dict] = field(default_factory=dict)
+    base_checkpoint: Optional[str] = None
+    overridden_checkpoints: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
 
 
 # Trainer parameters
@@ -177,3 +180,5 @@ class ConfigParams:
     optimization: Optional[List[OptimizationParams]] = field(default_factory=list)
     joint_loss: Optional[JointLossParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
+    resume_path: Optional[str] = None
+    

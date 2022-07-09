@@ -1,6 +1,8 @@
-from typing import Dict, List, Union
+from typing import Dict, Union
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from omegaconf import DictConfig
 
 from src.constructor import BACKBONES, HEADS, POOLINGS, TASKS

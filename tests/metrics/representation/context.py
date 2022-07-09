@@ -2,11 +2,11 @@ import torch
 
 from typing import Dict, Optional
 from pytorch_lightning import LightningModule, Trainer
-from torch import nn, Tensor
+from torch import Tensor
 from torch.nn import functional as F
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset
 
-from .envaronment_data import *
+from .data import VECTORS, TARGETS, SCORES, SCORES_QUERY_AS_RELEVANT, QUERIES_IDX
 
 
 MAX_K = 6
@@ -53,7 +53,8 @@ class Model(LightningModule):
         super().__init__()
         self.l1 = torch.nn.Linear(4, 4)
         self.dataset = metric_params['dataset_type']
-        self.metrics = [metric_class(**metric_params, k=k) for k in range(1, max_k+1)]
+        # reset to 1
+        self.metrics = [metric_class(**metric_params, k=k) for k in range(1, max_k + 1)]
 
     def forward(self, x):
         return torch.relu(self.l1(x.view(x.size(0), -1)))
@@ -64,12 +65,13 @@ class Model(LightningModule):
         loss = F.cross_entropy(predict, torch.zeros(predict.shape[0], dtype=torch.long))
         # set fake data to output, to check metrics
         for metric in self.metrics:
-            if self.dataset.value == 0:
+            if self.dataset == 'classification':
                 # classification
-                metric(vectors=batch['vectors'], targets=batch['targets'])
+                metric.update(vectors=batch['vectors'], targets=batch['targets'])
             else:
                 # representation
-                metric(vectors=batch['vectors'], scores=batch['scores'], queries_idxs=batch['queries_idxs'])
+                metric.update(vectors=batch['vectors'], scores=batch['scores'],
+                              query_idxs=batch['queries_idxs'])
         return loss
 
     def configure_optimizers(self):
@@ -77,10 +79,14 @@ class Model(LightningModule):
 
 
 def run_model(metric_class: type, metric_params: Dict, trainer_params: Optional[Dict] = None, max_k: int = MAX_K):
-    if metric_params['dataset_type'].value == 0:
+    if metric_params['dataset_type'] == 'classification':
         train_ds = ClassificationData()
     else:
-        train_ds = RepresentationData()
+        score_type = metric_params.get('score_type', 'normal')
+        if score_type == 'query_as_relevant':
+            train_ds = RepresentationData(scores=SCORES_QUERY_AS_RELEVANT)
+        else:
+            train_ds = RepresentationData(scores=SCORES)
 
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE)
 
@@ -89,6 +95,8 @@ def run_model(metric_class: type, metric_params: Dict, trainer_params: Optional[
     # Initialize a trainer
     if trainer_params is None:
         trainer_params = {}
+
+    trainer_params['num_sanity_val_steps'] = 0
         
     trainer = Trainer(**trainer_params, max_epochs=EPOCH)
 
@@ -100,4 +108,3 @@ def run_model(metric_class: type, metric_params: Dict, trainer_params: Optional[
         metric_dict[k + 1] = metric.compute()
 
     return metric_dict
-    

@@ -47,6 +47,7 @@ data:
 trainer:
   gpus: [0]
   max_epochs: 10
+  log_every_n_steps: 1
 
 log_dir: '${oc.env:LOGDIR}'
 experiment_name: cifar10

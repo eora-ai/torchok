@@ -1,12 +1,9 @@
 import numbers
 import numpy as np
-
-from torch import Tensor, tensor, nn
+import torch.nn as nn
+from torch import Tensor
 from torchmetrics import Metric
-
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from src.constructor import METRICS
 from src.constructor.config_structure import MetricParams, Phase
@@ -23,25 +20,50 @@ class MetricWithUtils(nn.Module):
             log_name: The metric name used in logs.
         """
         super().__init__()
-        self.__metric = metric
-        self.__mapping = mapping
-        self.__log_name = log_name
+        self._metric = metric
+        self._mapping = mapping
+        self._log_name = log_name
+
+    @property
+    def metric(self) -> Metric:
+        """The metric."""
+        return self._metric
 
     @property
     def log_name(self) -> str:
         """The metric name used in logs."""
-        return self.__log_name
+        return self._log_name
 
     @property
     def mapping(self) -> Dict[str, str]:
         """Dictionary for mapping Metric forward input keys with Task output dictionary keys."""
-        return self.__mapping
-
+        return self._mapping
+    
     def forward(self, *args, **kwargs):
-        return self.__metric(*args, **kwargs)
+        """Forward metric.
+        
+        This method cache the states, then do reset current metric state,
+        then call update function for current *args and **kwargs (usually it is batch),
+        then call compute to calculate the metric result and then restore cached states and call update for *args
+        and **kwargs. For more information see forward method of Metric class in torchmetrics.
+        """
+        return self._metric(*args, **kwargs)
+
+    def update(self, *args, **kwargs):
+        """Update metric states.
+
+        Add *args and **kwargs (usually it is batch) to current state. 
+        """
+        self._metric.update(*args, **kwargs)
 
     def compute(self):
-        return self.__metric.compute()
+        """Compute metric on the whole current state."""
+        value = self._metric.compute()
+        return value
+
+    def reset(self):
+        """Reset metric states."""
+        self._metric.reset()
 
 
 class MetricsManager(nn.Module):
@@ -55,7 +77,7 @@ class MetricsManager(nn.Module):
         super().__init__()
         self.__phase2metrics = nn.ModuleDict()
         for phase in Phase:
-            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase) 
+            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase)
 
     def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """Generate metric list for current phase.
@@ -95,6 +117,9 @@ class MetricsManager(nn.Module):
     def forward(self, phase: Phase, *args, **kwargs):
         """Update states of all metrics on phase loop.
 
+        MetricsManager forward method use only update method of metrics. Because metric forward method  
+        increases computation time (see MetricWithUtils forward method for more information).
+
         Args:
             phase: Phase Enum.
         """
@@ -102,7 +127,7 @@ class MetricsManager(nn.Module):
 
         for metric_with_utils in self.__phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
-            metric_with_utils(*args, **targeted_kwargs)
+            metric_with_utils.update(*args, **targeted_kwargs)
             
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
         """Summarize epoch values and return log.
@@ -130,18 +155,21 @@ class MetricsManager(nn.Module):
                                  f'not numpy array with shape {metric_value.shape}.')
             # If it numpy array with one element but wrong dtype
             if (isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and 
-                np.issubdtype(metric_value.dtype, np.number)):
+                    np.issubdtype(metric_value.dtype, np.number)):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
                                  f'not numpy array element with dtype {metric_value.dtype}.')
 
             is_number = isinstance(metric_value, numbers.Number)
             # If not numeric type.
-            if not (is_number or isinstance(metric_value, Tensor) or  isinstance(metric_value, np.ndarray)):
+            if not (is_number or isinstance(metric_value, Tensor) or isinstance(metric_value, np.ndarray)):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
                                  f'not numpy array element with dtype {metric_value.dtype}.')
-            
+
             metric_key = f'{phase.value}/{metric_with_utils.log_name}'
             log[metric_key] = metric_value
+            
+            # Do reset
+            metric_with_utils.reset()
 
         return log
 
