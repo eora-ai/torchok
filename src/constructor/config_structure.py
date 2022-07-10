@@ -167,17 +167,26 @@ class CheckpointParams:
     onnx_params: Dict = field(default_factory=dict)
 
 
+# Logger
+@dataclass
+class LoggerParams:
+    name: str
+    log_dir: str
+    experiment_name: str = 'default'
+    create_datetime_log_subdir: bool = True
+    params: Optional[Dict] = field(default_factory=dict)
+
+
 # Config parameters
 @dataclass
 class ConfigParams:
     # TODO add Logger params
     task: TaskParams
     data: Dict[Phase, List[DataParams]]
+    optimization: List[OptimizationParams]
+    joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
-    experiment_name: str
-    log_dir: str = './logs'
-    optimization: Optional[List[OptimizationParams]] = field(default_factory=list)
-    joint_loss: Optional[JointLossParams] = None
+    logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     resume_path: Optional[str] = None
