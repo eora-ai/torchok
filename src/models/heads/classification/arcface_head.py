@@ -6,11 +6,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from src.constructor import HEADS
-from src.models.heads.base import AbstractHead
+from src.models.base import BaseModel
 
 
 @HEADS.register_class
-class ArcFaceHead(AbstractHead):
+class ArcFaceHead(BaseModel):
     """Implement of arc margin distance. Classification head.
 
     ArcFace paper: https://arxiv.org/pdf/1801.07698.pdf
@@ -18,7 +18,7 @@ class ArcFaceHead(AbstractHead):
     """
 
     def __init__(self,
-                 in_features: int,
+                 in_channels: int,
                  num_classes: int,
                  scale: float = None,
                  margin: float = None,
@@ -29,7 +29,7 @@ class ArcFaceHead(AbstractHead):
         """Init ArcFaceHead class.
 
         Args:
-            in_features: Size of each input sample.
+            in_channels: Size of each input sample.
             num_classes: number of classes.
             scale: Feature scale.
             margin: Angular margin.
@@ -42,9 +42,7 @@ class ArcFaceHead(AbstractHead):
         Raises:
             ValueError: if num_warmup_steps or min_margin is None, when `dynamic_margin` is True.
         """
-        super().__init__(in_features, num_classes)
-
-        self.__num_classes = num_classes
+        super().__init__(in_channels, out_channels=num_classes)
 
         if scale is None:
             p = .999
@@ -52,7 +50,7 @@ class ArcFaceHead(AbstractHead):
             scale = c_1 / num_classes * math.log(c_1 * p / (1 - p)) + 1
 
         if margin is None:
-            if in_features == 2:
+            if in_channels == 2:
                 margin = .9 - math.cos(2 * math.pi / num_classes)
             else:
                 margin = .5 * num_classes / (num_classes - 1)
@@ -79,7 +77,7 @@ class ArcFaceHead(AbstractHead):
         self.__th = torch.scalar_tensor(math.cos(math.pi - self.__margin))
         self.__mm = torch.scalar_tensor(math.sin(math.pi - self.__margin) * self.__margin)
 
-        self.__weight = nn.Parameter(torch.zeros(num_classes, in_features), requires_grad=True)
+        self.__weight = nn.Parameter(torch.zeros(num_classes, in_channels), requires_grad=True)
 
         nn.init.xavier_uniform_(self.__weight)
 
@@ -131,11 +129,6 @@ class ArcFaceHead(AbstractHead):
         self.__update_margin()
 
         return output
-
-    @property
-    def num_classes(self) -> int:
-        """Output features or number classes."""
-        return self.__num_classes
 
     @property
     def margin(self) -> float:

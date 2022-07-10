@@ -26,26 +26,26 @@ class ClassificationTask(BaseTask):
         # NECK
         neck_name = self._hparams.task.params.get('neck_name')
         neck_params = self._hparams.task.params.get('neck_params', dict())
-        neck_in_features = self.backbone.get_forward_output_channels()
+        neck_in_channels = self.backbone.out_channels
 
         if neck_name is not None:
-            self.neck = NECKS.get(neck_name)(in_features=neck_in_features, **neck_params)
-            pooling_in_features = self.neck.get_forward_output_channels()
+            self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+            pooling_in_channels = self.neck.out_channels
         else:
             self.neck = None
-            pooling_in_features = neck_in_features
+            pooling_in_channels = neck_in_channels
 
         # POOLING
         pooling_params = self._hparams.task.params.get('pooling_params', dict())
         pooling_name = self._hparams.task.params.get('pooling_name')
-        self.pooling = POOLINGS.get(pooling_name)(in_features=pooling_in_features, **pooling_params)
+        self.pooling = POOLINGS.get(pooling_name)(in_channels=pooling_in_channels, **pooling_params)
 
         # HEAD
         head_name = self._hparams.task.params.get('head_name')
         head_params = self._hparams.task.params.get('head_params', dict())
-        head_in_features = self.pooling.get_forward_output_channels()
-        self.head = HEADS.get(head_name)(in_features=head_in_features, **head_params)
-
+        head_in_channels = self.pooling.out_channels
+        self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
+   
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone(x)
@@ -62,6 +62,8 @@ class ClassificationTask(BaseTask):
         freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
         with torch.set_grad_enabled(not freeze_backbone and self.training):
             features = self.backbone(input_data)
+        if self.neck is not None:
+            features = self.neck(features)
         embeddings = self.pooling(features)
         prediction = self.head(embeddings, target)
         output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}

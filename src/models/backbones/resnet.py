@@ -4,18 +4,17 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import Optional, Union, List, Dict
+from typing import Union, List, Dict
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 
 from src.constructor import BACKBONES
 from src.models.modules.blocks.se import SEModule
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
 from src.models.modules.bricks.convbnact import ConvBnAct
-from src.models.base import BaseModel, FeatureInfo
+from src.models.backbones import BaseBackbone
 from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 
@@ -61,40 +60,37 @@ default_cfgs = {
     'seresnet152': _cfg(interpolation='bicubic')
 }
 
-class ResNet(BaseModel):
+
+class ResNet(BaseBackbone):
     """ResNet model."""
 
     def __init__(self,
                  block: Union[BasicBlock, Bottleneck],
                  layers: List[int],
-                 in_chans: int = 3,
+                 in_channels: int = 3,
                  block_args: Dict = None):
         """Init ResNet.
 
         Args:
             block: Block type class.
             layers: Number of layers.
-            in_chans: Input channels.
+            in_channels: Input channels.
             block_args: Arguments for block_args.
         """
+        super().__init__(in_channels=in_channels)
         self.block_args = block_args or dict()
         self.inplanes = 64
         self.channels = [64, 128, 256, 512]
-        self.num_features = 512 * block.expansion
+        self._out_channels = 512 * block.expansion
+        self._out_feature_channels = [in_channels] + self.channels * block.expansion,
 
-        super().__init__()
-
-        self.convbnact = ConvBnAct(in_chans, self.channels[0], kernel_size=7, stride=2, padding=3)
+        self.convbnact = ConvBnAct(in_channels, self.channels[0], kernel_size=7, stride=2, padding=3)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.layer1 = self.__make_layer(block, self.channels[0], layers[0], **self.block_args)
         self.layer2 = self.__make_layer(block, self.channels[1], layers[1], stride=2, **self.block_args)
         self.layer3 = self.__make_layer(block, self.channels[2], layers[2], stride=2, **self.block_args)
         self.layer4 = self.__make_layer(block, self.channels[3], layers[3], stride=2, **self.block_args)
-
-        self.create_hooks(output_channels=self.channels * block.expansion,
-                          module_names=['layer1', 'layer2', 'layer3', 'layer4'],
-                          strides=[1, 2, 2, 2])
 
     def __make_layer(self,
                      block: Union[BasicBlock, Bottleneck],
@@ -143,17 +139,27 @@ class ResNet(BaseModel):
 
         return x
 
-    def get_features_info(self, output_channels: List[int], module_names: List[int], strides: List[int]):
-        """See documentation in constructor."""
-        features_info = []
-        for num_channels, module_name, stride in zip(output_channels, module_names, strides):
-            feature_info = FeatureInfo(module_name=module_name, num_channels=num_channels, stride=stride)
-            features_info.append(feature_info)
-        return features_info
+    def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
+        """Forward method."""
+        features = [x]
 
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.num_features
+        x = self.convbnact(x)
+        x = self.maxpool(x)
+        features.append(x)
+
+        x = self.layer1(x)
+        features.append(x)
+
+        x = self.layer2(x)
+        features.append(x)
+
+        x = self.layer3(x)
+        features.append(x)
+
+        x = self.layer4(x)
+        features.append(x)
+
+        return features
 
 
 def create_resnet(variant, pretrained=False, **kwargs):

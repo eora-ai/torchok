@@ -1,15 +1,16 @@
 from torch import nn, Tensor
 import torch.nn.functional as F
+from typing import Optional
 
 from src.constructor import HEADS
-from src.models.heads.base import AbstractHead
+from src.models.base import BaseModel
 
 
 @HEADS.register_class
-class ClassificationHead(AbstractHead):
+class ClassificationHead(BaseModel):
     """Classification head for basic input features."""
 
-    def __init__(self, in_features: int, num_classes: int, drop_rate: float = 0.0, bias: bool = True):
+    def __init__(self, in_channels: int, num_classes: int, drop_rate: float = 0.0, bias: bool = True):
         """Init ClassificationHead.
 
         Shape of the input features is (\*, in_features) and shape of the output is (\*, num_classes),
@@ -18,29 +19,27 @@ class ClassificationHead(AbstractHead):
         so the channels dimension is squeezed.
 
         Args:
-            in_features: number of input features
+            in_channels: number of input features
             num_classes: number of classes
             drop_rate: dropout rate (applied before linear layer)
             bias: whether to use bias in the linear layer
         """
-        super().__init__(in_features, num_classes)
-        self.num_classes = num_classes
+        super().__init__(in_channels, out_channels=num_classes)
         self.drop_rate = drop_rate
-        self.fc = nn.Linear(in_features, num_classes, bias=bias)
+        self.fc = nn.Linear(in_channels, num_classes, bias=bias)
 
-    def forward(self, x: Tensor, *args, **kwargs) -> Tensor:
+    def forward(self, x: Tensor, target: Optional[Tensor] = None) -> Tensor:
         """Forward single input ``x``.
-        
+
         Args:
-            x: input features of shape (\*, in_features), where \* means any number of dimensions,
-            in_features - number of features configured for the head
+            x: Input tensor. 
         """
         if self.drop_rate > 0.:
             x = F.dropout(x, p=self.drop_rate, training=self.training)
-        
+
         x = self.fc(x)
 
-        if self.num_classes == 1:
+        if self._out_channels == 1:
             x = x[..., 0]
 
         return x

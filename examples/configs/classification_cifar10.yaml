@@ -4,7 +4,7 @@ task:
     backbone_name: resnet18
     backbone_params:
       pretrained: true
-      in_chans: 3
+      in_channels: 3
     pooling_name: Pooling
     head_name: ClassificationHead
     head_params:

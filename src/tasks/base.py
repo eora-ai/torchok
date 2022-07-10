@@ -42,9 +42,20 @@ class BaseTask(LightningModule, ABC):
         """Abstract forward method for training(with ground truth labels)."""
         pass
 
+    def train_modules(self) -> List[str]:
+        """Create a list of 1st-level modules that need to be optimized. The method is used to apply an optimizer
+        for the returned modules.
+
+        By default, it would be self.children().
+
+        Returns: List of modules that need to be optimized.
+        """
+        return self.children()
+
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers."""
-        opt_sched_list = self.__constructor.configure_optimizers(self.parameters())
+        modules = self.train_modules()
+        opt_sched_list = self.__constructor.configure_optimizers(modules)
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
