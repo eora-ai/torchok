@@ -29,7 +29,7 @@ def main(config: DictConfig):
     # Create task
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
-    trainer.predict(model)
+    trainer.fit(model)
 
 if __name__ == '__main__':
     main()

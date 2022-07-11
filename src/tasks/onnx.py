@@ -30,14 +30,17 @@ class ONNXTask(BaseTask):
         onnx_model = onnx.load(model_path)
         onnx.checker.check_model(onnx_model)
 
-        self._sess = onnxrt.InferenceSession(model_path, providers=['CUDAExecutionProvider'])
+        self._sess = onnxrt.InferenceSession(model_path, providers=self.__infer_params.providers)
         self.__binding = self._sess.io_binding()
 
         self.__input_names = [input_name.name for input_name in self._sess.get_inputs()]
-        self.__input_shapes = [input_shape.shape for input_shape in self._sess.get_inputs()]
+        self.__input_shapes = [item['shape'] for item in self.__infer_params.inputs]
 
-        self.__label_names = [output_name.name for output_name in self._sess.get_outputs()]
-        self.__output_shapes = [output_shape.shape for output_shape in self._sess.get_outputs()]
+        dynamic_dim = self.__input_shapes[0][0]
+
+        self.__label_name = self._sess.get_outputs()[0].name
+        self.__output_shape = self._sess.get_outputs()[0].shape
+        self.__dynamic_output_shape = (dynamic_dim, *self.__output_shape[1:])
 
     def forward(self, x: Tensor) -> Tensor:
         pass
@@ -50,24 +53,26 @@ class ONNXTask(BaseTask):
         output = self._forward_onnx(x)
         return output
 
-    def _forward_onnx(self, x: Tensor) -> Tensor:
+    def _forward_onnx(self, inputs: Union[List[Tensor], Tensor]) -> Tensor:
         """Forward onnx model."""
-        self.__binding.bind_input(
-                name=self.__input_names,
+
+        for input_name, input_shape, input_tensor in zip(self.__input_names, self.__input_shapes, inputs):
+            self.__binding.bind_input(
+                name=input_name,
                 device_type=self.device,
                 device_id=self.device_id,
                 element_type=np.float32,
-                shape=self.__input_shapes,
-                buffer_ptr=[x.data_ptr()])
+                shape=input_shape,
+                buffer_ptr=input_tensor.data_ptr())
 
-        output_tensor = [torch.empty(self.__output_shapes[0], dtype=torch.float32, device=self.device).contiguous()]
+        output_tensor = torch.empty(self.__dynamic_output_shape, dtype=torch.float32, device=self.device).contiguous()
 
         self.__binding.bind_output(
-            name=self.__label_names,
+            name=self.__label_name,
             device_type=self.device,
             device_id=self.device_id,
             element_type=np.float32,
-            shape=self.__output_shapes,
+            shape=self.__dynamic_output_shape,
             buffer_ptr=output_tensor.data_ptr())
 
         self._sess.run_with_iobinding(self.__binding)
