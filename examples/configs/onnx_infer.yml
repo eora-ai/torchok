@@ -7,9 +7,11 @@ task:
   params:
     path_to_onnx: '/workdir/vpatrushev/small2/resnet18-v2-7.onnx'
     device_id: 0
+    providers: ['CUDAExecutionProvider']
     inputs:
-      - shape: [3, &height 32, &width 32]
+      - shape: [1, 3, &height 224, &width 224]
         dtype: 'float32'
+  
 
 data:
   TEST:
@@ -78,20 +80,3 @@ metrics:
     mapping: 
       preds: prediction
       target: target
-
-joint_loss:
-  losses:
-    - name: CrossEntropyLoss
-      mapping:
-          input: prediction
-          target: target
-
-optimization:
-  - optimizer: 
-      name: Adam
-      params:
-        lr: 0.0001
-    scheduler:
-      name: ExponentialLR
-      params:
-        gamma: 0.97

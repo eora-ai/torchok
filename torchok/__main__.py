@@ -29,11 +29,15 @@ def entrypoint(config: DictConfig):
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
 <<<<<<< HEAD:torchok/__main__.py
+<<<<<<< HEAD:torchok/__main__.py
     trainer.fit(model, ckpt_path=config.resume_path)
 
 =======
     trainer.predict(model)
 >>>>>>> change onnx:train.py
+=======
+    trainer.fit(model)
+>>>>>>> add multiinput and dynamic shape:train.py
 
 if __name__ == '__main__':
     entrypoint()
