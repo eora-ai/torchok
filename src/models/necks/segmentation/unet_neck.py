@@ -142,7 +142,7 @@ class UnetNeck(BaseModel):
                     n_blocks, len(decoder_channels)
                 )
             )
-        
+
         if n_blocks != len(encoder_channels):
             raise ValueError(
                 "Model depth is {}, but you provide `encoder_channels` for {} blocks.".format(
@@ -152,24 +152,23 @@ class UnetNeck(BaseModel):
 
         self.n_blocks = n_blocks
 
+        # remove first skip with same spatial resolution
         encoder_channels = encoder_channels[1 - n_blocks:]
         encoder_channels = encoder_channels[::-1]
-        print(encoder_channels)
 
         # computing blocks input and output channels
         head_channels = encoder_channels[0]
         in_channels = [head_channels] + list(decoder_channels[:-1])
         skip_channels = list(encoder_channels[1:]) + [0]
         out_channels = decoder_channels
-        print(head_channels)
+
         self.center = CenterBlock(head_channels, head_channels, use_batchnorm=use_batchnorm) if center else None
 
         blocks = [
             DecoderBlock(in_ch, skip_ch, out_ch, use_batchnorm=use_batchnorm, use_attention=use_attention)
             for in_ch, skip_ch, out_ch in zip(in_channels, skip_channels, out_channels)
         ]
-        
-        print(list(zip(in_channels, skip_channels, out_channels)))
+
         self.blocks = nn.ModuleList(blocks)
         self.out_channels = decoder_channels[-2]
 
@@ -187,7 +186,3 @@ class UnetNeck(BaseModel):
             x = decoder_block(x, skip)
 
         return x
-
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.out_channels
