@@ -1,8 +1,8 @@
 """TorchOK Swin Transformer V2
 
-Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/swin_transformer_v2.py
-Copyright 2019 Ross Wightman
-Licensed under The Apache 2.0 License [see LICENSE for details]
+Adapted from https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer_v2.py
+Copyright (c) 2022 Microsoft
+Licensed under The MIT License [see LICENSE for details]
 """
 # --------------------------------------------------------
 # Swin Transformer V2
@@ -10,22 +10,16 @@ Licensed under The Apache 2.0 License [see LICENSE for details]
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Ze Liu
 # --------------------------------------------------------
-import math
-from typing import Tuple, Optional
-
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 
 from src.constructor import BACKBONES
-from src.models.base import BaseModel, FeatureInfo
+from src.models.base import BaseModel
 from src.models.modules.weights_init import trunc_normal_
 from src.models.modules.blocks.patch_merging import PatchMerging
 from src.models.modules.blocks.patch_embedding import PatchEmbed
 from src.models.modules.blocks.swin_block import SwinTransformerBlock
-from src.models.modules.bricks.mlp import Mlp
-from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 from src.models.backbones.utils.helpers import build_model_with_cfg
 
 
@@ -84,49 +78,60 @@ class BasicLayer(nn.Module):
         drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
         norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
         downsample (nn.Module | None, optional): Downsample layer at the end of the layer. Default: None
+        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
         pretrained_window_size (int): Local window size in pre-training.
     """
 
-    def __init__(
-            self, dim, input_resolution, depth, num_heads, window_size,
-            mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0., drop_path=0.,
-            norm_layer=nn.LayerNorm, downsample=None, pretrained_window_size=0):
+    def __init__(self, dim, input_resolution, depth, num_heads, window_size,
+                 mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0.,
+                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False,
+                 pretrained_window_size=0):
 
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
         self.depth = depth
-        self.grad_checkpointing = False
+        self.use_checkpoint = use_checkpoint
 
         # build blocks
         self.blocks = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=dim, input_resolution=input_resolution,
-                num_heads=num_heads, window_size=window_size,
-                shift_size=0 if (i % 2 == 0) else window_size // 2,
-                mlp_ratio=mlp_ratio,
-                qkv_bias=qkv_bias,
-                drop=drop, attn_drop=attn_drop,
-                drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
-                norm_layer=norm_layer,
-                pretrained_window_size=pretrained_window_size)
+            SwinTransformerBlock(dim=dim, input_resolution=input_resolution,
+                                 num_heads=num_heads, window_size=window_size,
+                                 shift_size=0 if (i % 2 == 0) else window_size // 2,
+                                 mlp_ratio=mlp_ratio,
+                                 qkv_bias=qkv_bias,
+                                 drop=drop, attn_drop=attn_drop,
+                                 drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                                 norm_layer=norm_layer,
+                                 pretrained_window_size=pretrained_window_size)
             for i in range(depth)])
 
         # patch merging layer
         if downsample is not None:
             self.downsample = downsample(input_resolution, dim=dim, norm_layer=norm_layer)
         else:
-            self.downsample = nn.Identity()
+            self.downsample = None
 
     def forward(self, x):
         for blk in self.blocks:
-            if self.grad_checkpointing and not torch.jit.is_scripting():
+            if self.use_checkpoint:
                 x = checkpoint.checkpoint(blk, x)
             else:
                 x = blk(x)
-        attention_out = x
-        downsample_attention = self.downsample(x)
-        return downsample_attention, attention_out
+        if self.downsample is not None:
+            x = self.downsample(x)
+        return x
+
+    def extra_repr(self) -> str:
+        return f"dim={self.dim}, input_resolution={self.input_resolution}, depth={self.depth}"
+
+    def flops(self):
+        flops = 0
+        for blk in self.blocks:
+            flops += blk.flops()
+        if self.downsample is not None:
+            flops += self.downsample.flops()
+        return flops
 
     def _init_respostnorm(self):
         for blk in self.blocks:
