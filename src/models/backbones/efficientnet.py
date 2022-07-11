@@ -4,7 +4,6 @@ Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 import math
-from typing import Union, List
 
 import torch.nn as nn
 from torch import Tensor
@@ -84,9 +83,11 @@ class EfficientNet(BaseModel):
             depth_coefficient: Layer repeat multiplier.
             in_chans: Input channels.
         """
-        super().__init__()
         self.in_chans = in_chans
         self.out_channels = round_channels(1280, width_coefficient)
+
+        super().__init__(self.in_chans, self.out_channels)
+
         self.blocks = self.__create_blocks(width_coefficient, depth_coefficient)
 
     def __create_blocks(self, width_coefficient: float, depth_coefficient: float) -> nn.Sequential:
@@ -129,10 +130,6 @@ class EfficientNet(BaseModel):
         """Forward method."""
         x = self.blocks(x)
         return x
-
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.out_channels
 
 
 def create_effnet(variant: str, pretrained: bool = False, **model_kwargs):

@@ -25,10 +25,11 @@ class InvertedResidualBlock(nn.Module):
             out_channels: Number of channels.
             kernel_size: Kernel size.
             stride: Stride.
-            padding: Padding.
             expand_ratio: Expand ratio.
+            expand_channels: Expand channels.
             act_layer: Activation layer.(default nn.SiLU)
-            reduction: Reducton for SEModule.
+            use_se: If True will use SEModule.
+            se_kwargs: SEModule kwargs.
             drop_connect_rate: Drop connect rate.
         """
         super().__init__()
