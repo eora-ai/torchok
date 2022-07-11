@@ -26,6 +26,9 @@ class TestConfigStructure(unittest.TestCase):
     def test_load_config_when_full_config_was_defined(self):
         load_structured_config('tests/constructor/configs/config.yaml')
 
+    def test_load_config_when_optimizer_and_loss_was_not_defined(self):
+        load_structured_config('tests/constructor/configs/config_without_loss_optimizer.yaml')
+
     def test_enum_load_when_full_config_was_defined(self):
         config = load_structured_config('tests/constructor/configs/config.yaml')
 

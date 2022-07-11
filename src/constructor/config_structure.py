@@ -1,5 +1,4 @@
-from omegaconf import DictConfig, ListConfig
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -94,7 +93,11 @@ class MetricParams:
 @dataclass
 class TaskParams:
     name: str
+    compute_loss_on_valid: bool = True
     params: Optional[Dict] = field(default_factory=dict)
+    base_checkpoint: Optional[str] = None
+    overridden_checkpoints: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
 
 
 # Trainer parameters
@@ -107,6 +110,7 @@ class TrainerParams:
     num_nodes: int = 1
     num_processes: Optional[int] = None  # TODO: Remove in 2.0
     devices: Optional[List[int]] = None
+    gpus: Optional[List[int]] = None
     auto_select_gpus: bool = False
     tpu_cores: Optional[List[int]] = None  # TODO: Remove in 2.0
     ipus: Optional[int] = None  # TODO: Remove in 2.0
@@ -159,8 +163,18 @@ class CheckpointParams:
     save_weights_only: bool = False
     mode: str = 'min'
     auto_insert_metric_name: bool = False
-    # onnx_to_save: bool = False
-    # onnx_params: Dict = field(default_factory=dict)
+    export_to_onnx: bool = False
+    onnx_params: Dict = field(default_factory=dict)
+
+
+# Logger
+@dataclass
+class LoggerParams:
+    name: str
+    log_dir: str
+    experiment_name: str = 'default'
+    create_datetime_log_subdir: bool = True
+    params: Optional[Dict] = field(default_factory=dict)
 
 
 # Config parameters
@@ -173,6 +187,6 @@ class ConfigParams:
     joint_loss: JointLossParams
     trainer: TrainerParams
     checkpoint: CheckpointParams
-    experiment_name: str
-    log_dir: str = './logs'
+    logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
+    resume_path: Optional[str] = None
