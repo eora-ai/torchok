@@ -119,9 +119,12 @@ class BasicLayer(nn.Module):
                 x = checkpoint.checkpoint(blk, x)
             else:
                 x = blk(x)
+        attention_out = x
         if self.downsample is not None:
-            x = self.downsample(x)
-        return x
+            downsample_attention = self.downsample(x)
+        else:
+            downsample_attention = x
+        return downsample_attention, attention_out
 
     def extra_repr(self) -> str:
         return f"dim={self.dim}, input_resolution={self.input_resolution}, depth={self.depth}"
@@ -192,7 +195,8 @@ class SwinTransformerV2(BaseBackbone):
         self.input_resolutions = []
         for i_layer in range(self.num_layers):
             resolution = (
-                self.patch_embed.grid_size[0] // (2 ** i_layer), self.patch_embed.grid_size[1] // (2 ** i_layer)
+                self.patch_embed.patches_resolution[0] // (2 ** i_layer),
+                self.patch_embed.patches_resolution[1] // (2 ** i_layer)
             )
             self.input_resolutions.append(resolution)
 
@@ -270,18 +274,20 @@ class SwinTransformerV2(BaseBackbone):
         x = self.pos_drop(x)
         return x
 
-    def _normalize_with_bhwc_reshape(self, x: torch.Tensor, leyer_number: int):
+    def _normalize_with_bhwc_reshape(self, x: torch.Tensor, leyer_number: int, normalize: bool = True):
         """Convert SWin BLC shape to BHWC.
 
         Args:
-            x: input tensor.
-            layer_number: number os SWin layer.
+            x: Input tensor.
+            layer_number: Number os SWin layer.
+            normalize: If do normalization.
 
         Retruns:
-            x: tensor with shape BHWC.
+            x: Tensor with shape BHWC.
         """
         # B L C
-        x = self.feature_norms[leyer_number](x)
+        if normalize:
+            x = self.feature_norms[leyer_number](x)
         H = self.input_resolutions[leyer_number][0]
         W = self.input_resolutions[leyer_number][1]
         C = self.encoder_channels[leyer_number]
@@ -292,10 +298,11 @@ class SwinTransformerV2(BaseBackbone):
     def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
         features = [x]
         downsample_attn = self._forward_patch_emb(x)
-        features.append(downsample_attn)
+        stem = self._normalize_with_bhwc_reshape(downsample_attn, leyer_number=0, normalize=False)
+        features.append(stem)
         for i, layer in enumerate(self.layers):
             downsample_attn, attn = layer(downsample_attn)
-            feature = self._normalize_with_bhwc_reshape(attn, i)
+            feature = self._normalize_with_bhwc_reshape(attn, leyer_number=i, normalize=True)
             features.append(feature)
 
         return features
@@ -315,18 +322,6 @@ class SwinTransformerV2(BaseBackbone):
         flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
         flops += self.num_features * self.num_classes
         return flops
-
-
-def checkpoint_filter_fn(state_dict, model):
-    out_dict = {}
-    if 'model' in state_dict:
-        # For deit models
-        state_dict = state_dict['model']
-    for k, v in state_dict.items():
-        if any([n in k for n in ('relative_position_index', 'relative_coords_table')]):
-            continue  # skip buffers that should not be persistent
-        out_dict[k] = v
-    return out_dict
 
 
 def _create_swin_transformer_v2(variant, pretrained=False, **model_kwargs):
