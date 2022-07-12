@@ -12,6 +12,7 @@ Licensed under The MIT License [see LICENSE for details]
 # --------------------------------------------------------
 import torch
 import torch.nn as nn
+from typing import Tuple
 
 from src.models.modules.blocks.drop import DropPath
 from src.models.modules.bricks.window_attention import WindowAttention
@@ -19,11 +20,11 @@ from src.models.modules.bricks.mlp import Mlp
 from src.models.modules.helpers import to_2tuple
 
 
-def window_partition(x, window_size):
+def window_partition(x: Tuple[int], window_size: int) -> torch.Tensor:
     """
     Args:
         x: (B, H, W, C)
-        window_size (int): window size
+        window_size: window size
     Returns:
         windows: (num_windows*B, window_size, window_size, C)
     """
@@ -33,13 +34,13 @@ def window_partition(x, window_size):
     return windows
 
 
-def window_reverse(windows, window_size, H, W):
+def window_reverse(windows: Tuple[int], window_size: int, H: int, W: int) -> torch.Tensor:
     """
     Args:
         windows: (num_windows*B, window_size, window_size, C)
-        window_size (int): Window size
-        H (int): Height of image
-        W (int): Width of image
+        window_size: Window size
+        H: Height of image
+        W: Width of image
     Returns:
         x: (B, H, W, C)
     """
@@ -50,26 +51,31 @@ def window_reverse(windows, window_size, H, W):
 
 
 class SwinTransformerBlock(nn.Module):
-    r""" Swin Transformer Block.
-    Args:
-        dim (int): Number of input channels.
-        input_resolution (tuple[int]): Input resulotion.
-        num_heads (int): Number of attention heads.
-        window_size (int): Window size.
-        shift_size (int): Shift size for SW-MSA.
-        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
-        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
-        drop (float, optional): Dropout rate. Default: 0.0
-        attn_drop (float, optional): Attention dropout rate. Default: 0.0
-        drop_path (float, optional): Stochastic depth rate. Default: 0.0
-        act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
-        pretrained_window_size (int): Window size in pre-training.
-    """
+    r""" SwinV2 Transformer Block.
 
-    def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
-                 mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, pretrained_window_size=0):
+    Implement W-MSA if shift_size == 0 and SW-MSA otherwise.
+    """
+    def __init__(self, dim: int, input_resolution: Tuple[int, int], num_heads: int, window_size: int = 7,
+                 shift_size: int = 0, mlp_ratio: float = 4., qkv_bias: bool = True, drop: float = 0.,
+                 attn_drop: float = 0., drop_path: float = 0., act_layer: nn.Module = nn.GELU,
+                 norm_layer: nn.Module = nn.LayerNorm, pretrained_window_size: int = 0):
+        """Init SwinTransformerBlock.
+
+        Args:
+            dim: Number of input channels.
+            input_resolution: Input resulotion.
+            num_heads: Number of attention heads.
+            window_size: Window size.
+            shift_size: Shift size for SW-MSA.
+            mlp_ratio: Ratio of mlp hidden dim to embedding dim.
+            qkv_bias: If True, add a learnable bias to query, key, value. Default: True
+            drop: Dropout rate. Default: 0.0
+            attn_drop: Attention dropout rate. Default: 0.0
+            drop_path: Stochastic depth rate. Default: 0.0
+            act_layer: Activation layer. Default: nn.GELU
+            norm_layer: Normalization layer.  Default: nn.LayerNorm
+            pretrained_window_size: Window size in pre-training.
+        """
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution

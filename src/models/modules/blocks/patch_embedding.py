@@ -11,6 +11,7 @@ Licensed under The MIT License [see LICENSE for details]
 # Written by Ze Liu
 # --------------------------------------------------------
 from torch import nn as nn
+from typing import Optional
 
 from src.models.modules.helpers import to_2tuple
 
@@ -18,14 +19,15 @@ from src.models.modules.helpers import to_2tuple
 class PatchEmbed(nn.Module):
     r""" Image to Patch Embedding
     Args:
-        img_size (int): Image size.  Default: 224.
-        patch_size (int): Patch token size. Default: 4.
-        in_chans (int): Number of input image channels. Default: 3.
-        embed_dim (int): Number of linear projection output channels. Default: 96.
-        norm_layer (nn.Module, optional): Normalization layer. Default: None
+        img_size: Image size.  Default: 224.
+        patch_size: Patch token size. Default: 4.
+        in_chans: Number of input image channels. Default: 3.
+        embed_dim: Number of linear projection output channels. Default: 96.
+        norm_layer: Normalization layer. Default: None
     """
 
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
+    def __init__(self, img_size: int = 224, patch_size: int = 4, in_chans: int = 3,
+                 embed_dim: int = 96, norm_layer: Optional[nn.Module] = None):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)

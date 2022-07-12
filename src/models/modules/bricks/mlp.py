@@ -4,6 +4,7 @@ import torch.nn as nn
 
 
 class Mlp(nn.Module):
+    # TODO check that DaVit does not add one more implementation
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
         super().__init__()
         out_features = out_features or in_features

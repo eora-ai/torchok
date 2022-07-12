@@ -13,7 +13,7 @@ Licensed under The MIT License [see LICENSE for details]
 import torch
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
-from typing import List
+from typing import List, Tuple, Union, Optional
 
 from src.constructor import BACKBONES
 from src.models.backbones.base_backbone import BaseBackbone
@@ -65,29 +65,29 @@ default_cfgs = {
 
 
 class BasicLayer(nn.Module):
-    """ A basic Swin Transformer layer for one stage.
-    Args:
-        dim (int): Number of input channels.
-        input_resolution (tuple[int]): Input resolution.
-        depth (int): Number of blocks.
-        num_heads (int): Number of attention heads.
-        window_size (int): Local window size.
-        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
-        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
-        drop (float, optional): Dropout rate. Default: 0.0
-        attn_drop (float, optional): Attention dropout rate. Default: 0.0
-        drop_path (float | tuple[float], optional): Stochastic depth rate. Default: 0.0
-        norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
-        downsample (nn.Module | None, optional): Downsample layer at the end of the layer. Default: None
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False.
-        pretrained_window_size (int): Local window size in pre-training.
-    """
-
-    def __init__(self, dim, input_resolution, depth, num_heads, window_size,
-                 mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0.,
-                 drop_path=0., norm_layer=nn.LayerNorm, downsample=None, use_checkpoint=False,
-                 pretrained_window_size=0):
-
+    """ A basic Swin Transformer layer for one stage."""
+    def __init__(self, dim: int, input_resolution: Tuple[int, int], depth: int, num_heads: int, window_size: int,
+                 mlp_ratio: float = 4., qkv_bias: bool = True, drop: float = 0., attn_drop: float = 0.,
+                 drop_path: Union[float, List[float]] = 0., norm_layer: nn.Module = nn.LayerNorm,
+                 downsample: Optional[nn.Module] = None, use_checkpoint: bool = False, pretrained_window_size: int = 0):
+        """Init BasicLayer.
+        
+        Args:
+            dim: Number of input channels.
+            input_resolution: Input resolution.
+            depth: Number of blocks.
+            num_heads: Number of attention heads.
+            window_size: Local window size.
+            mlp_ratio: Ratio of mlp hidden dim to embedding dim.
+            qkv_bias: If True, add a learnable bias to query, key, value. Default: True
+            drop: Dropout rate. Default: 0.0
+            attn_drop: Attention dropout rate. Default: 0.0
+            drop_path: Stochastic depth rate. Default: 0.0
+            norm_layer: Normalization layer. Default: nn.LayerNorm
+            downsample: Downsample layer at the end of the layer. Default: None
+            use_checkpoint: Whether to use checkpointing to save memory. Default: False.
+            pretrained_window_size: Local window size in pre-training.
+        """
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -149,35 +149,35 @@ class SwinTransformerV2(BaseBackbone):
     r""" Swin Transformer
         A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
           https://arxiv.org/pdf/2103.14030
-    Args:
-        img_size (int | tuple(int)): Input image size. Default 224
-        patch_size (int | tuple(int)): Patch size. Default: 4
-        in_chans (int): Number of input image channels. Default: 3
-        num_classes (int): Number of classes for classification head. Default: 1000
-        embed_dim (int): Patch embedding dimension. Default: 96
-        depths (tuple(int)): Depth of each Swin Transformer layer.
-        num_heads (tuple(int)): Number of attention heads in different layers.
-        window_size (int): Window size. Default: 7
-        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4
-        qkv_bias (bool): If True, add a learnable bias to query, key, value. Default: True
-        drop_rate (float): Dropout rate. Default: 0
-        attn_drop_rate (float): Attention dropout rate. Default: 0
-        drop_path_rate (float): Stochastic depth rate. Default: 0.1
-        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
-        ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
-        patch_norm (bool): If True, add normalization after patch embedding. Default: True
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
-        pretrained_window_sizes (tuple(int)): Pretrained window sizes of each layer.
     """
+    def __init__(self, img_size: int = 224, patch_size: int = 4, in_channels: int = 3,
+                 embed_dim: int = 96, depths: List[int] = [2, 2, 6, 2], num_heads: List[int] = [3, 6, 12, 24],
+                 window_size: int = 7, mlp_ratio: float = 4., qkv_bias: bool = True,
+                 drop_rate: float = 0., attn_drop_rate: float = 0., drop_path_rate: float = 0.1,
+                 norm_layer: nn.Module = nn.LayerNorm, ape: bool = False, patch_norm: bool = True,
+                 use_checkpoint: bool = False, pretrained_window_sizes: List[int] = [0, 0, 0, 0], **kwargs):
+        """Init SwinTransformerV2.
 
-    def __init__(self, img_size=224, patch_size=4, in_channels=3,
-                 embed_dim=96, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
-                 window_size=7, mlp_ratio=4., qkv_bias=True,
-                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False, pretrained_window_sizes=[0, 0, 0, 0], **kwargs):
+        Args:
+            img_size: Input image size. Default 224
+            patch_size: Patch size. Default: 4
+            in_channels: Number of input image channels. Default: 3
+            embed_dim: Patch embedding dimension. Default: 96
+            depths: Depth of each Swin Transformer layer.
+            num_heads: Number of attention heads in different layers.
+            window_size: Window size. Default: 7
+            mlp_ratio: Ratio of mlp hidden dim to embedding dim. Default: 4
+            qkv_bias: If True, add a learnable bias to query, key, value. Default: True
+            drop_rate: Dropout rate. Default: 0
+            attn_drop_rate: Attention dropout rate. Default: 0
+            drop_path_rate: Stochastic depth rate. Default: 0.1
+            norm_layer: Normalization layer. Default: nn.LayerNorm.
+            ape: If True, add absolute position embedding to the patch embedding. Default: False
+            patch_norm: If True, add normalization after patch embedding. Default: True
+            use_checkpoint: Whether to use checkpointing to save memory. Default: False
+            pretrained_window_sizes: Pretrained window sizes of each layer.
+        """
         super().__init__(in_channels=in_channels)
-
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
         self.ape = ape

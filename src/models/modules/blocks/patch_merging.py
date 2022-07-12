@@ -12,17 +12,18 @@ Licensed under The MIT License [see LICENSE for details]
 # --------------------------------------------------------
 import torch
 from torch import nn as nn
+from typing import Tuple
 
 
 class PatchMerging(nn.Module):
     r""" Patch Merging Layer.
     Args:
-        input_resolution (tuple[int]): Resolution of input feature.
-        dim (int): Number of input channels.
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        input_resolution: Resolution of input feature.
+        dim: Number of input channels.
+        norm_layer: Normalization layer.  Default: nn.LayerNorm
     """
 
-    def __init__(self, input_resolution, dim, norm_layer=nn.LayerNorm):
+    def __init__(self, input_resolution: Tuple[int, int], dim: int, norm_layer: nn.Module = nn.LayerNorm):
         super().__init__()
         self.input_resolution = input_resolution
         self.dim = dim
