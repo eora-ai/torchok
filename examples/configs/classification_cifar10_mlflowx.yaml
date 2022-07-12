@@ -85,7 +85,7 @@ logger:
   experiment_name: cifar10
   name: MLFlowLoggerX
   params:
-    artifact_location: 's3://mlflow/mlruns'
+    artifact_location: 'file://${oc.env:HOME}/.cache/torchok/logs/artifacts/'
 
 
 checkpoint:
