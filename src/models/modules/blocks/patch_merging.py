@@ -1,16 +1,21 @@
-""" TorchOK Visual transformers PatchMerging modules.
+"""TorchOK Swin Transformer V2
 
-Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/patch_embed.py
-Copyright 2020 Ross Wightman
-Licensed under The Apache 2.0 License [see LICENSE for details]
+Adapted from https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer_v2.py
+Copyright (c) 2022 Microsoft
+Licensed under The MIT License [see LICENSE for details]
 """
+# --------------------------------------------------------
+# Swin Transformer V2
+# Copyright (c) 2022 Microsoft
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Ze Liu
+# --------------------------------------------------------
 import torch
 from torch import nn as nn
 
 
 class PatchMerging(nn.Module):
     r""" Patch Merging Layer.
-
     Args:
         input_resolution (tuple[int]): Resolution of input feature.
         dim (int): Number of input channels.
@@ -30,12 +35,8 @@ class PatchMerging(nn.Module):
         """
         H, W = self.input_resolution
         B, L, C = x.shape
-        if L != H * W:
-            raise ValueError(f'PatchMerging module. Input features L={L} doesn`t match with image size H*W={H*W}.')
-        if H % 2 != 0:
-            raise ValueError(f'PatchMerging module. Input height {H} is not even number')
-        if W % 2 != 0:
-            raise ValueError(f'PatchMerging module. Input weight {W} is not even number')
+        assert L == H * W, "input feature has wrong size"
+        assert H % 2 == 0 and W % 2 == 0, f"x size ({H}*{W}) are not even."
 
         x = x.view(B, H, W, C)
 
@@ -50,4 +51,12 @@ class PatchMerging(nn.Module):
         x = self.norm(x)
 
         return x
-    
+
+    def extra_repr(self) -> str:
+        return f"input_resolution={self.input_resolution}, dim={self.dim}"
+
+    def flops(self):
+        H, W = self.input_resolution
+        flops = (H // 2) * (W // 2) * 4 * self.dim * 2 * self.dim
+        flops += H * W * self.dim // 2
+        return flops

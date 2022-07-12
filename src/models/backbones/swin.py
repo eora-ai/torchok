@@ -13,9 +13,10 @@ Licensed under The MIT License [see LICENSE for details]
 import torch
 import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
+from typing import List
 
 from src.constructor import BACKBONES
-from src.models.base import BaseModel
+from src.models.backbones.base_backbone import BaseBackbone
 from src.models.modules.weights_init import trunc_normal_
 from src.models.modules.blocks.patch_merging import PatchMerging
 from src.models.modules.blocks.patch_embedding import PatchEmbed
@@ -141,10 +142,10 @@ class BasicLayer(nn.Module):
             nn.init.constant_(blk.norm2.weight, 0)
 
 
-class SwinTransformerV2(BaseModel):
-    r""" Swin Transformer V2
-        A PyTorch impl of : `Swin Transformer V2: Scaling Up Capacity and Resolution`
-            - https://arxiv.org/abs/2111.09883
+class SwinTransformerV2(BaseBackbone):
+    r""" Swin Transformer
+        A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
+          https://arxiv.org/pdf/2103.14030
     Args:
         img_size (int | tuple(int)): Input image size. Default 224
         patch_size (int | tuple(int)): Patch size. Default: 4
@@ -164,29 +165,29 @@ class SwinTransformerV2(BaseModel):
         patch_norm (bool): If True, add normalization after patch embedding. Default: True
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
         pretrained_window_sizes (tuple(int)): Pretrained window sizes of each layer.
-        feature_out_idxs (tuple(int)): Output from which stages.
     """
 
-    def __init__(
-            self, img_size=224, patch_size=4, in_chans=3,
-            embed_dim=96, depths=(2, 2, 6, 2), num_heads=(3, 6, 12, 24),
-            window_size=7, mlp_ratio=4., qkv_bias=True,
-            drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-            norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-            pretrained_window_sizes=(0, 0, 0, 0), **kwargs):
-        super().__init__()
+    def __init__(self, img_size=224, patch_size=4, in_channels=3,
+                 embed_dim=96, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
+                 window_size=7, mlp_ratio=4., qkv_bias=True,
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
+                 norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
+                 use_checkpoint=False, pretrained_window_sizes=[0, 0, 0, 0], **kwargs):
+        super().__init__(in_channels=in_channels)
 
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
-        self.patch_norm = patch_norm
         self.ape = ape
+        self.patch_norm = patch_norm
         self.encoder_channels = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
+        self._out_channels = self.encoder_channels[-1]
+        self._out_feature_channels = [in_channels] + self.encoder_channels
+        self.mlp_ratio = mlp_ratio
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
-            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
+            img_size=img_size, patch_size=patch_size, in_chans=in_channels, embed_dim=embed_dim,
             norm_layer=norm_layer if self.patch_norm else None)
-        num_patches = self.patch_embed.num_patches
 
         self.input_resolutions = []
         for i_layer in range(self.num_layers):
@@ -195,12 +196,14 @@ class SwinTransformerV2(BaseModel):
             )
             self.input_resolutions.append(resolution)
 
+        num_patches = self.patch_embed.num_patches
+        patches_resolution = self.patch_embed.patches_resolution
+        self.patches_resolution = patches_resolution
+
         # absolute position embedding
-        if ape:
+        if self.ape:
             self.absolute_pos_embed = nn.Parameter(torch.zeros(1, num_patches, embed_dim))
             trunc_normal_(self.absolute_pos_embed, std=.02)
-        else:
-            self.absolute_pos_embed = None
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -210,22 +213,20 @@ class SwinTransformerV2(BaseModel):
         # build layers
         self.layers = nn.ModuleList()
         for i_layer in range(self.num_layers):
-            layer = BasicLayer(
-                dim=int(embed_dim * 2 ** i_layer),
-                input_resolution=(
-                    self.patch_embed.grid_size[0] // (2 ** i_layer),
-                    self.patch_embed.grid_size[1] // (2 ** i_layer)),
-                depth=depths[i_layer],
-                num_heads=num_heads[i_layer],
-                window_size=window_size,
-                mlp_ratio=mlp_ratio,
-                qkv_bias=qkv_bias,
-                drop=drop_rate, attn_drop=attn_drop_rate,
-                drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
-                norm_layer=norm_layer,
-                downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
-                pretrained_window_size=pretrained_window_sizes[i_layer]
-            )
+            layer = BasicLayer(dim=int(embed_dim * 2 ** i_layer),
+                               input_resolution=(patches_resolution[0] // (2 ** i_layer),
+                                                 patches_resolution[1] // (2 ** i_layer)),
+                               depth=depths[i_layer],
+                               num_heads=num_heads[i_layer],
+                               window_size=window_size,
+                               mlp_ratio=self.mlp_ratio,
+                               qkv_bias=qkv_bias,
+                               drop=drop_rate, attn_drop=attn_drop_rate,
+                               drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
+                               norm_layer=norm_layer,
+                               downsample=PatchMerging if (i_layer < self.num_layers - 1) else None,
+                               use_checkpoint=use_checkpoint,
+                               pretrained_window_size=pretrained_window_sizes[i_layer])
             self.layers.append(layer)
 
         self.feature_norms = nn.ModuleList([norm_layer(chs) for i, chs in enumerate(self.encoder_channels)])
@@ -234,13 +235,18 @@ class SwinTransformerV2(BaseModel):
         for bly in self.layers:
             bly._init_respostnorm()
 
-
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
             if isinstance(m, nn.Linear) and m.bias is not None:
                 nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
 
+    # Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/swin_transformer_v2.py
+    # Copyright 2019 Ross Wightman
+    # Licensed under The Apache 2.0 License [see LICENSE for details]
     @torch.jit.ignore
     def no_weight_decay(self):
         nod = {'absolute_pos_embed'}
@@ -249,36 +255,28 @@ class SwinTransformerV2(BaseModel):
                 nod.add(n)
         return nod
 
-    @torch.jit.ignore
-    def group_matcher(self, coarse=False):
-        return dict(
-            stem=r'^absolute_pos_embed|patch_embed',  # stem and embed
-            blocks=r'^layers\.(\d+)' if coarse else [
-                (r'^layers\.(\d+).downsample', (0,)),
-                (r'^layers\.(\d+)\.\w+\.(\d+)', None),
-                (r'^norm', (99999,)),
-            ]
-        )
+    def _forward_patch_emb(self, x: torch.Tensor) -> torch.Tensor:
+        """Run patch embedding part.
 
-    @torch.jit.ignore
-    def set_grad_checkpointing(self, enable=True):
-        for l in self.layers:
-            l.grad_checkpointing = enable
+        Args:
+            x: Input tensor.
 
-    def __forward_patch_emb(self, x):
+        Returns:
+            x: Patch embeddings with dropout - self.pos_drop.
+        """
         x = self.patch_embed(x)
         if self.ape:
             x = x + self.absolute_pos_embed
         x = self.pos_drop(x)
         return x
 
-    def __normalize_with_bhwc_reshape(self, x: torch.Tensor, leyer_number: int):
-        """Convert swin BLC shape to BHWC.
+    def _normalize_with_bhwc_reshape(self, x: torch.Tensor, leyer_number: int):
+        """Convert SWin BLC shape to BHWC.
 
         Args:
             x: input tensor.
             layer_number: number os SWin layer.
-        
+
         Retruns:
             x: tensor with shape BHWC.
         """
@@ -291,25 +289,32 @@ class SwinTransformerV2(BaseModel):
         x = x.view(-1, H, W, C).permute(0, 3, 1, 2).contiguous()
         return x
 
-    def forward_features(self, x):
-        downsample_attn = self.__forward_patch_emb(x)
-        features = []
+    def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
+        features = [x]
+        downsample_attn = self._forward_patch_emb(x)
+        features.append(downsample_attn)
         for i, layer in enumerate(self.layers):
             downsample_attn, attn = layer(downsample_attn)
-            feature = self.__normalize_with_bhwc_reshape(attn, i)
+            feature = self._normalize_with_bhwc_reshape(attn, i)
             features.append(feature)
-            
-        return tuple(features)
 
-    def forward(self, x):
-        x = self.__forward_patch_emb(x)
+        return features
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self._forward_patch_emb(x)
         for layer in self.layers:
             x, _ = layer(x)
-        x = self.__normalize_with_bhwc_reshape(x, -1)
+        x = self._normalize_with_bhwc_reshape(x, -1)
         return x
 
-    def get_forward_output_channels(self):
-        return self.encoder_channels
+    def flops(self):
+        flops = 0
+        flops += self.patch_embed.flops()
+        for i, layer in enumerate(self.layers):
+            flops += layer.flops()
+        flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
+        flops += self.num_features * self.num_classes
+        return flops
 
 
 def checkpoint_filter_fn(state_dict, model):

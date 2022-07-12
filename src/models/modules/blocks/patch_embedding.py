@@ -1,38 +1,62 @@
-""" TorchOK DropBlock, DropPath modules.
+"""TorchOK Swin Transformer V2
 
-Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/layers/patch_embed.py
-Copyright 2020 Ross Wightman
-Licensed under The Apache 2.0 License [see LICENSE for details]
+Adapted from https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer_v2.py
+Copyright (c) 2022 Microsoft
+Licensed under The MIT License [see LICENSE for details]
 """
+# --------------------------------------------------------
+# Swin Transformer V2
+# Copyright (c) 2022 Microsoft
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Ze Liu
+# --------------------------------------------------------
 from torch import nn as nn
 
 from src.models.modules.helpers import to_2tuple
 
 
 class PatchEmbed(nn.Module):
-    """ 2D Image to Patch Embedding
+    r""" Image to Patch Embedding
+    Args:
+        img_size (int): Image size.  Default: 224.
+        patch_size (int): Patch token size. Default: 4.
+        in_chans (int): Number of input image channels. Default: 3.
+        embed_dim (int): Number of linear projection output channels. Default: 96.
+        norm_layer (nn.Module, optional): Normalization layer. Default: None
     """
-    def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768, norm_layer=None, flatten=True):
+
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
         super().__init__()
         img_size = to_2tuple(img_size)
         patch_size = to_2tuple(patch_size)
+        patches_resolution = [img_size[0] // patch_size[0], img_size[1] // patch_size[1]]
         self.img_size = img_size
         self.patch_size = patch_size
-        self.grid_size = (img_size[0] // patch_size[0], img_size[1] // patch_size[1])
-        self.num_patches = self.grid_size[0] * self.grid_size[1]
-        self.flatten = flatten
+        self.patches_resolution = patches_resolution
+        self.num_patches = patches_resolution[0] * patches_resolution[1]
+
+        self.in_chans = in_chans
+        self.embed_dim = embed_dim
 
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
-        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+        if norm_layer is not None:
+            self.norm = norm_layer(embed_dim)
+        else:
+            self.norm = None
 
     def forward(self, x):
         B, C, H, W = x.shape
-        if H != self.img_size[0]:
-            raise ValueError(f"PatchEmbed module. Input image height ({H}) doesn't match model ({self.img_size[0]}).")
-        if W != self.img_size[1]:
-            raise ValueError(f"PatchEmbed module. Input image width ({W}) doesn't match model ({self.img_size[1]}).")
-        x = self.proj(x)
-        if self.flatten:
-            x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
-        x = self.norm(x)
+        # FIXME look at relaxing size constraints
+        assert H == self.img_size[0] and W == self.img_size[1], \
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        x = self.proj(x).flatten(2).transpose(1, 2)  # B Ph*Pw C
+        if self.norm is not None:
+            x = self.norm(x)
         return x
+
+    def flops(self):
+        Ho, Wo = self.patches_resolution
+        flops = Ho * Wo * self.embed_dim * self.in_chans * (self.patch_size[0] * self.patch_size[1])
+        if self.norm is not None:
+            flops += Ho * Wo * self.embed_dim
+        return flops

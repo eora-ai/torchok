@@ -1,5 +1,5 @@
 """TorchOK Multi layer Perceptron module."""
-import torch
+
 import torch.nn as nn
 
 
@@ -20,4 +20,3 @@ class Mlp(nn.Module):
         x = self.fc2(x)
         x = self.drop(x)
         return x
-    
