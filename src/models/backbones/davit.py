@@ -4,7 +4,7 @@ Adapted from https://github.com/dingmyu/davit/blob/main/mmseg/mmseg/models/backb
 Licensed under MIT License [see LICENSE for details]
 """
 import itertools
-from typing import Tuple, List, Optional
+from typing import Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -439,7 +439,7 @@ class DaViT(BaseModel):
             cfg: Model config.
             in_chans: Input channels.
         """
-        super().__init__()
+        super().__init__(in_chans, embed_dims)
 
         architecture = [[index] * item for index, item in enumerate(depths)]
         self.attention_types = ('spatial', 'channel')
@@ -544,10 +544,6 @@ class DaViT(BaseModel):
             outs.append(out)
 
         return tuple(outs)
-
-    def get_forward_output_channels(self) -> List[int]:
-        """Return number of output channels('embed_dims')."""
-        return self.embed_dims
 
 
 def create_davit(variant: str, pretrained: bool = False, **model_kwargs):
