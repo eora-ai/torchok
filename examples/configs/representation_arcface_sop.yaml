@@ -118,8 +118,10 @@ trainer:
   max_epochs: 40
   num_sanity_val_steps: 0
 
-log_dir: '/workdir/logs/sop_arcface/'
-experiment_name: sop_arcface
+logger:
+  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
+  experiment_name: cifar10
+  name: TensorBoardLogger
 
 checkpoint:
   monitor: valid/HitAtKMeter
