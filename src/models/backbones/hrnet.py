@@ -540,7 +540,12 @@ class HighResolutionNet(BaseBackbone):
         block = blocks_dict[self.stage4_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
         self.transition3 = self.__make_transition_layer(pre_stage_channels, num_channels)
+<<<<<<< HEAD
         self.stage4, out_channels = self.__make_stage(self.stage4_cfg, num_channels)
+=======
+        self.stage4, self.out_channels = self.__make_stage(self.stage4_cfg, num_channels)
+
+>>>>>>> del hrnet changes
         self.__init_weights()
 
         self._out_channels = out_channels
