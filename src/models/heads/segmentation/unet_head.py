@@ -11,11 +11,11 @@ from torch import Tensor
 import torch.nn.functional as F
 
 from src.constructor import HEADS
-from src.models.heads.base import AbstractHead
+from src.models.base import BaseModel
 
 
 @HEADS.register_class
-class UnetHead(AbstractHead):
+class UnetHead(BaseModel):
     """Head for Unet architecture."""
 
     def __init__(self,
