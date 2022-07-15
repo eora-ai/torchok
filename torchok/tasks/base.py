@@ -24,13 +24,16 @@ class BaseTask(LightningModule, ABC):
         self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
         self._input_tensors = []
+        self._input_names = []
         self._losses = self.__constructor.configure_losses()
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
-
-        for input_params in hparams.task.params.inputs:
+    
+        for input_name, input_params in hparams.task.params.inputs.items():
             input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
             self._input_tensors.append(input_tensor)
+            self._input_names.append(input_name)
+
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
