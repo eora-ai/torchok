@@ -170,7 +170,7 @@ class UnetNeck(BaseModel):
         ]
 
         self.blocks = nn.ModuleList(blocks)
-        self.out_channels = decoder_channels[-2]
+        self._out_channels = decoder_channels[-2]
 
     def forward(self, features: List[Tensor]) -> Tensor:
         """Forward method."""

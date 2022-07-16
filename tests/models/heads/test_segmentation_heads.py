@@ -13,8 +13,8 @@ class TestUnetSegmentation(unittest.TestCase):
         super().__init__(methodName)
         self._input = torch.ones(1, 3, 224, 224)
         self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_chans=3)
-        self.neck = NECKS.get('UnetNeck')(self.backbone.encoder_channels)
-        neck_features = self.neck.get_forward_output_channels()
+        self.neck = NECKS.get('UnetNeck')(self.backbone.out_feature_channels)
+        neck_features = self.neck.out_channels
         self.head = HEADS.get('UnetHead')(neck_features, 10, True, (224, 224))
 
 
@@ -24,7 +24,7 @@ class TestUnetHRNetBackbone(TestUnetSegmentation):
         super().__init__('hrnet_w18', methodName)
 
     def test_outputs_equals(self):
-        _, backbone_features = self.backbone.forward_backbone_features(self._input)
+        _, backbone_features = self.backbone.forward_features(self._input)
         x = self.neck(backbone_features)
         x = self.head(x)
         self.assertTupleEqual(x.shape, (1, 10, 224, 224))
