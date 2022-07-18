@@ -32,10 +32,10 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
 
     def _save_checkpoint(self, trainer: Trainer, filepath: str) -> None:
         """Override _save_checkpoint."""
-        if trainer.is_global_zero:
-            trainer.save_checkpoint(filepath + self.CKPT_EXTENSION, self.save_weights_only)
-            self._last_global_step_saved = trainer.global_step
+        trainer.save_checkpoint(filepath + self.CKPT_EXTENSION, self.save_weights_only)
+        self._last_global_step_saved = trainer.global_step
 
+        if trainer.is_global_zero:
             if self.export_to_onnx:
                 # DDP mode use some wrappers and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
