@@ -116,8 +116,8 @@ class UnetNeck(BaseModel):
 
     def __init__(self,
                  encoder_channels: Tuple[int],
-                 decoder_channels: Tuple[int] = (256, 128, 64, 32),
-                 n_blocks: int = 4,
+                 decoder_channels: Tuple[int] = (512, 256, 128, 64, 32),
+                 n_blocks: int = 5,
                  use_batchnorm: bool = True,
                  use_attention: bool = False,
                  center: bool = True):
@@ -142,8 +142,8 @@ class UnetNeck(BaseModel):
                     n_blocks, len(decoder_channels)
                 )
             )
-
-        if n_blocks != len(encoder_channels):
+        # channels + input_channels
+        if n_blocks + 1 != len(encoder_channels):
             raise ValueError(
                 "Model depth is {}, but you provide `encoder_channels` for {} blocks.".format(
                     n_blocks, len(encoder_channels)
@@ -152,15 +152,14 @@ class UnetNeck(BaseModel):
 
         self.n_blocks = n_blocks
 
-        # remove first skip with same spatial resolution
-        encoder_channels = encoder_channels[1 - n_blocks:]
+        # reverse channels to start from head of encoder
         encoder_channels = encoder_channels[::-1]
 
         # computing blocks input and output channels
         head_channels = encoder_channels[0]
-        in_channels = [head_channels] + list(decoder_channels[:-1])
-        skip_channels = list(encoder_channels[1:]) + [0]
-        out_channels = decoder_channels
+        in_channels = decoder_channels
+        skip_channels = encoder_channels[1:]
+        out_channels = decoder_channels[1:]
 
         self.center = CenterBlock(head_channels, head_channels, use_batchnorm=use_batchnorm) if center else None
 
@@ -170,14 +169,11 @@ class UnetNeck(BaseModel):
         ]
 
         self.blocks = nn.ModuleList(blocks)
-        self._out_channels = decoder_channels[-2]
+        self._out_channels = decoder_channels[-1]
 
     def forward(self, features: List[Tensor]) -> Tensor:
         """Forward method."""
-        features = features[1 - self.n_blocks:]  # remove first skip with same spatial resolution
-        features = features[::-1]  # reverse channels to start from head of encoder
-
-        head, *skips = features
+        head, *skips = features[::-1]  # reverse channels to start from head of encoder
 
         x = self.center(head) if self.center is not None else head
 

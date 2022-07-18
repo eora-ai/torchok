@@ -36,7 +36,6 @@ class UnetHead(BaseModel):
         """
         super().__init__(in_channels, num_classes)
 
-        self.in_channels = in_channels
         self.num_classes = num_classes
         self.do_interpolate = do_interpolate
         self.img_size = img_size
@@ -44,7 +43,7 @@ class UnetHead(BaseModel):
         if self.do_interpolate and self.img_size is None:
             raise ValueError('If "do_interpolate" is True, then img_size must be not None!')
 
-        self.head_features = nn.Conv2d(self.in_channels, self.num_classes, kernel_size=1)
+        self.head_features = nn.Conv2d(self._in_channels, self.num_classes, kernel_size=1)
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward method."""
