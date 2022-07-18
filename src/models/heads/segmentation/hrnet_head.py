@@ -6,12 +6,12 @@ import torch.nn as nn
 from torch import Tensor
 
 from src.constructor import HEADS
-from src.models.heads.base import AbstractHead
+from src.models.base import BaseModel
 from src.models.modules.bricks.convbnact import ConvBnAct
 
 
 @HEADS.register_class
-class HRNetSegmentationHead(AbstractHead):
+class HRNetSegmentationHead(BaseModel):
     """HRNet head for segmentation tasks."""
     def __init__(self, in_channels: int, num_classes: int):
         """Init HRNetSegmentationHead.
