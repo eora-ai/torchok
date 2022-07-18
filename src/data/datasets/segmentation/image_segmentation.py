@@ -27,7 +27,7 @@ class ImageSegmentationDataset(ImageDataset):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  image_dtype: str = 'float32',
-                 target_dtype: str = 'long',
+                 target_dtype: str = 'int64',
                  csv_columns_mapping: Dict[str, str] = None,
                  grayscale: bool = False,
                  test_mode: bool = False):
@@ -83,7 +83,6 @@ class ImageSegmentationDataset(ImageDataset):
 
         if not self._test_mode:
             sample['target'] = sample['mask'].type(torch.__dict__[self.__target_dtype])
-            sample['target'] = sample['target'].type(torch.__dict__[self.__target_dtype])
             del sample['mask']
 
         return sample

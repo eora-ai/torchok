@@ -35,7 +35,7 @@ class SweetPepper(ImageSegmentationDataset):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  image_dtype: str = 'float32',
-                 target_dtype: str = 'uint8',
+                 target_dtype: str = 'int64',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init SweetPepper.

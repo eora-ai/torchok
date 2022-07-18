@@ -52,5 +52,5 @@ class SegmentationTask(BaseTask):
             features = self.backbone.forward_features(input_data)
         neck_out = self.neck(features, self._start_block_number)
         prediction = self.head(neck_out)
-        output = {'target': target.type(torch.__dict__['long']), 'prediction': prediction}
+        output = {'target': target, 'prediction': prediction}
         return output
