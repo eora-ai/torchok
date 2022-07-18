@@ -20,12 +20,13 @@ class HRNetSegmentationNeck(BaseModel):
         out_channels = sum(in_channels)
         super().__init__(in_channels, out_channels)
 
-    def forward(self, features: List[Tensor]) -> Tensor:
+    def forward(self, features: List[Tensor], start_block_number: int) -> Tensor:
         """Forward method."""
-        input_image, *features = features
+        input_image = features[0]
+        used_features = features[start_block_number:]
         interpolated_feat = []
-        for feature in features:
-            interpolated = F.interpolate(feature, size=input_image.shape[2:], mode='bilinear', align_corners=True)
+        for used_feature in used_features:
+            interpolated = F.interpolate(used_feature, size=input_image.shape[2:], mode='bilinear', align_corners=True)
             interpolated_feat.append(interpolated)
 
         feats = torch.cat(interpolated_feat, 1)

@@ -1,5 +1,5 @@
 task:
-  name: ClassificationTask
+  name: SegmentationTask
   params:
     backbone_name: hrnet_w18
     backbone_params:
@@ -10,7 +10,7 @@ task:
     head_params:
       num_classes: &num_classes 3
     inputs:
-      - shape: [1, 3, &height 720, &width 1280]
+      - shape: [1, 3, &height 256, &width 256]
         dtype: 'float32'
 
 joint_loss:
@@ -22,9 +22,9 @@ joint_loss:
     - name: DiceLoss
       params:
         mode: multiclass
-        target_fields:
-          input: prediction
-          target: target
+      mapping:
+        input: prediction
+        target: target
 
 
 optimization:
@@ -56,6 +56,7 @@ data:
             params:
               height: *height
               width: *width
+              interpolation: 0
           - &normalize
             name: Normalize
             params:
@@ -63,6 +64,45 @@ data:
               std: [ 0.229, 0.224, 0.225 ]
           - &totensor
             name: ToTensorV2
+        augmentation:
+          - name: HorizontalFlip
+          - name: VerticalFlip
+          - name: CenterCrop
+            params:
+              height: *height
+              width: *width
+              p: 1.0
+          - name: OneOf
+            params:
+              p: 1.0
+              transforms:
+                - name: ElasticTransform
+                  params:
+                    border_mode: 1
+                - name: GridDistortion
+                - name: GaussNoise
+                - name: ColorJitter
+                  params:
+                    brightness: 0.4
+                    contrast: 0.4
+                    saturation: 0.4
+                    hue: 0.1
+          - name: OneOf
+            params:
+              p: 1.0
+              transforms:
+                - name: ElasticTransform
+                  params:
+                    border_mode: 1
+                - name: GridDistortion
+                - name: GaussNoise
+                - name: ColorJitter
+                  params:
+                    brightness: 0.4
+                    contrast: 0.4
+                    saturation: 0.4
+                    hue: 0.1
+
   VALID:
     - dataloader:
         batch_size: 8
@@ -87,15 +127,15 @@ trainer:
 
 logger:
   # log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  log_dit: '/workdir/logs/'
+  log_dir: '/workdir/logs/'
   experiment_name: sweet_pepper
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/F1Score
-  save_last: true
-  mode: max
-  export_to_onnx: true
+# checkpoint:
+#   monitor: valid/JaccardIndex
+#   save_last: true
+#   mode: max
+#   export_to_onnx: true
 
 metrics:
   - name: JaccardIndex

@@ -23,9 +23,14 @@ def create_trainer(train_config):
                                experiment_subdir=experiment_subdir,
                                full_outputs_path=full_outputs_path)
 
-        checkpoint_callback = ModelCheckpointWithOnnx(**train_config.checkpoint, dirpath=str(full_outputs_path))
-        finalize_logger_callback = FinalizeLogger()
-        callbacks = [checkpoint_callback, finalize_logger_callback]
+        if train_config.checkpoint is not None:
+            print('checkpoint is not None')
+            checkpoint_callback = ModelCheckpointWithOnnx(**train_config.checkpoint, dirpath=str(full_outputs_path))
+            finalize_logger_callback = FinalizeLogger()
+            callbacks = [checkpoint_callback, finalize_logger_callback]
+        else:
+            print('checkpoint is None')
+            callbacks = None
     else:
         logger = True
         callbacks = None

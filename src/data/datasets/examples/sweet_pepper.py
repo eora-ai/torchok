@@ -10,8 +10,8 @@ from src.constructor import DATASETS
 
 
 @DATASETS.register_class
-class SweetPapper(ImageSegmentationDataset):
-    """A class represent segmentation dataset Sweet Papper from Kaggle
+class SweetPepper(ImageSegmentationDataset):
+    """A class represent segmentation dataset Sweet Pepper from Kaggle
     https://www.kaggle.com/datasets/lemontyc/sweet-pepper.
 
     The main task for this dataset is segment peppers (fruit) and peduncle on the images, obtained from different
@@ -23,7 +23,7 @@ class SweetPapper(ImageSegmentationDataset):
     filename = 'sweet_pepper.tar.gz'
 
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/sweet_pepper.tar.gz'
-    tgz_md5 = '993c0608a8ed2ac46dde47593cd5c3cd0518618e'
+    tgz_md5 = '18199347e26702aada5d201792831cde'
 
     train_csv = 'train.csv'
     valid_csv = 'valid.csv'
@@ -38,7 +38,7 @@ class SweetPapper(ImageSegmentationDataset):
                  target_dtype: str = 'uint8',
                  grayscale: bool = False,
                  test_mode: bool = False):
-        """Init SweetPapper.
+        """Init SweetPepper.
 
         Args:
             train: If True, train dataset will be used, else - test dataset.
@@ -54,6 +54,7 @@ class SweetPapper(ImageSegmentationDataset):
             test_mode: If True, only image without labels will be returned.
         """
         self.__data_folder = Path(data_folder)
+        self.__path = self.__data_folder / self.base_folder
 
         if download:
             self.__download()
@@ -67,7 +68,7 @@ class SweetPapper(ImageSegmentationDataset):
             csv_path = self.valid_csv
 
         super().__init__(
-            data_folder=data_folder,
+            data_folder=self.__path,
             csv_path=csv_path,
             transform=transform,
             augment=augment,
