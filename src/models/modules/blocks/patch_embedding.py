@@ -1,0 +1,64 @@
+"""TorchOK Swin Transformer V2
+
+Adapted from https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer_v2.py
+Copyright (c) 2022 Microsoft
+Licensed under The MIT License [see LICENSE for details]
+"""
+# --------------------------------------------------------
+# Swin Transformer V2
+# Copyright (c) 2022 Microsoft
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Ze Liu
+# --------------------------------------------------------
+from torch import nn as nn
+from typing import Optional
+
+from src.models.modules.helpers import to_2tuple
+
+
+class PatchEmbed(nn.Module):
+    r""" Image to Patch Embedding
+    Args:
+        img_size: Image size.  Default: 224.
+        patch_size: Patch token size. Default: 4.
+        in_chans: Number of input image channels. Default: 3.
+        embed_dim: Number of linear projection output channels. Default: 96.
+        norm_layer: Normalization layer. Default: None
+    """
+
+    def __init__(self, img_size: int = 224, patch_size: int = 4, in_chans: int = 3,
+                 embed_dim: int = 96, norm_layer: Optional[nn.Module] = None):
+        super().__init__()
+        img_size = to_2tuple(img_size)
+        patch_size = to_2tuple(patch_size)
+        patches_resolution = [img_size[0] // patch_size[0], img_size[1] // patch_size[1]]
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.patches_resolution = patches_resolution
+        self.num_patches = patches_resolution[0] * patches_resolution[1]
+
+        self.in_chans = in_chans
+        self.embed_dim = embed_dim
+
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
+        if norm_layer is not None:
+            self.norm = norm_layer(embed_dim)
+        else:
+            self.norm = None
+
+    def forward(self, x):
+        B, C, H, W = x.shape
+        # FIXME look at relaxing size constraints
+        assert H == self.img_size[0] and W == self.img_size[1], \
+            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
+        x = self.proj(x).flatten(2).transpose(1, 2)  # B Ph*Pw C
+        if self.norm is not None:
+            x = self.norm(x)
+        return x
+
+    def flops(self):
+        Ho, Wo = self.patches_resolution
+        flops = Ho * Wo * self.embed_dim * self.in_chans * (self.patch_size[0] * self.patch_size[1])
+        if self.norm is not None:
+            flops += Ho * Wo * self.embed_dim
+        return flops
