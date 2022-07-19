@@ -14,7 +14,6 @@ class TestUnetSegmentation(unittest.TestCase):
         self._input = torch.ones(1, 3, 224, 224)
         self.backbone = BACKBONES.get(backbone_name)(pretrained=False)
         self.neck = NECKS.get('UnetNeck')(self.backbone._out_feature_channels[0])
-        print(self.neck)
         neck_features = self.neck.out_channels
         self.head = HEADS.get('UnetHead')(neck_features, 10, True, (224, 224))
 
