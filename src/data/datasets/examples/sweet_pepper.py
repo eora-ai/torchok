@@ -23,7 +23,7 @@ class SweetPepper(ImageSegmentationDataset):
     filename = 'sweet_pepper.tar.gz'
 
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/sweet_pepper.tar.gz'
-    tgz_md5 = '18199347e26702aada5d201792831cde'
+    tgz_md5 = '65021e5fad5fe286b3c2bac7753d6e9d'
 
     train_csv = 'train.csv'
     valid_csv = 'valid.csv'

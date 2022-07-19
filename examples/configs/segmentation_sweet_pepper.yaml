@@ -6,6 +6,8 @@ task:
       pretrained: true
       in_channels: 3
     neck_name: HRNetSegmentationNeck
+    neck_params:
+      start_block: 2
     head_name: HRNetSegmentationHead
     head_params:
       num_classes: &num_classes 3
@@ -25,7 +27,6 @@ joint_loss:
       mapping:
         input: prediction
         target: target
-
 
 optimization:
   - optimizer: 
@@ -126,16 +127,14 @@ trainer:
   log_every_n_steps: 1000
 
 logger:
-  # log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  log_dir: '/workdir/logs/'
+  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: sweet_pepper
   name: TensorBoardLogger
 
-# checkpoint:
-#   monitor: valid/JaccardIndex
-#   save_last: true
-#   mode: max
-#   export_to_onnx: true
+checkpoint:
+  monitor: valid/JaccardIndex
+  save_last: true
+  mode: max
 
 metrics:
   - name: JaccardIndex

@@ -17,8 +17,6 @@ class SegmentationTask(BaseTask):
         """
         super().__init__(hparams)
 
-        self._start_block_number = hparams.task.get('begin_block_number', 2)
-
         # BACKBONE
         backbone_name = self._hparams.task.params.get('backbone_name')
         backbones_params = self._hparams.task.params.get('backbone_params', dict())
@@ -27,7 +25,7 @@ class SegmentationTask(BaseTask):
         # NECK
         neck_name = self._hparams.task.params.get('neck_name')
         neck_params = self._hparams.task.params.get('neck_params', dict())
-        neck_in_channels = self.backbone.out_feature_channels[self._start_block_number:]
+        neck_in_channels = self.backbone.out_feature_channels
         self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
 
         # HEAD
@@ -39,7 +37,7 @@ class SegmentationTask(BaseTask):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone.forward_features(x)
-        x = self.neck(x, self._start_block_number)
+        x = self.neck(x)
         x = self.head(x)
         return x
 
@@ -50,7 +48,7 @@ class SegmentationTask(BaseTask):
         freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
         with torch.set_grad_enabled(not freeze_backbone and self.training):
             features = self.backbone.forward_features(input_data)
-        neck_out = self.neck(features, self._start_block_number)
+        neck_out = self.neck(features)
         prediction = self.head(neck_out)
         output = {'target': target, 'prediction': prediction}
         return output

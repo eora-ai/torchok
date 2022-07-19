@@ -1,28 +1,29 @@
-from typing import List
+from typing import List, Union, Tuple
 
 import torch.nn as nn
 from torch import Tensor
 
 from src.constructor import NECKS
-from src.models.base import BaseModel
+from src.models.necks.base_neck import BaseNeck
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.bottleneck import Bottleneck
 
 
 @NECKS.register_class
-class HRNetClassificationNeck(BaseModel):
+class HRNetClassificationNeck(BaseNeck):
     """HRNet neck for classification task."""
-    def __init__(self, in_channels):
+    def __init__(self, in_channels: Union[List[int], Tuple[int, ...]], start_block: int = 2):
         """Init HRNetClassificationNeck.
 
         Args:
             in_channels: Input channels.
         """
         out_channels = 2048
-        super().__init__(in_channels, out_channels)
+        in_channels = in_channels[start_block:]
+        super().__init__(start_block, in_channels, out_channels)
         self.incre_modules, self.downsamp_modules, self.final_layer = self.__make_neck(in_channels)
 
-    def __make_neck(self, in_channels):
+    def __make_neck(self, in_channels: Union[List[int], Tuple[int, ...]]):
         head_block = Bottleneck
         self.head_channels = [32, 64, 128, 256]
 
@@ -75,6 +76,7 @@ class HRNetClassificationNeck(BaseModel):
 
     def forward(self, x: List[Tensor]) -> Tensor:
         """Forward method."""
+        x = x[self._start_block:]
         y = self.incre_modules[0](x[0])
         for i in range(len(self.downsamp_modules)):
             y = self.downsamp_modules[i](y)
