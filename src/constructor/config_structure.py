@@ -186,7 +186,7 @@ class ConfigParams:
     optimization: List[OptimizationParams]
     joint_loss: JointLossParams
     trainer: TrainerParams
-    checkpoint: CheckpointParams
+    checkpoint: Optional[CheckpointParams] = None
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     resume_path: Optional[str] = None
