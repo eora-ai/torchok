@@ -11,7 +11,7 @@ class TestMobileNetV3(unittest.TestCase):
     def __init__(self, backbone_name, methodName: str = ...) -> None:
         super().__init__(methodName)
         self._input = torch.ones(2, 3, 224, 224)
-        self._model = BACKBONES.get(backbone_name)(pretrained=False, in_chans=3)
+        self._model = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
         self._output = {}
 
 

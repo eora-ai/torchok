@@ -14,24 +14,18 @@ from src.models.backbones.utils.helpers import build_model_with_cfg
 from src.constructor import BACKBONES
 
 
-default_cfgs = {
-    'mobilenet_v3_large': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_large_torchok.pth'),
-    'mobilenet_v3_small': dict(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_small_torchok.pth')
-}
-
-
 class MobileNetV3_Large(BaseModel):
     """MobileNetV3 Large model."""
-    def __init__(self, in_chans: int = 3):
+    def __init__(self, in_channels: int = 3):
         """Init MobileNetV3_Large.
 
         Args:
-            in_chans: Input channels.
+            in_channels: Input channels.
         """
         out_channels = 960
-        super().__init__(in_chans, out_channels)
+        super().__init__(in_channels, out_channels)
 
-        self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
+        self.convbnact_stem = ConvBnAct(in_channels, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
 
         self.bneck = nn.Sequential(
             InvertedResidualBlock(16, 16, 3, 1, expand_channels=16, act_layer=nn.ReLU, use_se=False),
@@ -165,24 +159,25 @@ class MobileNetV3_Small(BaseModel):
         return out
 
 
-def create_mobilenetv3(variant: str, pretrained: bool = False, **kwargs):
+def create_mobilenetv3(variant: str, pretrained: bool, pretrained_url, **model_args):
     """Create MobileNetV3 base model."""
     if variant == 'mobilenet_v3_small':
         model_cls = MobileNetV3_Small
     elif variant == 'mobilenet_v3_large':
         model_cls = MobileNetV3_Large
 
-    return build_model_with_cfg(model_cls, default_cfg=default_cfgs[variant],
-                                pretrained=pretrained, **kwargs)
+    return build_model_with_cfg(model_cls, pretrained, pretrained_url, **model_args)
 
 
 @BACKBONES.register_class
-def mobilenet_v3_large(pretrained: bool = False, **kwargs):
+def mobilenet_v3_large(pretrained: bool = False,
+                       pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_large_torchok.pth', **model_args):
     """It's constructing a mobilenet_v3_large model."""
-    return create_mobilenetv3('mobilenet_v3_large', pretrained, **kwargs)
+    return create_mobilenetv3('mobilenet_v3_large', pretrained, pretrained_url, **model_args)
 
 
 @BACKBONES.register_class
-def mobilenet_v3_small(pretrained: bool = False, **kwargs):
+def mobilenet_v3_small(pretrained: bool = False,
+                       pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/mobilenetv3_small_torchok.pth', **model_args):
     """It's constructing a mobilenet_v3_small model."""
-    return create_mobilenetv3('mobilenet_v3_small', pretrained, **kwargs)
+    return create_mobilenetv3('mobilenet_v3_small', pretrained, pretrained_url, **model_args)
