@@ -89,16 +89,16 @@ class MobileNetV3_Large(BaseModel):
 
 class MobileNetV3_Small(BaseModel):
     """MobileNetV3 Small model"""
-    def __init__(self, in_chans: int = 3):
+    def __init__(self, in_channels: int = 3):
         """Init MobileNetV3 Small.
 
         Args:
-            in_chans: Input channels.
+            in_channels: Input channels.
         """
         out_channels = 576
-        super(MobileNetV3_Small, self).__init__(in_chans, out_channels)
+        super(MobileNetV3_Small, self).__init__(in_channels, out_channels)
 
-        self.convbnact_stem = ConvBnAct(in_chans, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
+        self.convbnact_stem = ConvBnAct(in_channels, 16, kernel_size=3, padding=1, stride=2, act_layer=nn.Hardswish)
 
         self.bneck = nn.Sequential(
             InvertedResidualBlock(16, 16, 3, 2, expand_channels=16, act_layer=nn.ReLU, use_se=True,
