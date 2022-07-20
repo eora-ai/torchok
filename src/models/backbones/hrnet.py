@@ -4,7 +4,7 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import Any, List, Tuple, Union, Dict
+from typing import Any, List, Optional, Tuple, Union, Dict
 
 import torch.nn as nn
 from torch import Tensor
@@ -15,35 +15,7 @@ from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
 from src.models.backbones.utils.helpers import build_model_with_cfg
-from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
 
-
-def _cfg(url: str = '', **kwargs):
-    return {
-        'url': url,
-        'input_size': (3, 224, 224),
-        'pool_size': (7, 7),
-        'crop_pct': 0.875,
-        'interpolation': 'bilinear',
-        'mean': IMAGENET_DEFAULT_MEAN,
-        'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'conv1',
-        'classifier': 'classifier',
-        **kwargs
-    }
-
-
-default_cfgs = {
-    'hrnet_w18_small': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small-torchok.pth'),
-    'hrnet_w18_small_v2': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small_v2-torchok.pth'),
-    'hrnet_w18': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18-torchok.pth'),
-    'hrnet_w30': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w30-torchok.pth'),
-    'hrnet_w32': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w32-torchok.pth'),
-    'hrnet_w40': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w40-torchok.pth'),
-    'hrnet_w44': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w44-torchok.pth'),
-    'hrnet_w48': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w48-torchok.pth'),
-    'hrnet_w64': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w64-torchok.pth'),
-}
 
 cfg_cls = dict(
     hrnet_w18_small=dict(
@@ -703,68 +675,87 @@ class HighResolutionNet(BaseBackbone):
         return features
 
 
-def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
+def create_hrnet(pretrained: bool = False, pretrained_url: Optional[str] = None, **model_kwargs):
     """Create HighResolutionNet base model.
 
     Args:
-        variant: Backbone type.
         pretrained: If True the pretrained weights will be loaded.
+        pretrained_url: url to model weights.
         model_kwargs: Kwargs for model (for example in_chans).
     """
     return build_model_with_cfg(
-        HighResolutionNet, pretrained, default_cfg=default_cfgs[variant],
-        model_cfg=cfg_cls[variant], **model_kwargs)
+        HighResolutionNet, pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w18_small(pretrained: bool = False, **kwargs):
+def hrnet_w18_small(pretrained: bool = False,
+                    pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small-torchok.pth',
+                    **model_kwargs):
     """It's constructing a hrnet_w18_small model."""
-    return create_hrnet('hrnet_w18_small', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w18_small']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w18_small_v2(pretrained: bool = False, **kwargs):
+def hrnet_w18_small_v2(pretrained: bool = False,
+                       pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small_v2-torchok.pth',
+                       **model_kwargs):
     """It's constructing a hrnet_w18_small_v2 model."""
-    return create_hrnet('hrnet_w18_small_v2', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w18_small_v2']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w18(pretrained: bool = False, **kwargs):
+def hrnet_w18(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w18 model."""
-    return create_hrnet('hrnet_w18', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w18']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w30(pretrained: bool = False, **kwargs):
+def hrnet_w30(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w30-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w30 model."""
-    return create_hrnet('hrnet_w30', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w30']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w32(pretrained: bool = False, **kwargs):
+def hrnet_w32(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w32-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w32 model."""
-    return create_hrnet('hrnet_w32', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w32']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w40(pretrained: bool = False, **kwargs):
+def hrnet_w40(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w40-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w40 model."""
-    return create_hrnet('hrnet_w40', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w40']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w44(pretrained: bool = False, **kwargs):
+def hrnet_w44(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w44-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w44 model."""
-    return create_hrnet('hrnet_w44', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w44']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w48(pretrained: bool = False, **kwargs):
+def hrnet_w48(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w48-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w48 model."""
-    return create_hrnet('hrnet_w48', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w48']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)
 
 
 @BACKBONES.register_class
-def hrnet_w64(pretrained: bool = False, **kwargs):
+def hrnet_w64(pretrained: bool = False,
+              pretrained_url: str = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w64-torchok.pth', **model_kwargs):
     """It's constructing a hrnet_w64 model."""
-    return create_hrnet('hrnet_w64', pretrained, **kwargs)
+    model_kwargs['cfg'] = cfg_cls['hrnet_w64']
+    return create_hrnet(pretrained, pretrained_url, **model_kwargs)

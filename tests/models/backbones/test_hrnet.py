@@ -13,7 +13,7 @@ class TestHRNetSegmentation(unittest.TestCase):
         super().__init__(methodName)
         self._onnx_model = Path(__file__).parent / f'{backbone_name}.onnx'
         self._input = torch.ones(1, 3, 224, 224)
-        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_chans=3)
+        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
         neck_in_features = self.backbone.get_forward_output_channels()
         self.neck = NECKS.get('HRNetSegmentationNeck')(neck_in_features)
         head_in_features = self.neck.get_forward_output_channels()
@@ -37,7 +37,7 @@ class TestHRNetClassification(unittest.TestCase):
     def __init__(self, backbone_name, methodName: str = ...) -> None:
         super().__init__(methodName)
         self._input = torch.ones(1, 3, 224, 224)
-        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_chans=3)
+        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
         neck_in_features = self.backbone.get_forward_output_channels()
         self.neck = NECKS.get('HRNetClassificationNeck')(neck_in_features)
         head_in_features = self.neck.get_forward_output_channels()
