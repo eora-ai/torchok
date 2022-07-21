@@ -119,7 +119,7 @@ trainer:
   num_sanity_val_steps: 0
 
 logger:
-  log_dir: 'home/lolik/logs/'
+  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: sop
   name: TensorBoardLogger
 
