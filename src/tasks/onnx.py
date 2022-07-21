@@ -32,15 +32,19 @@ class ONNXTask(BaseTask):
 
         self._sess = onnxrt.InferenceSession(model_path, providers=self.__infer_params.providers)
         self.__binding = self._sess.io_binding()
+        
+        self.__str_type2numpy_type = {'tensor(float)': 'float32'}
 
-        self.__input_names = [input_name.name for input_name in self._sess.get_inputs()]
-        self.__input_shapes = [input_param.shape for _, input_param in self.__infer_params.inputs.items()]
-        # batch shape
-        dynamic_dim = self.__input_shapes[0][0]
+        self.__inputs = [{'name': item.name,
+                          'shape': params[1].shape,
+                          'dtype': self.__str_type2numpy_type[item.type]}
+                          for item, params in zip(self._sess.get_inputs(), self.__infer_params.inputs.items())]
+        # # batch shape
+        dynamic_dim = self.__inputs[0]['shape'][0]
 
-        self.__label_names = [label_name.name for label_name in self._sess.get_outputs()]
-        self.__output_shapes = [output_shape.shape for output_shape in self._sess.get_outputs()]
-        self.__dynamic_output_shapes = [(dynamic_dim, *output_shape[1:]) for output_shape in self.__output_shapes]
+        self.__outputs = [{'name': item.name,
+                           'shape': (dynamic_dim, *item.shape[1:]),
+                           'dtype': self.__str_type2numpy_type[item.type]} for item in self._sess.get_outputs()]
 
     def forward(self, x: Tensor) -> Tensor:
         pass
@@ -50,32 +54,33 @@ class ONNXTask(BaseTask):
 
     def foward_infer(self, inputs: Dict[str, Tensor]) -> Tensor:
         """Forward onnx model."""
-        inputs = [input_tensor for input_name, input_tensor in inputs.items() if input_name in self._input_names]
-
-        for input_name, input_shape, input_tensor in zip(self.__input_names, self.__input_shapes, inputs):
+        # we leave only those inputs whose names match with the names from the config.
+        input_tensors = [input_tensor for input_name, input_tensor in inputs.items() if input_name in self._input_names]
+        
+        for input, input_tensor in zip(self.__inputs, input_tensors):
             self.__binding.bind_input(
-                name=input_name,
+                name=input['name'],
                 device_type=self.device,
                 device_id=self.device_id,
-                element_type=np.float32,
-                shape=input_shape,
+                element_type=np.dtype(input['dtype']),
+                shape=input['shape'],
                 buffer_ptr=input_tensor.data_ptr())
 
         output = dict()
 
-        for label_name, output_shape in zip(self.__label_names, self.__dynamic_output_shapes):
-
-            output_tensor = torch.empty(output_shape, dtype=torch.float32, device=self.device).contiguous()
-
+        for output_params in self.__outputs:
+            output_tensor = torch.empty(output_params['shape'],
+                                        dtype=torch.__dict__[output_params['dtype']],
+                                        device=self.device).contiguous()
             self.__binding.bind_output(
-                name=label_name,
+                name=output_params['name'],
                 device_type=self.device,
                 device_id=self.device_id,
-                element_type=np.float32,
-                shape=output_shape,
+                element_type=output_params['dtype'],
+                shape=output_params['shape'],
                 buffer_ptr=output_tensor.data_ptr())
 
-            output[label_name] = output_tensor
+            output[output_params['name']] = output_tensor
 
         self._sess.run_with_iobinding(self.__binding)
         return output
