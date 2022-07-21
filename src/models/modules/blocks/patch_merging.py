@@ -16,28 +16,46 @@ from typing import Tuple
 
 
 class PatchMerging(nn.Module):
-    r""" Patch Merging Layer.
-    Args:
-        input_resolution: Resolution of input feature.
-        dim: Number of input channels.
-        norm_layer: Normalization layer.  Default: nn.LayerNorm
-    """
+    """Patch Merging Layer.
 
+    Divides the input tensor into 4 parts then concatenate this parts by channels
+    to get tensor with shape (B, H/2*W/2, 4*C), then use Linear layer to reduce channels number by 2.
+    Output tensor shape would be (B, H/2*W/2, 2*C). (It like Convolution with stride=2 and output_channels=2*C, only
+    for VIT architectures).
+    """
     def __init__(self, input_resolution: Tuple[int, int], dim: int, norm_layer: nn.Module = nn.LayerNorm):
+        """Init PatchMerging.
+        
+        Args:
+            input_resolution: Resolution of input feature.
+            dim: Number of input channels.
+            norm_layer: Normalization layer.
+        """
         super().__init__()
         self.input_resolution = input_resolution
         self.dim = dim
         self.reduction = nn.Linear(4 * dim, 2 * dim, bias=False)
         self.norm = norm_layer(2 * dim)
 
-    def forward(self, x):
-        """
-        x: B, H*W, C
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Froward method for patch merging.
+
+        Args:
+            x: Input tensor with shape B, H*W, C.
+
+        Returns:
+            x: Output tensor with shape (B, H/2*W/2, 2*C).
+
+        Raises:
+            ValueError: If self.input_resolution don't match with input tensor.
+            ValueError: If one of H or W in self.input_resolution is odd number.
         """
         H, W = self.input_resolution
         B, L, C = x.shape
-        assert L == H * W, "input feature has wrong size"
-        assert H % 2 == 0 and W % 2 == 0, f"x size ({H}*{W}) are not even."
+        if  L != H * W:
+            raise ValueError('PatchMerging forward method, input feature has wrong size.')
+        if H % 2 != 0 or W % 2 != 0:
+            raise ValueError(f"PatchMerging forward method, x size ({H}*{W}) are not even.")
 
         x = x.view(B, H, W, C)
 
@@ -52,12 +70,3 @@ class PatchMerging(nn.Module):
         x = self.norm(x)
 
         return x
-
-    def extra_repr(self) -> str:
-        return f"input_resolution={self.input_resolution}, dim={self.dim}"
-
-    def flops(self):
-        H, W = self.input_resolution
-        flops = (H // 2) * (W // 2) * 4 * self.dim * 2 * self.dim
-        flops += H * W * self.dim // 2
-        return flops

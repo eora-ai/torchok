@@ -5,7 +5,7 @@ Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
 import math
-from typing import Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -13,22 +13,23 @@ import torch.nn.functional as F
 
 
 class WindowAttention(nn.Module):
-    r""" Window based multi-head self attention (W-MSA) module with relative position bias.
-    It supports both of shifted and non-shifted window.
-    Args:
-        dim (int): Number of input channels.
-        window_size (tuple[int]): The height and width of the window.
-        num_heads (int): Number of attention heads.
-        qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
-        attn_drop (float, optional): Dropout ratio of attention weight. Default: 0.0
-        proj_drop (float, optional): Dropout ratio of output. Default: 0.0
-        pretrained_window_size (tuple[int]): The height and width of the window in pre-training.
+    """Window based multi-head self attention (W-MSA) module with relative position bias.
+       It supports both of shifted and non-shifted window.
     """
-
     def __init__(
-            self, dim, window_size, num_heads, qkv_bias=True, attn_drop=0., proj_drop=0.,
-            pretrained_window_size=[0, 0]):
-
+            self, dim: int, window_size: Tuple[int, int], num_heads: int, qkv_bias: bool = True,
+            attn_drop: float = 0., proj_drop: float = 0., pretrained_window_size: Tuple[int, int] = (0, 0)):
+        """Init WindowAttention.
+        
+        Args:
+            dim: Number of input channels.
+            window_size: The height and width of the window.
+            num_heads: Number of attention heads.
+            qkv_bias: If True, add a learnable bias to query, key, value.
+            attn_drop: Dropout ratio of attention weight.
+            proj_drop: Dropout ratio of output.
+            pretrained_window_size: The height and width of the window in pre-training.
+        """
         super().__init__()
         self.dim = dim
         self.window_size = window_size  # Wh, Ww

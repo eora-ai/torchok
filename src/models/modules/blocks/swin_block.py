@@ -20,13 +20,15 @@ from src.models.modules.bricks.mlp import Mlp
 from src.models.modules.helpers import to_2tuple
 
 
-def window_partition(x: Tuple[int], window_size: int) -> torch.Tensor:
-    """
+def window_partition(x: torch.Tensor, window_size: int) -> torch.Tensor:
+    """Split input tensor into parts with shape (window_size x window_size).
+
     Args:
-        x: (B, H, W, C)
-        window_size: window size
+        x: Input tensor with shape (B, H, W, C).
+        window_size: window size.
+
     Returns:
-        windows: (num_windows*B, window_size, window_size, C)
+        windows: Output tensor with shape (num_windows*B, window_size, window_size, C).
     """
     B, H, W, C = x.shape
     x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
@@ -34,15 +36,17 @@ def window_partition(x: Tuple[int], window_size: int) -> torch.Tensor:
     return windows
 
 
-def window_reverse(windows: Tuple[int], window_size: int, H: int, W: int) -> torch.Tensor:
-    """
+def window_reverse(windows: torch.Tensor, window_size: int, H: int, W: int) -> torch.Tensor:
+    """Assembles the output tensor from window partitioned input tensor.
+
     Args:
-        windows: (num_windows*B, window_size, window_size, C)
-        window_size: Window size
-        H: Height of image
-        W: Width of image
+        windows: Input tensor with shape (num_windows*B, window_size, window_size, C).
+        window_size: Window size.
+        H: Height of image.
+        W: Width of image.
+
     Returns:
-        x: (B, H, W, C)
+        x: Output tensor with shape (B, H, W, C)
     """
     B = int(windows.shape[0] / (H * W / window_size / window_size))
     x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
@@ -51,7 +55,7 @@ def window_reverse(windows: Tuple[int], window_size: int, H: int, W: int) -> tor
 
 
 class SwinTransformerBlock(nn.Module):
-    r""" SwinV2 Transformer Block.
+    """SwinV2 Transformer Block.
 
     Implement W-MSA if shift_size == 0 and SW-MSA otherwise.
     """
@@ -68,11 +72,11 @@ class SwinTransformerBlock(nn.Module):
             window_size: Window size.
             shift_size: Shift size for SW-MSA.
             mlp_ratio: Ratio of mlp hidden dim to embedding dim.
-            qkv_bias: If True, add a learnable bias to query, key, value. Default: True
-            drop: Dropout rate. Default: 0.0
-            attn_drop: Attention dropout rate. Default: 0.0
-            drop_path: Stochastic depth rate. Default: 0.0
-            act_layer: Activation layer. Default: nn.GELU
+            qkv_bias: If True, add a learnable bias to query, key, value.
+            drop: Dropout rate.
+            attn_drop: Attention dropout rate.
+            drop_path: Stochastic depth rate.
+            act_layer: Activation layer.
             norm_layer: Normalization layer.  Default: nn.LayerNorm
             pretrained_window_size: Window size in pre-training.
         """
@@ -125,10 +129,22 @@ class SwinTransformerBlock(nn.Module):
 
         self.register_buffer("attn_mask", attn_mask)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """SwinTransformerBlock forward method.
+        
+        Args:
+            x: Input tensor with shape (B, L, C)
+
+        Returns:
+            x: Output tensor.
+
+        Raises:
+            ValueError: If self.input_resolution don't match with input tensor.
+        """
         H, W = self.input_resolution
         B, L, C = x.shape
-        assert L == H * W, "input feature has wrong size"
+        if L != H * W:
+            raise ValueError("SwinTransformerBlock forward method, input feature has wrong size")
 
         shortcut = x
         x = x.view(B, H, W, C)
@@ -162,21 +178,3 @@ class SwinTransformerBlock(nn.Module):
         x = x + self.drop_path(self.norm2(self.mlp(x)))
 
         return x
-
-    def extra_repr(self) -> str:
-        return f"dim={self.dim}, input_resolution={self.input_resolution}, num_heads={self.num_heads}, " \
-               f"window_size={self.window_size}, shift_size={self.shift_size}, mlp_ratio={self.mlp_ratio}"
-
-    def flops(self):
-        flops = 0
-        H, W = self.input_resolution
-        # norm1
-        flops += self.dim * H * W
-        # W-MSA/SW-MSA
-        nW = H * W / self.window_size / self.window_size
-        flops += nW * self.attn.flops(self.window_size * self.window_size)
-        # mlp
-        flops += 2 * H * W * self.dim * self.dim * self.mlp_ratio
-        # norm2
-        flops += self.dim * H * W
-        return flops

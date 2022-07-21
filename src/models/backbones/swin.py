@@ -24,6 +24,8 @@ from src.models.modules.blocks.swin_block import SwinTransformerBlock
 from src.models.backbones.utils.helpers import build_model_with_cfg
 
 
+# The weights was taken from https://github.com/rwightman/pytorch-image-models
+# Licensed under The Apache 2.0 License [see LICENSE for details]
 default_cfgs = {
     'swinv2_tiny_window8_256': dict(
         url='https://torchok-hub.s3.eu-west-1.amazonaws.com/swinv2_tiny_patch4_window8_256.pth'
@@ -65,7 +67,7 @@ default_cfgs = {
 
 
 class BasicLayer(nn.Module):
-    """ A basic Swin Transformer layer for one stage."""
+    """A basic Swin Transformer layer for one stage."""
     def __init__(self, dim: int, input_resolution: Tuple[int, int], depth: int, num_heads: int, window_size: int,
                  mlp_ratio: float = 4., qkv_bias: bool = True, drop: float = 0., attn_drop: float = 0.,
                  drop_path: Union[float, List[float]] = 0., norm_layer: nn.Module = nn.LayerNorm,
@@ -79,13 +81,13 @@ class BasicLayer(nn.Module):
             num_heads: Number of attention heads.
             window_size: Local window size.
             mlp_ratio: Ratio of mlp hidden dim to embedding dim.
-            qkv_bias: If True, add a learnable bias to query, key, value. Default: True
-            drop: Dropout rate. Default: 0.0
-            attn_drop: Attention dropout rate. Default: 0.0
-            drop_path: Stochastic depth rate. Default: 0.0
-            norm_layer: Normalization layer. Default: nn.LayerNorm
-            downsample: Downsample layer at the end of the layer. Default: None
-            use_checkpoint: Whether to use checkpointing to save memory. Default: False.
+            qkv_bias: If True, add a learnable bias to query, key, value.
+            drop: Dropout rate.
+            attn_drop: Attention dropout rate.
+            drop_path: Stochastic depth rate.
+            norm_layer: Normalization layer.
+            downsample: Downsample layer at the end of the layer.
+            use_checkpoint: Whether to use checkpointing to save memory.
             pretrained_window_size: Local window size in pre-training.
         """
         super().__init__()
@@ -126,17 +128,6 @@ class BasicLayer(nn.Module):
             downsample_attention = x
         return downsample_attention, attention_out
 
-    def extra_repr(self) -> str:
-        return f"dim={self.dim}, input_resolution={self.input_resolution}, depth={self.depth}"
-
-    def flops(self):
-        flops = 0
-        for blk in self.blocks:
-            flops += blk.flops()
-        if self.downsample is not None:
-            flops += self.downsample.flops()
-        return flops
-
     def _init_respostnorm(self):
         for blk in self.blocks:
             nn.init.constant_(blk.norm1.bias, 0)
@@ -147,8 +138,8 @@ class BasicLayer(nn.Module):
 
 class SwinTransformerV2(BaseBackbone):
     r""" Swin Transformer
-        A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
-          https://arxiv.org/pdf/2103.14030
+        A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows` -
+        https://arxiv.org/pdf/2103.14030
     """
     def __init__(self, img_size: int = 224, patch_size: int = 4, in_channels: int = 3,
                  embed_dim: int = 96, depths: List[int] = [2, 2, 6, 2], num_heads: List[int] = [3, 6, 12, 24],
@@ -159,22 +150,22 @@ class SwinTransformerV2(BaseBackbone):
         """Init SwinTransformerV2.
 
         Args:
-            img_size: Input image size. Default 224
-            patch_size: Patch size. Default: 4
-            in_channels: Number of input image channels. Default: 3
-            embed_dim: Patch embedding dimension. Default: 96
+            img_size: Input image size.
+            patch_size: Patch size.
+            in_channels: Number of input image channels.
+            embed_dim: Patch embedding dimension.
             depths: Depth of each Swin Transformer layer.
             num_heads: Number of attention heads in different layers.
-            window_size: Window size. Default: 7
-            mlp_ratio: Ratio of mlp hidden dim to embedding dim. Default: 4
-            qkv_bias: If True, add a learnable bias to query, key, value. Default: True
-            drop_rate: Dropout rate. Default: 0
-            attn_drop_rate: Attention dropout rate. Default: 0
-            drop_path_rate: Stochastic depth rate. Default: 0.1
-            norm_layer: Normalization layer. Default: nn.LayerNorm.
-            ape: If True, add absolute position embedding to the patch embedding. Default: False
-            patch_norm: If True, add normalization after patch embedding. Default: True
-            use_checkpoint: Whether to use checkpointing to save memory. Default: False
+            window_size: Window size.
+            mlp_ratio: Ratio of mlp hidden dim to embedding dim.
+            qkv_bias: If True, add a learnable bias to query, key, value.
+            drop_rate: Dropout rate.
+            attn_drop_rate: Attention dropout rate.
+            drop_path_rate: Stochastic depth rate.
+            norm_layer: Normalization layer.
+            ape: If True, add absolute position embedding to the patch embedding.
+            patch_norm: If True, add normalization after patch embedding.
+            use_checkpoint: Whether to use checkpointing to save memory.
             pretrained_window_sizes: Pretrained window sizes of each layer.
         """
         super().__init__(in_channels=in_channels)
@@ -252,11 +243,16 @@ class SwinTransformerV2(BaseBackbone):
     # Copyright 2019 Ross Wightman
     # Licensed under The Apache 2.0 License [see LICENSE for details]
     @torch.jit.ignore
-    def no_weight_decay(self):
-        nod = {'absolute_pos_embed'}
+    def no_weight_decay(self) -> List[str]:
+        """Create modules names for which weights decay will not be use. See BaseBackbone for more information.
+        
+        Returns:
+            nod: Module names for which weights decay will not be use.
+        """
+        nod = ['absolute_pos_embed']
         for n, m in self.named_modules():
             if any([kw in n for kw in ("cpb_mlp", "logit_scale", 'relative_position_bias_table')]):
-                nod.add(n)
+                nod.append(n)
         return nod
 
     def _forward_patch_emb(self, x: torch.Tensor) -> torch.Tensor:
@@ -274,7 +270,7 @@ class SwinTransformerV2(BaseBackbone):
         x = self.pos_drop(x)
         return x
 
-    def _normalize_with_bhwc_reshape(self, x: torch.Tensor, leyer_number: int, normalize: bool = True):
+    def _normalize_with_bhwc_reshape(self, x: torch.Tensor, leyer_number: int, normalize: bool = True) -> torch.Tensor:
         """Convert SWin BLC shape to BHWC.
 
         Args:
@@ -313,15 +309,6 @@ class SwinTransformerV2(BaseBackbone):
             x, _ = layer(x)
         x = self._normalize_with_bhwc_reshape(x, -1)
         return x
-
-    def flops(self):
-        flops = 0
-        flops += self.patch_embed.flops()
-        for i, layer in enumerate(self.layers):
-            flops += layer.flops()
-        flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
-        flops += self.num_features * self.num_classes
-        return flops
 
 
 def _create_swin_transformer_v2(variant, pretrained=False, **model_kwargs):
