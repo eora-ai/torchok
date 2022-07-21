@@ -29,6 +29,8 @@ class ConvBnAct(nn.Module):
                 default: 1
             bias: Bias.
                 default: False
+            use_batchnorm: If True batchnorm will be apply.
+            groups: Groups for nn.Conv2d.
             act_layer: Activation layer.
                 default: relu.
         """

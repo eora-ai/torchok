@@ -115,8 +115,8 @@ class UnetNeck(BaseModel):
     """
 
     def __init__(self,
-                 encoder_channels: Tuple[int],
-                 decoder_channels: Tuple[int] = (512, 256, 128, 64, 32),
+                 encoder_channels: List[int],
+                 decoder_channels: List[int] = (512, 256, 128, 64, 64),
                  n_blocks: int = 5,
                  use_batchnorm: bool = True,
                  use_attention: bool = False,
@@ -133,6 +133,9 @@ class UnetNeck(BaseModel):
             use_batchnorm: If ``True``, ``BatchNormalisation`` applied between every ``Conv2D`` and activation layers.
             use_attention: If ``True`` will use ``SCSEModule``.
             center: If ``True`` will use ''CenterBlock''.
+        
+        Raises:
+            ValueError: If the number of blocks is not equal to the length of the `decoder_channels` or `encoder_channels - 1`.
         """
         super().__init__()
 
@@ -173,8 +176,8 @@ class UnetNeck(BaseModel):
 
     def forward(self, features: List[Tensor]) -> Tensor:
         """Forward method."""
+        features = features[1:] # drop input_image
         head, *skips = features[::-1]  # reverse channels to start from head of encoder
-
         x = self.center(head) if self.center is not None else head
 
         for i, decoder_block in enumerate(self.blocks):

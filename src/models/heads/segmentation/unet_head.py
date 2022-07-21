@@ -49,8 +49,7 @@ class UnetHead(BaseModel):
         """Forward method."""
         segm_logits = self.head_features(x)
         if self.do_interpolate:
-            segm_logits = F.interpolate(segm_logits, size=self.img_size,
-                                        mode='bilinear', align_corners=False)
+            segm_logits = F.interpolate(segm_logits, size=self.img_size, mode='bilinear')
         if self.num_classes == 1:
             segm_logits = segm_logits[:, 0]
         
