@@ -1,16 +1,46 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
-[project]
+[tool.poetry]
 name = "torchok"
+version = "0.4.2"
 description = "The toolkit for fast Deep Learning experiments in Computer Vision"
-version = "0.4.0"
+readme = "README.md"
 authors = [
-    { name = "Vlad Vinogradov", email = vladvin@eora.ru" },
-    { name = "Rashit Bayazitov", email = r.bayazitov@eora.ru" },
-    { name = "Vlad Patrushev", email = patrushev@eora.ru" },
-    { name = "Vyacheslav Shults", email = shults@eora.ru" }
+    "Vlad Vinogradov <vladvin@eora.ai>",
+    "Rashit Bayazitov <r.bayazitov@eora.ai>",
+    "Vlad Patrushev <patrushev@eora.ai>",
+    "Vyacheslav Shults <shulz134700@gmail.com>"
 ]
-dependencies = [
+homepage = "https://github.com/eora-ai/torchok"
+documentation = "https://torchok.readthedocs.io/"
+keywords = ["Computer Vision", "Deep Learning", "Image Classification", "Image Segmentation", "Image Representation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License"
 ]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+albumentations = "~1.2"
+boto3 = "~1.24"
+faiss-cpu = "1.7.2"
+hydra-core = "~1.2"
+lxml = "4.9.0"
+mlflow = "~1.22"
+numpy = "~1.22"
+onnx = "~1.12"
+onnxruntime-gpu = "~1.11"
+opencv-python = "~4.6"
+pandas = "~1.4"
+pillow = "~9.1"
+python = ">=3.8,<3.10"
+pytorch-lightning = "~1.6"
+ranx = "~0.2"
+torch = ">=1.9,<=1.12"
+torchvision = ">=0.10,<=0.13"
+torchmetrics = "~0.8"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
