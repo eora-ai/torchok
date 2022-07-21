@@ -3,8 +3,8 @@ import numpy as np
 import os
 from typing import *
 
-from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
-from src.metrics.representation import DatasetType, MetricDistance
+from torchok.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
+from torchok.metrics.representation import DatasetType, MetricDistance
 
 from .context import *
 

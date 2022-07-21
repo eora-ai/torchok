@@ -6,7 +6,7 @@ from albumentations.pytorch import ToTensorV2
 from albumentations.core.composition import Compose
 from albumentations import Resize, HorizontalFlip, VerticalFlip, Normalize
 
-from src.constructor import DATASETS
+from torchok.constructor import DATASETS
 
 class TestClassificationMulticlass(unittest.TestCase):
     def __init__(self, methodName: str = None) -> None:

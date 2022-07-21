@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 
-from src.constructor import HEADS, NECKS, BACKBONES
+from torchok.constructor import HEADS, NECKS, BACKBONES
 
 
 class TestHRNetSegmentation(unittest.TestCase):

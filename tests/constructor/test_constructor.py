@@ -9,10 +9,10 @@ from torch.nn import Conv2d, Module, Parameter
 from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 
-from src.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS, METRICS
-from src.constructor.constructor import Constructor
-from src.constructor.config_structure import Phase
-from src.data.datasets.base import ImageDataset
+from torchok.constructor import DATASETS, OPTIMIZERS, SCHEDULERS, TRANSFORMS, METRICS
+from torchok.constructor.constructor import Constructor
+from torchok.constructor.config_structure import Phase
+from torchok.data.datasets.base import ImageDataset
 
 
 OPTIMIZERS.register_class(Adam)
