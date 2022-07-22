@@ -126,7 +126,7 @@ trainer:
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: cifar10
+  experiment_name: sop
   name: TensorBoardLogger
 
 checkpoint:
