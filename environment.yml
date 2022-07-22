@@ -4,7 +4,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - boto3=1.24.12
   - faiss-cpu=1.7.2
   - mlflow=1.22.0
   - pandas=1.4.3

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "torchok"
-version = "0.4.2"
+version = "0.4.3"
 description = "The toolkit for fast Deep Learning experiments in Computer Vision"
 readme = "README.md"
 authors = [
@@ -23,18 +23,17 @@ license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 albumentations = "~1.2"
-boto3 = "~1.24"
 faiss-cpu = "1.7.2"
 hydra-core = "~1.2"
 lxml = "4.9.0"
 mlflow = "~1.22"
 numpy = "~1.22"
 onnx = "~1.12"
-onnxruntime-gpu = "~1.11"
+onnxruntime-gpu = "~1.12"
 opencv-python = "~4.6"
 pandas = "~1.4"
 pillow = "~9.1"
-python = ">=3.8,<3.10"
+python = ">=3.8,<3.11"
 pytorch-lightning = "~1.6"
 ranx = "~0.2"
 torch = ">=1.9,<=1.12"
