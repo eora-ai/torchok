@@ -4,4 +4,4 @@ Poolings
 Classification Poolings
 ***********************
 
-.. automodule:: src.models.poolings.classification
+.. automodule:: torchok.models.poolings.classification
