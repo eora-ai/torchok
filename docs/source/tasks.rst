@@ -3,11 +3,11 @@ Tasks
 
 ClassificationTask
 ******************
-.. autoclass:: src.ClassificationTask
+.. autoclass:: torchok.ClassificationTask
 
 
 How to create your own Task
 ***************************
 
-.. autoclass:: src.BaseTask
+.. autoclass:: torchok.BaseTask
     

@@ -1,4 +1,4 @@
 Base Model
 ##########
 
-.. automodule:: src.models.base
+.. automodule:: torchok.models.base

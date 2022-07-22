@@ -1,7 +1,7 @@
 import unittest
 
-from src.constructor import METRICS
-from src.metrics.metrics_manager import MetricParams, MetricsManager, Phase
+from torchok import METRICS
+from torchok.metrics.metrics_manager import MetricParams, MetricsManager, Phase
 
 import torch
 from torchmetrics import Metric

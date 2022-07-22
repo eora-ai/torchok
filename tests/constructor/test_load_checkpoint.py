@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from collections import OrderedDict
 
 from .checkpoints.model import Model
-from src.constructor.load import load_checkpoint, generate_required_state_dict
+from torchok.constructor.load import load_checkpoint, generate_required_state_dict
 
 
 def load_state_dict_with_prefix(state_dict_path: str, prefix: str) -> Dict[str, torch.Tensor]:

@@ -1,17 +1,12 @@
 import unittest
-import os
-from src.constructor import METRICS
-from src.metrics.metrics_manager import MetricParams, MetricsManager, Phase
+from torchok import METRICS
+from torchok.metrics.metrics_manager import MetricParams, MetricsManager, Phase
 
 from pytorch_lightning import LightningModule, Trainer
 import torch
-from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset, random_split
-from torchmetrics import Metric, Accuracy
-
-from torchvision import transforms
-from torchvision.datasets import MNIST
+from torchmetrics import Metric
 
 from typing import *
 

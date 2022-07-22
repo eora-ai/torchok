@@ -4,8 +4,8 @@ Metrics
 MetricsManager
 **************
 
-.. autoclass:: src.metrics.MetricsManager
-.. autoclass:: src.metrics.MetricWithUtils
+.. autoclass:: torchok.metrics.MetricsManager
+.. autoclass:: torchok.metrics.MetricWithUtils
 
 General
 *******
@@ -20,6 +20,6 @@ Everything from `TorchMetrics`_ under ``classification`` metrics
 Representation Metrics
 **********************
 
-.. automodule:: src.metrics.representation
+.. automodule:: torchok.metrics.representation
 
 .. _TorchMetrics: https://torchmetrics.readthedocs.io/en/stable/index.html

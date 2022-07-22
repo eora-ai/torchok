@@ -7,7 +7,7 @@ from albumentations.pytorch import ToTensorV2
 from albumentations.core.composition import Compose
 from albumentations import Resize, HorizontalFlip, VerticalFlip
 
-from src.data.datasets.representation.validation import RetrievalDataset
+from torchok.data.datasets.representation.validation import RetrievalDataset
 
 
 class TestRetrievalDataset(unittest.TestCase):

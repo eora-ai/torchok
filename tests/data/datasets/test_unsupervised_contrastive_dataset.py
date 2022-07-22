@@ -6,7 +6,7 @@ from albumentations.pytorch import ToTensorV2
 from albumentations.core.composition import Compose
 from albumentations import Resize, HorizontalFlip, VerticalFlip
 
-from src.data.datasets.representation.unsupervised_contrastive_dataset import UnsupervisedContrastiveDataset
+from torchok.data.datasets.representation.unsupervised_contrastive_dataset import UnsupervisedContrastiveDataset
 
 
 class TestUnsupervisedContrastiveDataset(unittest.TestCase):

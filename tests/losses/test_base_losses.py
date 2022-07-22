@@ -3,7 +3,7 @@ import unittest
 import torch
 from torch.nn import Module
 
-from src.losses.base import JointLoss
+from torchok.losses.base import JointLoss
 
 
 class Loss1(Module):

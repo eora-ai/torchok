@@ -1,4 +1,4 @@
 Necks
 #####
 
-.. automodule:: src.models.necks
+.. automodule:: torchok.models.necks

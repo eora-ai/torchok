@@ -3,7 +3,7 @@ import unittest
 
 from omegaconf import OmegaConf
 
-from src.constructor.config_structure import ConfigParams, Phase
+from torchok.constructor.config_structure import ConfigParams, Phase
 
 
 SCHEMA = OmegaConf.structured(ConfigParams)
