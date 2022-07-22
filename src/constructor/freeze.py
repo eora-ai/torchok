@@ -32,8 +32,8 @@ def change_train_type(model: nn.Module, module_names: Union[Set[str], List[str]]
         logging.warning(f'change_train_type method, not found modules = {not_found_modules}')
 
 
-def get_freeze_unfreeze_by_epoch(epoch2module_names: Dict[int, List[str]],
-                                 current_epoch: int) -> Tuple[List[str], List[str]]:
+def get_freeze_unfreeze_module_names(epoch2module_names: Dict[int, List[str]],
+                                     current_epoch: int) -> Tuple[List[str], List[str]]:
     """Generate module names which need freeze or unfreeze depending on the train epoch.
     
     Args:

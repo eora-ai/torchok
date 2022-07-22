@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 from src.constructor.config_structure import Phase
 from src.constructor.constructor import Constructor
 from src.constructor.load import load_checkpoint
-from src.constructor.freeze import change_train_type, get_freeze_unfreeze_by_epoch
+from src.constructor.freeze import change_train_type, get_freeze_unfreeze_module_names
 
 
 class BaseTask(LightningModule, ABC):
@@ -121,8 +121,8 @@ class BaseTask(LightningModule, ABC):
 
         if self._unfreeze_epoch2module_names is not None:
             # create module names which need freeze or unfreeze for self.current_epoch
-            freeze_names, unfreeze_names = get_freeze_unfreeze_by_epoch(self._unfreeze_epoch2module_names,
-                                                                        self.current_epoch)
+            freeze_names, unfreeze_names = get_freeze_unfreeze_module_names(self._unfreeze_epoch2module_names,
+                                                                            self.current_epoch)
             # freeze modules which unfreeze epoch > self.current_epoch
             change_train_type(self, freeze_names)
             # unfreeze modules which unfreeze epoch <= self.current_epoch
