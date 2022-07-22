@@ -3,7 +3,7 @@
 # import timm
 # import torch
 
-# from src.constructor import BACKBONES
+# from torchok import BACKBONES
 
 
 # class TestResNet(unittest.TestCase):

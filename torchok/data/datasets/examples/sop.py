@@ -5,10 +5,10 @@ import pandas as pd
 import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
-from src.data.datasets.base import ImageDataset
+from torchok.data.datasets.base import ImageDataset
 from torchvision.datasets.utils import download_and_extract_archive
 
-from src.constructor import DATASETS
+from torchok.constructor import DATASETS
 
 
 @DATASETS.register_class

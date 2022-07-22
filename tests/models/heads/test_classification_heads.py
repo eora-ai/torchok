@@ -1,7 +1,7 @@
 import unittest
 
 import torch
-from torchok.constructor import HEADS
+from torchok import HEADS
 
 
 class TestArcFaceHead(unittest.TestCase):

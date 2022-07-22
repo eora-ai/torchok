@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
 
-from src.constructor import POOLINGS
-from src.models.base import BaseModel
-
-from . import Pooling
+from torchok.constructor import POOLINGS
+from torchok.models.base import BaseModel
+from torchok.models.poolings.classification import Pooling
 
 
 @POOLINGS.register_class
