@@ -16,10 +16,10 @@ task:
       - shape: [3, &height 224, &width 224]
         dtype: 'float32'
     freeze:
-      0: ['backbone.layers4']
-      5: ['backbone.layers3']
-      10: ['backbone.layers2']
-      15: ['backbone.layers1']
+      0: ['backbone.layer4']
+      5: ['backbone.layer3']
+      10: ['backbone.layer2']
+      15: ['backbone.layer1']
       20: ['backbone']
 
 joint_loss:
