@@ -78,10 +78,15 @@ trainer:
   max_epochs: 30
   log_every_n_steps: 1000
 
+# For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
+# if it isn't define it will be get from MLFLOW_TRACKING_URI - environment variable 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: cifar10
-  name: TensorBoardLogger
+  name: MLFlowLoggerX
+  params:
+    artifact_location: 'file://${oc.env:HOME}/.cache/torchok/logs/artifacts/'
+
 
 checkpoint:
   monitor: valid/F1Score

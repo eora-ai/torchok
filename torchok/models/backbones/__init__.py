@@ -1,3 +1,5 @@
+from torchok.models.backbones.base_backbone import BaseBackbone
+
 from torchok.models.backbones.resnet import (
     create_resnet,
     resnet18,

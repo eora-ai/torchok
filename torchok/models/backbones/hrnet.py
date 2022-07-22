@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
-from torchok.models.base import BaseModel
+from torchok.models.backbones import BaseBackbone
 from torchok.models.modules.bricks.convbnact import ConvBnAct
 from torchok.models.modules.blocks.basicblock import BasicBlock
 from torchok.models.modules.blocks.bottleneck import Bottleneck
@@ -484,23 +484,23 @@ blocks_dict = {
 }
 
 
-class HighResolutionNet(BaseModel):
+class HighResolutionNet(BaseBackbone):
     """HighResolutionNet model."""
 
     def __init__(self,
                  cfg: Dict[str, Any],
-                 in_chans: int = 3):
+                 in_channels: int = 3):
         """Init HighResolutionNet.
 
         Args:
             cfg: Model config.
-            in_chans: Input channels.
+            in_channels: Input channels.
         """
-        super().__init__()
+        super().__init__(in_channels=in_channels)
 
         stem_width = cfg['STEM_WIDTH']
 
-        self.convbnact1 = ConvBnAct(in_channels=in_chans,
+        self.convbnact1 = ConvBnAct(in_channels=in_channels,
                                     out_channels=stem_width,
                                     kernel_size=3,
                                     padding=1,
@@ -540,9 +540,11 @@ class HighResolutionNet(BaseModel):
         block = blocks_dict[self.stage4_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
         self.transition3 = self.__make_transition_layer(pre_stage_channels, num_channels)
-        self.stage4, self.out_channels = self.__make_stage(self.stage4_cfg, num_channels)
-
+        self.stage4, out_channels = self.__make_stage(self.stage4_cfg, num_channels)
         self.__init_weights()
+
+        self._out_channels = out_channels
+        self._out_feature_channels = [in_channels] + out_channels
 
     def __init_weights(self):
         for m in self.modules():
@@ -651,7 +653,7 @@ class HighResolutionNet(BaseModel):
 
         return nn.Sequential(*modules), num_inchannels
 
-    def __stages(self, x: Tensor) -> List[Tensor]:
+    def forward_stages(self, x: Tensor) -> List[Tensor]:
         """The method forward the tensor through all stages.
 
         Args:
@@ -675,26 +677,30 @@ class HighResolutionNet(BaseModel):
         Args:
             x: Input tensor.
         """
-        x = self.convbnact1(x)
-        x = self.convbnact2(x)
-
-        yl = self.__stages(x)
+        x = self.forward_stem(x)
+        yl = self.forward_stages(x)
 
         return yl
 
-    def forward_backbone_features(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
+    def forward_stem(self, x: Tensor) -> Tensor:
+        x = self.convbnact1(x)
+        x = self.convbnact2(x)
+        return x
+
+    def forward_features(self, x: Tensor) -> List[Tensor]:
         """Forward backbone features and input tensor.
 
         Args:
             x: Input tensor.
         """
-        features = self.forward(x)
-        features = [x] + features
-        return features[1:], features
+        features = [x]
 
-    def get_forward_output_channels(self) -> Union[int, List[int]]:
-        """Return number of output channels."""
-        return self.out_channels
+        x = self.forward_stem(x)
+        features.append(x)
+
+        stage_features = self.forward_stages(x)
+        features += stage_features
+        return features
 
 
 def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):

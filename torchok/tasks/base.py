@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
+from torchok.constructor.load import load_checkpoint
 
 
 class BaseTask(LightningModule, ABC):
@@ -41,9 +42,20 @@ class BaseTask(LightningModule, ABC):
         """Abstract forward method for training(with ground truth labels)."""
         pass
 
+    def train_modules(self) -> List[str]:
+        """Create a list of 1st-level modules that need to be optimized. The method is used to apply an optimizer
+        for the returned modules.
+
+        By default, it would be self.children().
+
+        Returns: List of modules that need to be optimized.
+        """
+        return self.children()
+
     def configure_optimizers(self) -> Tuple[List, List]:
         """Configure optimizers."""
-        opt_sched_list = self.__constructor.configure_optimizers(self.parameters())
+        modules = self.train_modules()
+        opt_sched_list = self.__constructor.configure_optimizers(modules)
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
@@ -100,12 +112,15 @@ class BaseTask(LightningModule, ABC):
                 raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
     def on_train_start(self) -> None:
-        # TODO check and load checkpoint
-        pass
+        if self.current_epoch == 0:
+            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+                            overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
+                            exclude_keys=self._hparams.task.exclude_keys)
 
     def on_test_start(self) -> None:
-        # TODO check and load checkpoint
-        pass
+        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+                        overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
+                        exclude_keys=self._hparams.task.exclude_keys)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
@@ -119,10 +134,17 @@ class BaseTask(LightningModule, ABC):
     def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        total_loss, tagged_loss_values = self._losses(**output)
         self._metrics_manager.forward(Phase.VALID, **output)
-        output_dict = {'loss': total_loss}
-        output_dict.update(tagged_loss_values)
+
+        # In arcface classification task, if we try to compute loss on test dataset with different number
+        # of classes we will crash the train study.
+        if self._hparams.task.compute_loss_on_valid:
+            total_loss, tagged_loss_values = self._losses(**output)
+            output_dict = {'loss': total_loss}
+            output_dict.update(tagged_loss_values)
+        else:
+            output_dict = {}
+        
         return output_dict
 
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:

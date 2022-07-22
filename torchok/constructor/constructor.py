@@ -122,8 +122,9 @@ class Constructor:
     # Licensed under The Apache 2.0 License [see LICENSE for details]
     @staticmethod
     def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
-        # TODO: add description of no_weight_decay method into BaseModel
+        # Module names for which weights decay will not be used.
         no_weight_decay_list = []
+        
         if hasattr(model, 'no_weight_decay'):
             no_weight_decay_list = model.no_weight_decay()
 

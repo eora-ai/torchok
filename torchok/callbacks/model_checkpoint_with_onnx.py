@@ -2,6 +2,7 @@ import os
 from weakref import proxy
 from typing import Dict, Optional
 
+from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.utilities.types import _METRIC
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
@@ -29,15 +30,17 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
 
         return os.path.join(self.dirpath, filename) if self.dirpath else filename
 
-    def _save_checkpoint(self, trainer: "pl.Trainer", filepath: str) -> None:
+    def _save_checkpoint(self, trainer: Trainer, filepath: str) -> None:
         """Override _save_checkpoint."""
         trainer.save_checkpoint(filepath + self.CKPT_EXTENSION, self.save_weights_only)
         self._last_global_step_saved = trainer.global_step
 
-        if self.export_to_onnx:
-            input_tensors = trainer.model.input_tensors
-            trainer.model.to_onnx(filepath + self.ONNX_EXTENSION, (*input_tensors,), **self.onnx_params)
-
         if trainer.is_global_zero:
+            if self.export_to_onnx:
+                # DDP mode use some wrappers and we go down to BaseModel.
+                model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
+                input_tensors = model.input_tensors
+                model.to_onnx(filepath + self.ONNX_EXTENSION, (*input_tensors,), **self.onnx_params)
+
             for logger in trainer.loggers:
                 logger.after_save_checkpoint(proxy(self))
