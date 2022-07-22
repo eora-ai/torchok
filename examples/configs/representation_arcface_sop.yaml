@@ -18,9 +18,9 @@ task:
     freeze:
       0: ['backbone.layers4']
       5: ['backbone.layers3']
-      15: ['backbone.layers2']
-      20: ['backbone.layers1']
-      25: ['backbone']
+      10: ['backbone.layers2']
+      15: ['backbone.layers1']
+      20: ['backbone']
 
 joint_loss:
   losses:
@@ -121,7 +121,7 @@ data:
 
 trainer:
   gpus: [0]
-  max_epochs: 30
+  max_epochs: 40
   num_sanity_val_steps: 0
 
 logger:
