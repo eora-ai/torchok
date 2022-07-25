@@ -11,7 +11,7 @@ authors = [
 ]
 homepage = "https://github.com/eora-ai/torchok"
 documentation = "https://torchok.readthedocs.io/"
-keywords = ["Computer Vision", "Deep Learning", "Image Classification", "Image Segmentation", "Image Representation"]
+keywords = ["Computer Vision", "Deep Learning", "Neural Networks"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
