@@ -3,8 +3,8 @@ from albumentations.pytorch import *
 from albumentations import BasicTransform
 from albumentations.core.composition import Compose
 
-from .pixelwise import *
-from .spatial import *
+from torchok.data.transforms.pixelwise import *
+from torchok.data.transforms.spatial import *
 
 from torchok.constructor import TRANSFORMS
 
