@@ -1,7 +1,7 @@
 import unittest
 
 from tests.data.datasets.test_image_classification import TestImageDataset
-from src.data.datasets.segmentation.image_segmentation import ImageSegmentationDataset
+from torchok.data.datasets.segmentation.image_segmentation import ImageSegmentationDataset
 
 
 class TestSegmentationDataset(TestImageDataset, unittest.TestCase):

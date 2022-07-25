@@ -4,9 +4,9 @@ Heads
 Base Heads
 **********
 
-.. automodule:: src.models.heads
+.. automodule:: torchok.models.heads
 
 Classification Heads
 ********************
 
-.. automodule:: src.models.heads.classification
+.. automodule:: torchok.models.heads.classification
