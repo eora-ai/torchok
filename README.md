@@ -48,11 +48,11 @@ For a training example, we can use the default configuration `examples/configs/c
 
 **To train on all available GPU devices (default config):**
 ```bash
-python train.py -cp examples/configs -cn classification_cifar10
+python -m torchok -cp ../examples/configs -cn classification_cifar10
 ```
 **To train on all available CPU cores:**
 ```bash
-train.py -cp examples/configs -cn classification_cifar10 trainer.accelerator='cpu'
+python -m torchok -cp ../examples/configs -cn classification_cifar10 trainer.accelerator='cpu'
 ```
 During the training you can access the training and validation logs by starting a local TensorBoard:
 ```bash
