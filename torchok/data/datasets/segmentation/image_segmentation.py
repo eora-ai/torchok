@@ -27,7 +27,7 @@ class ImageSegmentationDataset(ImageDataset):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  image_dtype: str = 'float32',
-                 target_dtype: str = 'uint8',
+                 target_dtype: str = 'int64',
                  csv_columns_mapping: Dict[str, str] = None,
                  grayscale: bool = False,
                  test_mode: bool = False):

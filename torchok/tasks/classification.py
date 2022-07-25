@@ -45,7 +45,7 @@ class ClassificationTask(BaseTask):
         head_params = self._hparams.task.params.get('head_params', dict())
         head_in_channels = self.pooling.out_channels
         self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
-   
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone(x)

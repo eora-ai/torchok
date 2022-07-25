@@ -544,7 +544,7 @@ class HighResolutionNet(BaseBackbone):
         self.__init_weights()
 
         self._out_channels = out_channels
-        self._out_feature_channels = [in_channels] + out_channels
+        self._out_feature_channels = [in_channels] + [out_channels] + out_channels
 
     def __init_weights(self):
         for m in self.modules():
