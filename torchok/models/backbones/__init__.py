@@ -25,7 +25,7 @@ from torchok.models.backbones.hrnet import (
     hrnet_w48,
     hrnet_w64,
 )
-from src.models.backbones.swin import (
+from torchok.models.backbones.swin import (
     swinv2_tiny_window16_256,
     swinv2_tiny_window8_256,
     swinv2_small_window16_256,

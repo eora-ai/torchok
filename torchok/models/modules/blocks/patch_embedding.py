@@ -14,7 +14,7 @@ import torch
 from torch import nn as nn
 from typing import Optional
 
-from src.models.modules.helpers import to_2tuple
+from torchok.models.modules.helpers import to_2tuple
 
 
 class PatchEmbed(nn.Module):

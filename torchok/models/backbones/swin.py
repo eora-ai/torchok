@@ -15,13 +15,13 @@ import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 from typing import List, Tuple, Union, Optional
 
-from src.constructor import BACKBONES
-from src.models.backbones.base_backbone import BaseBackbone
-from src.models.modules.weights_init import trunc_normal_
-from src.models.modules.blocks.patch_merging import PatchMerging
-from src.models.modules.blocks.patch_embedding import PatchEmbed
-from src.models.modules.blocks.swin_block import SwinTransformerBlock
-from src.models.backbones.utils.helpers import build_model_with_cfg
+from torchok.constructor import BACKBONES
+from torchok.models.backbones.base_backbone import BaseBackbone
+from torchok.models.modules.weights_init import trunc_normal_
+from torchok.models.modules.blocks.patch_merging import PatchMerging
+from torchok.models.modules.blocks.patch_embedding import PatchEmbed
+from torchok.models.modules.blocks.swin_block import SwinTransformerBlock
+from torchok.models.backbones.utils.helpers import build_model_with_cfg
 
 
 # The weights was taken from https://github.com/rwightman/pytorch-image-models

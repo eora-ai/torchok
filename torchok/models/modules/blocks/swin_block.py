@@ -14,10 +14,10 @@ import torch
 import torch.nn as nn
 from typing import Tuple
 
-from src.models.modules.blocks.drop import DropPath
-from src.models.modules.bricks.window_attention import WindowAttention
-from src.models.modules.bricks.mlp import Mlp
-from src.models.modules.helpers import to_2tuple
+from torchok.models.modules.blocks.drop import DropPath
+from torchok.models.modules.bricks.window_attention import WindowAttention
+from torchok.models.modules.bricks.mlp import Mlp
+from torchok.models.modules.helpers import to_2tuple
 
 
 def window_partition(x: torch.Tensor, window_size: int) -> torch.Tensor:
