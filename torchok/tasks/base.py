@@ -28,11 +28,12 @@ class BaseTask(LightningModule, ABC):
         self._losses = self.__constructor.configure_losses()
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
-    
-        for input_name, input_params in hparams.task.params.inputs.items():
-            input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
-            self._input_tensors.append(input_tensor)
-            self._input_names.append(input_name)
+        
+        if hparams.task.params.get('inputs') is not None:
+            for input_name, input_params in hparams.task.params.inputs.items():
+                input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
+                self._input_tensors.append(input_tensor)
+                self._input_names.append(input_name)
 
 
     @abstractmethod

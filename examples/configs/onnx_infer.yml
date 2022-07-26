@@ -1,17 +1,15 @@
 task:
   name: ONNXTask
   params:
-    path_to_onnx: '<onnx_path>'
-    device_id: 0
+    path_to_onnx: '/workdir/vpatrushev/small2/last.onnx'
     providers: ['CUDAExecutionProvider']
-    inputs:
-      image:
-        shape: [&batch_size 8, 3, &height 32, &width 32]
+    keys_mapping_onnx2dataset:
+      input.1: 'image'
 
 data:
   TEST:
     - dataloader:
-        batch_size: *batch_size
+        batch_size: 8
         num_workers: 4
         drop_last: false
         shuffle: false
@@ -25,8 +23,8 @@ data:
           - &resize
             name: Resize
             params:
-              height: *height
-              width: *width
+              height: 32
+              width: 32
           - &normalize
             name: Normalize
             params:
@@ -37,7 +35,7 @@ data:
   
   PREDICT:
     - dataloader:
-        batch_size: *batch_size
+        batch_size: 8
         num_workers: 1
         drop_last: False
         shuffle: False
@@ -75,3 +73,20 @@ metrics:
     mapping: 
       preds: prediction
       target: target
+
+joint_loss:
+  losses:
+    - name: CrossEntropyLoss
+      mapping:
+          input: prediction
+          target: target
+
+optimization:
+  - optimizer: 
+      name: Adam
+      params:
+        lr: 0.0001
+    scheduler:
+      name: ExponentialLR
+      params:
+        gamma: 0.97
