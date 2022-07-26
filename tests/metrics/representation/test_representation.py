@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import os
 
-from src.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
+from torchok.metrics.representation import RecallAtKMeter, PrecisionAtKMeter, MeanAveragePrecisionAtKMeter, NDCGAtKMeter
 
 from .data import CLASSIFICATION_ANSWERS, REPRESENTATION_ANSWERS, REPRESENTATION_QUERY_AS_RELEVANT_ANSWERS
 from .context import run_model, MAX_K
