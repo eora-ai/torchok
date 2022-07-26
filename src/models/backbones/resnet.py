@@ -166,10 +166,7 @@ default_cfgs = {
         url='https://imvl-automl-sh.oss-cn-shanghai.aliyuncs.com/darts/hyperml/hyperml/job_45402/outputs/ECAResNet50D_833caf58.pth',
         interpolation='bicubic',
         first_conv='conv1.0'),
-    'ecaresnet50d_pruned': _cfg(
-        url='https://imvl-automl-sh.oss-cn-shanghai.aliyuncs.com/darts/hyperml/hyperml/job_45899/outputs/ECAResNet50D_P_9c67f710.pth',
-        interpolation='bicubic',
-        first_conv='conv1.0'),
+
     'ecaresnet50t': _cfg(
         url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/ecaresnet50t_ra2-f7ac63c4.pth',
         interpolation='bicubic', first_conv='conv1.0', input_size=(3, 256, 256), pool_size=(8, 8),
@@ -177,10 +174,6 @@ default_cfgs = {
     'ecaresnet101d': _cfg(
         url='https://imvl-automl-sh.oss-cn-shanghai.aliyuncs.com/darts/hyperml/hyperml/job_45402/outputs/ECAResNet101D_281c5844.pth',
         interpolation='bicubic', first_conv='conv1.0'),
-    'ecaresnet101d_pruned': _cfg(
-        url='https://imvl-automl-sh.oss-cn-shanghai.aliyuncs.com/darts/hyperml/hyperml/job_45610/outputs/ECAResNet101D_P_75a3370e.pth',
-        interpolation='bicubic',
-        first_conv='conv1.0'),
     'ecaresnet200d': _cfg(
         url='',
         interpolation='bicubic', first_conv='conv1.0', input_size=(3, 256, 256), crop_pct=0.94, pool_size=(8, 8)),
@@ -476,7 +469,8 @@ class ResNet(BaseBackbone):
 
 
 def _create_resnet(variant, pretrained=False, **kwargs):
-    return build_model_with_cfg(ResNet, variant, pretrained, features_only=True, **kwargs)
+    return build_model_with_cfg(ResNet, variant, pretrained, kwargs_filter=('num_classes', 'global_pool', 'in_chans'),
+                                **kwargs)
 
 
 @BACKBONES.register_class
@@ -938,17 +932,6 @@ def ecaresnet50d(pretrained=False, **kwargs):
 
 
 @BACKBONES.register_class
-def ecaresnet50d_pruned(pretrained=False, **kwargs):
-    """Constructs a ResNet-50-D model pruned with eca.
-        The pruning has been obtained using https://arxiv.org/pdf/2002.08258.pdf
-    """
-    model_args = dict(
-        block=Bottleneck, layers=[3, 4, 6, 3], stem_width=32, stem_type='deep', avg_down=True,
-        block_args=dict(attn_layer='eca'), **kwargs)
-    return _create_resnet('ecaresnet50d_pruned', pretrained, pruned=True, **model_args)
-
-
-@BACKBONES.register_class
 def ecaresnet50t(pretrained=False, **kwargs):
     """Constructs an ECA-ResNet-50-T model.
     Like a 'D' bag-of-tricks model but with tiered 24, 32, 64 channels in the deep stem and ECA attn.
@@ -977,17 +960,6 @@ def ecaresnet101d(pretrained=False, **kwargs):
         block=Bottleneck, layers=[3, 4, 23, 3], stem_width=32, stem_type='deep', avg_down=True,
         block_args=dict(attn_layer='eca'), **kwargs)
     return _create_resnet('ecaresnet101d', pretrained, **model_args)
-
-
-@BACKBONES.register_class
-def ecaresnet101d_pruned(pretrained=False, **kwargs):
-    """Constructs a ResNet-101-D model pruned with eca.
-       The pruning has been obtained using https://arxiv.org/pdf/2002.08258.pdf
-    """
-    model_args = dict(
-        block=Bottleneck, layers=[3, 4, 23, 3], stem_width=32, stem_type='deep', avg_down=True,
-        block_args=dict(attn_layer='eca'), **kwargs)
-    return _create_resnet('ecaresnet101d_pruned', pretrained, pruned=True, **model_args)
 
 
 @BACKBONES.register_class
