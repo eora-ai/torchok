@@ -1,7 +1,7 @@
 task:
   name: ONNXTask
   params:
-    path_to_onnx: '/workdir/vpatrushev/small2/last.onnx'
+    path_to_onnx: '<onnx_path>'
     providers: ['CUDAExecutionProvider']
     keys_mapping_onnx2dataset:
       input.1: 'image'
