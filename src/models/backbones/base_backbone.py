@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import List, Tuple, Union, Optional
+from abc import ABC
+from typing import Tuple
+
+from timm.models.features import FeatureHooks
 
 from src.models.base import BaseModel
-from timm.models.features import FeatureHooks
 
 
 class BaseBackbone(BaseModel, ABC):
@@ -30,4 +31,3 @@ class BaseBackbone(BaseModel, ABC):
         if self._out_encoder_channels is None:
             raise ValueError('TorchOk Backbones must have self._out_feature_channels attribute.')
         return tuple(self._out_encoder_channels)
-

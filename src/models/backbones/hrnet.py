@@ -14,8 +14,9 @@ from src.models.backbones import BaseBackbone
 from src.models.modules.bricks.convbnact import ConvBnAct
 from src.models.modules.blocks.basicblock import BasicBlock
 from src.models.modules.blocks.bottleneck import Bottleneck
-from src.models.backbones.utils.helpers import build_model_with_cfg
-from src.models.backbones.utils.constants import IMAGENET_DEFAULT_STD, IMAGENET_DEFAULT_MEAN
+
+from timm.models.helpers import build_model_with_cfg
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
 def _cfg(url: str = '', **kwargs):
