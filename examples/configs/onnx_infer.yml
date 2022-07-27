@@ -73,20 +73,3 @@ metrics:
     mapping: 
       preds: prediction
       target: target
-
-joint_loss:
-  losses:
-    - name: CrossEntropyLoss
-      mapping:
-          input: prediction
-          target: target
-
-optimization:
-  - optimizer: 
-      name: Adam
-      params:
-        lr: 0.0001
-    scheduler:
-      name: ExponentialLR
-      params:
-        gamma: 0.97
