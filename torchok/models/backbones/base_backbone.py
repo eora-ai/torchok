@@ -22,8 +22,7 @@ class BaseBackbone(BaseModel, ABC):
         last_features = self(x)
         backbone_features = self.feature_hooks.get_output(x.device)
         backbone_features = list(backbone_features.values())
-        backbone_features = [x] + backbone_features
-        return last_features, backbone_features
+        return [x] + backbone_features
 
     @property
     def out_encoder_channels(self) -> Tuple[int]:

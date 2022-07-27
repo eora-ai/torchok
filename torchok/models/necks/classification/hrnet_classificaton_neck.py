@@ -12,15 +12,14 @@ from torchok.models.modules.blocks.bottleneck import Bottleneck
 @NECKS.register_class
 class HRNetClassificationNeck(BaseNeck):
     """HRNet neck for classification task."""
-    def __init__(self, in_channels: Union[List[int], Tuple[int, ...]], start_block: int = 2):
+    def __init__(self, in_channels: Union[List[int], Tuple[int, ...]]):
         """Init HRNetClassificationNeck.
 
         Args:
             in_channels: Input channels.
         """
         out_channels = 2048
-        in_channels = in_channels[start_block:]
-        super().__init__(start_block, in_channels, out_channels)
+        super().__init__(0, in_channels, out_channels)
         self.incre_modules, self.downsamp_modules, self.final_layer = self.__make_neck(in_channels)
 
     def __make_neck(self, in_channels: Union[List[int], Tuple[int, ...]]):

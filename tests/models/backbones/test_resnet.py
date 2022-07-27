@@ -3,7 +3,7 @@ import unittest
 import torch
 from parameterized import parameterized
 
-from src.constructor import BACKBONES
+from torchok.constructor import BACKBONES
 
 
 def inp(bsize, in_ch, w, h):

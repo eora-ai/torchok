@@ -4,19 +4,17 @@ Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 Copyright 2019 Ross Wightman
 Licensed under The Apache 2.0 License [see LICENSE for details]
 """
-from typing import Any, List, Tuple, Union, Dict
+from typing import Any, Dict, List, Union
 
+import torch
 import torch.nn as nn
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from timm.models.helpers import build_model_with_cfg
+from timm.models.hrnet import _BN_MOMENTUM, BasicBlock, blocks_dict, Bottleneck, cfg_cls, HighResolutionModule
 from torch import Tensor
 
-from src.constructor import BACKBONES
-from src.models.backbones import BaseBackbone
-from src.models.modules.bricks.convbnact import ConvBnAct
-from src.models.modules.blocks.basicblock import BasicBlock
-from src.models.modules.blocks.bottleneck import Bottleneck
-
-from timm.models.helpers import build_model_with_cfg
-from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from torchok.constructor import BACKBONES
+from torchok.models.backbones.base_backbone import BaseBackbone
 
 
 def _cfg(url: str = '', **kwargs):
@@ -34,486 +32,41 @@ def _cfg(url: str = '', **kwargs):
     }
 
 
+url_base_path = 'https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-hrnet/'
 default_cfgs = {
-    'hrnet_w18_small': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small-torchok.pth'),
-    'hrnet_w18_small_v2': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18_small_v2-torchok.pth'),
-    'hrnet_w18': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w18-torchok.pth'),
-    'hrnet_w30': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w30-torchok.pth'),
-    'hrnet_w32': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w32-torchok.pth'),
-    'hrnet_w40': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w40-torchok.pth'),
-    'hrnet_w44': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w44-torchok.pth'),
-    'hrnet_w48': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w48-torchok.pth'),
-    'hrnet_w64': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/hrnet_w64-torchok.pth'),
-}
-
-cfg_cls = dict(
-    hrnet_w18_small=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(1,),
-            NUM_CHANNELS=(32,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(2, 2),
-            NUM_CHANNELS=(16, 32),
-        ),
-        STAGE3=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(2, 2, 2),
-            NUM_CHANNELS=(16, 32, 64)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(2, 2, 2, 2),
-            NUM_CHANNELS=(16, 32, 64, 128)
-        ),
-    ),
-
-    hrnet_w18_small_v2=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(2,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(2, 2),
-            NUM_CHANNELS=(18, 36)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(2, 2, 2),
-            NUM_CHANNELS=(18, 36, 72)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=2,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(2, 2, 2, 2),
-            NUM_CHANNELS=(18, 36, 72, 144)
-        ),
-    ),
-
-    hrnet_w18=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(18, 36)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(18, 36, 72)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(18, 36, 72, 144)
-        ),
-    ),
-
-    hrnet_w30=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(30, 60)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(30, 60, 120)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(30, 60, 120, 240)
-        ),
-    ),
-
-    hrnet_w32=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(32, 64)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(32, 64, 128)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(32, 64, 128, 256)
-        ),
-    ),
-
-    hrnet_w40=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(40, 80)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(40, 80, 160)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(40, 80, 160, 320)
-        ),
-    ),
-
-    hrnet_w44=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(44, 88)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(44, 88, 176)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(44, 88, 176, 352)
-        ),
-    ),
-
-    hrnet_w48=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(48, 96)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(48, 96, 192)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(48, 96, 192, 384)
-        ),
-    ),
-
-    hrnet_w64=dict(
-        STEM_WIDTH=64,
-        STAGE1=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=1,
-            BLOCK='BOTTLENECK',
-            NUM_BLOCKS=(4,),
-            NUM_CHANNELS=(64,)
-        ),
-        STAGE2=dict(
-            NUM_MODULES=1,
-            NUM_BRANCHES=2,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4),
-            NUM_CHANNELS=(64, 128)
-        ),
-        STAGE3=dict(
-            NUM_MODULES=4,
-            NUM_BRANCHES=3,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4),
-            NUM_CHANNELS=(64, 128, 256)
-        ),
-        STAGE4=dict(
-            NUM_MODULES=3,
-            NUM_BRANCHES=4,
-            BLOCK='BASIC',
-            NUM_BLOCKS=(4, 4, 4, 4),
-            NUM_CHANNELS=(64, 128, 256, 512)
-        ),
-    )
-)
-
-
-class HighResolutionModule(nn.Module):
-    """HighResolutionModule is logical module of HighResolutionNet."""
-    def __init__(self,
-                 num_branches: int,
-                 blocks: Union[Bottleneck, BasicBlock],
-                 num_blocks: Tuple[int],
-                 num_inchannels: Tuple[int],
-                 num_outchannels: Tuple[int]):
-        """Init HighResolutionModule.
-
-        Args:
-            num_branches: Number of branches.
-            blocks: Type of block.
-            num_blocks: Number of blocks.
-            num_inchannels: Number of input channels.
-            num_outchannels: Number of output channels.
-        """
-        super().__init__()
-
-        self.num_inchannels = num_inchannels
-        self.num_branches = num_branches
-
-        self.branches = self._make_branches(num_branches, blocks, num_blocks, num_outchannels)
-        self.fuse_layers = self._make_fuse_layers()
-        self.fuse_act = nn.ReLU()
-
-    def _make_one_branch(self,
-                         branch_index: int,
-                         block: Union[Bottleneck, BasicBlock],
-                         num_blocks: Tuple[int],
-                         num_channels: Tuple[int],
-                         stride: int = 1) -> nn.Sequential:
-        """The method creates one branch in the HRNet.
-
-        Args:
-            branch_index: Index of branch.
-            block: Block type.
-            num_blocks: Number of blocks.
-            num_channels: Number of channels.
-            stride: Stride.
-        """
-        downsample = None
-        expanded_channels = num_channels[branch_index] * block.expansion
-        if stride != 1 or self.num_inchannels[branch_index] != expanded_channels:
-            downsample = ConvBnAct(in_channels=self.num_inchannels[branch_index],
-                                   out_channels=expanded_channels,
-                                   kernel_size=1,
-                                   stride=stride,
-                                   bias=False,
-                                   act_layer=None)
-
-        layers = [block(self.num_inchannels[branch_index], num_channels[branch_index], stride, downsample)]
-        self.num_inchannels[branch_index] = expanded_channels
-        for i in range(1, num_blocks[branch_index]):
-            layers.append(block(self.num_inchannels[branch_index], num_channels[branch_index]))
-
-        return nn.Sequential(*layers)
-
-    def _make_branches(self,
-                       num_branches: int,
-                       block: Union[Bottleneck, BasicBlock],
-                       num_blocks: Tuple[int],
-                       num_channels: Tuple[int]):
-        """The method creates branches in the HRNet.
-
-        Args:
-            num_branches: Number of branches.
-            block: Block type.
-            num_blocks: Number of blocks.
-            num_channels: Number of channels.
-        """
-        branches = []
-        for i in range(num_branches):
-            branches.append(self._make_one_branch(i, block, num_blocks, num_channels))
-
-        return nn.ModuleList(branches)
-
-    def _make_fuse_layers(self) -> nn.ModuleList:
-        """The method creates fuse layers in the HRNet."""
-        if self.num_branches == 1:
-            return nn.Identity()
-
-        num_branches = self.num_branches
-        num_inchannels = self.num_inchannels
-        fuse_layers = []
-        for i in range(num_branches):
-            fuse_layer = []
-            for j in range(num_branches):
-                if j > i:
-                    fuse_layer.append(nn.Sequential(
-                        ConvBnAct(in_channels=num_inchannels[j],
-                                  out_channels=num_inchannels[i],
-                                  kernel_size=1,
-                                  padding=0,
-                                  stride=1,
-                                  bias=False,
-                                  act_layer=None),
-                        nn.Upsample(scale_factor=2 ** (j - i), mode='nearest')))
-                elif j == i:
-                    fuse_layer.append(nn.Identity())
-                else:
-                    conv3x3s = []
-                    for k in range(i - j):
-                        num_outchannels_conv3x3 = num_inchannels[i] if k == i - j - 1 else num_inchannels[j]
-                        act_layer = None if k == i - j - 1 else nn.ReLU
-                        conv3x3s.append(ConvBnAct(in_channels=num_inchannels[j],
-                                                  out_channels=num_outchannels_conv3x3,
-                                                  kernel_size=3,
-                                                  padding=1,
-                                                  stride=2,
-                                                  bias=False,
-                                                  act_layer=act_layer))
-                    fuse_layer.append(nn.Sequential(*conv3x3s))
-            fuse_layers.append(nn.ModuleList(fuse_layer))
-
-        return nn.ModuleList(fuse_layers)
-
-    def forward(self, x: List[Tensor]) -> List[Tensor]:
-        """Forward method."""
-        if self.num_branches == 1:
-            return [self.branches[0](x[0])]
-
-        for i, branch in enumerate(self.branches):
-            x[i] = branch(x[i])
-
-        x_fuse = []
-        for i, fuse_outer in enumerate(self.fuse_layers):
-            y = x[0] if i == 0 else fuse_outer[0](x[0])
-            for j in range(1, self.num_branches):
-                if i == j:
-                    y = y + x[j]
-                else:
-                    y = y + fuse_outer[j](x[j])
-            x_fuse.append(self.fuse_act(y))
-
-        return x_fuse
-
-    def get_num_inchannels(self) -> List[int]:
-        """Number of input channels."""
-        return self.num_inchannels
-
-
-blocks_dict = {
-    'BASIC': BasicBlock,
-    'BOTTLENECK': Bottleneck
+    'hrnet_w18_small': _cfg(url=f'{url_base_path}/hrnet_w18_small_v1-f460c6bc.pth'),
+    'hrnet_w18_small_v2': _cfg(url=f'{url_base_path}/hrnet_w18_small_v2-4c50a8cb.pth'),
+    'hrnet_w18': _cfg(url=f'{url_base_path}/hrnetv2_w18-8cb57bb9.pth'),
+    'hrnet_w30': _cfg(url=f'{url_base_path}/hrnetv2_w30-8d7f8dab.pth'),
+    'hrnet_w32': _cfg(url=f'{url_base_path}/hrnetv2_w32-90d8c5fb.pth'),
+    'hrnet_w40': _cfg(url=f'{url_base_path}/hrnetv2_w40-7cd397a4.pth'),
+    'hrnet_w44': _cfg(url=f'{url_base_path}/hrnetv2_w44-c9ac8c18.pth'),
+    'hrnet_w48': _cfg(url=f'{url_base_path}/hrnetv2_w48-abd2e6ab.pth'),
+    'hrnet_w64': _cfg(url=f'{url_base_path}/hrnetv2_w64-b47cc881.pth'),
 }
 
 
 class HighResolutionNet(BaseBackbone):
     """HighResolutionNet model."""
 
-    def __init__(self,
-                 cfg: Dict[str, Any],
-                 in_channels: int = 3):
+    def __init__(self, cfg: Dict[str, Any], in_channels: int = 3):
         """Init HighResolutionNet.
 
         Args:
             cfg: Model config.
             in_channels: Input channels.
         """
-        super().__init__(in_channels=in_channels)
+        super().__init__(in_channels=in_channels,
+                         out_channels=cfg['STAGE4']['NUM_CHANNELS'])
+        self._out_encoder_channels = (in_channels, *cfg['STAGE4']['NUM_CHANNELS'])
 
         stem_width = cfg['STEM_WIDTH']
-
-        self.convbnact1 = ConvBnAct(in_channels=in_channels,
-                                    out_channels=stem_width,
-                                    kernel_size=3,
-                                    padding=1,
-                                    stride=2,
-                                    bias=False)
-
-        self.convbnact2 = ConvBnAct(in_channels=stem_width,
-                                    out_channels=64,
-                                    kernel_size=3,
-                                    padding=1,
-                                    stride=2,
-                                    bias=False)
+        self.conv1 = nn.Conv2d(in_channels, stem_width, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(stem_width, momentum=_BN_MOMENTUM)
+        self.act1 = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(stem_width, 64, kernel_size=3, stride=2, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(64, momentum=_BN_MOMENTUM)
+        self.act2 = nn.ReLU(inplace=True)
 
         self.stage1_cfg = cfg['STAGE1']
         num_channels = self.stage1_cfg['NUM_CHANNELS'][0]
@@ -541,13 +94,12 @@ class HighResolutionNet(BaseBackbone):
         block = blocks_dict[self.stage4_cfg['BLOCK']]
         num_channels = [num_channels[i] * block.expansion for i in range(len(num_channels))]
         self.transition3 = self.__make_transition_layer(pre_stage_channels, num_channels)
-        self.stage4, out_channels = self.__make_stage(self.stage4_cfg, num_channels)
-        self.__init_weights()
+        self.stage4, out_channels = self.__make_stage(self.stage4_cfg, num_channels, multi_scale_output=True)
 
-        self._out_channels = out_channels
-        self._out_feature_channels = [in_channels] + out_channels
+        self.init_weights()
 
-    def __init_weights(self):
+    @torch.jit.ignore
+    def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(
@@ -556,15 +108,7 @@ class HighResolutionNet(BaseBackbone):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def __make_transition_layer(self,
-                                num_channels_pre_layer: List[int],
-                                num_channels_cur_layer: List[int]) -> nn.ModuleList:
-        """The method creates transiton_layer in the HRNet.
-
-        Args:
-            num_channels_pre_layer: Number of channels in previous layer.
-            num_channels_cur_layer: Number of channels in current layer.
-        """
+    def __make_transition_layer(self, num_channels_pre_layer, num_channels_cur_layer):
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
 
@@ -572,13 +116,10 @@ class HighResolutionNet(BaseBackbone):
         for i in range(num_branches_cur):
             if i < num_branches_pre:
                 if num_channels_cur_layer[i] != num_channels_pre_layer[i]:
-                    transition_layers.append(
-                        ConvBnAct(in_channels=num_channels_pre_layer[i],
-                                  out_channels=num_channels_cur_layer[i],
-                                  kernel_size=3,
-                                  padding=1,
-                                  stride=1,
-                                  bias=False))
+                    transition_layers.append(nn.Sequential(
+                        nn.Conv2d(num_channels_pre_layer[i], num_channels_cur_layer[i], 3, 1, 1, bias=False),
+                        nn.BatchNorm2d(num_channels_cur_layer[i], momentum=_BN_MOMENTUM),
+                        nn.ReLU(inplace=True)))
                 else:
                     transition_layers.append(nn.Identity())
             else:
@@ -586,23 +127,15 @@ class HighResolutionNet(BaseBackbone):
                 for j in range(i + 1 - num_branches_pre):
                     inchannels = num_channels_pre_layer[-1]
                     outchannels = num_channels_cur_layer[i] if j == i - num_branches_pre else inchannels
-                    conv3x3s.append(
-                        ConvBnAct(in_channels=inchannels,
-                                  out_channels=outchannels,
-                                  kernel_size=3,
-                                  padding=1,
-                                  stride=2,
-                                  bias=False))
+                    conv3x3s.append(nn.Sequential(
+                        nn.Conv2d(inchannels, outchannels, 3, 2, 1, bias=False),
+                        nn.BatchNorm2d(outchannels, momentum=_BN_MOMENTUM),
+                        nn.ReLU(inplace=True)))
                 transition_layers.append(nn.Sequential(*conv3x3s))
 
         return nn.ModuleList(transition_layers)
 
-    def __make_layer(self,
-                     block: Union[Bottleneck, BasicBlock],
-                     in_channels: int,
-                     out_channels: int,
-                     num_blocks: int,
-                     stride: int = 1) -> nn.Sequential:
+    def __make_layer(self, block: Union[Bottleneck, BasicBlock], in_channels, out_channels, num_blocks, stride=1):
         """The method creates layer in the HRNet.
 
         Args:
@@ -615,13 +148,10 @@ class HighResolutionNet(BaseBackbone):
         downsample = None
 
         if stride != 1 or in_channels != out_channels * block.expansion:
-            downsample = ConvBnAct(in_channels=in_channels,
-                                   out_channels=out_channels * block.expansion,
-                                   kernel_size=1,
-                                   padding=0,
-                                   stride=stride,
-                                   bias=False,
-                                   act_layer=None)
+            downsample = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels * block.expansion, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels * block.expansion, momentum=_BN_MOMENTUM),
+            )
 
         layers = [block(in_channels, out_channels, stride, downsample)]
         in_channels = out_channels * block.expansion
@@ -630,29 +160,31 @@ class HighResolutionNet(BaseBackbone):
 
         return nn.Sequential(*layers)
 
-    def __make_stage(self,
-                     layer_config: Dict[str, Any],
-                     num_inchannels: Tuple[int]) -> nn.Sequential:
+    def __make_stage(self, layer_config: Dict[str, Any], in_channels: List[int],
+                     multi_scale_output: bool = True):
         """The method creates stage in the HRNet.
 
         Args:
             layer_config: Layer configurations.
-            num_inchannels: Number of input channels.
+            in_channels: Number of input channels.
         """
         num_modules = layer_config['NUM_MODULES']
         num_branches = layer_config['NUM_BRANCHES']
         num_blocks = layer_config['NUM_BLOCKS']
         num_channels = layer_config['NUM_CHANNELS']
         block = blocks_dict[layer_config['BLOCK']]
+        fuse_method = layer_config['FUSE_METHOD']
 
         modules = []
         for i in range(num_modules):
+            # multi_scale_output is only used last module
+            reset_multi_scale_output = multi_scale_output or i < num_modules - 1
             modules.append(HighResolutionModule(
-                num_branches, block, num_blocks, num_inchannels, num_channels)
+                num_branches, block, num_blocks, in_channels, num_channels, fuse_method, reset_multi_scale_output)
             )
-            num_inchannels = modules[-1].get_num_inchannels()
+            in_channels = modules[-1].get_num_in_chs()
 
-        return nn.Sequential(*modules), num_inchannels
+        return nn.Sequential(*modules), in_channels
 
     def forward_stages(self, x: Tensor) -> List[Tensor]:
         """The method forward the tensor through all stages.
@@ -684,8 +216,12 @@ class HighResolutionNet(BaseBackbone):
         return yl
 
     def forward_stem(self, x: Tensor) -> Tensor:
-        x = self.convbnact1(x)
-        x = self.convbnact2(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.act1(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.act2(x)
         return x
 
     def forward_features(self, x: Tensor) -> List[Tensor]:
@@ -694,14 +230,7 @@ class HighResolutionNet(BaseBackbone):
         Args:
             x: Input tensor.
         """
-        features = [x]
-
-        x = self.forward_stem(x)
-        features.append(x)
-
-        stage_features = self.forward_stages(x)
-        features += stage_features
-        return features
+        return [x] + self.forward(x)
 
 
 def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
@@ -712,9 +241,9 @@ def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
         pretrained: If True the pretrained weights will be loaded.
         model_kwargs: Kwargs for model (for example in_chans).
     """
-    return build_model_with_cfg(
-        HighResolutionNet, pretrained, default_cfg=default_cfgs[variant],
-        model_cfg=cfg_cls[variant], **model_kwargs)
+    return build_model_with_cfg(HighResolutionNet, variant, pretrained, model_cfg=cfg_cls[variant],
+                                pretrained_strict=False, kwargs_filter=('num_classes', 'global_pool', 'in_chans'),
+                                **model_kwargs)
 
 
 @BACKBONES.register_class
