@@ -116,7 +116,6 @@ METRICS.register_class(WeightedMeanAbsolutePercentageError)
 __all__ = [
     'MetricsManager',
     'MetricWithUtils',
-    'HitAtKMeter',
     'PrecisionAtKMeter',
     'RecallAtKMeter',
     'MeanAveragePrecisionAtKMeter',
