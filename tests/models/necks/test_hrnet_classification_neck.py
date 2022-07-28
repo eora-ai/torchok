@@ -13,7 +13,7 @@ class TestHRNetClassificationNeck(unittest.TestCase):
         self.backbone = BACKBONES.get('hrnet_w18')(pretrained=False).to(self.device)
         self.neck = NECKS.get('HRNetClassificationNeck')(self.backbone.out_channels).to(self.device)
 
-    def test_outputs_equals(self):
+    def test_output_shape(self):
         x = self.backbone(self.input)
         x = self.neck(x)
         self.assertTupleEqual(x.shape, (2, 2048, 2, 2))

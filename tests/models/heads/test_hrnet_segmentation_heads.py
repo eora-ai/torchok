@@ -14,7 +14,7 @@ class TestHRNetSegmentationHead(unittest.TestCase):
         self.neck = NECKS.get('HRNetSegmentationNeck')(self.backbone.out_encoder_channels).to(self.device)
         self.head = HEADS.get('HRNetSegmentationHead')(self.neck.out_channels, 10).to(self.device)
 
-    def test_outputs_equals(self):
+    def test_output_shape(self):
         backbone_features = self.backbone.forward_features(self.input)
         x = self.neck(backbone_features)
         x = self.head(x)
