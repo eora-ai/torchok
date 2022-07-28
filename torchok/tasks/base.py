@@ -8,7 +8,10 @@ from omegaconf import DictConfig
 
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
+<<<<<<< HEAD:torchok/tasks/base.py
 from torchok.constructor.load import load_checkpoint
+=======
+>>>>>>> del src/:torchok/tasks/base.py
 
 
 class BaseTask(LightningModule, ABC):
@@ -29,6 +32,7 @@ class BaseTask(LightningModule, ABC):
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         
+        # `inputs` key in yaml used for model checkpointing. 
         if hparams.task.params.get('inputs') is not None:
             for input_name, input_params in hparams.task.params.inputs.items():
                 input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])

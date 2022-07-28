@@ -7,9 +7,9 @@ from torch import Tensor
 import onnxruntime as onnxrt
 from omegaconf import DictConfig
 
-from src.constructor import TASKS
-from src.tasks.base import BaseTask
-from src.constructor.config_structure import Phase
+from torchok.constructor import TASKS
+from torchok.tasks.base import BaseTask
+from torchok.constructor.config_structure import Phase
 
 
 @TASKS.register_class
@@ -41,7 +41,7 @@ class ONNXTask(BaseTask):
                           'dtype': self.str_type2numpy_type[item.type]}
                           for item in self._sess.get_inputs()]
 
-        self.onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset
+        self.__keys_mapping_onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset
 
         self.__outputs = [{'name': item.name,
                            'shape': item.shape,
@@ -53,12 +53,12 @@ class ONNXTask(BaseTask):
     def forward_with_gt(self, batch: Dict[str, Any]) -> Dict[str, Tensor]:
         pass
 
-    def foward_infer(self, inputs: Dict[str, Tensor]) -> Tensor:
+    def foward_infer(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Forward onnx model."""
 
         for input in self.__inputs:
             # TODO: Hardcode device_id check that it doesn't matter
-            input_tensor = inputs[self.onnx2dataset[input['name']]]
+            input_tensor = inputs[self.__keys_mapping_onnx2dataset[input['name']]]
             self.batch_dim = input_tensor.shape[0]
 
             self.__binding.bind_input(
@@ -89,10 +89,9 @@ class ONNXTask(BaseTask):
         return output
 
     def forward_infer_with_gt(self, batch: Dict[str, Any]) -> Dict[str, Tensor]:
-        """Abstract forward method for test stage."""
-        input_data = batch['image']
+        """Forward method for test stage."""
         target = batch['target']
-        prediction = self.foward_infer(input_data)
+        prediction = self.foward_infer(batch)
         output = {'target': target, 'prediction': prediction}
         return output
 
