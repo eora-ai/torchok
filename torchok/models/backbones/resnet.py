@@ -369,7 +369,6 @@ class ResNet(BaseBackbone):
         block_args = block_args or dict()
         if output_stride not in (8, 16, 32):
             raise ValueError('`output_stride` must be in (8, 16, 32)')
-        self.grad_checkpointing = False
         self._in_channels = in_channels
 
         # Stem
@@ -441,28 +440,16 @@ class ResNet(BaseBackbone):
                 if hasattr(m, 'zero_init_last'):
                     m.zero_init_last()
 
-    @torch.jit.ignore
-    def group_matcher(self, coarse=False):
-        matcher = dict(stem=r'^conv1|bn1|maxpool', blocks=r'^layer(\d+)' if coarse else r'^layer(\d+)\.(\d+)')
-        return matcher
-
-    @torch.jit.ignore
-    def set_grad_checkpointing(self, enable=True):
-        self.grad_checkpointing = enable
-
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.act1(x)
         x = self.maxpool(x)
 
-        if self.grad_checkpointing and not torch.jit.is_scripting():
-            x = checkpoint_seq([self.layer1, self.layer2, self.layer3, self.layer4], x, flatten=True)
-        else:
-            x = self.layer1(x)
-            x = self.layer2(x)
-            x = self.layer3(x)
-            x = self.layer4(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
         return x
 
 

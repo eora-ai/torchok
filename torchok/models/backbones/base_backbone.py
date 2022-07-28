@@ -1,5 +1,6 @@
+from torch import Tensor
 from abc import ABC
-from typing import Tuple
+from typing import Tuple, List
 
 from timm.models.features import FeatureHooks
 
@@ -17,7 +18,7 @@ class BaseBackbone(BaseModel, ABC):
         hooks = [dict(module=name, type='forward') for name in self.stage_names]
         self.feature_hooks = FeatureHooks(hooks, self.named_modules())
 
-    def forward_features(self, x):
+    def forward_features(self, x: Tensor) -> List[Tensor]:
         """Forward method for getting backbone feature maps.
            They are mainly used for segmentation and detection tasks.
         """

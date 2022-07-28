@@ -58,7 +58,7 @@ class HighResolutionNet(BaseBackbone):
         """
         super().__init__(in_channels=in_channels,
                          out_channels=cfg['STAGE4']['NUM_CHANNELS'])
-        self._out_encoder_channels = (in_channels, *cfg['STAGE4']['NUM_CHANNELS'])
+        self._out_encoder_channels = cfg['STAGE4']['NUM_CHANNELS']
 
         stem_width = cfg['STEM_WIDTH']
         self.conv1 = nn.Conv2d(in_channels, stem_width, kernel_size=3, stride=2, padding=1, bias=False)
@@ -108,7 +108,7 @@ class HighResolutionNet(BaseBackbone):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def __make_transition_layer(self, num_channels_pre_layer, num_channels_cur_layer):
+    def __make_transition_layer(self, num_channels_pre_layer: List[int], num_channels_cur_layer: List[int]):
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
 
@@ -135,7 +135,8 @@ class HighResolutionNet(BaseBackbone):
 
         return nn.ModuleList(transition_layers)
 
-    def __make_layer(self, block: Union[Bottleneck, BasicBlock], in_channels, out_channels, num_blocks, stride=1):
+    def __make_layer(self, block: Union[Bottleneck, BasicBlock], in_channels: int,
+                     out_channels: int, num_blocks: int, stride: int = 1):
         """The method creates layer in the HRNet.
 
         Args:

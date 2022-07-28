@@ -1,20 +1,18 @@
 import fnmatch
-import re
 import sys
 from collections import defaultdict
 from typing import Callable
 from typing import List, Union
 
-
-def _natural_key(string_):
-    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_.lower())]
+from timm.models.registry import _natural_key
 
 
 class Registry:
     """Registry of pipeline's components: models, datasets, metrics, etc.
     
     The registry is meant to be used as a decorator for any classes or function,
-    so that they can be accessed by class name for instantiating. 
+    so that they can be accessed by class name for instantiating. It also contains mapping from object name to model
+    where this object stored and mapping from module to set of objects stored in module.
     Example: 
         COMPONENTS = Registry('components')
         @COMPONENTS.register_class

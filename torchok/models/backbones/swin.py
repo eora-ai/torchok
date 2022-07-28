@@ -84,32 +84,32 @@ class SwinTransformerV2(BaseBackbone):
     r""" Swin Transformer V2
         A PyTorch impl of : `Swin Transformer V2: Scaling Up Capacity and Resolution`
             - https://arxiv.org/abs/2111.09883
-    Args:
-        img_size (int | tuple(int)): Input image size. Default 224
-        patch_size (int | tuple(int)): Patch size. Default: 4
-        in_chans (int): Number of input image channels. Default: 3
-        num_classes (int): Number of classes for classification head. Default: 1000
-        embed_dim (int): Patch embedding dimension. Default: 96
-        depths (tuple(int)): Depth of each Swin Transformer layer.
-        num_heads (tuple(int)): Number of attention heads in different layers.
-        window_size (int): Window size. Default: 7
-        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4
-        qkv_bias (bool): If True, add a learnable bias to query, key, value. Default: True
-        drop_rate (float): Dropout rate. Default: 0
-        attn_drop_rate (float): Attention dropout rate. Default: 0
-        drop_path_rate (float): Stochastic depth rate. Default: 0.1
-        norm_layer (nn.Module): Normalization layer. Default: nn.LayerNorm.
-        ape (bool): If True, add absolute position embedding to the patch embedding. Default: False
-        patch_norm (bool): If True, add normalization after patch embedding. Default: True
-        use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
-        pretrained_window_sizes (tuple(int)): Pretrained window sizes of each layer.
+        Args:
+            img_size: Input image size.
+            patch_size: Patch size.
+            in_channels: Number of input image channels.
+            embed_dim: Patch embedding dimension.
+            depths: Depth of each Swin Transformer layer.
+            num_heads: Number of attention heads in different layers.
+            window_size: Window size.
+            mlp_ratio: Ratio of mlp hidden dim to embedding dim.
+            qkv_bias: If True, add a learnable bias to query, key, value.
+            drop_rate: Dropout rate.
+            attn_drop_rate: Attention dropout rate.
+            drop_path_rate: Stochastic depth rate.
+            norm_layer: Normalization layer.
+            ape: If True, add absolute position embedding to the patch embedding.
+            patch_norm: If True, add normalization after patch embedding.
+            pretrained_window_sizes: Pretrained window sizes of each layer.
     """
 
     def __init__(
-            self, img_size=224, patch_size=4, in_channels=3, embed_dim=96, depths=(2, 2, 6, 2),
-            num_heads=(3, 6, 12, 24), window_size=7, mlp_ratio=4., qkv_bias=True,
-            drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, norm_layer=nn.LayerNorm,
-            ape=False, patch_norm=True, pretrained_window_sizes=(0, 0, 0, 0), **kwargs):
+            self, img_size: int = 224, patch_size: int = 4, in_channels: int = 3,
+            embed_dim: int = 96, depths: List[int] = (2, 2, 6, 2), num_heads: List[int] = (3, 6, 12, 24),
+            window_size: int = 7, mlp_ratio: float = 4., qkv_bias: bool = True,
+            drop_rate: float = 0., attn_drop_rate: float = 0., drop_path_rate: float = 0.1,
+            norm_layer: nn.Module = nn.LayerNorm, ape: bool = False, patch_norm: bool = True,
+            pretrained_window_sizes: List[int] = (0, 0, 0, 0)):
         super().__init__(in_channels=in_channels)
         self.img_size = img_size
         self.num_layers = len(depths)
@@ -118,7 +118,7 @@ class SwinTransformerV2(BaseBackbone):
         self.patch_norm = patch_norm
         self.encoder_channels = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
         self._out_channels = self.encoder_channels[-1]
-        self._out_encoder_channels = [in_channels] + self.encoder_channels
+        self._out_encoder_channels = self.encoder_channels
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -238,6 +238,7 @@ class SwinTransformerV2(BaseBackbone):
     def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
         features = [x]
         downsample_attn = self._forward_patch_emb(x)
+
         for i, layer in enumerate(self.layers):
             downsample_attn, attn = layer(downsample_attn)
             feature = self._normalize_with_bhwc_reshape(attn, layer_number=i, normalize=True)

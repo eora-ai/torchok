@@ -19,7 +19,7 @@ class HRNetClassificationNeck(BaseNeck):
             in_channels: Input channels.
         """
         out_channels = 2048
-        super().__init__(0, in_channels, out_channels)
+        super().__init__(in_channels, out_channels)
         self.incre_modules, self.downsamp_modules, self.final_layer = self.__make_neck(in_channels)
 
     def __make_neck(self, in_channels: Union[List[int], Tuple[int, ...]]):
