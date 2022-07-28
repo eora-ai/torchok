@@ -33,56 +33,37 @@ def _cfg(url='', **kwargs):
     }
 
 
+url_base_path = 'https://github.com/SwinTransformer/storage/releases/download/v2.0.0/'
 default_cfgs = {
-    'swinv2_tiny_window8_256': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_tiny_patch4_window8_256.pth',
-        input_size=(3, 256, 256)
-    ),
-    'swinv2_tiny_window16_256': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_tiny_patch4_window16_256.pth',
-        input_size=(3, 256, 256)
-    ),
-    'swinv2_small_window8_256': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_small_patch4_window8_256.pth',
-        input_size=(3, 256, 256)
-    ),
-    'swinv2_small_window16_256': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_small_patch4_window16_256.pth',
-        input_size=(3, 256, 256)
-    ),
-    'swinv2_base_window8_256': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window8_256.pth',
-        input_size=(3, 256, 256)
-    ),
-    'swinv2_base_window16_256': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window16_256.pth',
-        input_size=(3, 256, 256)
-    ),
+    'swinv2_tiny_window8_256': _cfg(url=f'{url_base_path}/swinv2_tiny_patch4_window8_256.pth',
+                                    input_size=(3, 256, 256)),
+    'swinv2_tiny_window16_256': _cfg(url=f'{url_base_path}/swinv2_tiny_patch4_window16_256.pth',
+                                     input_size=(3, 256, 256)),
+    'swinv2_small_window8_256': _cfg(url=f'{url_base_path}/swinv2_small_patch4_window8_256.pth',
+                                     input_size=(3, 256, 256)),
+    'swinv2_small_window16_256': _cfg(url=f'{url_base_path}/swinv2_small_patch4_window16_256.pth',
+                                      input_size=(3, 256, 256)),
+    'swinv2_base_window8_256': _cfg(url=f'{url_base_path}/swinv2_base_patch4_window8_256.pth',
+                                    input_size=(3, 256, 256)),
+    'swinv2_base_window16_256': _cfg(url=f'{url_base_path}/swinv2_base_patch4_window16_256.pth',
+                                     input_size=(3, 256, 256)),
 
-    'swinv2_base_window12_192_22k': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12_192_22k.pth',
-        num_classes=21841, input_size=(3, 192, 192)
-    ),
+    'swinv2_base_window12_192_22k': _cfg(url=f'{url_base_path}/swinv2_base_patch4_window12_192_22k.pth',
+                                         num_classes=21841, input_size=(3, 192, 192)),
     'swinv2_base_window12to16_192to256_22kft1k': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12to16_192to256_22kto1k_ft.pth',
-        input_size=(3, 256, 256)
-    ),
+        url=f'{url_base_path}/swinv2_base_patch4_window12to16_192to256_22kto1k_ft.pth',
+        input_size=(3, 256, 256)),
     'swinv2_base_window12to24_192to384_22kft1k': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth',
-        input_size=(3, 384, 384), crop_pct=1.0,
-    ),
-    'swinv2_large_window12_192_22k': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12_192_22k.pth',
-        num_classes=21841, input_size=(3, 192, 192)
-    ),
+        url=f'{url_base_path}/swinv2_base_patch4_window12to24_192to384_22kto1k_ft.pth',
+        input_size=(3, 384, 384), crop_pct=1.0),
+    'swinv2_large_window12_192_22k': _cfg(url=f'{url_base_path}/swinv2_large_patch4_window12_192_22k.pth',
+                                          num_classes=21841, input_size=(3, 192, 192)),
     'swinv2_large_window12to16_192to256_22kft1k': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12to16_192to256_22kto1k_ft.pth',
-        input_size=(3, 256, 256)
-    ),
+        url=f'{url_base_path}/swinv2_large_patch4_window12to16_192to256_22kto1k_ft.pth',
+        input_size=(3, 256, 256)),
     'swinv2_large_window12to24_192to384_22kft1k': _cfg(
-        url='https://github.com/SwinTransformer/storage/releases/download/v2.0.0/swinv2_large_patch4_window12to24_192to384_22kto1k_ft.pth',
-        input_size=(3, 384, 384), crop_pct=1.0,
-    ),
+        url=f'{url_base_path}/swinv2_large_patch4_window12to24_192to384_22kto1k_ft.pth',
+        input_size=(3, 384, 384), crop_pct=1.0),
 }
 
 
@@ -257,8 +238,6 @@ class SwinTransformerV2(BaseBackbone):
     def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
         features = [x]
         downsample_attn = self._forward_patch_emb(x)
-        stem = self._normalize_with_bhwc_reshape(downsample_attn, layer_number=0, normalize=False)
-        features.append(stem)
         for i, layer in enumerate(self.layers):
             downsample_attn, attn = layer(downsample_attn)
             feature = self._normalize_with_bhwc_reshape(attn, layer_number=i, normalize=True)

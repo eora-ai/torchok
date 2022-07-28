@@ -10,6 +10,8 @@ class BaseBackbone(BaseModel, ABC):
     """Base model for TorchOk Backbones"""
 
     def create_hooks(self):
+        """Crete hooks for intermediate encoder features based on model's feature info.
+        """
         self.stage_names = [i['module'] for i in self.feature_info]
         self._out_encoder_channels = [i['num_chs'] for i in self.feature_info]
         hooks = [dict(module=name, type='forward') for name in self.stage_names]

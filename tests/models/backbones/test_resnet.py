@@ -6,10 +6,6 @@ from parameterized import parameterized
 from torchok.constructor import BACKBONES
 
 
-def inp(bsize, in_ch, w, h):
-    return torch.ones(bsize, in_ch, w, h)
-
-
 class TestBackboneCorrectness(unittest.TestCase):
     def setUp(self) -> None:
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

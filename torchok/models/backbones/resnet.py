@@ -8,16 +8,13 @@ from functools import partial
 
 import torch
 import torch.nn as nn
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg, checkpoint_seq
 from timm.models.layers import BlurPool2d, get_attn, GroupNorm
-from timm.models.resnet import create_aa, make_blocks, BasicBlock, Bottleneck
-from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
+from timm.models.resnet import BasicBlock, Bottleneck, create_aa, make_blocks
 
 from torchok.constructor import BACKBONES
 from torchok.models.backbones.base_backbone import BaseBackbone
-
-
-__all__ = ['ResNet']
 
 
 def _cfg(url='', **kwargs):
@@ -370,7 +367,8 @@ class ResNet(BaseBackbone):
             zero_init_last=True, block_args=None):
         super(ResNet, self).__init__()
         block_args = block_args or dict()
-        assert output_stride in (8, 16, 32)
+        if output_stride not in (8, 16, 32):
+            raise ValueError('`output_stride` must be in (8, 16, 32)')
         self.grad_checkpointing = False
         self._in_channels = in_channels
 

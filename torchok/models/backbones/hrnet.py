@@ -239,7 +239,7 @@ def create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
     Args:
         variant: Backbone type.
         pretrained: If True the pretrained weights will be loaded.
-        model_kwargs: Kwargs for model (for example in_chans).
+        model_kwargs: Kwargs for model (for example in_channels).
     """
     return build_model_with_cfg(HighResolutionNet, variant, pretrained, model_cfg=cfg_cls[variant],
                                 pretrained_strict=False, kwargs_filter=('num_classes', 'global_pool', 'in_chans'),

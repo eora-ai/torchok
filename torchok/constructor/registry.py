@@ -1,8 +1,10 @@
 import fnmatch
 import re
-from typing import Callable
-from collections import defaultdict
 import sys
+from collections import defaultdict
+from typing import Callable
+from typing import List, Union
+
 
 def _natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_.lower())]
@@ -29,7 +31,7 @@ class Registry:
 
         self.__entrypoints = {}  # mapping of class/function names to entrypoint fns
         self.__module_to_objects = defaultdict(set)  # dict of sets to check membership of class/function in module
-        self.__object_to_module = {}  # mapping of class/function names to module names
+        self.__object_to_module = {}  # mapping of class/function names to its module name
 
     def __repr__(self):
         format_str = self.__class__.__name__
@@ -114,13 +116,17 @@ class Registry:
 
         return fn
 
-    def list_models(self, filter='', module='', exclude_filters=''):
-        """ Return list of available object/classes names, sorted alphabetically
+    def list_models(self, filter: str = '', module: str = '',
+                    exclude_filters: Union[str, List[str]] = '') -> list:
+        """Filter stored objects by given criteria
 
         Args:
-            filter (str) - Wildcard filter string that works with fnmatch
-            module (str) - Limit model selection to a specific sub-module (ie 'gen_efficientnet')
-            exclude_filters (str or list[str]) - Wildcard filters to exclude models after including them with filter
+            filter: Wildcard filter string that works with fnmatch
+            module: Limit model selection to a specific sub-module (ie 'gen_efficientnet')
+            exclude_filters: Wildcard filters to exclude models after including them with filter
+
+        Returns:
+            Return list of filtered object/classes names, sorted alphabetically.
 
         Example:
             model_list('gluon_resnet*') -- returns all models starting with 'gluon_resnet'
