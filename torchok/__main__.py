@@ -40,7 +40,8 @@ def entrypoint(config: DictConfig):
     elif entrypoint == 'predict':
         trainer.predict(model, ckpt_path=config.resume_path)
     else:
-        raise ValueError()
+        raise ValueError(f'Main function error. Entrypoint with name <{entrypoint}> does not support, please use '
+                         f'the following entrypoints - [train, test, predict].')
 
 
 if __name__ == '__main__':
