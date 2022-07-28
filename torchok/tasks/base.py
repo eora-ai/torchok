@@ -8,10 +8,7 @@ from omegaconf import DictConfig
 
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
-<<<<<<< HEAD:torchok/tasks/base.py
 from torchok.constructor.load import load_checkpoint
-=======
->>>>>>> del src/:torchok/tasks/base.py
 
 
 class BaseTask(LightningModule, ABC):

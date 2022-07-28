@@ -56,8 +56,10 @@ trainer:
   accelerator: "gpu"
   max_epochs: 1
 
-log_dir: '${oc.env:HOME}/.cache/torchok/logs/inference'
-experiment_name: cifar10
+logger:
+  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
+  experiment_name: cifar10
+  name: TensorBoardLogger
 
 checkpoint:
   monitor: valid/F1Score
