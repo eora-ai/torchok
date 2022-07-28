@@ -75,7 +75,6 @@ class HRNetClassificationNeck(BaseNeck):
 
     def forward(self, x: List[Tensor]) -> Tensor:
         """Forward method."""
-        x = x[self._start_block:]
         y = self.incre_modules[0](x[0])
         for i in range(len(self.downsamp_modules)):
             y = self.downsamp_modules[i](y)

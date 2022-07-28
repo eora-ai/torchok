@@ -1,57 +1,27 @@
 import unittest
-from pathlib import Path
 
 import torch
-import torch.nn.functional as F
+from parameterized import parameterized
 
-from torchok import HEADS, NECKS, BACKBONES
-
-
-class TestHRNetSegmentation(unittest.TestCase):
-
-    def __init__(self, backbone_name, methodName: str = ...) -> None:
-        super().__init__(methodName)
-        self._onnx_model = Path(__file__).parent / f'{backbone_name}.onnx'
-        self._input = torch.ones(1, 3, 224, 224)
-        self.backbone = BACKBONES.get(backbone_name)(pretrained=False)
-        neck_in_features = self.backbone.out_encoder_channels
-        self.neck = NECKS.get('HRNetSegmentationNeck')(neck_in_features)
-        head_in_features = self.neck.out_channels
-        self.head = HEADS.get('HRNetSegmentationHead')(head_in_features, 10)
+from torchok.constructor import BACKBONES
 
 
-class TestHRNetSegmentation_W18(TestHRNetSegmentation):
+class TestBackboneCorrectness(unittest.TestCase):
+    def setUp(self) -> None:
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.input = torch.rand(2, 3, 64, 64, device=self.device)
 
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__('hrnet_w18', methodName)
+    def test_load_pretrained(self):
+        model = BACKBONES.get('hrnet_w18')(pretrained=True).to(self.device).eval()
+        with torch.no_grad():
+            torch.jit.trace(model, self.input)
+        torch.cuda.empty_cache()
 
-    def test_outputs_equals(self):
-        backbone_features = self.backbone.forward_features(self._input)
-        x = self.neck(backbone_features)
-        x = self.head(x)
-        self.assertTupleEqual(x.shape, (1, 10, 224, 224))
-
-
-class TestHRNetClassification(unittest.TestCase):
-
-    def __init__(self, backbone_name, methodName: str = ...) -> None:
-        super().__init__(methodName)
-        self._input = torch.ones(1, 3, 224, 224)
-        self.backbone = BACKBONES.get(backbone_name)(pretrained=False)
-        neck_in_features = self.backbone.out_channels
-        self.neck = NECKS.get('HRNetClassificationNeck')(neck_in_features)
-        head_in_features = self.neck.out_channels
-        self.head = HEADS.get('ClassificationHead')(head_in_features, 10)
+    @parameterized.expand(BACKBONES.list_models(module='hrnet'))
+    def test_torchscript_conversion(self, backbone_name):
+        model = BACKBONES.get(backbone_name)(pretrained=False).to(self.device).eval()
+        with torch.no_grad():
+            torch.jit.trace(model, self.input)
+        torch.cuda.empty_cache()
 
 
-class TestHRNetClassification_W18(TestHRNetClassification):
-
-    def __init__(self, methodName: str = ...) -> None:
-        super().__init__('hrnet_w18', methodName)
-
-    def test_outputs_equals(self):
-        x = self.backbone(self._input)
-        x = self.neck(x)
-        x = F.avg_pool2d(x, kernel_size=x.size()[2:]).view(x.size(0), -1)
-        x = self.head(x)
-        self.assertTupleEqual(x.shape, (1, 10))

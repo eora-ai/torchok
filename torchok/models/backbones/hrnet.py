@@ -108,7 +108,8 @@ class HighResolutionNet(BaseBackbone):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def __make_transition_layer(self, num_channels_pre_layer: List[int], num_channels_cur_layer: List[int]):
+    def __make_transition_layer(self, num_channels_pre_layer: List[int],
+                                num_channels_cur_layer: List[int]) -> nn.Module:
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
 
@@ -136,7 +137,7 @@ class HighResolutionNet(BaseBackbone):
         return nn.ModuleList(transition_layers)
 
     def __make_layer(self, block: Union[Bottleneck, BasicBlock], in_channels: int,
-                     out_channels: int, num_blocks: int, stride: int = 1):
+                     out_channels: int, num_blocks: int, stride: int = 1) -> nn.Module:
         """The method creates layer in the HRNet.
 
         Args:
@@ -162,7 +163,7 @@ class HighResolutionNet(BaseBackbone):
         return nn.Sequential(*layers)
 
     def __make_stage(self, layer_config: Dict[str, Any], in_channels: List[int],
-                     multi_scale_output: bool = True):
+                     multi_scale_output: bool = True) -> nn.Module:
         """The method creates stage in the HRNet.
 
         Args:

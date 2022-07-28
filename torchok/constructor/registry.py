@@ -115,7 +115,7 @@ class Registry:
         return fn
 
     def list_models(self, filter: str = '', module: str = '',
-                    exclude_filters: Union[str, List[str]] = '') -> list:
+                    exclude_filters: Union[str, List[str]] = '') -> List[str]:
         """Filter stored objects by given criteria
 
         Args:

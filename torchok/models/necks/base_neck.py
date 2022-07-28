@@ -15,7 +15,6 @@ class BaseNeck(BaseModel, ABC):
             backbone layer_2 out,
             ***
         ].
-    So every neck must choose from which feature block do compute.
     """
     def __init__(self,
                  in_channels: Optional[Union[int, List[int], Tuple[int, ...]]] = None,
