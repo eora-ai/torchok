@@ -1,5 +1,5 @@
 """ The EfficientNet Family in PyTorch
-Adopted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/efficientnet.py
+Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/efficientnet.py
 
 An implementation of EfficienNet that covers variety of related models with efficient architectures:
 
@@ -477,12 +477,6 @@ class EfficientNet(BaseBackbone):
 
         self.create_hooks()
         efficientnet_init_weights(self)
-
-    def as_sequential(self):
-        layers = [self.conv_stem, self.bn1]
-        layers.extend(self.blocks)
-        layers.extend([self.conv_head, self.bn2])
-        return nn.Sequential(*layers)
 
     def forward(self, x):
         x = self.conv_stem(x)
