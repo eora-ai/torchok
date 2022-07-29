@@ -92,13 +92,19 @@ class ONNXTask(BaseTask):
         """Forward method for test stage."""
         target = batch['target']
         prediction = self.foward_infer(batch)
-        output = {'target': target, 'prediction': prediction}
+        output = {'target': target, **prediction}
         return output
 
     def test_step(self, batch: Dict[str, Union[Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_infer_with_gt(batch)
-        self._metrics_manager.forward(Phase.TEST, **output)
+        
+        try:
+            self._metrics_manager.forward(Phase.TEST, **output)
+        except ValueError:
+            raise ValueError('Please check metrics mapping in yaml. '\
+                            f'The following names are expected: {output.keys()}')
+
 
     def predict_step(self, batch: Dict[str, Any], batch_idx: int) -> Tensor:
         """Complete predict loop."""

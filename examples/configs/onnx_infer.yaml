@@ -69,9 +69,9 @@ checkpoint:
 metrics:
   - name: Accuracy
     mapping: 
-      preds: prediction
+      preds: <onnx_output>
       target: target
   - name: F1Score
     mapping: 
-      preds: prediction
+      preds: <onnx_output>
       target: target

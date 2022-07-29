@@ -24,18 +24,16 @@ class BaseTask(LightningModule, ABC):
         self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
         self._input_tensors = []
-        self._input_names = []
-        self._losses = self.__constructor.configure_losses()
+        self._losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         
-        # `inputs` key in yaml used for model checkpointing. 
-        if hparams.task.params.get('inputs') is not None:
-            for input_name, input_params in hparams.task.params.inputs.items():
+        # `inputs` key in yaml used for model checkpointing.
+        inputs = hparams.task.params.get('inputs')
+        if inputs is not None:
+            for input_params in inputs:
                 input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
                 self._input_tensors.append(input_tensor)
-                self._input_names.append(input_name)
-
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
