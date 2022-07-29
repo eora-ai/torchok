@@ -41,7 +41,7 @@ class ONNXTask(BaseTask):
                           'dtype': self.str_type2numpy_type[item.type]} for item in self._sess.get_inputs()]
 
         input_names = [input['name'] for input in self.__inputs]
-        logging.info(f'Input onnx names: {input_names}')
+        logging.info(f'ONNX model input names: {input_names}')
 
         self.__keys_mapping_onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset
 
@@ -50,7 +50,7 @@ class ONNXTask(BaseTask):
                            'dtype': self.str_type2numpy_type[item.type]} for item in self._sess.get_outputs()]
 
         output_names = [output['name'] for output in self.__outputs]
-        logging.info(f'Output onnx names: {output_names}')
+        logging.info(f'ONNX model output names: {output_names}')
 
     def forward(self, x: Tensor) -> Tensor:
         pass
