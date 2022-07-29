@@ -16,6 +16,8 @@ class BaseBackbone(BaseModel, ABC):
         self.stage_names = [h['module'] for h in self.feature_info]
         self._out_encoder_channels = [h['num_chs'] for h in self.feature_info]
         for h in self.feature_info:
+            # default hook type denoted here as a `` that cause error in FeatureHooks
+            # remove it to use default hook type from FeatureHooks
             if 'hook_type' in h and not h['hook_type']:
                 del h['hook_type']
         self.feature_hooks = FeatureHooks(self.feature_info, self.named_modules())

@@ -15,7 +15,7 @@ from timm.models.efficientnet_blocks import SqueezeExcite
 from timm.models.efficientnet_builder import BN_EPS_TF_DEFAULT, decode_arch_def, efficientnet_init_weights, \
     EfficientNetBuilder, resolve_act_layer, resolve_bn_args, round_channels
 from timm.models.helpers import build_model_with_cfg
-from timm.models.layers import create_conv2d, get_norm_act_layer
+from timm.models.layers import create_conv2d
 
 from torchok.constructor import BACKBONES
 from torchok.models.backbones.base_backbone import BaseBackbone
