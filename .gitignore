@@ -1,5 +1,7 @@
 # User defined
 outputs/
+lightning_logs/
+nohup.out
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

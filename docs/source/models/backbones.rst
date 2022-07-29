@@ -1,4 +1,4 @@
 Backbones
 #########
 
-.. automodule:: src.models.backbones
+.. automodule:: torchok.models.backbones

@@ -5,7 +5,7 @@ import torch.nn as nn
 
 from typing import List
 
-from src.models.base import BaseModel, FeatureInfo
+from torchok.models.base import BaseModel, FeatureInfo
 
 
 class TestBaseModelWithoutHooks(unittest.TestCase):
