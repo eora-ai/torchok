@@ -20,7 +20,7 @@ from timm.models.layers import trunc_normal_
 from timm.models.swin_transformer_v2 import BasicLayer as SwinBasicLayer, checkpoint_filter_fn, PatchEmbed, PatchMerging
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones.base_backbone import BaseBackbone
+from torchok.models.backbones import BaseBackbone
 
 
 def _cfg(url='', **kwargs):
@@ -255,8 +255,9 @@ class SwinTransformerV2(BaseBackbone):
 
 
 def create_swin_transformer_v2(variant, pretrained=False, **kwargs):
-    model = build_model_with_cfg(SwinTransformerV2, variant, pretrained, num_classes=0,
-                                 pretrained_filter_fn=checkpoint_filter_fn, **kwargs)
+    kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
+    model = build_model_with_cfg(SwinTransformerV2, variant, pretrained, pretrained_strict=False,
+                                 kwargs_filter=kwargs_filter, pretrained_filter_fn=checkpoint_filter_fn, **kwargs)
     return model
 
 
