@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Union, Any
 
 import onnx
@@ -39,11 +40,17 @@ class ONNXTask(BaseTask):
         self.__inputs = [{'name': item.name,
                           'dtype': self.str_type2numpy_type[item.type]} for item in self._sess.get_inputs()]
 
+        input_names = [input['name'] for input in self.__inputs]
+        logging.info(f'Input onnx names: {input_names}')
+
         self.__keys_mapping_onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset
 
         self.__outputs = [{'name': item.name,
                            'shape': item.shape,
                            'dtype': self.str_type2numpy_type[item.type]} for item in self._sess.get_outputs()]
+
+        output_names = [output['name'] for output in self.__outputs]
+        logging.info(f'Output onnx names: {output_names}')
 
     def forward(self, x: Tensor) -> Tensor:
         pass
@@ -96,12 +103,7 @@ class ONNXTask(BaseTask):
     def test_step(self, batch: Dict[str, Union[Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_infer_with_gt(batch)
-
-        try:
-            self._metrics_manager.forward(Phase.TEST, **output)
-        except ValueError:
-            raise ValueError('Please check metrics mapping in yaml. '
-                             f'The following names are expected: {output.keys()}')
+        self._metrics_manager.forward(Phase.TEST, **output)
 
     def predict_step(self, batch: Dict[str, Any], batch_idx: int) -> Tensor:
         """Complete predict loop."""
