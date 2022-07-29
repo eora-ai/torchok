@@ -183,9 +183,9 @@ class ConfigParams:
     # TODO add Logger params
     task: TaskParams
     data: Dict[Phase, List[DataParams]]
-    optimization: List[OptimizationParams]
-    joint_loss: JointLossParams
     trainer: TrainerParams
+    optimization: Optional[List[OptimizationParams]] = None
+    joint_loss: Optional[JointLossParams] = None
     checkpoint: Optional[CheckpointParams] = None
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)

@@ -61,7 +61,13 @@ tensorboard --logdir ~/.cache/torchok/logs/cifar10
 ### Export to ONNX
 TODO
 ### Test ONNX model
-TODO
+For the ONNX model test, we can use the `examples/configs/onnx_infer.yaml`.
+But first we need to define the field `path_to_onnx`.
+
+**To test ONNX model:**
+```bash
+python test.py -cp examples/configs -cn onnx_infer
+```
 
 ## Run tests
 ```bash
