@@ -30,5 +30,6 @@ def entrypoint(config: DictConfig):
     trainer = create_trainer(config)
     trainer.fit(model, ckpt_path=config.resume_path)
 
+
 if __name__ == '__main__':
     entrypoint()
