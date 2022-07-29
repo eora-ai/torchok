@@ -1,17 +1,18 @@
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 import torch.nn as nn
+from timm.models.resnet import Bottleneck
 from torch import Tensor
 
 from torchok.constructor import NECKS
-from torchok.models.necks.base_neck import BaseNeck
 from torchok.models.modules.bricks.convbnact import ConvBnAct
-from torchok.models.modules.blocks.bottleneck import Bottleneck
+from torchok.models.necks.base_neck import BaseNeck
 
 
 @NECKS.register_class
 class HRNetClassificationNeck(BaseNeck):
     """HRNet neck for classification task."""
+
     def __init__(self, in_channels: Union[List[int], Tuple[int, ...]]):
         """Init HRNetClassificationNeck.
 

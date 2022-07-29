@@ -365,11 +365,10 @@ class ResNet(BaseBackbone):
             stem_type='', replace_stem_pool=False, block_reduce_first=1, down_kernel_size=1, avg_down=False,
             act_layer=nn.ReLU, norm_layer=nn.BatchNorm2d, aa_layer=None, drop_path_rate=0., drop_block_rate=0.,
             zero_init_last=True, block_args=None):
-        super(ResNet, self).__init__()
+        super(ResNet, self).__init__(in_channels=in_channels)
         block_args = block_args or dict()
         if output_stride not in (8, 16, 32):
             raise ValueError('`output_stride` must be in (8, 16, 32)')
-        self._in_channels = in_channels
 
         # Stem
         deep_stem = 'deep' in stem_type
