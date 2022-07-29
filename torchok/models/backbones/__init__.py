@@ -3,3 +3,4 @@ from torchok.models.backbones import efficientnet
 from torchok.models.backbones import hrnet
 from torchok.models.backbones import resnet
 from torchok.models.backbones import swin
+from torchok.models.backbones import davit

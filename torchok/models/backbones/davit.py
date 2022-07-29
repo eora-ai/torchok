@@ -4,28 +4,24 @@ Adapted from https://github.com/dingmyu/davit/blob/main/mmseg/mmseg/models/backb
 Licensed under MIT License [see LICENSE for details]
 """
 import itertools
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 import torch.nn.functional as F
+from timm.models.helpers import build_model_with_cfg
+from timm.models.layers import DropPath, trunc_normal_
+from torch import Tensor
 
-from src.models.base import BaseModel
-from src.constructor import BACKBONES
-from src.models.backbones.utils.weight_init import trunc_normal_
-from src.models.backbones.utils.helpers import build_model_with_cfg
-
-from src.models.modules.bricks.mlp import Mlp
-from src.models.modules.bricks.droppath import DropPath
-
+from torchok.constructor import BACKBONES
+from torchok.models.base import BaseModel
+from torchok.models.modules.bricks.mlp import Mlp
 
 default_cfgs = {
     'davit_t': dict(url=''),
     'davit_s': dict(url=''),
     'davit_b': dict(url=''),
 }
-
 
 cfg_cls = dict(
     davit_t=dict(
@@ -49,17 +45,12 @@ cfg_cls = dict(
 class PatchEmbed(nn.Module):
     """2D Image to Patch Embedding."""
 
-    def __init__(
-            self,
-            patch_size: int = 16,
-            in_chans: int = 3,
-            embed_dim: int = 96,
-            overlapped: bool = False):
+    def __init__(self, patch_size: int = 16, in_channels: int = 3, embed_dim: int = 96, overlapped: bool = False):
         """Init PatchEmbed.
 
         Args:
             patch_size: Patch size.
-            in_chans: Input channels.
+            in_channels: Input channels.
             embed_dim: Embedding dimension.
             overlapped: Overlapping.
         """
@@ -67,23 +58,13 @@ class PatchEmbed(nn.Module):
         self.patch_size = patch_size
 
         if patch_size == 4:
-            self.proj = nn.Conv2d(
-                in_chans,
-                embed_dim,
-                kernel_size=(7, 7),
-                stride=patch_size,
-                padding=(3, 3))
+            self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=(7, 7), stride=patch_size, padding=(3, 3))
             self.norm = nn.LayerNorm(embed_dim)
-        if patch_size == 2:
+        elif patch_size == 2:
             kernel = 3 if overlapped else 2
             pad = 1 if overlapped else 0
-            self.proj = nn.Conv2d(
-                in_chans,
-                embed_dim,
-                kernel_size=kernel,
-                stride=patch_size,
-                padding=pad)
-            self.norm = nn.LayerNorm(in_chans)
+            self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=kernel, stride=patch_size, padding=pad)
+            self.norm = nn.LayerNorm(in_channels)
 
     def forward(self, x: Tensor, size: Tuple[int]) -> Tuple[Tensor, Tuple[int]]:
         """Forward method."""
@@ -92,10 +73,7 @@ class PatchEmbed(nn.Module):
         if dim == 3:
             B, HW, C = x.shape
             x = self.norm(x)
-            x = x.reshape(B,
-                          H,
-                          W,
-                          C).permute(0, 3, 1, 2).contiguous()
+            x = x.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
 
         B, C, H, W = x.shape
         if W % self.patch_size != 0:
@@ -113,18 +91,15 @@ class PatchEmbed(nn.Module):
 
 class ConvPosEnc(nn.Module):
     """Convolution positional encoding."""
-    def __init__(self,
-                 dim: int,
-                 kernel_size: int = 3,
-                 use_act: bool = False,
-                 normtype: Optional[str] = None):
+
+    def __init__(self, dim: int, kernel_size: int = 3, use_act: bool = False, norm_layer: Optional[str] = None):
         """Init ConvPosEnc.
 
         Args:
             dim: Dimension.
             kernel_size: Kernel size.
             use_act: If True, will use GELU activation.
-            normtype: Type of normalization.
+            norm_layer: Type of normalization.
         """
         super(ConvPosEnc, self).__init__()
         self.proj = nn.Conv2d(dim,
@@ -133,10 +108,10 @@ class ConvPosEnc(nn.Module):
                               1,
                               kernel_size // 2,
                               groups=dim)
-        self.normtype = normtype
-        if self.normtype == 'batch':
+        self.norm_layer = norm_layer
+        if self.norm_layer == 'batch':
             self.norm = nn.BatchNorm2d(dim)
-        elif self.normtype == 'layer':
+        elif self.norm_layer == 'layer':
             self.norm = nn.LayerNorm(dim)
         self.activation = nn.GELU() if use_act else None
 
@@ -147,9 +122,9 @@ class ConvPosEnc(nn.Module):
 
         feat = x.transpose(1, 2).view(B, C, H, W)
         feat = self.proj(feat)
-        if self.normtype == 'batch':
+        if self.norm_layer == 'batch':
             feat = self.norm(feat).flatten(2).transpose(1, 2)
-        elif self.normtype == 'layer':
+        elif self.norm_layer == 'layer':
             feat = self.norm(feat.flatten(2).transpose(1, 2))
         else:
             feat = feat.flatten(2).transpose(1, 2)
@@ -161,14 +136,12 @@ class ConvPosEnc(nn.Module):
 
 class ChannelAttention(nn.Module):
     """Channel based multi-head self attention module."""
-    def __init__(self,
-                 dim: int,
-                 num_heads: int = 8,
-                 qkv_bias: bool = False):
+
+    def __init__(self, dim: int, num_heads: int = 8, qkv_bias: bool = False):
         """Init Channel Attention.
 
         Args:
-            dim: Dimention.
+            dim: Dimension size.
             num_heads: Number of heads.
             qkv_bias: Query-Key-Value bias.
         """
@@ -200,10 +173,7 @@ class WindowAttention(nn.Module):
     """Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window."""
 
-    def __init__(self,
-                 dim: int,
-                 num_heads: int,
-                 qkv_bias: bool = True):
+    def __init__(self, dim: int, num_heads: int, qkv_bias: bool = True):
         """Init WindowAttention.
 
         Args:
@@ -245,16 +215,9 @@ class WindowAttention(nn.Module):
 class ChannelBlock(nn.Module):
     """Channel Block of DaViT."""
 
-    def __init__(self,
-                 dim: int,
-                 num_heads: int,
-                 mlp_ratio: float = 4.,
-                 qkv_bias: bool = False,
-                 drop_path: float = 0.,
-                 act_layer: nn.Module = nn.GELU,
-                 norm_layer: nn.Module = nn.LayerNorm,
-                 ffn: bool = True,
-                 cpe_act: bool = False):
+    def __init__(self, dim: int, num_heads: int, mlp_ratio: float = 4., qkv_bias: bool = False,
+                 drop_path: float = 0., act_layer: nn.Module = nn.GELU, norm_layer: nn.Module = nn.LayerNorm,
+                 ffn: bool = True, cpe_act: bool = False):
         """Init ChannelBlock.
 
         Args:
@@ -314,17 +277,9 @@ class SpatialBlock(nn.Module):
         norm_layer: Normalization layer.  Default: nn.LayerNorm
     """
 
-    def __init__(self,
-                 dim: int,
-                 num_heads: int,
-                 window_size: int = 7,
-                 mlp_ratio: float = 4.,
-                 qkv_bias: bool = True,
-                 drop_path: float = 0.,
-                 act_layer: nn.Module = nn.GELU,
-                 norm_layer: nn.Module = nn.LayerNorm,
-                 ffn: bool = True,
-                 cpe_act: bool = False):
+    def __init__(self, dim: int, num_heads: int, window_size: int = 7, mlp_ratio: float = 4.,
+                 qkv_bias: bool = True, drop_path: float = 0., act_layer: nn.Module = nn.GELU,
+                 norm_layer: nn.Module = nn.LayerNorm, ffn: bool = True, cpe_act: bool = False):
         super().__init__()
         self.dim = dim
         self.ffn = ffn
@@ -425,21 +380,16 @@ class SpatialBlock(nn.Module):
 class DaViT(BaseModel):
     """ Dual Attention Transformer"""
 
-    def __init__(self,
-                 embed_dims: Tuple[int] = (64, 128, 192, 256),
-                 depths: Tuple[int] = (1, 1, 3, 1),
-                 num_heads: Tuple[int] = (3, 6, 12, 24),
-                 window_size: int = 7,
-                 mlp_ratio: float = 4.,
-                 drop_path_rate: float = 0.1,
-                 in_chans: int = 3):
+    def __init__(self, in_channels: int = 3, embed_dims: Tuple[int] = (64, 128, 192, 256),
+                 depths: Tuple[int] = (1, 1, 3, 1), num_heads: Tuple[int] = (3, 6, 12, 24),
+                 window_size: int = 7, mlp_ratio: float = 4., drop_path_rate: float = 0.1):
         """Init DaViT.
 
         Args:
             cfg: Model config.
-            in_chans: Input channels.
+            in_channels: Input channels.
         """
-        super().__init__(in_chans, embed_dims)
+        super().__init__(in_channels, embed_dims)
 
         architecture = [[index] * item for index, item in enumerate(depths)]
         self.attention_types = ('spatial', 'channel')
@@ -451,7 +401,7 @@ class DaViT(BaseModel):
 
         self.patch_embeds = nn.ModuleList([
             PatchEmbed(patch_size=4 if i == 0 else 2,
-                       in_chans=in_chans if i == 0 else self.embed_dims[i - 1],
+                       in_channels=in_channels if i == 0 else self.embed_dims[i - 1],
                        embed_dim=self.embed_dims[i],
                        overlapped=False)
             for i in range(self.num_stages)])
@@ -484,7 +434,7 @@ class DaViT(BaseModel):
                         window_size=window_size,
                     ) if attention_type == 'spatial' else None
                     for attention_id, attention_type in enumerate(self.attention_types)]
-                ) for layer_id, item in enumerate(block_param)
+                              ) for layer_id, item in enumerate(block_param)
             ])
             main_blocks.append(block)
         self.main_blocks = nn.ModuleList(main_blocks)
@@ -554,9 +504,7 @@ def create_davit(variant: str, pretrained: bool = False, **model_kwargs):
         pretrained: If True the pretrained weights will be loaded.
         model_kwargs: Kwargs for model (for example in_chans).
     """
-    return build_model_with_cfg(
-        DaViT, pretrained, default_cfg=default_cfgs[variant],
-        model_cfg=cfg_cls[variant], **model_kwargs)
+    return build_model_with_cfg(DaViT, variant, pretrained, model_cfg=cfg_cls[variant], **model_kwargs)
 
 
 @BACKBONES.register_class
