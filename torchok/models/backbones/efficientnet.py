@@ -1,4 +1,5 @@
 """ The EfficientNet Family in PyTorch
+Adopted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/efficientnet.py
 
 An implementation of EfficienNet that covers variety of related models with efficient architectures:
 
