@@ -13,10 +13,12 @@ class BaseBackbone(BaseModel, ABC):
     def create_hooks(self):
         """Crete hooks for intermediate encoder features based on model's feature info.
         """
-        self.stage_names = [i['module'] for i in self.feature_info]
-        self._out_encoder_channels = [i['num_chs'] for i in self.feature_info]
-        hooks = [dict(module=name, type='forward') for name in self.stage_names]
-        self.feature_hooks = FeatureHooks(hooks, self.named_modules())
+        self.stage_names = [h['module'] for h in self.feature_info]
+        self._out_encoder_channels = [h['num_chs'] for h in self.feature_info]
+        for h in self.feature_info:
+            if 'hook_type' in h and not h['hook_type']:
+                del h['hook_type']
+        self.feature_hooks = FeatureHooks(self.feature_info, self.named_modules())
 
     def forward_features(self, x: Tensor) -> List[Tensor]:
         """Forward method for getting backbone feature maps.
