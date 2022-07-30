@@ -9,7 +9,7 @@ from functools import partial
 import torch
 import torch.nn as nn
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
-from timm.models.helpers import build_model_with_cfg, checkpoint_seq
+from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import BlurPool2d, get_attn, GroupNorm
 from timm.models.resnet import BasicBlock, Bottleneck, create_aa, make_blocks
 
@@ -22,7 +22,7 @@ def _cfg(url='', **kwargs):
         'url': url, 'input_size': (3, 224, 224), 'pool_size': (7, 7),
         'crop_pct': 0.875, 'interpolation': 'bilinear',
         'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
-        'first_conv': 'conv1', **kwargs
+        'first_conv': 'conv1', 'classifier': 'fc', **kwargs
     }
 
 
@@ -365,11 +365,10 @@ class ResNet(BaseBackbone):
             stem_type='', replace_stem_pool=False, block_reduce_first=1, down_kernel_size=1, avg_down=False,
             act_layer=nn.ReLU, norm_layer=nn.BatchNorm2d, aa_layer=None, drop_path_rate=0., drop_block_rate=0.,
             zero_init_last=True, block_args=None):
-        super(ResNet, self).__init__()
+        super(ResNet, self).__init__(in_channels=in_channels)
         block_args = block_args or dict()
         if output_stride not in (8, 16, 32):
             raise ValueError('`output_stride` must be in (8, 16, 32)')
-        self._in_channels = in_channels
 
         # Stem
         deep_stem = 'deep' in stem_type
@@ -454,8 +453,8 @@ class ResNet(BaseBackbone):
 
 
 def create_resnet(variant, pretrained=False, **kwargs):
-    return build_model_with_cfg(ResNet, variant, pretrained, kwargs_filter=('num_classes', 'global_pool', 'in_chans'),
-                                **kwargs)
+    return build_model_with_cfg(ResNet, variant, pretrained, pretrained_strict=False,
+                                kwargs_filter=('num_classes', 'global_pool', 'in_chans'), **kwargs)
 
 
 @BACKBONES.register_class
