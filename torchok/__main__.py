@@ -24,8 +24,9 @@ def entrypoint(config: DictConfig):
     # Get entrypoint name - default is train
     entrypoint = config.get('entrypoint', 'train')
     # Remove entrypoint key, because it isn't in ConfigParams
-    config = dict(config)
-    config.pop('entrypoint')
+    if 'entrypoint' in config:
+        config = dict(config)
+        config.pop('entrypoint')
     # Register structure
     schema = OmegaConf.structured(ConfigParams)
     # Merge structure with config
