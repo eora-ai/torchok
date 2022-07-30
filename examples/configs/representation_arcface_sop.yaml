@@ -58,14 +58,21 @@ data:
               std: [ 0.229, 0.224, 0.225 ]
           - &totensor
             name: ToTensorV2
-        augmentation:
+        augment:
           - name: HorizontalFlip
           - name: VerticalFlip
-          - name: CenterCrop
+          - name: Compose
             params:
-              height: *height
-              width: *width
-              p: 1.0
+              p: 0.5
+              transforms:
+                - name: PadIfNeeded
+                  params:
+                    min_height: *height
+                    min_width: *width
+                - name: CenterCrop
+                  params:
+                    height: *height
+                    width: *width
           - name: OneOf
             params:
               p: 1.0
