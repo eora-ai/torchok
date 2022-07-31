@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/source/_static/TorchOk_logo.png" alt="TorchOk" style="width:300px; horizontal-align:middle"/>
+<img src="https://i.imgur.com/cpwsBrY.png" alt="TorchOk" style="width:300px; horizontal-align:middle"/>
 
 **The toolkit for fast Deep Learning experiments in Computer Vision**
 
@@ -14,14 +14,18 @@ The toolkit consists of:
 - Out-of-the-box support of common Computer Vision tasks: classification, segmentation, image representation and detection coming soon
 - Commonly used datasets, image augmentations and transformations (from [Albumentations](https://albumentations.ai/))
 - Fast implementations of retrieval metrics (with the help of [FAISS](https://github.com/facebookresearch/faiss) and [ranx](https://github.com/AmenRa/ranx)) and lots of other metrics from [torchmetrics](https://torchmetrics.readthedocs.io/)
-- Export models to ONNX and ability to test the exported model without changing the datasets
-- All components can be customized inheriting the unified interfaces: Lightning's training loop, tasks, models, datasets, augmentations and transformations, metrics, loss functions, optimizers and LR schedulers
+- Export models to ONNX and the ability to test the exported model without changing the datasets
+- All components can be customized by inheriting the unified interfaces: Lightning's training loop, tasks, models, datasets, augmentations and transformations, metrics, loss functions, optimizers and LR schedulers
 - Training, validation and testing configurations are represented by YAML config files and managed by [Hydra](https://hydra.cc/)
 - Only straightforward training techniques are implemented. No whistles and bells
 
 ## Installation
+### pip
+Installation via pip can be done in two steps:
+1. Install PyTorch that meets your hardware requirements via [official instructions](https://pytorch.org/get-started/locally/)
+2. Install TorchOk by running `pip install --upgrade torchok`
 ### Conda
-To remove previous installation of TorchOk environment, run:
+To remove the previous installation of TorchOk environment, run:
 ```bash
 conda remove --name torchok --all
 ```
@@ -40,15 +44,15 @@ docker run -d --name <username>_torchok --gpus=all -v <path/to/workdir>:/workdir
 ## Getting started
 The folder `examples/configs` contains YAML config files with some predefined training and inference configurations.
 ### Train
-For training example we can use the default configuration `examples/configs/classification_cifar10.yml`, where the CIFAR-10 dataset and the classification task are specified. The CIFAR-10 dataset will be automatically downloaded into your `~/.cache/torchok/data/cifar10` folder (341 MB).
+For a training example, we can use the default configuration `examples/configs/classification_cifar10.yml`, where the CIFAR-10 dataset and the classification task are specified. The CIFAR-10 dataset will be automatically downloaded into your `~/.cache/torchok/data/cifar10` folder (341 MB).
 
 **To train on all available GPU devices (default config):**
 ```bash
-python train.py -cp examples/configs -cn classification_cifar10
+python -m torchok -cp ../examples/configs -cn classification_cifar10
 ```
 **To train on all available CPU cores:**
 ```bash
-train.py -cp examples/configs -cn classification_cifar10 trainer.accelerator='cpu'
+python -m torchok -cp ../examples/configs -cn classification_cifar10 trainer.accelerator='cpu'
 ```
 During the training you can access the training and validation logs by starting a local TensorBoard:
 ```bash
@@ -57,7 +61,13 @@ tensorboard --logdir ~/.cache/torchok/logs/cifar10
 ### Export to ONNX
 TODO
 ### Test ONNX model
-TODO
+For the ONNX model test, we can use the `examples/configs/onnx_infer.yaml`.
+But first we need to define the field `path_to_onnx`.
+
+**To test ONNX model:**
+```bash
+python test.py -cp examples/configs -cn onnx_infer
+```
 
 ## Run tests
 ```bash

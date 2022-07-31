@@ -2,7 +2,7 @@ task:
   name: ClassificationTask
   compute_loss_on_valid: False
   params:
-    backbone_name: resnet50
+    backbone_name: swinv2_tiny_window16_256
     backbone_params:
       pretrained: true
       in_channels: 3
@@ -13,7 +13,7 @@ task:
     head_params:
       num_classes: &num_classes 11318
     inputs:
-      - shape: [3, &height 224, &width 224]
+      - shape: [3, &height 256, &width 256]
         dtype: 'float32'
     freeze:
       0: ['backbone.layer4']
@@ -33,7 +33,7 @@ optimization:
   - optimizer:
       name: SGD
       params:
-        lr: &initial_lr 0.01
+        lr: &initial_lr 0.001
         momentum: 0.9
         nesterov: true
         weight_decay: 0.00005
@@ -42,7 +42,7 @@ data:
   TRAIN:
     - dataloader:
         batch_size: 64
-        num_workers: 4
+        num_workers: 8
         drop_last: true
         shuffle: true
       dataset:
