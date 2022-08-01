@@ -39,7 +39,5 @@ def create_trainer(train_config):
         for callback_config in callbacks_config:
             callbacks.append(CALLBACKS.get(callback_config.name)(**callback_config.params))
 
-    print(f'Callbacks length = {len(callbacks)}')
-
     trainer = Trainer(logger=logger, callbacks=callbacks, **train_config.trainer)
     return trainer
