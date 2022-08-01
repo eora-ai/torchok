@@ -21,6 +21,12 @@ def entrypoint(config: DictConfig):
 
     # Resolve -> change evn variable to values for example ${oc.env:USER} -> 'root'
     OmegaConf.resolve(config)
+    # Get entrypoint name - default is train
+    entrypoint = config.get('entrypoint', 'train')
+    # Remove entrypoint key, because it isn't in ConfigParams
+    if 'entrypoint' in config:
+        config = dict(config)
+        config.pop('entrypoint')
     # Register structure
     schema = OmegaConf.structured(ConfigParams)
     # Merge structure with config
@@ -28,7 +34,15 @@ def entrypoint(config: DictConfig):
     # Create task
     model = TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
-    trainer.fit(model, ckpt_path=config.resume_path)
+    if entrypoint == 'train':
+        trainer.fit(model, ckpt_path=config.resume_path)
+    elif entrypoint == 'test':
+        trainer.test(model, ckpt_path=config.resume_path)
+    elif entrypoint == 'predict':
+        trainer.predict(model, ckpt_path=config.resume_path)
+    else:
+        raise ValueError(f'Main function error. Entrypoint with name <{entrypoint}> does not support, please use '
+                         f'the following entrypoints - [train, test, predict].')
 
 
 if __name__ == '__main__':
