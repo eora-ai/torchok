@@ -1,7 +1,8 @@
+from typing import List, Dict, Iterable, Union, Set
+
+import logging
 import torch.nn as nn
 from torch.optim.optimizer import Optimizer
-import logging
-from typing import Dict, Iterable, Union, Set
 from pytorch_lightning.callbacks import BaseFinetuning
 
 from torchok.constructor import CALLBACKS
@@ -35,11 +36,26 @@ def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Mod
 
 @CALLBACKS.register_class
 class FreezeUnfreeze(BaseFinetuning):
-    def __init__(self, epoch2module_names: Dict[int, str]):
+    """Callback to freeze modules and incremental unfreeze this modules during training."""
+    def __init__(self, epoch2module_names: Dict[int, List[str]]):
+        """Init FreezeUnfreeze.
+
+        Args:
+            epoch2module_names: Dictionary for incremental unfreeze. Keys - epoch for unfreeze, values - module names
+                which need to unfreeze. By default all the modules which names in this dictionary will be freeze before
+                training.
+        """
         super().__init__()
         self._epoch2module_names = epoch2module_names
 
     def freeze_before_training(self, pl_module: nn.Module):
+        """Freeze modules befor training.
+
+        Freeze all the modules which names in self._epoch2module_names.
+
+        Args:
+            pl_module: Module which contain unfreeze modules.
+        """
         # Get all module names from self._epoch2module_names
         freeze_module_names = []
         for _, module_names in self._epoch2module_names.items():
