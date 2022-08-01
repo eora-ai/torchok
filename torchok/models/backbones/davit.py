@@ -468,8 +468,9 @@ class DaViT(BaseModel):
             This method return tuple of tensors.
             Each tensor has (B, C, H, W) shape structure.
         """
+        input_tensor = x
         x, size = self.patch_embeds[0](x, (x.size(2), x.size(3)))
-        features = [x]
+        features = []
         sizes = [size]
         branches = [0]
 
@@ -493,7 +494,7 @@ class DaViT(BaseModel):
             out = x_out.view(-1, H, W, self.embed_dims[i]).permute(0, 3, 1, 2).contiguous()
             outs.append(out)
 
-        return tuple(outs)
+        return (input_tensor, *outs)
 
 
 def create_davit(variant: str, pretrained: bool = False, **model_kwargs):
