@@ -172,7 +172,7 @@ class Constructor:
 
     @staticmethod
     def __prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:
-        dataset = Constructor.__create_dataset(dataset_params)
+        dataset = Constructor._create_dataset(dataset_params)
         collate_fn = dataset.collate_fn if hasattr(dataset, 'collate_fn') else None
 
         loader = DataLoader(dataset=dataset,
@@ -182,7 +182,7 @@ class Constructor:
         return loader
 
     @staticmethod
-    def __create_dataset(dataset_params: DictConfig) -> ImageDataset:
+    def _create_dataset(dataset_params: DictConfig) -> ImageDataset:
         transform = Constructor.__create_transforms(dataset_params.transform)
         # TODO remove when OmegaConf is fixing the bug, write to issue to Omegaconf!
         # Config structure had 'augment' parameter with default value = None, but in loaded config 

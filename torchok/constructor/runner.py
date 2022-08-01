@@ -1,3 +1,5 @@
+import os
+
 from pytorch_lightning import Trainer
 from pathlib import Path
 
@@ -31,6 +33,9 @@ def create_trainer(train_config):
             checkpoint_callback = ModelCheckpointWithOnnx(**train_config.checkpoint, dirpath=str(full_outputs_path))
             finalize_logger_callback = FinalizeLogger()
             callbacks = [checkpoint_callback, finalize_logger_callback]
+
+        if os.environ.get('LOCAL_RANK') is not None:
+            full_outputs_path.rmdir()
 
     # Create callbacks
     callbacks_config = train_config.callbacks
