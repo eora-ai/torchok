@@ -1,3 +1,5 @@
+import os
+
 from pytorch_lightning import Trainer
 from pathlib import Path
 
@@ -29,6 +31,10 @@ def create_trainer(train_config):
             callbacks = [checkpoint_callback, finalize_logger_callback]
         else:
             callbacks = None
+        
+        if os.environ.get('LOCAL_RANK') is not None:
+            full_outputs_path.rmdir()
+
     else:
         logger = True
         callbacks = None
