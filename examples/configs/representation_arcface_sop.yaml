@@ -23,8 +23,7 @@ callbacks:
         5: ['backbone.layers.3']
         10: ['backbone.layers.2']
         15: ['backbone.layers.1']
-        20: ['backbone.layers.0']
-        25: ['backbone']
+        20: ['backbone']
 
 joint_loss:
   losses:
