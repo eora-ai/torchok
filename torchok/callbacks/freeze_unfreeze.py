@@ -12,7 +12,7 @@ def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Mod
 
     Args:
         module_names: Searched module names.
-        module: Search module.
+        module: The module in which it is searched.
     
     Returns:
         found_modules: All found modules.
