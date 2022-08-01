@@ -9,7 +9,6 @@ from omegaconf import DictConfig
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
 from torchok.constructor.load import load_checkpoint
-from src.constructor.freeze import change_train_type, get_freeze_unfreeze_module_names
 
 
 class BaseTask(LightningModule, ABC):
@@ -29,7 +28,6 @@ class BaseTask(LightningModule, ABC):
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
         
-        self._unfreeze_epoch2module_names = hparams.task.params.get('freeze')
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
@@ -121,20 +119,6 @@ class BaseTask(LightningModule, ABC):
             load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
                             overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
                             exclude_keys=self._hparams.task.exclude_keys)
-
-        if self._unfreeze_epoch2module_names is not None:
-            # create module names which need freeze or unfreeze for self.current_epoch
-            freeze_names, unfreeze_names = get_freeze_unfreeze_module_names(self._unfreeze_epoch2module_names,
-                                                                            self.current_epoch)
-            # freeze modules which unfreeze epoch > self.current_epoch
-            change_train_type(self, freeze_names)
-            # unfreeze modules which unfreeze epoch <= self.current_epoch
-            change_train_type(self, unfreeze_names, freeze=False)
-
-    def on_train_epoch_start(self) -> None:
-        if self._unfreeze_epoch2module_names is not None and self.current_epoch in self._unfreeze_epoch2module_names:
-            # unfreeze modules
-            change_train_type(self, self._unfreeze_epoch2module_names[self.current_epoch], freeze=False)
 
     def on_test_start(self) -> None:
         load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 

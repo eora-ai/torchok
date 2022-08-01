@@ -7,6 +7,7 @@ OPTIMIZERS = Registry('optimizers')
 SCHEDULERS = Registry('schedulers')
 LOSSES = Registry('losses')
 METRICS = Registry('metrics')
+CALLBACKS = Registry('callbacks')
 TASKS = Registry('tasks')
 BACKBONES = Registry('backbones')
 POOLINGS = Registry('poolings')
@@ -21,6 +22,7 @@ __all__ = [
     'SCHEDULERS',
     'LOSSES',
     'METRICS',
+    'CALLBACKS',
     'TASKS',
     'BACKBONES',
     'POOLINGS',

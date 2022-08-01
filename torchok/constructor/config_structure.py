@@ -1,3 +1,4 @@
+from gc import callbacks
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -9,6 +10,13 @@ class Phase(Enum):
     VALID = 'valid'
     TEST = 'test'
     PREDICT = 'predict'
+
+
+# Callbacks parameters
+@dataclass
+class CallbacksParams:
+    name: str
+    params: Optional[Dict] = field(default_factory=dict)
 
 
 # Optimization parameters
@@ -189,4 +197,5 @@ class ConfigParams:
     checkpoint: Optional[CheckpointParams] = None
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
+    callbacks: Optional[List[CallbacksParams]] = field(default_factory=list)
     resume_path: Optional[str] = None
