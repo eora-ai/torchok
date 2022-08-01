@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from src.constructor import BACKBONES
+from torchok.constructor import BACKBONES
 
 
 class TestDaViT(unittest.TestCase):
