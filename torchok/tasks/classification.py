@@ -47,14 +47,34 @@ class ClassificationTask(BaseTask):
         head_in_channels = self.pooling.out_channels
         self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
 
+        # check forward outputs is allowed or no.
+        self.forward_allowed_outputs = {'embeddings', 'predictions'}
+        self.forward_outputs = set(self._hparams.task.params.get('forward_outputs', 'predictions'))
+
+        if len(self.forward_allowed_outputs.intersection(self.forward_outputs)) == 0:
+            raise ValueError(f'{self.forward_outputs} is not allowed. '
+                             f'Available names: {self.forward_allowed_outputs}')
+
     def forward(self, x: Tensor) -> Tensor:
         """Forward method."""
-        x = self.backbone(x)
+        outputs = []
+
+        features = self.backbone(input_data)
+
         if self.neck is not None:
-            x = self.neck(x)
-        x = self.pooling(x)
-        x = self.head(x)
-        return x
+            features = self.neck(features)
+
+        embeddings = self.pooling(features)
+
+        if 'embeddings' in self.forward_outputs:
+            outputs.append(embeddings)
+
+        if 'predictions' in self.forward_outputs:
+            predictions = self.head(embeddings)
+            outputs.append(predictions)
+
+        outputs = (*outputs, )
+        return outputs
 
     def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
         """Forward with ground truth labels."""
@@ -67,25 +87,3 @@ class ClassificationTask(BaseTask):
         prediction = self.head(embeddings, target)
         output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}
         return output
-
-    def forward_onnx(self, input_data: Tensor) -> Union[Tensor, Tuple[Tensor]]:
-        """Override forward for onnx."""
-        forward_onnx_outputs = set(self._hparams.checkpoint.forward_onnx_outputs)
-        onnx_output = []
-
-        features = self.backbone(input_data)
-
-        if self.neck is not None:
-            features = self.neck(features)
-
-        embeddings = self.pooling(features)
-
-        if 'embeddings' in forward_onnx_outputs:
-            onnx_output.append(embeddings)
-
-        if 'predictions' in forward_onnx_outputs:
-            predictions = self.head(embeddings)
-            onnx_output.append(predictions)
-
-        onnx_output = (*onnx_output, )
-        return onnx_output
