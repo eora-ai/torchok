@@ -12,11 +12,12 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
     CKPT_EXTENSION = '.ckpt'
     ONNX_EXTENSION = '.onnx'
 
-    def __init__(self, *args, export_to_onnx=False, onnx_params=None, **kwargs):
+    def __init__(self, *args, export_to_onnx=False, onnx_params=None, forward_onnx_outputs=None, **kwargs):
         """Init ModelCheckpointWithOnnx."""
         super().__init__(*args, **kwargs)
         self.onnx_params = onnx_params if onnx_params is not None else {}
         self.export_to_onnx = export_to_onnx
+        self.forward_onnx_outputs = forward_onnx_outputs
 
     def format_checkpoint_name(
         self, metrics: Dict[str, _METRIC], filename: Optional[str] = None, ver: Optional[int] = None
@@ -40,6 +41,10 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
                 # DDP mode use some wrappers and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
                 input_tensors = model.input_tensors
+
+                if self.forward_onnx_outputs is not None:
+                    model.forward = model.forward_onnx
+
                 model.to_onnx(filepath + self.ONNX_EXTENSION, (*input_tensors,), **self.onnx_params)
 
             for logger in trainer.loggers:

@@ -1,6 +1,7 @@
-from typing import Dict, Union
+from typing import Dict, Union, Tuple
 
 import torch
+from torch import Tensor
 from omegaconf import DictConfig
 
 from torchok.constructor import BACKBONES, HEADS, NECKS, POOLINGS, TASKS
@@ -46,7 +47,7 @@ class ClassificationTask(BaseTask):
         head_in_channels = self.pooling.out_channels
         self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """Forward method."""
         x = self.backbone(x)
         if self.neck is not None:
@@ -55,7 +56,7 @@ class ClassificationTask(BaseTask):
         x = self.head(x)
         return x
 
-    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
+    def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
         """Forward with ground truth labels."""
         input_data = batch['image']
         target = batch['target']
@@ -66,3 +67,25 @@ class ClassificationTask(BaseTask):
         prediction = self.head(embeddings, target)
         output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}
         return output
+
+    def forward_onnx(self, input_data: Tensor) -> Union[Tensor, Tuple[Tensor]]:
+        """Override forward for onnx."""
+        forward_onnx_outputs = set(self._hparams.checkpoint.forward_onnx_outputs)
+        onnx_output = []
+
+        features = self.backbone(input_data)
+
+        if self.neck is not None:
+            features = self.neck(features)
+
+        embeddings = self.pooling(features)
+
+        if 'embeddings' in forward_onnx_outputs:
+            onnx_output.append(embeddings)
+
+        if 'predictions' in forward_onnx_outputs:
+            predictions = self.head(embeddings)
+            onnx_output.append(predictions)
+
+        onnx_output = (*onnx_output, )
+        return onnx_output
