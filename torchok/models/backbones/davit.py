@@ -4,42 +4,36 @@ Adapted from https://github.com/dingmyu/davit/blob/main/mmseg/mmseg/models/backb
 Licensed under MIT License [see LICENSE for details]
 """
 import itertools
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import DropPath, trunc_normal_
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
 from torchok.models.base import BaseModel
 from torchok.models.modules.bricks.mlp import Mlp
 
-default_cfgs = {
-    'davit_t': dict(url=''),
-    'davit_s': dict(url=''),
-    'davit_b': dict(url=''),
-}
 
-cfg_cls = dict(
-    davit_t=dict(
-        embed_dims=(96, 192, 384, 768),
-        depths=(1, 1, 3, 1),
-        num_heads=(3, 6, 12, 24),
-    ),
-    davit_s=dict(
-        embed_dims=(96, 192, 384, 768),
-        depths=(1, 1, 9, 1),
-        num_heads=(3, 6, 12, 24),
-    ),
-    davit_b=dict(
-        embed_dims=(128, 256, 512, 1024),
-        depths=(1, 1, 9, 1),
-        num_heads=(4, 8, 16, 32),
-    )
-)
+def _cfg(url='', **kwargs):
+    return {
+        'url': url, 'input_size': (3, 224, 224), 'pool_size': None,
+        'crop_pct': .9, 'interpolation': 'bicubic', 'fixed_input_size': True,
+        'mean': IMAGENET_DEFAULT_MEAN, 'std': IMAGENET_DEFAULT_STD,
+        # 'first_conv': 'patch_embed.proj', 'classifier': 'head',
+        **kwargs
+    }
+
+
+default_cfgs = {
+    'davit_t': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/davit-t_torchok.pth'),
+    'davit_s': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/davit-s_torchok.pth'),
+    'davit_b': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/davit-b_torchok.pth'),
+}
 
 
 class PatchEmbed(nn.Module):
@@ -380,16 +374,27 @@ class SpatialBlock(nn.Module):
 class DaViT(BaseModel):
     """ Dual Attention Transformer"""
 
-    def __init__(self, in_channels: int = 3, embed_dims: Tuple[int] = (64, 128, 192, 256),
-                 depths: Tuple[int] = (1, 1, 3, 1), num_heads: Tuple[int] = (3, 6, 12, 24),
-                 window_size: int = 7, mlp_ratio: float = 4., drop_path_rate: float = 0.1):
+    def __init__(self, img_size: int = 224, in_channels: int = 3, patch_size: int = 4, depths=(1, 1, 3, 1),
+                 embed_dims: Tuple[int] = (64, 128, 192, 256), num_heads: Tuple[int] = (3, 6, 12, 24),
+                 window_size: int = 7, mlp_ratio: float = 4., qkv_bias: bool = True, drop_path_rate: float = 0.1,
+                 norm_layer: nn.Module = nn.LayerNorm, overlapped_patch: bool = False, ffn: bool = True,
+                 cpe_act: bool = False):
         """Init DaViT.
 
         Args:
-            cfg: Model config.
-            in_channels: Input channels.
+            img_size: Input image size.
+            in_channels: Number of input image channels.
+            patch_size: Patch size.
+            embed_dims: Patch embedding dimension.
+            num_heads: Number of attention heads in different layers.
+            window_size: Window size.
+            mlp_ratio: Ratio of mlp hidden dim to embedding dim.
+            qkv_bias: If True, add a learnable bias to query, key, value.
+            drop_path_rate: Stochastic depth rate.
+            norm_layer: Normalization layer.
         """
-        super().__init__(in_channels, embed_dims)
+        super().__init__(in_channels, embed_dims[-1])
+        self.img_size = img_size
 
         architecture = [[index] * item for index, item in enumerate(depths)]
         self.attention_types = ('spatial', 'channel')
@@ -397,13 +402,14 @@ class DaViT(BaseModel):
         self.embed_dims = embed_dims
         self.num_heads = num_heads
         self.num_stages = len(self.embed_dims)
+        self._out_encoder_channels = embed_dims
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, 2 * len(list(itertools.chain(*self.architecture))))]
 
         self.patch_embeds = nn.ModuleList([
-            PatchEmbed(patch_size=4 if i == 0 else 2,
+            PatchEmbed(patch_size=patch_size if i == 0 else 2,
                        in_channels=in_channels if i == 0 else self.embed_dims[i - 1],
                        embed_dim=self.embed_dims[i],
-                       overlapped=False)
+                       overlapped=overlapped_patch)
             for i in range(self.num_stages)])
 
         main_blocks = []
@@ -416,21 +422,21 @@ class DaViT(BaseModel):
                         dim=self.embed_dims[item],
                         num_heads=self.num_heads[item],
                         mlp_ratio=mlp_ratio,
-                        qkv_bias=True,
+                        qkv_bias=qkv_bias,
                         drop_path=dpr[2 * (layer_id + layer_offset_id) + attention_id],
-                        norm_layer=nn.LayerNorm,
-                        ffn=True,
-                        cpe_act=False
+                        norm_layer=norm_layer,
+                        ffn=ffn,
+                        cpe_act=cpe_act
                     ) if attention_type == 'channel' else
                     SpatialBlock(
                         dim=self.embed_dims[item],
                         num_heads=self.num_heads[item],
                         mlp_ratio=mlp_ratio,
-                        qkv_bias=True,
+                        qkv_bias=qkv_bias,
                         drop_path=dpr[2 * (layer_id + layer_offset_id) + attention_id],
-                        norm_layer=nn.LayerNorm,
-                        ffn=True,
-                        cpe_act=False,
+                        norm_layer=norm_layer,
+                        ffn=ffn,
+                        cpe_act=cpe_act,
                         window_size=window_size,
                     ) if attention_type == 'spatial' else None
                     for attention_id, attention_type in enumerate(self.attention_types)]
@@ -439,8 +445,9 @@ class DaViT(BaseModel):
             main_blocks.append(block)
         self.main_blocks = nn.ModuleList(main_blocks)
 
+        # add a norm layer for each output
         for i_layer in range(self.num_stages):
-            layer = nn.LayerNorm(self.embed_dims[i_layer])
+            layer = norm_layer(self.embed_dims[i_layer])  # if i_layer != 0 else nn.Identity()
             layer_name = f'norm{i_layer}'
             self.add_module(layer_name, layer)
 
@@ -453,24 +460,13 @@ class DaViT(BaseModel):
                 trunc_normal_(m.weight, std=.02)
                 if isinstance(m, nn.Linear) and m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-
             elif isinstance(m, nn.LayerNorm):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
 
-    def forward(self, x: Tensor) -> Tuple[Tensor]:
-        """Forward method.
-
-        Args:
-            x: Input tensor.
-
-        Returns:
-            This method return tuple of tensors.
-            Each tensor has (B, C, H, W) shape structure.
-        """
-        input_tensor = x
+    def _forward_stages(self, x: Tensor) -> Tuple[List[Tensor], List[Tensor]]:
         x, size = self.patch_embeds[0](x, (x.size(2), x.size(3)))
-        features = []
+        features = [x]
         sizes = [size]
         branches = [0]
 
@@ -485,6 +481,21 @@ class DaViT(BaseModel):
             for layer_index, branch_id in enumerate(block_param):
                 inputs = (features[branch_id], sizes[branch_id])
                 features[branch_id], _ = self.main_blocks[block_index][layer_index](inputs)
+        return features, sizes
+
+    def forward_features(self, x: Tensor) -> List[Tensor]:
+        """Forward method for getting backbone feature maps.
+           They are mainly used for segmentation and detection tasks.
+
+        Args:
+            x: Input tensor.
+
+        Returns:
+            This method return tuple of tensors.
+            Each tensor has (B, C, H, W) shape structure.
+        """
+        input_tensor = x
+        features, sizes = self._forward_stages(x)
 
         outs = []
         for i in range(self.num_stages):
@@ -494,33 +505,50 @@ class DaViT(BaseModel):
             out = x_out.view(-1, H, W, self.embed_dims[i]).permute(0, 3, 1, 2).contiguous()
             outs.append(out)
 
-        return (input_tensor, *outs)
+        return [input_tensor, *outs]
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward method"""
+        features, sizes = self._forward_stages(x)
+        last_stage = self.num_stages - 1
+
+        norm_layer = getattr(self, f'norm{last_stage}')
+        x_out = norm_layer(features[last_stage])
+        H, W = sizes[last_stage]
+        out = x_out.view(-1, H, W, self.embed_dims[last_stage]).permute(0, 3, 1, 2).contiguous()
+
+        return out
 
 
-def create_davit(variant: str, pretrained: bool = False, **model_kwargs):
+def create_davit(variant: str, pretrained: bool = False, **kwargs):
     """Create DaViT base model.
 
     Args:
         variant: Backbone type.
         pretrained: If True the pretrained weights will be loaded.
-        model_kwargs: Kwargs for model (for example in_chans).
+        kwargs: Kwargs for model (for example in_chans).
     """
-    return build_model_with_cfg(DaViT, variant, pretrained, model_cfg=cfg_cls[variant], **model_kwargs)
+    kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
+    return build_model_with_cfg(DaViT, variant, pretrained, pretrained_strict=False,
+                                pretrained_cfg=default_cfgs[variant], kwargs_filter=kwargs_filter, **kwargs)
 
 
 @BACKBONES.register_class
 def davit_t(pretrained: bool = False, **kwargs):
     """It's constructing a davit_t model."""
-    return create_davit('davit_t', pretrained, **kwargs)
+    model_kwargs = dict(embed_dims=(96, 192, 384, 768), depths=(1, 1, 3, 1), num_heads=(3, 6, 12, 24), **kwargs)
+    return create_davit('davit_t', pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
 def davit_s(pretrained: bool = False, **kwargs):
     """It's constructing a davit_s model."""
-    return create_davit('davit_s', pretrained, **kwargs)
+    model_kwargs = dict(embed_dims=(96, 192, 384, 768), depths=(1, 1, 9, 1), num_heads=(3, 6, 12, 24), **kwargs)
+    return create_davit('davit_s', pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
 def davit_b(pretrained: bool = False, **kwargs):
     """It's constructing a davit_b model."""
-    return create_davit('davit_b', pretrained, **kwargs)
+    model_kwargs = dict(embed_dims=(128, 256, 512, 1024), depths=(1, 1, 9, 1), num_heads=(4, 8, 16, 32), **kwargs)
+    return create_davit('davit_b', pretrained, **model_kwargs)
