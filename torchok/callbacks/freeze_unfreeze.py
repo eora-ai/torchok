@@ -30,7 +30,7 @@ def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Mod
 
     not_found_modules = module_names - found_module_names
     if len(not_found_modules) != 0:
-        logging.warning(f'Get modules_by_names function, can`t found modules with names = {not_found_modules}')
+        logging.warning(f'get_modules_by_names function can`t find modules with names {not_found_modules}')
     return found_modules
 
 
@@ -41,24 +41,24 @@ class FreezeUnfreeze(BaseFinetuning):
         """Init FreezeUnfreeze.
 
         Args:
-            epoch2module_names: Dictionary for incremental unfreeze. Keys - epoch for unfreeze, values - module names
-                which need to unfreeze. By default all the modules which names in this dictionary will be freeze before
-                training.
+            epoch2module_names: Incremental unfreeze dictionary. Keys - unfreeze epoch,
+                values - module names to unfreeze. By default, all the modules named in this dictionary
+                will be frozen before training.
         """
         super().__init__()
         self._epoch2module_names = epoch2module_names
 
     def freeze_before_training(self, pl_module: nn.Module):
-        """Freeze modules befor training.
+        """Freeze modules before training.
 
-        Freeze all the modules which names in self._epoch2module_names.
+        Freeze all the modules named in self._epoch2module_names.
 
         Args:
             pl_module: Module which contain unfreeze modules.
         """
         # Get all module names from self._epoch2module_names
         freeze_module_names = []
-        for _, module_names in self._epoch2module_names.items():
+        for module_names in self._epoch2module_names.values():
             freeze_module_names += module_names
 
         # Get modules by module names

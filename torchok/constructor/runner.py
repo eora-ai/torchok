@@ -11,7 +11,7 @@ from torchok.constructor import CALLBACKS
 
 def create_trainer(train_config):
     logger = None
-    callbacks = None
+    callbacks = []
     # Generate logger with ModelCheckpointWithOnnx callback
     logger_params = train_config.logger
     if logger_params is not None:
@@ -40,9 +40,9 @@ def create_trainer(train_config):
     # Create callbacks
     callbacks_config = train_config.callbacks
     if callbacks_config is not None and len(callbacks_config) != 0:
-        callbacks = callbacks if callbacks is not None else []
         for callback_config in callbacks_config:
             callbacks.append(CALLBACKS.get(callback_config.name)(**callback_config.params))
-
+    callbacks = callbacks or None
+    
     trainer = Trainer(logger=logger, callbacks=callbacks, **train_config.trainer)
     return trainer
