@@ -6,9 +6,13 @@ from pathlib import Path
 from torchok.constructor.logger import create_logger, create_outputs_path
 from torchok.callbacks.finalize_logger import FinalizeLogger
 from torchok.callbacks.model_checkpoint_with_onnx import ModelCheckpointWithOnnx
+from torchok.constructor import CALLBACKS
 
 
 def create_trainer(train_config):
+    logger = None
+    callbacks = []
+    # Generate logger with ModelCheckpointWithOnnx callback
     logger_params = train_config.logger
     if logger_params is not None:
         full_outputs_path = create_outputs_path(log_dir=logger_params.log_dir,
@@ -29,15 +33,16 @@ def create_trainer(train_config):
             checkpoint_callback = ModelCheckpointWithOnnx(**train_config.checkpoint, dirpath=str(full_outputs_path))
             finalize_logger_callback = FinalizeLogger()
             callbacks = [checkpoint_callback, finalize_logger_callback]
-        else:
-            callbacks = None
-        
+
         if os.environ.get('LOCAL_RANK') is not None:
             full_outputs_path.rmdir()
 
-    else:
-        logger = True
-        callbacks = None
-
+    # Create callbacks
+    callbacks_config = train_config.callbacks
+    if callbacks_config is not None and len(callbacks_config) != 0:
+        for callback_config in callbacks_config:
+            callbacks.append(CALLBACKS.get(callback_config.name)(**callback_config.params))
+    callbacks = callbacks or None
+    
     trainer = Trainer(logger=logger, callbacks=callbacks, **train_config.trainer)
     return trainer

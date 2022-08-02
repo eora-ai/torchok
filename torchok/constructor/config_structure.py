@@ -11,6 +11,13 @@ class Phase(Enum):
     PREDICT = 'predict'
 
 
+# Callbacks parameters
+@dataclass
+class CallbacksParams:
+    name: str
+    params: Optional[Dict] = field(default_factory=dict)
+
+
 # Optimization parameters
 @dataclass
 class OptmizerParams:
@@ -189,4 +196,5 @@ class ConfigParams:
     checkpoint: Optional[CheckpointParams] = None
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
+    callbacks: Optional[List[CallbacksParams]] = field(default_factory=list)
     resume_path: Optional[str] = None

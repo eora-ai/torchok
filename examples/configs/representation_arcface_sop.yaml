@@ -16,6 +16,15 @@ task:
       - shape: [3, &height 256, &width 256]
         dtype: 'float32'
 
+callbacks:
+  - name: FreezeUnfreeze
+    params:
+      epoch2module_names:
+        5: ['backbone.layers.3']
+        10: ['backbone.layers.2']
+        15: ['backbone.layers.1']
+        20: ['backbone']
+
 joint_loss:
   losses:
     - name: CrossEntropyLoss
@@ -36,7 +45,7 @@ data:
   TRAIN:
     - dataloader:
         batch_size: 64
-        num_workers: 8
+        num_workers: 4
         drop_last: true
         shuffle: true
       dataset:
@@ -122,7 +131,7 @@ data:
 
 trainer:
   gpus: [0]
-  max_epochs: 40
+  max_epochs: 30
   num_sanity_val_steps: 0
 
 logger:
