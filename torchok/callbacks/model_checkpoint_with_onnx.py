@@ -40,7 +40,6 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
                 # DDP mode use some wrappers and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
                 input_tensors = model.input_tensors
-
                 model.to_onnx(filepath + self.ONNX_EXTENSION, (*input_tensors,), **self.onnx_params)
 
             for logger in trainer.loggers:

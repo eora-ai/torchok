@@ -13,7 +13,7 @@ task:
     head_params:
       num_classes: &num_classes 11318
     inputs:
-      - shape: [3, &height 256, &width 256]
+      - shape: [2, 3, &height 256, &width 256]
         dtype: 'float32'
     forward_outputs: ['embeddings']
 
@@ -32,7 +32,7 @@ joint_loss:
       mapping:
           input: prediction
           target: target
-        
+
 optimization:
   - optimizer:
       name: SGD
@@ -152,6 +152,7 @@ checkpoint:
   save_last: true
   mode: max
   save_top_k: 2
+  export_to_onnx: true
 
 metrics:
   - name: Accuracy

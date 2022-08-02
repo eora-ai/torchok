@@ -49,17 +49,17 @@ class ClassificationTask(BaseTask):
 
         # check forward outputs is allowed or no.
         self.forward_allowed_outputs = {'embeddings', 'predictions'}
-        self.forward_outputs = set(self._hparams.task.params.get('forward_outputs', 'predictions'))
+        self.forward_outputs = set(self._hparams.task.params.get('forward_outputs', ['predictions']))
 
         if len(self.forward_allowed_outputs.intersection(self.forward_outputs)) == 0:
-            raise ValueError(f'{self.forward_outputs} is not allowed. '
+            raise ValueError(f'forward_outputs = {self.forward_outputs} is not allowed. '
                              f'Available names: {self.forward_allowed_outputs}')
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor]]:
         """Forward method."""
         outputs = []
 
-        features = self.backbone(input_data)
+        features = self.backbone(x)
 
         if self.neck is not None:
             features = self.neck(features)
