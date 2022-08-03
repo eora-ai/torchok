@@ -1,6 +1,7 @@
 from typing import Dict, Union, Tuple
 
 import torch
+import torch.nn as nn
 from torch import Tensor
 from omegaconf import DictConfig
 
@@ -47,43 +48,39 @@ class ClassificationTask(BaseTask):
         head_in_channels = self.pooling.out_channels
         self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
 
-        # check forward outputs is allowed or no.
-        self.forward_allowed_outputs = {'embeddings', 'predictions'}
-        self.forward_outputs = set(self._hparams.task.params.get('forward_outputs', ['predictions']))
-
-        if len(self.forward_allowed_outputs.intersection(self.forward_outputs)) == 0:
-            raise ValueError(f'forward_outputs = {self.forward_outputs} is not allowed. '
-                             f'Available names: {self.forward_allowed_outputs}')
-
-    def forward(self, x: Tensor) -> Union[Tensor, Tuple[Tensor]]:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
-        outputs = []
-
-        features = self.backbone(x)
-
+        x = self.backbone(x)
         if self.neck is not None:
-            features = self.neck(features)
-
-        embeddings = self.pooling(features)
-
-        if 'embeddings' in self.forward_outputs:
-            outputs.append(embeddings)
-
-        if 'predictions' in self.forward_outputs:
-            predictions = self.head(embeddings)
-            outputs.append(predictions)
-
-        outputs = (*outputs, )
-        return outputs
+            x = self.neck(x)
+        x = self.pooling(x)
+        x = self.head(x)
+        return x
 
     def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
         """Forward with ground truth labels."""
-        input_data = batch['image']
-        target = batch['target']
-        features = self.backbone(input_data)
+        input_data = batch.get('image')
+        target = batch.get('target')
+        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
+        with torch.set_grad_enabled(not freeze_backbone and self.training):
+            features = self.backbone(input_data)
         if self.neck is not None:
             features = self.neck(features)
         embeddings = self.pooling(features)
         prediction = self.head(embeddings, target)
-        output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}
+        output = {'embeddings': embeddings, 'prediction': prediction}
+
+        if target is not None:
+            output['target'] = target
+
         return output
+
+    def as_module(self) -> nn.Sequential:
+        """Method for model representation as sequential of modules(need for checkpointing)."""
+        modules_for_checkpoint = []
+        modules_for_checkpoint.append(self.backbone)
+        if self.neck is not None:
+            modules_for_checkpoint.append(self.neck)
+        modules_for_checkpoint.append(self.pooling)
+        modules_for_checkpoint.append(self.head)
+        return nn.Sequential(*modules_for_checkpoint)

@@ -1,6 +1,7 @@
 from typing import Dict, Union
 
 import torch
+import torch.nn as nn
 from omegaconf import DictConfig
 
 from torchok.constructor import BACKBONES, HEADS, NECKS, TASKS
@@ -43,12 +44,24 @@ class SegmentationTask(BaseTask):
 
     def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
         """Forward with ground truth labels."""
-        input_data = batch['image']
-        target = batch['target']
+        input_data = batch.get('image')
+        target = batch.get('target')
         freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
         with torch.set_grad_enabled(not freeze_backbone and self.training):
             features = self.backbone.forward_features(input_data)
         neck_out = self.neck(features)
         prediction = self.head(neck_out)
-        output = {'target': target, 'prediction': prediction}
+        output = {'prediction': prediction}
+
+        if target is not None:
+            output['target'] = target
+
         return output
+    
+    def as_module(self) -> nn.Sequential:
+        """Method for model representation as sequential of modules(need for checkpointing)."""
+        modules_for_checkpoint = []
+        modules_for_checkpoint.append(self.backbone)
+        modules_for_checkpoint.append(self.neck)
+        modules_for_checkpoint.append(self.head)
+        return nn.Sequential(*modules_for_checkpoint)

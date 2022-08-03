@@ -15,7 +15,6 @@ task:
     inputs:
       - shape: [2, 3, &height 256, &width 256]
         dtype: 'float32'
-    forward_outputs: ['embeddings']
 
 callbacks:
   - name: FreezeUnfreeze
@@ -153,6 +152,7 @@ checkpoint:
   mode: max
   save_top_k: 2
   export_to_onnx: true
+  remove_head: true
 
 metrics:
   - name: Accuracy

@@ -3,6 +3,7 @@ from typing import Dict, Union, Any
 
 import onnx
 import torch
+import torch.nn as nn
 from torch import Tensor
 import onnxruntime as onnxrt
 from omegaconf import DictConfig
@@ -56,6 +57,9 @@ class ONNXTask(BaseTask):
         pass
 
     def forward_with_gt(self, batch: Dict[str, Any]) -> Dict[str, Tensor]:
+        pass
+    
+    def as_module(self) -> nn.Sequential:
         pass
 
     def foward_infer(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:

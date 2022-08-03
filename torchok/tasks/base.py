@@ -2,6 +2,7 @@ from typing import Any, Dict, Tuple, List, Optional, Union
 from abc import ABC, abstractmethod
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from pytorch_lightning import LightningModule
 from omegaconf import DictConfig
@@ -154,6 +155,11 @@ class BaseTask(LightningModule, ABC):
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         self._metrics_manager.forward(Phase.TEST, **output)
+    
+    def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
+        """Complete predict loop."""
+        output = self.forward_with_gt(batch)
+        return output
 
     def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
@@ -186,6 +192,11 @@ class BaseTask(LightningModule, ABC):
         """It's calling at the end of a test epoch with the output of all test steps."""
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
 
+    @abstractmethod
+    def as_module(self) -> nn.Sequential:
+        """Abstract method for model representation as sequential of modules(need for checkpointing)."""
+        pass
+
     @property
     def hparams(self) -> DictConfig:
         """Hyperparameters that set in yaml file."""
@@ -214,4 +225,5 @@ class BaseTask(LightningModule, ABC):
     @property
     def input_tensors(self) -> List[torch.Tensor]:
         """Input tensors."""
+        self._input_tensors = [input_tensor.to(self.device) for input_tensor in self._input_tensors]
         return self._input_tensors
