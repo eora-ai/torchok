@@ -15,7 +15,7 @@ from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
-from torchok.models.base import BaseModel
+from torchok.models.backbones import BaseBackbone
 from torchok.models.modules.bricks.mlp import Mlp
 
 
@@ -371,7 +371,7 @@ class SpatialBlock(nn.Module):
         return x
 
 
-class DaViT(BaseModel):
+class DaViT(BaseBackbone):
     """ Dual Attention Transformer"""
 
     def __init__(self, img_size: int = 224, in_channels: int = 3, patch_size: int = 4, depths=(1, 1, 3, 1),

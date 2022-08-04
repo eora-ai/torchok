@@ -149,6 +149,7 @@ class MobileNetV3(BaseBackbone):
     def forward(self, x):
         x = self.conv_stem(x)
         x = self.bn1(x)
+        x = self.act1(x)
         x = self.blocks(x)
         return x
 
