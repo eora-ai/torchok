@@ -1,1 +1,2 @@
-from . import hrnet_head
+from . import ocr
+from . import base

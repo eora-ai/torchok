@@ -8,7 +8,7 @@ task:
     neck_name: HRNetSegmentationNeck
     neck_params:
       start_block: 2
-    head_name: HRNetSegmentationHead
+    head_name: SegmentationHead
     head_params:
       num_classes: &num_classes 3
     inputs:

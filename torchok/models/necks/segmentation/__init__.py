@@ -1,1 +1,2 @@
-from . import hrnet_segmentation_neck
+from . import hrnet
+from . import unet

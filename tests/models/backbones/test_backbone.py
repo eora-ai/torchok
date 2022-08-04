@@ -121,7 +121,8 @@ class TestMobilenetv3(AbstractTestBackboneCorrectness, unittest.TestCase):
         super().test_forward_output_shape(backbone_name, expected_shape)
 
     @parameterized.expand([
-        ['mobilenetv3_small_050', [(2, 3, 64, 64), (2, 8, 16, 16), (2, 16, 8, 8), (2, 24, 4, 4), (2, 288, 2, 2)]]
+        ['mobilenetv3_small_050', [(2, 3, 64, 64), (2, 16, 32, 32), (2, 8, 16, 16),
+                                   (2, 16, 8, 8), (2, 24, 4, 4), (2, 288, 2, 2)]]
     ])
     def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
         super().test_forward_feature_output_shape(backbone_name, expected_shapes)
