@@ -41,7 +41,7 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
             if self.export_to_onnx:
                 # DDP mode use some wrappers and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
-                input_tensors = model.input_tensors
+                input_tensors = [getattr(model, name) for name in model.input_tensor_names]
                 model = model.as_module()[:-1] if self.remove_head else model.as_module()
                 torch.onnx.export(model, (*input_tensors,), filepath + self.ONNX_EXTENSION, **self.onnx_params)
 

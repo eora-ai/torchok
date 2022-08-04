@@ -24,7 +24,7 @@ class BaseTask(LightningModule, ABC):
         super().__init__()
         self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
-        self._input_tensors = []
+        self._input_tensor_names = []
         self._losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
@@ -32,9 +32,12 @@ class BaseTask(LightningModule, ABC):
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
-            for input_params in inputs:
-                input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
-                self._input_tensors.append(input_tensor)
+            for i, input_params in enumerate(inputs):
+                input_tensor_name = f"input_tensors_{i}"
+                self._input_tensor_names.append(input_tensor_name)
+                input_tensor = torch.rand(1, *input_params['shape']).type(torch.__dict__[input_params['dtype']])
+                self.register_buffer(input_tensor_name, input_tensor)
+
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
@@ -213,17 +216,6 @@ class BaseTask(LightningModule, ABC):
         return self._losses
 
     @property
-    def input_shapes(self) -> List[List[int]]:
-        """Input shapes."""
-        return self.__input_shapes
-
-    @property
-    def input_dtypes(self) -> List[str]:
-        """Input dtypes."""
-        return self.__input_dtypes
-
-    @property
-    def input_tensors(self) -> List[torch.Tensor]:
-        """Input tensors."""
-        self._input_tensors = [input_tensor.to(self.device) for input_tensor in self._input_tensors]
-        return self._input_tensors
+    def input_tensor_names(self) -> List[str]:
+        """Input tensor names."""
+        return self._input_tensor_names

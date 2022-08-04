@@ -13,7 +13,7 @@ task:
     head_params:
       num_classes: &num_classes 11318
     inputs:
-      - shape: [2, 3, &height 256, &width 256]
+      - shape: [3, &height 256, &width 256]
         dtype: 'float32'
 
 callbacks:
