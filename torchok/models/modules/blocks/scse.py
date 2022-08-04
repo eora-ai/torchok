@@ -7,15 +7,15 @@ Copyright 2019 Ross Wightman
 Licensed under MIT license [see LICENSE for details]
 """
 
-from typing import Optional, Union
-
 from torch import nn as nn
 from torch import Tensor
 
+
 class SCSEModule(nn.Module):
     """Concurrent Spatial and Channel Squeeze."""
+
     def __init__(self, channels: int, reduction: int = 16):
-        """"Init SCSEModule
+        """Init SCSEModule
         
         Args:
             channels: Number input channels.
