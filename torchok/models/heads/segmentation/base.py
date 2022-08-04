@@ -1,9 +1,3 @@
-"""TorchOK Unet.
-
-Adapted from:
-    https://github.com/qubvel/segmentation_models.pytorch/tree/master/segmentation_models_pytorch/decoders/unet
-Licensed under MIT license [see LICENSE for details]
-"""
 from typing import List
 
 import torch.nn as nn
@@ -25,16 +19,13 @@ class SegmentationHead(BaseModel):
             in_channels: Size of each input sample.
             num_classes: A number of classes for output (output shape - ``(batch, classes, h, w)``).
             do_interpolate: If ``True`` will interpolate features after forward pass.
-
-        Raises:
-            ValueError: If "do_interpolate" is True, when img_size is None.
         """
         super().__init__(in_channels, num_classes)
 
         self.num_classes = num_classes
         self.do_interpolate = do_interpolate
 
-        self.classifier = nn.Conv2d(self._in_channels, self.num_classes, kernel_size=1)
+        self.classifier = nn.Conv2d(in_channels, num_classes, kernel_size=1)
         self.init_weights()
 
     def forward(self, x: List[Tensor]) -> Tensor:

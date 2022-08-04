@@ -13,9 +13,8 @@ from torch import Tensor
 from torchok.constructor import HEADS
 from torchok.models.base import BaseModel
 from torchok.models.modules.bricks.convbnact import ConvBnAct
-from torchok.models.heads.segmentation.base import SegmentationHead
 
-resize = partial(F.interpolate, mode='bilinear', align_corners=True)
+resize = partial(F.interpolate, mode='bilinear', align_corners=False)
 ConvBnRelu = partial(ConvBnAct, act_layer=nn.ReLU)
 BN_MOMENTUM = 0.1
 
@@ -130,7 +129,7 @@ class SpatialOCR(nn.Module):
 
 
 @HEADS.register_class
-class OCRSegmentationHead(SegmentationHead):
+class OCRSegmentationHead(BaseModel):
     """
     Implementation of HRNet segmentation head with Object-Contextual Representations for Semantic Segmentation
     from https://github.com/HRNet/HRNet-Semantic-Segmentation/tree/HRNet-OCR.
@@ -145,8 +144,9 @@ class OCRSegmentationHead(SegmentationHead):
             ocr_mid_channels: Number of intermediate feature channels.
             ocr_key_channels: Number of channels in the dimension after the key/query transform.
         """
-        super().__init__(ocr_mid_channels // 16, num_classes, do_interpolate)
-        self._in_channels = in_channels
+        super().__init__(in_channels, num_classes)
+        self.do_interpolate = do_interpolate
+        self.num_classes = num_classes
 
         self.conv3x3_ocr = ConvBnRelu(in_channels, ocr_mid_channels, kernel_size=3, padding=1)
         self.ocr_gather_head = SpatialGather_Module(num_classes)
@@ -161,6 +161,7 @@ class OCRSegmentationHead(SegmentationHead):
             nn.Conv2d(in_channels, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
         )
 
+        self.classifier = nn.Conv2d(ocr_mid_channels // 16, num_classes, kernel_size=1)
 
     def forward(self, feats: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         input_image, feats = feats

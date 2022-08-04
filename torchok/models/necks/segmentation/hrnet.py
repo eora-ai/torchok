@@ -33,9 +33,9 @@ class HRNetSegmentationNeck(BaseModel):
         input_image, x0, x1, x2, x3 = features
 
         x0_h, x0_w = x0.size(2), x0.size(3)
-        x1 = F.interpolate(x1, size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x2 = F.interpolate(x2, size=(x0_h, x0_w), mode='bilinear', align_corners=True)
-        x3 = F.interpolate(x3, size=(x0_h, x0_w), mode='bilinear', align_corners=True)
+        x1 = F.interpolate(x1, size=(x0_h, x0_w), mode='bilinear', align_corners=False)
+        x2 = F.interpolate(x2, size=(x0_h, x0_w), mode='bilinear', align_corners=False)
+        x3 = F.interpolate(x3, size=(x0_h, x0_w), mode='bilinear', align_corners=False)
 
         feats = torch.cat([x0, x1, x2, x3], 1)
         feats = self.convbnact(feats)

@@ -2,8 +2,6 @@
 
 Adapted from:
     https://github.com/qubvel/segmentation_models.pytorch/blob/master/segmentation_models_pytorch/base/modules.py
-
-Copyright 2019 Ross Wightman
 Licensed under MIT license [see LICENSE for details]
 """
 

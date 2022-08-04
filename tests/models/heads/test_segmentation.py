@@ -13,9 +13,9 @@ tested_heads = [
 
 
 class Backbone(Module):
-    def __init__(self):
+    def __init__(self, backbone_name):
         super().__init__()
-        self.backbone = BACKBONES.get('resnet18')(pretrained=False, in_channels=3)
+        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
 
     def forward(self, x):
         return self.backbone.forward_features(x)
@@ -31,7 +31,9 @@ class AbstractTestSegmentationPair:
 
     def setUp(self) -> None:
         self.input = torch.rand(2, 3, 256, 256, device=self.device)
-        self.backbone = Backbone().to(device=self.device).eval()
+
+    def create_model(self, head_name):
+        raise NotImplemented()
 
     def test_forward_output_shape(self, head_name):
         model = self.create_model(head_name)
@@ -47,37 +49,18 @@ class AbstractTestSegmentationPair:
         torch.cuda.empty_cache()
 
 
-class UnetModel(Module):
-    def __init__(self, backbone_name, neck_name, num_classes):
-        super().__init__()
-        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
-        encoder_channels = self.backbone.out_encoder_channels
-        decoder_channels = (512, 256, 128, 64, 64)
-        if len(encoder_channels) < len(decoder_channels):
-            decoder_channels = decoder_channels[:len(encoder_channels)]
-        self.neck = NECKS.get(neck_name)(encoder_channels=encoder_channels,
-                                         decoder_channels=decoder_channels)
-        self.head = HEADS.get('SegmentationHead')(self.neck.out_channels, num_classes)
-
-    def forward(self, x):
-        features = self.backbone.forward_features(x)
-        features = self.neck(features)
-        output = self.head(features)
-        return output
-
-
 class TestUnet(AbstractTestSegmentationPair, unittest.TestCase):
 
     def create_model(self, head_name):
-        encoder_channels = self.backbone.out_encoder_channels
+        backbone = Backbone('resnet18').to(device=self.device).eval()
+        encoder_channels = backbone.out_encoder_channels
         decoder_channels = (512, 256, 128, 64, 64)
         if len(encoder_channels) < len(decoder_channels):
             decoder_channels = decoder_channels[:len(encoder_channels)]
-        self.neck = NECKS.get('UnetNeck')(encoder_channels=encoder_channels,
-                                          decoder_channels=decoder_channels)
-        self.head = HEADS.get(head_name)(self.neck.out_channels, self.num_classes)
+        neck = NECKS.get('UnetNeck')(in_channels=encoder_channels, decoder_channels=decoder_channels)
+        head = HEADS.get(head_name)(neck.out_channels, self.num_classes)
 
-        return Sequential(self.backbone, self.neck, self.head).to(device=self.device).eval()
+        return Sequential(backbone, neck, head).to(device=self.device).eval()
 
     @parameterized.expand(tested_heads)
     def test_forward_output_shape(self, head_name):
@@ -86,3 +69,21 @@ class TestUnet(AbstractTestSegmentationPair, unittest.TestCase):
     @parameterized.expand(tested_heads)
     def test_torchscript_conversion(self, head_name):
         super(TestUnet, self).test_torchscript_conversion(head_name)
+
+
+class TestHRNet(AbstractTestSegmentationPair, unittest.TestCase):
+
+    def create_model(self, head_name):
+        backbone = Backbone("hrnet_w18").to(device=self.device).eval()
+        neck = NECKS.get('HRNetSegmentationNeck')(in_channels=backbone.out_encoder_channels)
+        head = HEADS.get(head_name)(neck.out_channels, self.num_classes)
+
+        return Sequential(backbone, neck, head).to(device=self.device).eval()
+
+    @parameterized.expand(tested_heads)
+    def test_forward_output_shape(self, head_name):
+        super(TestHRNet, self).test_forward_output_shape(head_name)
+
+    @parameterized.expand(tested_heads)
+    def test_torchscript_conversion(self, head_name):
+        super(TestHRNet, self).test_torchscript_conversion(head_name)

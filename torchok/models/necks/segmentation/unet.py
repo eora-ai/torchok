@@ -80,7 +80,7 @@ class UnetNeck(BaseModel):
     Paper: https://arxiv.org/pdf/1505.04597.
     """
 
-    def __init__(self, encoder_channels: List[int], decoder_channels: List[int] = (512, 256, 128, 64, 64),
+    def __init__(self, in_channels: List[int], decoder_channels: List[int] = (512, 256, 128, 64, 64),
                  use_batchnorm: bool = True, use_attention: bool = False, center: bool = True):
         """Init Unet. The number of stages used in decoder inferred from the ``decoder_channels``,
         larger depth - more features are generated. e.g. for depth=3 encoder will generate list of features with
@@ -88,7 +88,7 @@ class UnetNeck(BaseModel):
         will have spatial resolution (H/(2^depth), W/(2^depth)]
 
         Args:
-            encoder_channels: List of Numbers of ``Conv2D`` layer filters from backbone.
+            in_channels: List of Numbers of ``Conv2D`` layer filters from backbone.
             decoder_channels: List of numbers of ``Conv2D`` layer filters in decoder blocks.
             use_batchnorm: If ``True``, ``BatchNormalisation`` applied between every ``Conv2D`` and activation layers.
             use_attention: If ``True`` will use ``SCSEModule``.
@@ -97,10 +97,10 @@ class UnetNeck(BaseModel):
         Raises:
             ValueError: If the number of blocks is not equal to the length of the `decoder_channels` or `encoder_channels - 1`.
         """
-        super().__init__(in_channels=encoder_channels, out_channels=decoder_channels[-1])
+        super().__init__(in_channels=in_channels, out_channels=decoder_channels[-1])
 
         self.n_blocks = len(decoder_channels)
-        encoder_channels = encoder_channels[::-1]  # reverse channels to start from head of encoder
+        encoder_channels = in_channels[::-1]  # reverse channels to start from head of encoder
 
         # computing blocks input and output channels
         head_channels = encoder_channels[0]
