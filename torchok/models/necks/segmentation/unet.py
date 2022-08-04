@@ -120,9 +120,8 @@ class UnetNeck(BaseModel):
 
     def forward(self, features: List[Tensor]) -> List[Tensor]:
         """Forward method."""
-        input_image, *features = features
+        head, *skips, input_image = features[::-1]  # reverse channels to start from head of encoder
 
-        head, *skips = features[::-1]  # reverse channels to start from head of encoder
         x = self.center(head)
         for i, decoder_block in enumerate(self.blocks):
             skip = skips[i] if i < len(skips) else None
