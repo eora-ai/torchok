@@ -12,7 +12,7 @@ class ConvBnAct(nn.Module):
                  in_channels: int,
                  out_channels: int,
                  kernel_size: int,
-                 padding: int,
+                 padding: int = 0,
                  stride: int = 1,
                  bias: bool = False,
                  use_batchnorm: bool = True,

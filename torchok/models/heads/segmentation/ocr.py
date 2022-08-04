@@ -130,31 +130,6 @@ class SpatialOCR(nn.Module):
 
 
 @HEADS.register_class
-class HRNetSegmentationHead(BaseModel):
-    """HRNet segmentation head."""
-
-    def __init__(self, in_channels: int, num_classes: int):
-        """Init HRNetSegmentationHead.
-        Args:
-            in_channels: Size of each input sample.
-            num_classes: Number of classes.
-        """
-        super().__init__(in_channels, out_channels=num_classes)
-        self.num_classes = num_classes
-        self.final_conv_layer = nn.Conv2d(in_channels=in_channels,
-                                          out_channels=num_classes,
-                                          kernel_size=1,
-                                          stride=1,
-                                          padding=0)
-
-    def forward(self, feats: Tensor) -> Tensor:
-        input_image, feats = feats
-        out = self.final_conv_layer(feats)
-        out = resize(out, input_image.shape[2:])
-        return out
-
-
-@HEADS.register_class
 class OCRSegmentationHead(SegmentationHead):
     """
     Implementation of HRNet segmentation head with Object-Contextual Representations for Semantic Segmentation
@@ -170,6 +145,8 @@ class OCRSegmentationHead(SegmentationHead):
             ocr_mid_channels: Number of intermediate feature channels.
             ocr_key_channels: Number of channels in the dimension after the key/query transform.
         """
+        super().__init__(ocr_mid_channels // 16, num_classes, do_interpolate)
+        self._in_channels = in_channels
 
         self.conv3x3_ocr = ConvBnRelu(in_channels, ocr_mid_channels, kernel_size=3, padding=1)
         self.ocr_gather_head = SpatialGather_Module(num_classes)
@@ -184,8 +161,6 @@ class OCRSegmentationHead(SegmentationHead):
             nn.Conv2d(in_channels, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
         )
 
-        super().__init__(ocr_mid_channels // 16, num_classes, do_interpolate)
-        self._in_channels = in_channels
 
     def forward(self, feats: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         input_image, feats = feats
