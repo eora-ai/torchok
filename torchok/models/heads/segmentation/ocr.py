@@ -13,6 +13,7 @@ from torch import Tensor
 from torchok.constructor import HEADS
 from torchok.models.base import BaseModel
 from torchok.models.modules.bricks.convbnact import ConvBnAct
+from torchok.models.heads.segmentation.base import SegmentationHead
 
 resize = partial(F.interpolate, mode='bilinear', align_corners=True)
 ConvBnRelu = partial(ConvBnAct, act_layer=nn.ReLU)
@@ -140,11 +141,6 @@ class HRNetSegmentationHead(BaseModel):
         """
         super().__init__(in_channels, out_channels=num_classes)
         self.num_classes = num_classes
-        self.convbnact = ConvBnRelu(in_channels,
-                                    in_channels,
-                                    kernel_size=1,
-                                    padding=0,
-                                    stride=1)
         self.final_conv_layer = nn.Conv2d(in_channels=in_channels,
                                           out_channels=num_classes,
                                           kernel_size=1,
@@ -153,74 +149,43 @@ class HRNetSegmentationHead(BaseModel):
 
     def forward(self, feats: Tensor) -> Tensor:
         input_image, feats = feats
-        x = self.convbnact(feats)
-        out = self.final_conv_layer(x)
+        out = self.final_conv_layer(feats)
         out = resize(out, input_image.shape[2:])
         return out
 
 
 @HEADS.register_class
-class HRNetOCRSegmentationHead(BaseModel):
+class OCRSegmentationHead(SegmentationHead):
     """
     Implementation of HRNet segmentation head with Object-Contextual Representations for Semantic Segmentation
     from https://github.com/HRNet/HRNet-Semantic-Segmentation/tree/HRNet-OCR.
     """
 
-    has_ocr = True
-
-    def __init__(self, in_channels: int, num_classes: int, ocr_mid_channels=128, ocr_key_channels=64):
-        """Init HRNetOCRSegmentationHead.
-        Implementation of HRNet with Object-Contextual Representations for Semantic Segmentation
-        from https://github.com/HRNet/HRNet-Semantic-Segmentation/tree/HRNet-OCR.
+    def __init__(self, in_channels: int, num_classes: int, do_interpolate: bool = True,
+                 ocr_mid_channels=128, ocr_key_channels=64):
+        """Init OCRSegmentationHead.
         Args:
-            in_channels: Number of channels from HRNetSegmentationNeck.
+            in_channels: Number of channels from segmentation neck.
             num_classes: Number of segmentation classes.
             ocr_mid_channels: Number of intermediate feature channels.
             ocr_key_channels: Number of channels in the dimension after the key/query transform.
         """
-        super(HRNetOCRSegmentationHead, self).__init__(in_channels, num_classes)
-        self.num_classes = num_classes
 
         self.conv3x3_ocr = ConvBnRelu(in_channels, ocr_mid_channels, kernel_size=3, padding=1)
         self.ocr_gather_head = SpatialGather_Module(num_classes)
 
-        self.ocr_distri_head = SpatialOCR(in_channels=ocr_mid_channels,
-                                          key_channels=ocr_key_channels,
-                                          out_channels=ocr_mid_channels,
-                                          scale=1,
-                                          dropout=0.05,
-                                          )
-        self.last_reduction = ConvBnRelu(
-            ocr_mid_channels,
-            ocr_mid_channels // 16,
-            kernel_size=1, stride=1, padding=0
-        )
+        self.ocr_distri_head = SpatialOCR(in_channels=ocr_mid_channels, key_channels=ocr_key_channels,
+                                          out_channels=ocr_mid_channels, scale=1, dropout=0.05)
 
-        self.cls_head = nn.Conv2d(ocr_mid_channels // 16, num_classes,
-                                  kernel_size=1, stride=1, padding=0, bias=True)
+        self.last_reduction = ConvBnRelu(ocr_mid_channels, ocr_mid_channels // 16, kernel_size=1, stride=1, padding=0)
 
         self.aux_head = nn.Sequential(
-            ConvBnRelu(in_channels, in_channels,
-                       kernel_size=1, stride=1, padding=0),
-            nn.Conv2d(in_channels, num_classes,
-                      kernel_size=1, stride=1, padding=0, bias=True)
+            ConvBnRelu(in_channels, in_channels, kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(in_channels, num_classes, kernel_size=1, stride=1, padding=0, bias=True)
         )
 
-        self.init_weights()
-
-    def init_weights(self):
-        for name, m in self.named_modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_uniform_(m.weight, mode="fan_in", nonlinearity="relu")
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+        super().__init__(ocr_mid_channels // 16, num_classes, do_interpolate)
+        self._in_channels = in_channels
 
     def forward(self, feats: Tensor) -> Union[Tensor, Tuple[Tensor, Tensor]]:
         input_image, feats = feats
@@ -233,10 +198,11 @@ class HRNetOCRSegmentationHead(BaseModel):
         feats = self.ocr_distri_head(feats, context)
 
         feats = self.last_reduction(feats)
-        out = self.cls_head(feats)
+        out = self.classifier(feats)
 
-        out = resize(out, input_image.shape[2:])
-        out_aux = resize(out_aux, input_image.shape[2:])
+        if self.do_interpolate:
+            out = resize(out, input_image.shape[2:])
+            out_aux = resize(out_aux, input_image.shape[2:])
 
         if self.num_classes == 1:
             out = out[:, 0]

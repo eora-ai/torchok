@@ -1,1 +1,1 @@
-from . import hrnet_classificaton_neck
+from . import hrnet
