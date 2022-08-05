@@ -28,7 +28,7 @@ class BaseTask(LightningModule, ABC):
         self._losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
-        
+        self.example_input_array = []
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
@@ -36,6 +36,7 @@ class BaseTask(LightningModule, ABC):
                 input_tensor_name = f"input_tensors_{i}"
                 self._input_tensor_names.append(input_tensor_name)
                 input_tensor = torch.rand(1, *input_params['shape']).type(torch.__dict__[input_params['dtype']])
+                self.example_input_array.append(input_tensor)
                 self.register_buffer(input_tensor_name, input_tensor)
 
 
