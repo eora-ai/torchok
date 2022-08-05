@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 
-from torchok.constructor import BACKBONES, HEADS, NECKS, TASKS
 from torchok.tasks.base import BaseTask
-
+from torchok.constructor import BACKBONES, HEADS, NECKS, TASKS
+from torchok.models.backbones import BackboneWrapper
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
@@ -26,7 +26,7 @@ class SegmentationTask(BaseTask):
         # NECK
         neck_name = self._hparams.task.params.get('neck_name')
         neck_params = self._hparams.task.params.get('neck_params', dict())
-        neck_in_channels = self.backbone.out_feature_channels
+        neck_in_channels = self.backbone.out_encoder_channels
         self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
 
         # HEAD
@@ -57,11 +57,11 @@ class SegmentationTask(BaseTask):
             output['target'] = target
 
         return output
-    
+
     def as_module(self) -> nn.Sequential:
         """Method for model representation as sequential of modules(need for checkpointing)."""
         modules_for_checkpoint = []
-        modules_for_checkpoint.append(self.backbone)
+        modules_for_checkpoint.append(BackboneWrapper(self.backbone))
         modules_for_checkpoint.append(self.neck)
         modules_for_checkpoint.append(self.head)
         return nn.Sequential(*modules_for_checkpoint)

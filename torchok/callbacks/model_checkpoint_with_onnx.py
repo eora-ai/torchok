@@ -39,7 +39,7 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
 
         if trainer.is_global_zero:
             if self.export_to_onnx:
-                # DDP mode use some wrappers and we go down to BaseModel.
+                # DDP mode use some wrappers, and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
                 input_tensors = [getattr(model, name) for name in model.input_tensor_names]
                 model = model.as_module()[:-1] if self.remove_head else model.as_module()
