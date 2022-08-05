@@ -172,6 +172,7 @@ class CheckpointParams:
     auto_insert_metric_name: bool = False
     export_to_onnx: bool = False
     onnx_params: Dict = field(default_factory=dict)
+    remove_head: bool = False
 
 
 # Logger

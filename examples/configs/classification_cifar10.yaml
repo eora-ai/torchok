@@ -78,6 +78,7 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 30
+  max_steps: 5
   log_every_n_steps: 1000
   precision: bf16
   num_sanity_val_steps: 0

@@ -1,6 +1,8 @@
-from typing import Dict, Union
+from typing import Dict, Union, Tuple
 
 import torch
+import torch.nn as nn
+from torch import Tensor
 from omegaconf import DictConfig
 
 from torchok.constructor import BACKBONES, HEADS, NECKS, POOLINGS, TASKS
@@ -55,14 +57,28 @@ class ClassificationTask(BaseTask):
         x = self.head(x)
         return x
 
-    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
+    def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
         """Forward with ground truth labels."""
-        input_data = batch['image']
-        target = batch['target']
+        input_data = batch.get('image')
+        target = batch.get('target')
         features = self.backbone(input_data)
         if self.neck is not None:
             features = self.neck(features)
         embeddings = self.pooling(features)
         prediction = self.head(embeddings, target)
-        output = {'target': target, 'embeddings': embeddings, 'prediction': prediction}
+        output = {'embeddings': embeddings, 'prediction': prediction}
+
+        if target is not None:
+            output['target'] = target
+
         return output
+
+    def as_module(self) -> nn.Sequential:
+        """Method for model representation as sequential of modules(need for checkpointing)."""
+        modules_for_checkpoint = []
+        modules_for_checkpoint.append(self.backbone)
+        if self.neck is not None:
+            modules_for_checkpoint.append(self.neck)
+        modules_for_checkpoint.append(self.pooling)
+        modules_for_checkpoint.append(self.head)
+        return nn.Sequential(*modules_for_checkpoint)

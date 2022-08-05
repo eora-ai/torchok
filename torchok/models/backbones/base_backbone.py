@@ -1,3 +1,4 @@
+from torch.nn import Module
 from torch import Tensor
 from abc import ABC
 from typing import Tuple, List
@@ -37,3 +38,16 @@ class BaseBackbone(BaseModel, ABC):
         if self._out_encoder_channels is None:
             raise ValueError('TorchOk Backbones must have self._out_feature_channels attribute.')
         return tuple(self._out_encoder_channels)
+
+
+class BackboneWrapper(Module):
+    def __init__(self, backbone):
+        super().__init__()
+        self.backbone = backbone
+
+    def forward(self, x):
+        return self.backbone.forward_features(x)
+
+    @property
+    def out_encoder_channels(self):
+        return self.backbone.out_encoder_channels

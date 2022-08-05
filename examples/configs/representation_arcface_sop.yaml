@@ -31,7 +31,7 @@ joint_loss:
       mapping:
           input: prediction
           target: target
-        
+
 optimization:
   - optimizer:
       name: SGD
@@ -151,6 +151,8 @@ checkpoint:
   save_last: true
   mode: max
   save_top_k: 2
+  export_to_onnx: true
+  remove_head: true
 
 metrics:
   - name: Accuracy

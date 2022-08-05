@@ -1,11 +1,12 @@
 from typing import Dict, Union
 
 import torch
+import torch.nn as nn
 from omegaconf import DictConfig
 
-from torchok.constructor import BACKBONES, HEADS, NECKS, TASKS
 from torchok.tasks.base import BaseTask
-
+from torchok.constructor import BACKBONES, HEADS, NECKS, TASKS
+from torchok.models.backbones import BackboneWrapper
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
@@ -25,7 +26,7 @@ class SegmentationTask(BaseTask):
         # NECK
         neck_name = self._hparams.task.params.get('neck_name')
         neck_params = self._hparams.task.params.get('neck_params', dict())
-        neck_in_channels = self.backbone.out_feature_channels
+        neck_in_channels = self.backbone.out_encoder_channels
         self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
 
         # HEAD
@@ -43,12 +44,19 @@ class SegmentationTask(BaseTask):
 
     def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
         """Forward with ground truth labels."""
-        input_data = batch['image']
-        target = batch['target']
-        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
-        with torch.set_grad_enabled(not freeze_backbone and self.training):
-            features = self.backbone.forward_features(input_data)
+        input_data = batch.get('image')
+        target = batch.get('target')
+        features = self.backbone.forward_features(input_data)
         neck_out = self.neck(features)
         prediction = self.head(neck_out)
-        output = {'target': target, 'prediction': prediction}
+        output = {'prediction': prediction}
+
+        if target is not None:
+            output['target'] = target
+
         return output
+
+    def as_module(self) -> nn.Sequential:
+        """Method for model representation as sequential of modules(need for checkpointing)."""
+        modules = nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.head)
+        return modules

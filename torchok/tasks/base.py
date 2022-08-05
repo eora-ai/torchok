@@ -2,6 +2,7 @@ from typing import Any, Dict, Tuple, List, Optional, Union
 from abc import ABC, abstractmethod
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from pytorch_lightning import LightningModule
 from omegaconf import DictConfig
@@ -23,17 +24,21 @@ class BaseTask(LightningModule, ABC):
         super().__init__()
         self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
-        self._input_tensors = []
+        self._input_tensor_names = []
         self._losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self._hparams = hparams
         self._metrics_manager = self.__constructor.configure_metrics_manager()
-        
+        self.example_input_array = []
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
-            for input_params in inputs:
-                input_tensor = torch.rand(*input_params['shape']).type(torch.__dict__[input_params['dtype']])
-                self._input_tensors.append(input_tensor)
+            for i, input_params in enumerate(inputs):
+                input_tensor_name = f"input_tensors_{i}"
+                self._input_tensor_names.append(input_tensor_name)
+                input_tensor = torch.rand(1, *input_params['shape']).type(torch.__dict__[input_params['dtype']])
+                self.example_input_array.append(input_tensor)
+                self.register_buffer(input_tensor_name, input_tensor)
+
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
@@ -154,6 +159,11 @@ class BaseTask(LightningModule, ABC):
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         self._metrics_manager.forward(Phase.TEST, **output)
+    
+    def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
+        """Complete predict loop."""
+        output = self.forward_with_gt(batch)
+        return output
 
     def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
@@ -186,6 +196,11 @@ class BaseTask(LightningModule, ABC):
         """It's calling at the end of a test epoch with the output of all test steps."""
         self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
 
+    @abstractmethod
+    def as_module(self) -> nn.Sequential:
+        """Abstract method for model representation as sequential of modules(need for checkpointing)."""
+        pass
+
     @property
     def hparams(self) -> DictConfig:
         """Hyperparameters that set in yaml file."""
@@ -202,16 +217,6 @@ class BaseTask(LightningModule, ABC):
         return self._losses
 
     @property
-    def input_shapes(self) -> List[List[int]]:
-        """Input shapes."""
-        return self.__input_shapes
-
-    @property
-    def input_dtypes(self) -> List[str]:
-        """Input dtypes."""
-        return self.__input_dtypes
-
-    @property
-    def input_tensors(self) -> List[torch.Tensor]:
-        """Input tensors."""
-        return self._input_tensors
+    def input_tensor_names(self) -> List[str]:
+        """Input tensor names."""
+        return self._input_tensor_names

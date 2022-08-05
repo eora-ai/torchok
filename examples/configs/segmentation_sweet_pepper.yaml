@@ -129,6 +129,7 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 30
+  max_steps: 5
   log_every_n_steps: 1000
 
 hydra:
@@ -144,6 +145,9 @@ checkpoint:
   monitor: valid/JaccardIndex
   save_last: true
   mode: max
+  export_to_onnx: true
+  onnx_params:
+    opset_version: 16
 
 metrics:
   - name: JaccardIndex
