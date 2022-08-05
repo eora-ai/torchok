@@ -1,3 +1,4 @@
+import os
 import datetime
 from pathlib import Path
 from itertools import chain
@@ -24,7 +25,7 @@ def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_
         full_outputs_path: Directory path to save checkpoints and logging metrics.
     """
     if create_datetime_log_subdir:
-        experiment_subdir = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        experiment_subdir = datetime.datetime.now().strftime(f"%Y-%m-%d{os.path.sep}%H-%M-%S")
     else:
         experiment_subdir = ''
 

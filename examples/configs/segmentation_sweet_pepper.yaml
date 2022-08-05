@@ -6,13 +6,11 @@ task:
       pretrained: true
       in_channels: 3
     neck_name: HRNetSegmentationNeck
-    neck_params:
-      start_block: 2
     head_name: SegmentationHead
     head_params:
       num_classes: &num_classes 3
     inputs:
-      - shape: [1, 3, &height 256, &width 256]
+      - shape: [3, &height 256, &width 256]
         dtype: 'float32'
 
 joint_loss:
@@ -132,6 +130,10 @@ trainer:
   accelerator: 'gpu'
   max_epochs: 30
   log_every_n_steps: 1000
+
+hydra:
+  run:
+    dir: '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'

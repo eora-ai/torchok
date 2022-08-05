@@ -56,6 +56,10 @@ trainer:
   accelerator: "gpu"
   max_epochs: 1
 
+hydra:
+  run:
+    dir: '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
+
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: cifar10
