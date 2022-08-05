@@ -61,9 +61,7 @@ class ClassificationTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch.get('image')
         target = batch.get('target')
-        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
-        with torch.set_grad_enabled(not freeze_backbone and self.training):
-            features = self.backbone(input_data)
+        features = self.backbone(input_data)
         if self.neck is not None:
             features = self.neck(features)
         embeddings = self.pooling(features)
