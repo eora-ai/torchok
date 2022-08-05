@@ -46,9 +46,7 @@ class SegmentationTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch.get('image')
         target = batch.get('target')
-        freeze_backbone = self._hparams.task.params.get('freeze_backbone', False)
-        with torch.set_grad_enabled(not freeze_backbone and self.training):
-            features = self.backbone.forward_features(input_data)
+        features = self.backbone.forward_features(input_data)
         neck_out = self.neck(features)
         prediction = self.head(neck_out)
         output = {'prediction': prediction}
