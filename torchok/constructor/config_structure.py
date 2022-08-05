@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -141,7 +141,7 @@ class TrainerParams:
     accelerator: Optional[str] = None
     strategy: Optional[str] = None
     sync_batchnorm: bool = False
-    precision: int = 32
+    precision: Any = 32
     enable_model_summary: bool = True
     weights_save_path: Optional[str] = None  # TODO: Remove in 1.8
     num_sanity_val_steps: int = 2
