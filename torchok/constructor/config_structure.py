@@ -181,7 +181,7 @@ class LoggerParams:
     name: str
     log_dir: str
     experiment_name: str = 'default'
-    create_datetime_log_subdir: bool = True
+    timestamp: Optional[str] = None
     params: Optional[Dict] = field(default_factory=dict)
 
 
