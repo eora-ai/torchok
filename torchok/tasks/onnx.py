@@ -107,7 +107,7 @@ class ONNXTask(BaseTask):
     def test_step(self, batch: Dict[str, Union[Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_infer_with_gt(batch)
-        self._metrics_manager.forward(Phase.TEST, **output)
+        self.metrics_manager.forward(Phase.TEST, **output)
 
     def predict_step(self, batch: Dict[str, Any], batch_idx: int) -> Tensor:
         """Complete predict loop."""

@@ -132,7 +132,7 @@ class BaseTask(LightningModule, ABC):
         """Complete training loop."""
         output = self.forward_with_gt(batch[0])
         total_loss, tagged_loss_values = self.losses(**output)
-        self._metrics_manager.forward(Phase.TRAIN, **output)
+        self.metrics_manager.forward(Phase.TRAIN, **output)
         output_dict = {'loss': total_loss}
         output_dict.update(tagged_loss_values)
         return output_dict
@@ -140,7 +140,7 @@ class BaseTask(LightningModule, ABC):
     def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        self._metrics_manager.forward(Phase.VALID, **output)
+        self.metrics_manager.forward(Phase.VALID, **output)
 
         # In arcface classification task, if we try to compute loss on test dataset with different number
         # of classes we will crash the train study.
@@ -156,7 +156,7 @@ class BaseTask(LightningModule, ABC):
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        self._metrics_manager.forward(Phase.TEST, **output)
+        self.metrics_manager.forward(Phase.TEST, **output)
 
     def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
         """Complete predict loop."""
@@ -182,17 +182,17 @@ class BaseTask(LightningModule, ABC):
     def training_epoch_end(self,
                            training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
+        self.log_dict(self.metrics_manager.on_epoch_end(Phase.TRAIN))
 
     def validation_epoch_end(self,
                              valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
+        self.log_dict(self.metrics_manager.on_epoch_end(Phase.VALID))
 
     def test_epoch_end(self,
                        test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
+        self.log_dict(self.metrics_manager.on_epoch_end(Phase.TEST))
 
     @abstractmethod
     def as_module(self) -> nn.Sequential:
