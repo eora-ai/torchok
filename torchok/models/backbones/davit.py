@@ -4,14 +4,14 @@ Adapted from https://github.com/dingmyu/davit/blob/main/mmseg/mmseg/models/backb
 Licensed under MIT License [see LICENSE for details]
 """
 import itertools
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import DropPath, trunc_normal_
-from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from torch import Tensor
 
 from torchok.constructor import BACKBONES

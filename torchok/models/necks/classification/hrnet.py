@@ -5,8 +5,8 @@ from timm.models.resnet import Bottleneck
 from torch import Tensor
 
 from torchok.constructor import NECKS
-from torchok.models.modules.bricks.convbnact import ConvBnAct
 from torchok.models.base import BaseModel
+from torchok.models.modules.bricks.convbnact import ConvBnAct
 
 
 @NECKS.register_class

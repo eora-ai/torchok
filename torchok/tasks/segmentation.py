@@ -4,9 +4,10 @@ import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 
-from torchok.tasks.base import BaseTask
 from torchok.constructor import BACKBONES, HEADS, NECKS, TASKS
 from torchok.models.backbones import BackboneWrapper
+from torchok.tasks.base import BaseTask
+
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
@@ -58,5 +59,4 @@ class SegmentationTask(BaseTask):
 
     def as_module(self) -> nn.Sequential:
         """Method for model representation as sequential of modules(need for checkpointing)."""
-        modules = nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.head)
-        return modules
+        return nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.head)

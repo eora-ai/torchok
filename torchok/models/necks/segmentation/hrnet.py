@@ -7,8 +7,8 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from torchok.constructor import NECKS
-from torchok.models.modules.bricks.convbnact import ConvBnAct
 from torchok.models.base import BaseModel
+from torchok.models.modules.bricks.convbnact import ConvBnAct
 
 ConvBnRelu = partial(ConvBnAct, act_layer=nn.ReLU)
 

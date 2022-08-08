@@ -1,12 +1,12 @@
 import os
-
-from pytorch_lightning import Trainer
 from pathlib import Path
 
-from torchok.constructor.logger import create_logger, create_outputs_path
+from pytorch_lightning import Trainer
+
 from torchok.callbacks.finalize_logger import FinalizeLogger
 from torchok.callbacks.model_checkpoint_with_onnx import ModelCheckpointWithOnnx
 from torchok.constructor import CALLBACKS
+from torchok.constructor.logger import create_logger, create_outputs_path
 
 
 def create_trainer(train_config):
@@ -43,6 +43,6 @@ def create_trainer(train_config):
         for callback_config in callbacks_config:
             callbacks.append(CALLBACKS.get(callback_config.name)(**callback_config.params))
     callbacks = callbacks or None
-    
+
     trainer = Trainer(logger=logger, callbacks=callbacks, **train_config.trainer)
     return trainer

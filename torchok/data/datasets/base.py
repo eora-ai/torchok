@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Optional, Union
 
 import cv2
 import numpy as np
-from torch.utils.data import Dataset
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
+from torch.utils.data import Dataset
 
 
 class ImageDataset(Dataset, ABC):
@@ -28,12 +28,11 @@ class ImageDataset(Dataset, ABC):
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        self._test_mode = test_mode
-        self._transform = transform
-        self._augment = augment
-        self._image_dtype = image_dtype
-        self._grayscale = grayscale
-
+        self.test_mode = test_mode
+        self.transform = transform
+        self.augment = augment
+        self.image_dtype = image_dtype
+        self.grayscale = grayscale
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Is transformations based on API of albumentations library.
@@ -53,11 +52,11 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        image = cv2.imread(str(image_path), int(not self._grayscale))
+        image = cv2.imread(str(image_path), int(not self.grayscale))
 
         if image is None:
             raise ValueError(f'{image_path} image does not exist')
-        if self._grayscale:
+        if self.grayscale:
             image = image[..., None]
         else:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -73,28 +72,3 @@ class ImageDataset(Dataset, ABC):
     def __getitem__(self, item: int) -> dict:
         """Get item sample."""
         pass
-
-    @property
-    def test_mode(self) -> bool:
-        """Is test mode."""
-        return self._test_mode
-
-    @property
-    def transform(self) -> Optional[Union[BasicTransform, BaseCompose]]:
-        """Is transform to be applied on a sample."""
-        return self._transform
-
-    @property
-    def augment(self) -> Optional[Union[BasicTransform, BaseCompose]]:
-        """Is optional augment to be applied on a sample."""
-        return self._augment
-
-    @property
-    def image_dtype(self) -> str:
-        """Is data type of the torch tensors related to the image."""
-        return self._image_dtype
-
-    @property
-    def grayscale(self) -> bool:
-        """Is grayscale mode."""
-        return self._grayscale

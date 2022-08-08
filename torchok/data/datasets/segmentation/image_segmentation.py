@@ -22,7 +22,7 @@ class ImageSegmentationDataset(ImageDataset):
         image3.png, mask3.png
     """
     def __init__(self,
-                 data_folder: str,
+                 data_folder: Union[Path, str],
                  csv_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
@@ -70,7 +70,7 @@ class ImageSegmentationDataset(ImageDataset):
         image = self._read_image(image_path)
         sample = {'image': image}
 
-        if not self._test_mode:
+        if not self.test_mode:
             mask_path = self.__data_folder / record[self.__target_column]
             mask = self.__read_mask(mask_path)
             sample['mask'] = mask
@@ -78,10 +78,10 @@ class ImageSegmentationDataset(ImageDataset):
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
 
-        sample['image'] = sample['image'].type(torch.__dict__[self._image_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
         sample['index'] = idx
 
-        if not self._test_mode:
+        if not self.test_mode:
             sample['target'] = sample['mask'].type(torch.__dict__[self.__target_dtype])
             del sample['mask']
 

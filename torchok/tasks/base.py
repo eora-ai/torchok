@@ -1,11 +1,11 @@
-from typing import Any, Dict, Tuple, List, Optional, Union
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-from pytorch_lightning import LightningModule
 from omegaconf import DictConfig
+from pytorch_lightning import LightningModule
+from torch.utils.data import DataLoader
 
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
@@ -24,21 +24,19 @@ class BaseTask(LightningModule, ABC):
         super().__init__()
         self.save_hyperparameters(hparams)
         self.__constructor = Constructor(hparams)
-        self._input_tensor_names = []
-        self._losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
-        self._hparams = hparams
-        self._metrics_manager = self.__constructor.configure_metrics_manager()
+        self.input_tensor_names = []
+        self.losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
+        self.metrics_manager = self.__constructor.configure_metrics_manager()
         self.example_input_array = []
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
             for i, input_params in enumerate(inputs):
                 input_tensor_name = f"input_tensors_{i}"
-                self._input_tensor_names.append(input_tensor_name)
+                self.input_tensor_names.append(input_tensor_name)
                 input_tensor = torch.rand(1, *input_params['shape']).type(torch.__dict__[input_params['dtype']])
                 self.example_input_array.append(input_tensor)
                 self.register_buffer(input_tensor_name, input_tensor)
-
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
@@ -46,11 +44,11 @@ class BaseTask(LightningModule, ABC):
         pass
 
     @abstractmethod
-    def forward_with_gt(batch: Dict[str, Any]) -> Dict[str, torch.Tensor]:
+    def forward_with_gt(self, batch: Dict[str, Any]) -> Dict[str, torch.Tensor]:
         """Abstract forward method for training(with ground truth labels)."""
         pass
 
-    def train_modules(self) -> List[str]:
+    def train_modules(self) -> Iterator[nn.Module]:
         """Create a list of 1st-level modules that need to be optimized. The method is used to apply an optimizer
         for the returned modules.
 
@@ -121,20 +119,20 @@ class BaseTask(LightningModule, ABC):
 
     def on_train_start(self) -> None:
         if self.current_epoch == 0:
-            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint,
                             overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
                             exclude_keys=self._hparams.task.exclude_keys)
 
     def on_test_start(self) -> None:
-        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint, 
+        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint,
                         overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
                         exclude_keys=self._hparams.task.exclude_keys)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
         output = self.forward_with_gt(batch[0])
-        total_loss, tagged_loss_values = self._losses(**output)
-        self._metrics_manager.forward(Phase.TRAIN, **output)
+        total_loss, tagged_loss_values = self.losses(**output)
+        self.metrics_manager.forward(Phase.TRAIN, **output)
         output_dict = {'loss': total_loss}
         output_dict.update(tagged_loss_values)
         return output_dict
@@ -142,24 +140,24 @@ class BaseTask(LightningModule, ABC):
     def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        self._metrics_manager.forward(Phase.VALID, **output)
+        self.metrics_manager.forward(Phase.VALID, **output)
 
         # In arcface classification task, if we try to compute loss on test dataset with different number
         # of classes we will crash the train study.
         if self._hparams.task.compute_loss_on_valid:
-            total_loss, tagged_loss_values = self._losses(**output)
+            total_loss, tagged_loss_values = self.losses(**output)
             output_dict = {'loss': total_loss}
             output_dict.update(tagged_loss_values)
         else:
             output_dict = {}
-        
+
         return output_dict
 
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        self._metrics_manager.forward(Phase.TEST, **output)
-    
+        self.metrics_manager.forward(Phase.TEST, **output)
+
     def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
@@ -184,39 +182,19 @@ class BaseTask(LightningModule, ABC):
     def training_epoch_end(self,
                            training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TRAIN))
+        self.log_dict(self.metrics_manager.on_epoch_end(Phase.TRAIN))
 
     def validation_epoch_end(self,
                              valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.VALID))
+        self.log_dict(self.metrics_manager.on_epoch_end(Phase.VALID))
 
     def test_epoch_end(self,
                        test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
-        self.log_dict(self._metrics_manager.on_epoch_end(Phase.TEST))
+        self.log_dict(self.metrics_manager.on_epoch_end(Phase.TEST))
 
     @abstractmethod
     def as_module(self) -> nn.Sequential:
         """Abstract method for model representation as sequential of modules(need for checkpointing)."""
         pass
-
-    @property
-    def hparams(self) -> DictConfig:
-        """Hyperparameters that set in yaml file."""
-        return self._hparams
-
-    @property
-    def metrics_manager(self):
-        """Metrics manager."""
-        return self._metrics_manager
-
-    @property
-    def losses(self):
-        """Losses."""
-        return self._losses
-
-    @property
-    def input_tensor_names(self) -> List[str]:
-        """Input tensor names."""
-        return self._input_tensor_names

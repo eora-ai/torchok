@@ -4,7 +4,6 @@ from torch.optim import (
 )
 
 from torchok.constructor import OPTIMIZERS
-from . import adafactor
 
 # TODO: add other fresh optimizers from PyTorch
 OPTIMIZERS.register_class(Adadelta)

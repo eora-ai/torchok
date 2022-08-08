@@ -1,15 +1,15 @@
-from pathlib import Path
-from typing import Union, Optional
-
 import re
-import torch
+from pathlib import Path
+from typing import Optional, Union
+
 import numpy as np
 import pandas as pd
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
-from torchok.data.datasets.base import ImageDataset
 from torchok.constructor import DATASETS
+from torchok.data.datasets.base import ImageDataset
 
 
 @DATASETS.register_class
@@ -55,8 +55,8 @@ class ImageClassificationDataset(ImageDataset):
                 interface of transforms in `albumentations`_ library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations`_ library.
-            image_dtype: Data type of of the torch tensors related to the image.
-            target_dtype: Data type of of the torch tensors related to the target.
+            image_dtype: Data type of the torch tensors related to the image.
+            target_dtype: Data type of the torch tensors related to the target.
             csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
                 default value: {'image_path': 'image_path', 'label': 'label'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
@@ -76,9 +76,7 @@ class ImageClassificationDataset(ImageDataset):
         self.__multilabel = multilabel
         self.__lazy_init = lazy_init
         self.__csv_path = csv_path
-        self.__csv_columns_mapping = csv_columns_mapping if csv_columns_mapping is not None\
-            else {'image_path': 'image_path',
-                  'label': 'label'}
+        self.__csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path', 'label': 'label'}
 
         self.__input_column = self.__csv_columns_mapping['image_path']
         self.__target_column = self.__csv_columns_mapping['label']
@@ -109,10 +107,10 @@ class ImageClassificationDataset(ImageDataset):
         sample = {'image': image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self._image_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
         sample['index'] = idx
 
-        if self._test_mode:
+        if self.test_mode:
             return sample
 
         sample['target'] = record[self.__target_column]

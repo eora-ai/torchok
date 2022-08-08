@@ -19,4 +19,4 @@ class TestArcFaceHead(unittest.TestCase):
         in_features = 128
         num_classes = 10
         arcface = HEADS.get('ArcFaceHead')(in_features, num_classes)
-        self.assertEqual(arcface.weights.shape, (num_classes, in_features))
+        self.assertEqual(arcface.weight.shape, (num_classes, in_features))

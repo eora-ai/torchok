@@ -72,7 +72,7 @@ class RetrievalDataset(ImageDataset):
             data_folder: Directory with all the images.
             matches_csv_path: path to csv file where queries with their relevance scores are specified
             img_list_csv_path: path to mapping image identifiers to image paths. Format: id | path.
-                Id from matches csv are linked to id from img_list csv
+                ID from matches csv are linked to id from img_list csv
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
@@ -188,7 +188,7 @@ class RetrievalDataset(ImageDataset):
         sample = {'image': image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self._image_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
         sample['index'] = index
         sample['is_query'] = self.__is_query[index]
         sample['scores'] = self.__scores[index]

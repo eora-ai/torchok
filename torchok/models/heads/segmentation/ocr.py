@@ -23,6 +23,7 @@ class SpatialGather_Module(nn.Module):
     """Aggregate the context features according to the initial predicted probability distribution.
     Employ the soft-weighted method to aggregate the context.
     """
+
     def __init__(self, num_classes: int = 0, scale: int = 1):
         """Init ObjectAttentionBlock.
         Args:
@@ -46,6 +47,7 @@ class SpatialGather_Module(nn.Module):
 
 class ObjectAttentionBlock(nn.Module):
     """The basic implementation for object context block."""
+
     def __init__(self, in_channels: int, key_channels: int, scale: int = 1):
         """Init ObjectAttentionBlock.
         Args:

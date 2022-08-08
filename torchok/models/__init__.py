@@ -9,7 +9,7 @@ from torchok.models import poolings
 
 __all__ = [
     'BaseModel',
-    'backbones'
+    'backbones',
     'heads',
     'necks',
     'poolings',

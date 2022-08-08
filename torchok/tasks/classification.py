@@ -1,9 +1,9 @@
-from typing import Dict, Union, Tuple
+from typing import Dict, Union
 
 import torch
 import torch.nn as nn
-from torch import Tensor
 from omegaconf import DictConfig
+from torch import Tensor
 
 from torchok.constructor import BACKBONES, HEADS, NECKS, POOLINGS, TASKS
 from torchok.tasks.base import BaseTask
@@ -34,7 +34,7 @@ class ClassificationTask(BaseTask):
             self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
             pooling_in_channels = self.neck.out_channels
         else:
-            self.neck = None
+            self.neck = nn.Identity()
             pooling_in_channels = neck_in_channels
 
         # POOLING
@@ -51,8 +51,7 @@ class ClassificationTask(BaseTask):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone(x)
-        if self.neck is not None:
-            x = self.neck(x)
+        x = self.neck(x)
         x = self.pooling(x)
         x = self.head(x)
         return x
@@ -62,8 +61,7 @@ class ClassificationTask(BaseTask):
         input_data = batch.get('image')
         target = batch.get('target')
         features = self.backbone(input_data)
-        if self.neck is not None:
-            features = self.neck(features)
+        features = self.neck(features)
         embeddings = self.pooling(features)
         prediction = self.head(embeddings, target)
         output = {'embeddings': embeddings, 'prediction': prediction}
@@ -75,10 +73,4 @@ class ClassificationTask(BaseTask):
 
     def as_module(self) -> nn.Sequential:
         """Method for model representation as sequential of modules(need for checkpointing)."""
-        modules_for_checkpoint = []
-        modules_for_checkpoint.append(self.backbone)
-        if self.neck is not None:
-            modules_for_checkpoint.append(self.neck)
-        modules_for_checkpoint.append(self.pooling)
-        modules_for_checkpoint.append(self.head)
-        return nn.Sequential(*modules_for_checkpoint)
+        return nn.Sequential(self.backbone, self.neck, self.pooling, self.head)

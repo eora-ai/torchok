@@ -1,9 +1,9 @@
-from torch.nn import Module
-from torch import Tensor
 from abc import ABC
-from typing import Tuple, List
+from typing import List, Tuple
 
 from timm.models.features import FeatureHooks
+from torch import Tensor
+from torch.nn import Module
 
 from torchok.models.base import BaseModel
 
