@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from typing import Dict, Optional
 from weakref import proxy
 
@@ -37,11 +38,14 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         self._last_global_step_saved = trainer.global_step
 
         if trainer.is_global_zero:
-            if self.export_to_onnx:
+            if self.export_to_onnx and not trainer.training:
                 # DDP mode use some wrappers, and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
                 input_tensors = [getattr(model, name) for name in model.input_tensor_names]
-                model = model.as_module()[:-1] if self.remove_head else model.as_module()
+                model = model.as_module()
+                if self.remove_head:
+                    model = model[:-1]
+                model = deepcopy(model)
                 torch.onnx.export(model, tuple(input_tensors), filepath + self.ONNX_EXTENSION, **self.onnx_params)
 
             for logger in trainer.loggers:
