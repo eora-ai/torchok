@@ -17,7 +17,7 @@ def create_trainer(train_config):
     if logger_params is not None:
         full_outputs_path = create_outputs_path(log_dir=logger_params.log_dir,
                                                 experiment_name=logger_params.experiment_name,
-                                                create_datetime_log_subdir=logger_params.create_datetime_log_subdir)
+                                                timestamp=logger_params.timestamp)
 
         experiment_path = Path(logger_params.log_dir) / logger_params.experiment_name
         experiment_subdir = str(full_outputs_path.relative_to(experiment_path))

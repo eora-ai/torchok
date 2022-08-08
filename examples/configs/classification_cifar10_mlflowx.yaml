@@ -80,13 +80,14 @@ trainer:
 
 hydra:
   run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
+    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
 
 # For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
-# if it isn't define it will be get from MLFLOW_TRACKING_URI - environment variable 
+# if it isn't define it will be gotten from MLFLOW_TRACKING_URI - environment variable
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: cifar10
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: MLFlowLoggerX
   params:
     artifact_location: 'file://${oc.env:HOME}/.cache/torchok/logs/artifacts/'
