@@ -1,9 +1,9 @@
-from typing import List, Dict, Iterable, Union, Set
-
 import logging
+from typing import Dict, Iterable, List, Set, Union
+
 import torch.nn as nn
-from torch.optim.optimizer import Optimizer
 from pytorch_lightning.callbacks import BaseFinetuning
+from torch.optim.optimizer import Optimizer
 
 from torchok.constructor import CALLBACKS
 
@@ -37,6 +37,7 @@ def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Mod
 @CALLBACKS.register_class
 class FreezeUnfreeze(BaseFinetuning):
     """Callback to freeze modules and incremental unfreeze this modules during training."""
+
     def __init__(self, epoch2module_names: Dict[int, List[str]]):
         """Init FreezeUnfreeze.
 

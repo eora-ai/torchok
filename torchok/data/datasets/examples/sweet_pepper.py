@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
 
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
@@ -42,14 +42,14 @@ class SweetPepper(ImageSegmentationDataset):
 
         Args:
             train: If True, train dataset will be used, else - test dataset.
-            download: If True, data will be download and save to data_folder.
+            download: If True, data will be downloaded and save to data_folder.
             data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of of the torch tensors related to the image.
-            target_dtype: Data type of of the torch tensors related to the target.
+            image_dtype: Data type of the torch tensors related to the image.
+            target_dtype: Data type of the torch tensors related to the target.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """

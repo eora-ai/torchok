@@ -3,7 +3,8 @@ Adapted from https://github.com/BloodAxe/pytorch-toolbelt/blob/develop/pytorch_t
 Copyright (c) Eugene Khvedchenya
 Licensed under The MIT License [see LICENSE for details]
 """
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -11,7 +12,6 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from torchok.constructor import LOSSES
-
 
 __all__ = ["DiceLoss"]
 
@@ -85,6 +85,7 @@ def to_tensor(x: Union[torch.Tensor, list, tuple], dtype: torch.dtype = None) ->
 @LOSSES.register_class
 class DiceLoss(nn.Module):
     """Implementation of Dice loss for image segmentation task. It supports binary, multiclass and multilabel cases"""
+
     def __init__(self, mode: str, classes: List[int] = None, log_loss: bool = False,
                  from_logits: bool = True, smooth: float = 0, eps: float = 1e-7):
         """Init DiceLoss.

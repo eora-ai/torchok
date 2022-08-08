@@ -1,20 +1,17 @@
+import math
 from abc import ABC
+from enum import Enum
+from typing import Callable, Generator, List, Optional, Tuple, Union
 
-from sklearn.preprocessing import normalize
-from typing import Callable, List, Optional, Union, Tuple, Generator
-
-import torch
 import faiss
 import numpy as np
 import pandas as pd
-import math
-
+import torch
+from ranx.metrics import average_precision, hit_rate, ndcg, precision, recall
+from sklearn.preprocessing import normalize
 from torchmetrics import Metric
-from ranx.metrics import precision, recall, average_precision, ndcg, hit_rate
-from enum import Enum
 
 from torchok.constructor import METRICS
-
 
 __all__ = [
     'PrecisionAtKMeter',
@@ -51,9 +48,10 @@ class IndexBasedMeter(Metric, ABC):
     Store retrieval vectors and targets during phase in update method. FAISS library is used to build an index
     and search for top-k in it. Supports 2 datasets: classification dataset with targets,
     and representation dataset with scores and queries_idxs tensors.
-    Compute method return generator with relevant and closest (FAISS searched) indexes. The relevant index
-    contain it's relevant index with scores for current query. And the closest contain closest index with it's distance.
+    Compute method return generator with relevant and closest (FAISS searched) indexes. The relevant index contain
+    its relevant index with scores for current query. And the closest contain the closest index with its distance.
     """
+
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
                  metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None,
                  normalize_vectors: bool = False, **kwargs):
@@ -65,7 +63,7 @@ class IndexBasedMeter(Metric, ABC):
             dataset_type: Dataset type (classification or representation), which will be used to calculate metric.
             metric_distance: Metric distance (IP - cosine distance, L2 - euclidean), which will be used to build
                 FAISS index.
-            metric_func: Representation metric (e.g ranx metric function) with the follow backend
+            metric_func: Representation metric (e.g. ranx metric function) with the follow backend
                 `def metric_func(
                     qrels: Union[np.ndarray, numba.typed.List],
                     run: Union[np.ndarray, numba.typed.List],
@@ -76,7 +74,7 @@ class IndexBasedMeter(Metric, ABC):
                 for more details.
             k: Number of top closest indexes to get.
             search_batch_size: The size for one FAISS search request.
-            normalize_vectors: If true vectors will be normalize, overwise no.
+            normalize_vectors: If true vectors will be normalized, otherwise no.
 
         Raises:
             ValueError: If metric or dataset is not correct write.
@@ -114,10 +112,10 @@ class IndexBasedMeter(Metric, ABC):
 
         Args:
             vectors: Often it would be embeddings, size (batch_size, embedding_size).
-            targets: The labels for every vectors in classification mode, size (batch_size).
+            targets: The labels for every vector in classification mode, size (batch_size).
             query_idxs: Integer tensor where values >= 0 represent indices of queries with corresponding
                 vectors in vectors tensor and value -1 indicates that the corresponding vector isn't a query.
-            scores: The scores tensor, see representation dataset for more information,
+            scores: The score tensor, see representation dataset for more information,
                 size (batch_size, total_num_queries).
 
         Raises:
@@ -149,7 +147,7 @@ class IndexBasedMeter(Metric, ABC):
         Firstly it gathers all tensors in storage (done by torchmetrics).
         Then it prepares data, separates query and database vectors.
         Then it builds the FAISS index.
-        Then, it create a generator of relevant and closest arrays.
+        Then, it creates a generator of relevant and closest arrays.
         Finally, it compute metric.
 
         Returns:
@@ -164,7 +162,7 @@ class IndexBasedMeter(Metric, ABC):
             targets = torch.cat(self.targets).numpy()
             # prepare data
             relevant_idxs, gallery_idxs, query_row_idxs, query_as_relevant = self.prepare_classification_data(targets)
-            # mock scores and query column indexes because it belong to representation data
+            # mock scores and query column indexes because it belongs to representation data
             scores = None
             query_column_idxs = None
         else:
@@ -173,7 +171,7 @@ class IndexBasedMeter(Metric, ABC):
             query_idxs = torch.cat(self.query_idxs).numpy()
             # prepare data
             relevant_idxs, gallery_idxs, query_column_idxs, \
-                query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
+            query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
 
         # build index
         vectors = vectors.astype(np.float32)
@@ -190,9 +188,7 @@ class IndexBasedMeter(Metric, ABC):
         metric = np.mean(metrics)
         return metric
 
-    def prepare_representation_data(self,
-                                    query_idxs: np.ndarray,
-                                    scores: np.ndarray
+    def prepare_representation_data(self, query_idxs: np.ndarray, scores: np.ndarray
                                     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Prepare data for faiss build index, and following search, in representation dataset case.
 
@@ -203,9 +199,9 @@ class IndexBasedMeter(Metric, ABC):
         Args:
             query_idxs: Integer array where values >= 0 represent indices of queries with corresponding
                 vectors in vectors tensor and value -1 indicates that the corresponding vector isn't a query. Also
-                value of this array is the column number in the scores matrix, which need to reproduce
+                value of this array is the column number in the score matrix, which need to reproduce
                 relevant elements.
-            scores: The scores tensor, see representation dataset for more information,
+            scores: The score tensor, see representation dataset for more information,
                 size (batch_size, total_num_queries).
                 Example of score matrix:
                     SCORES = torch.tensor(
@@ -232,9 +228,9 @@ class IndexBasedMeter(Metric, ABC):
             query_column_idxs: Array of queries column indexes in scores matrix. It means query order number in origin
                 dataset, because after shuffle dataset the query order may be change we need to store it to reproduce
                 for every query vector it's relevant.
-            query_row_idxs: Array of queries row indexes in scores matrix, lso this index belong to vectors storage,
+            query_row_idxs: Array of queries row indexes in scores matrix, lso this index belong to vector storage,
                 need to get query vector in search study.
-            query_as_relevant: Array of query row indexes which are in relevant, i.e belong to queries and
+            query_as_relevant: Array of query row indexes which are in relevant, i.e. belong to queries and
                 gallery simultaneously.
 
         Raises:
@@ -243,13 +239,13 @@ class IndexBasedMeter(Metric, ABC):
         is_query = query_idxs >= 0
         # array of columns indexes in scores matrix, need to get relevant
         query_column_idxs = query_idxs[is_query]
-        # array of row indexes in scores matrix, also this index belong to vectors storage, need to get query vector in
+        # array of row indexes in scores matrix, also this index belong to vector storage, need to get query vector in
         # search study
         query_row_idxs = np.where(is_query)[0]
         # gallery idxs in vectors storage, which row sum > 0
         # TODO: try to get gallery indexes from Dataset
         gallery_idxs = np.where(np.any(scores > 0, axis=-1))[0]
-        # found query row indexes which are in relevant, i.e belong to queries and gallery simultaneously
+        # found query row indexes which are in relevant, i.e. belong to queries and gallery simultaneously
         query_as_relevant = np.in1d(query_row_idxs, gallery_idxs)
 
         relevant_idxs = []
@@ -267,11 +263,10 @@ class IndexBasedMeter(Metric, ABC):
         relevant_idxs = np.array(relevant_idxs)
         return relevant_idxs, gallery_idxs, query_column_idxs, query_row_idxs, query_as_relevant
 
-    def prepare_classification_data(self,
-                                    targets: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def prepare_classification_data(self, targets: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Prepare data for faiss build index, and following search, in classification dataset case.
 
-        In the classification case, ll the vectors would be used as queries, and the relevants vectors will be vectors
+        In the classification case, ll the vectors would be used as queries, and the relevant vectors will be vectors
         that have the same label as the query.
 
         Args:
@@ -281,7 +276,7 @@ class IndexBasedMeter(Metric, ABC):
             relevant_idxs: Array of relevant indexes in gallery data, for every query.
             gallery_idxs: Array of gallery indexes in vectors storage.
             query_row_idxs: Array of queries indexes in vectors storage.
-            query_as_relevant: Array of query row indexes which are in relevant, i.e belong to queries and
+            query_as_relevant: Array of query row indexes which are in relevant, i.e. belong to queries and
                 gallery simultaneously.
         Raises:
             ValueError: If any class has only one element.
@@ -315,8 +310,8 @@ class IndexBasedMeter(Metric, ABC):
                         ) -> Generator[Tuple[List[np.ndarray], List[np.ndarray]], None, None]:
         """Create relevants and closest arrays, by faiss index search.
 
-        Output in relevant array, contain it's index in gallery data and score for current query.
-        Output in closest array, contain it's index in gallery data and distance = 1 for current query.
+        Output in relevant array, contain its index in gallery data and score for current query.
+        Output in the closest array, contain its index in gallery data and distance = 1 for current query.
 
         This function use self.search_batch_size to define how many vectors to send per one faiss search request.
 
@@ -324,7 +319,7 @@ class IndexBasedMeter(Metric, ABC):
         query element the following information is available:
             query_row_idxs[i] - index to get embedding vector in vectors storage
             query_col_idxs[i] - column index in scores matrix, need to get score value for every relevant (used in NDCG)
-            query_as_relevant[i] - whether the query in relevant i.e in gallery data, need to remove first element in
+            query_as_relevant[i] - whether the query in relevant i.e. in gallery data, need to remove first element in
                 retrieved indexes if it true, and last element if it false (because in fact, k + 1 search request is
                 being made)
 

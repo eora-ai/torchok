@@ -1,16 +1,16 @@
 import logging
-from typing import Dict, Union, Any
+from typing import Any, Dict, Union
 
 import onnx
+import onnxruntime as onnxrt
 import torch
 import torch.nn as nn
-from torch import Tensor
-import onnxruntime as onnxrt
 from omegaconf import DictConfig
+from torch import Tensor
 
 from torchok.constructor import TASKS
-from torchok.tasks.base import BaseTask
 from torchok.constructor.config_structure import Phase
+from torchok.tasks.base import BaseTask
 
 
 @TASKS.register_class
@@ -58,7 +58,7 @@ class ONNXTask(BaseTask):
 
     def forward_with_gt(self, batch: Dict[str, Any]) -> Dict[str, Tensor]:
         pass
-    
+
     def as_module(self) -> nn.Sequential:
         pass
 

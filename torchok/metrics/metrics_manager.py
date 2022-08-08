@@ -1,9 +1,10 @@
 import numbers
+from typing import Any, Dict, List
+
 import numpy as np
 import torch.nn as nn
 from torch import Tensor
 from torchmetrics import Metric
-from typing import List, Dict, Any
 
 from torchok.constructor import METRICS
 from torchok.constructor.config_structure import MetricParams, Phase
@@ -11,6 +12,7 @@ from torchok.constructor.config_structure import MetricParams, Phase
 
 class MetricWithUtils(nn.Module):
     """Union class for metric and metric utils parameters."""
+
     def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
         """Initalize MetricWithUtils.
         
@@ -38,7 +40,7 @@ class MetricWithUtils(nn.Module):
     def mapping(self) -> Dict[str, str]:
         """Dictionary for mapping Metric forward input keys with Task output dictionary keys."""
         return self._mapping
-    
+
     def forward(self, *args, **kwargs):
         """Forward metric.
         
@@ -68,6 +70,7 @@ class MetricWithUtils(nn.Module):
 
 class MetricsManager(nn.Module):
     """Manages all metrics for a Task."""
+
     def __init__(self, params: List[MetricParams]):
         """Initialize MetricManager.
 
@@ -104,7 +107,7 @@ class MetricsManager(nn.Module):
             log_name = prefix + metric_params.name
             if log_name in added_log_names:
                 raise ValueError(f'Got two metrics with identical names: {log_name}. '
-                                 f'Please, set differet prefixes for identical metrics in the config file.')           
+                                 f'Please, set differet prefixes for identical metrics in the config file.')
             else:
                 added_log_names.append(log_name)
 
@@ -128,7 +131,7 @@ class MetricsManager(nn.Module):
         for metric_with_utils in self.__phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             metric_with_utils.update(*args, **targeted_kwargs)
-            
+
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
         """Summarize epoch values and return log.
         
@@ -141,33 +144,33 @@ class MetricsManager(nn.Module):
 
         Raises:
             ValueError: If metric.compute() returns not numerical value.
-        """ 
+        """
         log = {}
         for metric_with_utils in self.__phase2metrics[phase.name]:
             metric_value = metric_with_utils.compute()
-            # If it tensor type with wrong shape.
+            # If its tensor type with wrong shape.
             if isinstance(metric_value, Tensor) and len(metric_value.shape) != 0:
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
                                  f'not torch tensor with shape {metric_value.shape}.')
             # If it numpy array with wrong shape.
             if isinstance(metric_value, np.ndarray) and len(metric_value.shape) != 0:
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
                                  f'not numpy array with shape {metric_value.shape}.')
             # If it numpy array with one element but wrong dtype
-            if (isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and 
+            if (isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and
                     np.issubdtype(metric_value.dtype, np.number)):
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
                                  f'not numpy array element with dtype {metric_value.dtype}.')
 
             is_number = isinstance(metric_value, numbers.Number)
             # If not numeric type.
             if not (is_number or isinstance(metric_value, Tensor) or isinstance(metric_value, np.ndarray)):
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, ' 
+                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
                                  f'not numpy array element with dtype {metric_value.dtype}.')
 
             metric_key = f'{phase.value}/{metric_with_utils.log_name}'
             log[metric_key] = metric_value
-            
+
             # Do reset
             metric_with_utils.reset()
 

@@ -1,11 +1,11 @@
 import os
-from weakref import proxy
 from typing import Dict, Optional
+from weakref import proxy
 
 import torch
+from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.utilities.types import _METRIC
-from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 
 
 class ModelCheckpointWithOnnx(ModelCheckpoint):
@@ -20,9 +20,8 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         self.export_to_onnx = export_to_onnx
         self.remove_head = remove_head
 
-    def format_checkpoint_name(
-        self, metrics: Dict[str, _METRIC], filename: Optional[str] = None, ver: Optional[int] = None
-    ) -> str:
+    def format_checkpoint_name(self, metrics: Dict[str, _METRIC], filename: Optional[str] = None,
+                               ver: Optional[int] = None) -> str:
         """Override format_checkpoint_name."""
         filename = filename or self.filename
         filename = self._format_checkpoint_name(filename, metrics, auto_insert_metric_name=self.auto_insert_metric_name)
