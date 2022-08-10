@@ -184,6 +184,7 @@ class TestSwin(AbstractTestBackboneCorrectness, unittest.TestCase):
 class TestBeit(AbstractTestBackboneCorrectness, unittest.TestCase):
     def setUp(self) -> None:
         self.input = torch.rand(2, 3, 224, 224, device=self.device)
+
     @parameterized.expand([['beit_base_patch16_224']])
     def test_load_pretrained(self, backbone_name):
         super().test_load_pretrained(backbone_name)
