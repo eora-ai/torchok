@@ -179,3 +179,30 @@ class TestSwin(AbstractTestBackboneCorrectness, unittest.TestCase):
         with torch.no_grad():
             torch.jit.trace(model, x)
         torch.cuda.empty_cache()
+
+
+class TestBeit(AbstractTestBackboneCorrectness, unittest.TestCase):
+    def setUp(self) -> None:
+        self.input = torch.rand(2, 3, 224, 224, device=self.device)
+    @parameterized.expand([['beit_base_patch16_224']])
+    def test_load_pretrained(self, backbone_name):
+        super().test_load_pretrained(backbone_name)
+
+    @parameterized.expand([['beit_base_patch16_224', (2, 768, 1, 1)]])
+    def test_forward_output_shape(self, backbone_name, expected_shape):
+        super().test_forward_output_shape(backbone_name, expected_shape)
+
+    @parameterized.expand([
+        ['beit_base_patch16_224', [(2, 3, 224, 224), (2, 768, 56, 56), (2, 768, 28, 28),
+                                   (2, 768, 14, 14), (2, 768, 7, 7)]]
+    ])
+    def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
+        super().test_forward_feature_output_shape(backbone_name, expected_shapes)
+
+    @parameterized.expand(BACKBONES.list_models(module='beit'))
+    def test_torchscript_conversion(self, backbone_name):
+        model = BACKBONES.get(backbone_name)(pretrained=False).to(self.device).eval()
+        x = torch.rand(2, 3, *model.img_size, device=self.device)
+        with torch.no_grad():
+            torch.jit.trace(model, x)
+        torch.cuda.empty_cache()

@@ -2,9 +2,10 @@ import unittest
 
 import torch
 from parameterized import parameterized
-from torch.nn import Module, Sequential
+from torch.nn import Sequential
 
 from torchok import BACKBONES, HEADS, NECKS
+from torchok.models.backbones.base_backbone import BackboneWrapper
 
 example_backbones = [
     'resnet18',
@@ -15,25 +16,13 @@ example_backbones = [
 ]
 
 
-class Backbone(Module):
-    def __init__(self, backbone_name):
-        super().__init__()
-        self.backbone = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
-
-    def forward(self, x):
-        return self.backbone.forward_features(x)
-
-    @property
-    def out_encoder_channels(self):
-        return self.backbone.out_encoder_channels
-
-
 class AbstractTestSegmentationNeck:
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     num_classes = 10
 
     def setUp(self) -> None:
-        self.input = torch.rand(2, 3, 256, 256, device=self.device)
+        self.img_size = (256, 256)
+        self.input = torch.rand(2, 3, *self.img_size, device=self.device)
 
     def create_model(self, head_name):
         raise NotImplemented()
@@ -42,7 +31,7 @@ class AbstractTestSegmentationNeck:
         model = self.create_model(backbone_name)
         with torch.no_grad():
             output = model(self.input)
-        self.assertTupleEqual(output.shape, (2, self.num_classes, 256, 256))
+        self.assertTupleEqual(output.shape, (2, self.num_classes, *self.img_size))
         torch.cuda.empty_cache()
 
     def test_torchscript_conversion(self, backbone_name):
@@ -55,7 +44,8 @@ class AbstractTestSegmentationNeck:
 class TestUnet(AbstractTestSegmentationNeck, unittest.TestCase):
 
     def create_model(self, backbone_name):
-        backbone = Backbone(backbone_name)
+        backbone = BACKBONES.get(backbone_name)(pretrained=False, in_channels=3)
+        backbone = BackboneWrapper(backbone)
         encoder_channels = backbone.out_encoder_channels
         decoder_channels = (512, 256, 128, 64, 64)
         if len(encoder_channels) < len(decoder_channels):

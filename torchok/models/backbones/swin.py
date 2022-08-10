@@ -170,22 +170,21 @@ class SwinTransformerV2(BaseBackbone):
 
         self.feature_norms = nn.ModuleList([norm_layer(chs) for i, chs in enumerate(self.encoder_channels)])
 
-        self.apply(self._init_weights)
+        self.init_weights()
+
+    def init_weights(self):
+        """Weight initialization."""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                trunc_normal_(m.weight, std=.02)
+                if isinstance(m, nn.Linear) and m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.LayerNorm):
+                nn.init.constant_(m.bias, 0)
+                nn.init.constant_(m.weight, 1.0)
         for bly in self.layers:
             bly._init_respostnorm()
 
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-
-    # Adapted from https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/swin_transformer_v2.py
-    # Copyright 2019 Ross Wightman
-    # Licensed under The Apache 2.0 License [see LICENSE for details]
     @torch.jit.ignore
     def no_weight_decay(self) -> List[str]:
         """Create modules names for which weights decay will not be use. See BaseBackbone for more information.
@@ -254,7 +253,7 @@ class SwinTransformerV2(BaseBackbone):
         return x
 
 
-def create_swin_transformer_v2(variant, pretrained=False, **kwargs):
+def _create_swin_transformer_v2(variant, pretrained=False, **kwargs):
     kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
     model = build_model_with_cfg(SwinTransformerV2, variant, pretrained, pretrained_strict=False,
                                  kwargs_filter=kwargs_filter, pretrained_filter_fn=checkpoint_filter_fn, **kwargs)
@@ -267,7 +266,7 @@ def swinv2_tiny_window16_256(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=16, embed_dim=96, depths=(2, 2, 6, 2), num_heads=(3, 6, 12, 24), **kwargs)
-    return create_swin_transformer_v2('swinv2_tiny_window16_256', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_tiny_window16_256', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -276,7 +275,7 @@ def swinv2_tiny_window8_256(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=8, embed_dim=96, depths=(2, 2, 6, 2), num_heads=(3, 6, 12, 24), **kwargs)
-    return create_swin_transformer_v2('swinv2_tiny_window8_256', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_tiny_window8_256', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -285,7 +284,7 @@ def swinv2_small_window16_256(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=16, embed_dim=96, depths=(2, 2, 18, 2), num_heads=(3, 6, 12, 24), **kwargs)
-    return create_swin_transformer_v2('swinv2_small_window16_256', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_small_window16_256', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -294,7 +293,7 @@ def swinv2_small_window8_256(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=8, embed_dim=96, depths=(2, 2, 18, 2), num_heads=(3, 6, 12, 24), **kwargs)
-    return create_swin_transformer_v2('swinv2_small_window8_256', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_small_window8_256', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -303,7 +302,7 @@ def swinv2_base_window16_256(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=16, embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32), **kwargs)
-    return create_swin_transformer_v2('swinv2_base_window16_256', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_base_window16_256', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -312,7 +311,7 @@ def swinv2_base_window8_256(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=8, embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32), **kwargs)
-    return create_swin_transformer_v2('swinv2_base_window8_256', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_base_window8_256', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -321,7 +320,7 @@ def swinv2_base_window12_192_22k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=12, embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32), **kwargs)
-    return create_swin_transformer_v2('swinv2_base_window12_192_22k', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_base_window12_192_22k', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -331,7 +330,7 @@ def swinv2_base_window12to16_192to256_22kft1k(pretrained=False, **kwargs):
     model_kwargs = dict(
         window_size=16, embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32),
         pretrained_window_sizes=(12, 12, 12, 6), **kwargs)
-    return create_swin_transformer_v2(
+    return _create_swin_transformer_v2(
         'swinv2_base_window12to16_192to256_22kft1k', pretrained=pretrained, **model_kwargs)
 
 
@@ -342,7 +341,7 @@ def swinv2_base_window12to24_192to384_22kft1k(pretrained=False, **kwargs):
     model_kwargs = dict(
         window_size=24, embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32),
         pretrained_window_sizes=(12, 12, 12, 6), **kwargs)
-    return create_swin_transformer_v2(
+    return _create_swin_transformer_v2(
         'swinv2_base_window12to24_192to384_22kft1k', pretrained=pretrained, **model_kwargs)
 
 
@@ -352,7 +351,7 @@ def swinv2_large_window12_192_22k(pretrained=False, **kwargs):
     """
     model_kwargs = dict(
         window_size=12, embed_dim=192, depths=(2, 2, 18, 2), num_heads=(6, 12, 24, 48), **kwargs)
-    return create_swin_transformer_v2('swinv2_large_window12_192_22k', pretrained=pretrained, **model_kwargs)
+    return _create_swin_transformer_v2('swinv2_large_window12_192_22k', pretrained=pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
@@ -362,7 +361,7 @@ def swinv2_large_window12to16_192to256_22kft1k(pretrained=False, **kwargs):
     model_kwargs = dict(
         window_size=16, embed_dim=192, depths=(2, 2, 18, 2), num_heads=(6, 12, 24, 48),
         pretrained_window_sizes=(12, 12, 12, 6), **kwargs)
-    return create_swin_transformer_v2(
+    return _create_swin_transformer_v2(
         'swinv2_large_window12to16_192to256_22kft1k', pretrained=pretrained, **model_kwargs)
 
 
@@ -373,5 +372,5 @@ def swinv2_large_window12to24_192to384_22kft1k(pretrained=False, **kwargs):
     model_kwargs = dict(
         window_size=24, embed_dim=192, depths=(2, 2, 18, 2), num_heads=(6, 12, 24, 48),
         pretrained_window_sizes=(12, 12, 12, 6), **kwargs)
-    return create_swin_transformer_v2(
+    return _create_swin_transformer_v2(
         'swinv2_large_window12to24_192to384_22kft1k', pretrained=pretrained, **model_kwargs)
