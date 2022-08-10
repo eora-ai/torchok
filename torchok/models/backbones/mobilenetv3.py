@@ -9,6 +9,7 @@ Hacked together by / Copyright 2019, Ross Wightman
 """
 from functools import partial
 
+import torch
 import torch.nn as nn
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 from timm.models.efficientnet_blocks import SqueezeExcite
@@ -144,6 +145,10 @@ class MobileNetV3(BaseBackbone):
         self.feature_info = builder.features
 
         self.create_hooks()
+        self.init_weights()
+
+    @torch.jit.ignore
+    def init_weights(self):
         efficientnet_init_weights(self)
 
     def forward(self, x):
@@ -154,7 +159,7 @@ class MobileNetV3(BaseBackbone):
         return x
 
 
-def create_mnv3(variant, pretrained=False, **kwargs):
+def _create_mnv3(variant, pretrained=False, **kwargs):
     return build_model_with_cfg(MobileNetV3, variant, pretrained, pretrained_strict=False,
                                 kwargs_filter=('num_classes', 'global_pool', 'in_chans', 'head_bias'), **kwargs)
 
@@ -193,7 +198,7 @@ def _gen_mobilenet_v3_rw(variant, channel_multiplier=1.0, pretrained=False, **kw
         se_layer=partial(SqueezeExcite, gate_layer='hard_sigmoid'),
         **kwargs,
     )
-    model = create_mnv3(variant, pretrained, **model_kwargs)
+    model = _create_mnv3(variant, pretrained, **model_kwargs)
     return model
 
 
@@ -290,7 +295,7 @@ def _gen_mobilenet_v3(variant, channel_multiplier=1.0, pretrained=False, **kwarg
         se_layer=se_layer,
         **kwargs,
     )
-    model = create_mnv3(variant, pretrained, **model_kwargs)
+    model = _create_mnv3(variant, pretrained, **model_kwargs)
     return model
 
 
@@ -351,7 +356,7 @@ def _gen_fbnetv3(variant, channel_multiplier=1.0, pretrained=False, **kwargs):
         se_layer=se_layer,
         **kwargs,
     )
-    model = create_mnv3(variant, pretrained, **model_kwargs)
+    model = _create_mnv3(variant, pretrained, **model_kwargs)
     return model
 
 
@@ -389,7 +394,7 @@ def _gen_lcnet(variant, channel_multiplier=1.0, pretrained=False, **kwargs):
         num_features=1280,
         **kwargs,
     )
-    model = create_mnv3(variant, pretrained, **model_kwargs)
+    model = _create_mnv3(variant, pretrained, **model_kwargs)
     return model
 
 
