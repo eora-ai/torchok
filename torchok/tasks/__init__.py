@@ -2,6 +2,7 @@ from torchok.tasks.base import BaseTask
 from torchok.tasks.classification import ClassificationTask
 from torchok.tasks.onnx import ONNXTask
 from torchok.tasks.segmentation import SegmentationTask
+from torchok.tasks.simmim import SimMIMTask
 
 # from src.tasks.moby import
 # from src.tasks.segmentation import 
@@ -12,4 +13,5 @@ __all__ = [
     'ClassificationTask',
     'SegmentationTask',
     'ONNXTask',
+    'SimMIMTask'
 ]

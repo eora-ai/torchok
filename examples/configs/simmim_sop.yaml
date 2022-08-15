@@ -1,0 +1,160 @@
+task:
+  name: SimMIMTask
+  params:
+    backbone_name: swinv2_tiny_window16_256
+    backbone_params:
+      pretrained: false
+      in_channels: 3
+    pooling_name: Pooling
+    mask_patch_size: 32
+    mask_ratio: 0.6
+    encoder_stride: 32
+    inputs:
+      - shape: [3, &height 256, &width 256]
+        dtype: 'bfloat16'
+
+joint_loss:
+  losses:
+    - name: Identity
+      mapping:
+          input: loss
+
+optimization:
+  - optimizer: 
+      name: Adam
+      params:
+        lr: &base_lr 0.0001
+        weight_decay: 0.05
+    scheduler:
+      name: OneCycleLR
+      params:
+        max_lr: *base_lr
+        epochs: 100
+        steps_per_epoch: 930
+      pl_params:
+        interval: step
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: 64
+        num_workers: 4
+        drop_last: true
+        shuffle: true
+      dataset:
+        name: SOP
+        params:
+          image_dtype: float32
+          train: true
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
+        transform:
+          - &resize
+            name: Resize
+            params:
+              height: *height
+              width: *width
+          - &normalize
+            name: Normalize
+            params:
+              mean: [ 0.485, 0.456, 0.406 ]
+              std: [ 0.229, 0.224, 0.225 ]
+          - &totensor
+            name: ToTensorV2
+        augment:
+          - name: HorizontalFlip
+          - name: VerticalFlip
+          - name: Compose
+            params:
+              p: 0.5
+              transforms:
+                - name: PadIfNeeded
+                  params:
+                    min_height: *height
+                    min_width: *width
+                - name: CenterCrop
+                  params:
+                    height: *height
+                    width: *width
+          - name: OneOf
+            params:
+              p: 1.0
+              transforms:
+                - name: ElasticTransform
+                  params:
+                    border_mode: 1
+                - name: GridDistortion
+                - name: GaussNoise
+                - name: ColorJitter
+                  params:
+                    brightness: 0.4
+                    contrast: 0.4
+                    saturation: 0.4
+                    hue: 0.1
+          - name: OneOf
+            params:
+              p: 1.0
+              transforms:
+                - name: ElasticTransform
+                  params:
+                    border_mode: 1
+                - name: GridDistortion
+                - name: GaussNoise
+                - name: ColorJitter
+                  params:
+                    brightness: 0.4
+                    contrast: 0.4
+                    saturation: 0.4
+                    hue: 0.1
+  VALID:
+    - dataloader:
+        batch_size: 64
+        num_workers: 16
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: SOP
+        params:
+          image_dtype: float32
+          train: false
+          download: true
+          data_folder: *data_folder
+        transform:
+          - *resize
+          - *normalize
+          - *totensor
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 100
+#  limit_train_batches: 10
+  limit_val_batches: 10
+#  log_every_n_steps: 1000
+  precision: bf16
+  num_sanity_val_steps: 0
+
+hydra:
+  run:
+    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+logger:
+  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
+  experiment_name: cifar10
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  name: TensorBoardLogger
+
+checkpoint:
+  monitor: train/loss
+  save_last: true
+  mode: min
+  export_to_onnx: false
+
+#metrics:
+#  - name: Accuracy
+#    mapping:
+#      preds: prediction
+#      target: target
+#  - name: F1Score
+#    mapping:
+#      preds: prediction
+#      target: target
