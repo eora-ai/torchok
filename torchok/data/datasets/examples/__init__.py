@@ -1,5 +1,6 @@
-from torchok.data.datasets.examples.cifar10 import CIFAR10
-from torchok.data.datasets.examples.sop import SOP
-from torchok.data.datasets.examples.sweet_pepper import SweetPepper
-from torchok.data.datasets.examples.coco_detection import COCODetection
-from torchok.data.datasets.examples.coco_segmentation import COCOSegmentation
+import torchok.data.datasets.examples.cifar10  # noqa: F401
+import torchok.data.datasets.examples.sop  # noqa: F401
+import torchok.data.datasets.examples.triplet_sop  # noqa: F401
+import torchok.data.datasets.examples.sweet_pepper  # noqa: F401
+import torchok.data.datasets.examples.coco_detection  # noqa: F401
+from torchok.data.datasets.examples.coco_segmentation  # noqa: F401
