@@ -37,14 +37,14 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 64
+        batch_size: 32
         num_workers: 4
         drop_last: true
         shuffle: true
       dataset:
         name: SOP
         params:
-          image_dtype: float32
+          image_dtype: bfloat16
           train: true
           download: true
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
@@ -108,14 +108,14 @@ data:
                     hue: 0.1
   VALID:
     - dataloader:
-        batch_size: 64
-        num_workers: 16
+        batch_size: 32
+        num_workers: 4
         drop_last: false
         shuffle: false
       dataset:
         name: SOP
         params:
-          image_dtype: float32
+          image_dtype: bfloat16
           train: false
           download: true
           data_folder: *data_folder
@@ -132,6 +132,7 @@ trainer:
 #  log_every_n_steps: 1000
   precision: bf16
   num_sanity_val_steps: 0
+  accumulate_grad_batches: 4
 
 hydra:
   run:
@@ -149,12 +150,3 @@ checkpoint:
   mode: min
   export_to_onnx: false
 
-#metrics:
-#  - name: Accuracy
-#    mapping:
-#      preds: prediction
-#      target: target
-#  - name: F1Score
-#    mapping:
-#      preds: prediction
-#      target: target

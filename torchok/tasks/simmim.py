@@ -83,7 +83,7 @@ class SimMIMTask(BaseTask):
         mask = mask.repeat_interleave(self.patch_size, dim=0).repeat_interleave(self.patch_size, dim=1)
         mask = mask[None, None].contiguous()
         loss_recon = F.l1_loss(x, x_rec, reduction='none')
-        loss = (loss_recon * mask).sum() / (mask.sum() + 1e-5) / self.backbone.in_channels
+        loss = (loss_recon * mask).sum() / ((mask.sum() + 1e-5) * self.backbone.in_channels * x.size(0))
         return loss, embeddings
 
     def _prepare_mask(self):

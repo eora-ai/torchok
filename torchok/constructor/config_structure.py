@@ -126,7 +126,7 @@ class TrainerParams:
     track_grad_norm: float = -1
     check_val_every_n_epoch: Optional[int] = 1
     fast_dev_run: bool = False
-    accumulate_grad_batches: Optional[Dict[int, int]] = None
+    accumulate_grad_batches: Optional[Any] = None  # Optional[Union[int, Dict[int, int]]]
     max_epochs: Optional[int] = None
     min_epochs: Optional[int] = None
     max_steps: int = -1
@@ -141,7 +141,7 @@ class TrainerParams:
     accelerator: Optional[str] = None
     strategy: Optional[str] = None
     sync_batchnorm: bool = False
-    precision: Any = 32
+    precision: Any = 32  # Optional[Union[int, str]]
     enable_model_summary: bool = True
     weights_save_path: Optional[str] = None  # TODO: Remove in 1.8
     num_sanity_val_steps: int = 2

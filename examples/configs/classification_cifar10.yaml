@@ -43,7 +43,7 @@ data:
           image_dtype: bfloat16
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/cifar10
+          data_folder: &data_folder C:\\Users\\Vyacheslav\\Documents\\datasets\\cifar10
         transform:
           - &resize
             name: Resize
