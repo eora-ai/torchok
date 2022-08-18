@@ -6,49 +6,6 @@ from torch.nn import Module
 from torchok.constructor import LOSSES
 
 
-def cosine_similarity(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """
-    Computes cosine similarity matrix between embeddings matrices x and y
-    Args:
-        x: First embeddings matrix, shape (N, D), where N - number of embeddings, D - embeddings dimension,
-            dtype=float32
-        y: Second embeddings matrix, shape (M, D), where M - number of embeddings, D - embeddings dimension,
-            dtype=float32
-
-    Returns:
-        Similarity matrix of shape (N, M), dtype=float32
-
-    """
-    # (N, D), (D, M) -> (M, M)
-    x, y = x.float(), y.float()
-    distance_matrix = torch.matmul(x, y.transpose(1, 0))
-
-    return distance_matrix
-
-
-def euclidean_similarity(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """
-    Computes euclidean similarity matrix between embeddings matrices x and y
-    Args:
-        x: First embeddings matrix, shape (N, D), where N - number of embeddings, D - embeddings dimension,
-            dtype=float32
-        y: Second embeddings matrix, shape (M, D), where M - number of embeddings, D - embeddings dimension,
-            dtype=float32
-
-    Returns:
-        Similarity matrix of shape (N, M), dtype=float32
-
-    """
-    # ||x - y|| = sum(x^2) + sum(y^2) - 2*x*y
-    x, y = x.float(), y.float()
-    x_norm = x.pow(2).sum(1)
-    y_norm = y.pow(2).sum(1)
-    distance_matrix = x_norm.view(-1, 1) + y_norm.view(1, -1) - 2 * torch.matmul(x, y.transpose(1, 0))
-    distance_matrix = torch.sqrt(F.relu(distance_matrix))
-
-    return distance_matrix
-
-
 class BasePairwiseLoss(Module):
     """
     Contains basic operations on loss: regularization and reduction
@@ -164,7 +121,7 @@ class ContrastiveLoss(GeneralPairWeightingLoss):
         See documentation of base `forward` method
 
         """
-        S = euclidean_similarity(emb1, emb2)    # range [0, 2]
+        S = torch.cdist(emb1, emb2, p=2)
         mu = self.margin
         L = (1. - R) * F.relu(mu - S).pow(2) + R * S.pow(2)
         L = L.sum(1)

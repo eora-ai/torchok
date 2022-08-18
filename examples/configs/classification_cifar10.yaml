@@ -1,7 +1,7 @@
 task:
   name: ClassificationTask
   params:
-    backbone_name: resnet18
+    backbone_name: semnasnet_100
     backbone_params:
       pretrained: true
       in_channels: 3

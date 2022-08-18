@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 import pandas as pd
 
 import torch
+from torch import Tensor
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from torchok.data.datasets.base import ImageDataset
@@ -74,30 +75,21 @@ class PAIRWISE_TOILETS(ImageDataset):
         output = dict()
         record = self.__csv.iloc[idx]
 
-        # Anchor
-        image = self._read_image(self.__path / record[self.__anchor_paths_column])
-        sample = {"image": image}
-        sample = self._apply_transform(self.augment, sample)
-        sample = self._apply_transform(self.transform, sample)
-        output['anchor'] = sample['image'].type(torch.__dict__[self.image_dtype])
-
-        # Positive
-        image = self._read_image(self.__path / record[self.__positive_paths_column])
-        sample = {"image": image}
-        sample = self._apply_transform(self.augment, sample)
-        sample = self._apply_transform(self.transform, sample)
-        output['positive'] = sample['image'].type(torch.__dict__[self.image_dtype])
-
-        # Negative
-        image = self._read_image(self.__path / record[self.__negative_paths_column])
-        sample = {"image": image}
-        sample = self._apply_transform(self.augment, sample)
-        sample = self._apply_transform(self.transform, sample)
-        output['negative'] = sample['image'].type(torch.__dict__[self.image_dtype])
+        output['anchor'] = self.__image_preparation(record, self.__anchor_paths_column)
+        output['positive'] = self.__image_preparation(record, self.__positive_paths_column)
+        output['negative'] = self.__image_preparation(record, self.__negative_paths_column)
 
         output['index'] = idx
 
         return output
+    
+    def __image_preparation(self, record: pd.Series, column_name: str) -> Dict[str, Tensor]:
+        image = self._read_image(self.__path / record[column_name])
+        sample = {"image": image}
+        sample = self._apply_transform(self.augment, sample)
+        sample = self._apply_transform(self.transform, sample)
+        image = sample['image'].type(torch.__dict__[self.image_dtype])
+        return image
 
     def __len__(self) -> int:
         """Dataset length."""

@@ -30,11 +30,14 @@ optimization:
   - optimizer: 
       name: Adam
       params:
-        lr: 0.0001
+        lr: &initial_lr 0.0001
     scheduler:
-      name: ExponentialLR
+      name: OneCycleLR
       params:
-        gamma: 0.97
+        epochs: 20
+        steps_per_epoch: 100
+        max_lr: *initial_lr
+        pct_start: 0.1
 
 data:
   TRAIN:
@@ -67,7 +70,7 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 3
+  max_epochs: 20
   log_every_n_steps: 10
 
 hydra:
