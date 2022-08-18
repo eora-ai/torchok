@@ -14,13 +14,13 @@ from torchok.constructor import DATASETS
 @DATASETS.register_class
 class SOP(ImageDataset):
     """A class represent Stanford Online Products - SOP dataset.
-    
-    Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products 
+
+    Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products
     for metric learning. The homepage of SOP is https://cvgl.stanford.edu/projects/lifted_struct/.
     """
     base_folder = 'Stanford_Online_Products'
     filename = 'Stanford_Online_Products.tar.gz'
-    
+
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/Stanford_Online_Products.tar.gz'
     tgz_md5 = '26513716999698fd361a21c93f77ed32'
 
@@ -38,7 +38,7 @@ class SOP(ImageDataset):
                  test_mode: bool = False):
         """Init SOP.
 
-        Have 120,053 images with 22,634 classes in the dataset in total. 
+        Have 120,053 images with 22,634 classes in the dataset in total.
         Train have 59551 images with 11318 classes.
         Test have 60502 images with 11316 classes.
 

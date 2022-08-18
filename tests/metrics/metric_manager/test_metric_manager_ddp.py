@@ -5,22 +5,20 @@ from torchok.metrics.metrics_manager import MetricParams, MetricsManager, Phase
 from pytorch_lightning import LightningModule, Trainer
 import torch
 from torch.nn import functional as F
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset
 from torchmetrics import Metric
 
-from typing import *
+from typing import List
 
 INPUT_DATA_SHAPE = 16
 BATCH_SIZE = 4
 EPOCH = 5
 
 labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9,
-        9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-    ]
+          9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-predicts = [0, 0, 1, 3, 3, 4, 5, 6, 7, 0, 0, 1, 1, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 7, 
-     8, 8, 9, 9, 7, 7, 8, 8, 8, 8, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 9
-]
+predicts = [0, 0, 1, 3, 3, 4, 5, 6, 7, 0, 0, 1, 1, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 7, 7,
+            8, 8, 9, 9, 7, 7, 8, 8, 8, 8, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 9]
 
 uniq_label_count = 10
 accuracy_answer = 0.18
@@ -82,7 +80,7 @@ def run_model(metric_params: List[MetricParams]):
     # Initialize a trainer
     trainer = Trainer(
         accelerator="cpu",
-        strategy="ddp", 
+        strategy="ddp",
         num_processes=2,
         max_epochs=EPOCH,
     )
@@ -92,7 +90,7 @@ def run_model(metric_params: List[MetricParams]):
 
     metric_manager_answer = mnist_model.metric_manager.on_epoch_end(Phase.TRAIN)
     return metric_manager_answer
-    
+
 
 class TestCase:
     def __init__(self, test_name: str, metric_params: List[MetricParams], expected):
@@ -105,8 +103,8 @@ class DDPMetricManagerTest(unittest.TestCase):
     accuracy_mapping = dict(preds='predict', target='target')
     accuracy_params = MetricParams(
         name='Accuracy', mapping=accuracy_mapping,
-        phases=[Phase.TRAIN]
-        )
+        phases=[Phase.TRAIN])
+
     accuracy_answer = {'train/Accuracy': accuracy_answer}
 
     memory_bank_mapping = dict(state='predict')
@@ -115,14 +113,18 @@ class DDPMetricManagerTest(unittest.TestCase):
         phases=[Phase.TRAIN]
     )
     memory_block_answer = {'train/MetricMemoryBlock': len(labels) * EPOCH}
-    
+
     def test(self):
         testcases = [
             TestCase(
-                test_name='Accuracy', metric_params=[self.accuracy_params], expected=self.accuracy_answer
+                test_name='Accuracy',
+                metric_params=[self.accuracy_params],
+                expected=self.accuracy_answer
             ),
             TestCase(
-                test_name='MetricMemoryBlock', metric_params=[self.memory_block_params], expected=self.memory_block_answer
+                test_name='MetricMemoryBlock',
+                metric_params=[self.memory_block_params],
+                expected=self.memory_block_answer
             ),
         ]
         for case in testcases:
@@ -140,4 +142,3 @@ class DDPMetricManagerTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    

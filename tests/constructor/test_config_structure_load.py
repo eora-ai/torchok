@@ -11,7 +11,7 @@ SCHEMA = OmegaConf.structured(ConfigParams)
 
 def load_structured_config(path: str):
     """Load YAML config using OmegaConf.
-    
+
     Args:
         path: path to YAML configuration file
     """

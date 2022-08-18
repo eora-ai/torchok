@@ -14,7 +14,7 @@ class Mlp(nn.Module):
             out_features: Optional[int] = None,
             act_layer: nn.Module = nn.GELU):
         """Init Mlp.
-        
+
         Args:
             in_features: Input features.
             hidden_features: Hidden features.

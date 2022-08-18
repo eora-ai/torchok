@@ -1,10 +1,19 @@
-from albumentations import *
-from albumentations.pytorch import *
-from albumentations import BasicTransform
-from albumentations.core.composition import Compose
+from albumentations import (Normalize, Resize, HorizontalFlip, VerticalFlip, Affine, CenterCrop, CoarseDropout, Crop,
+                            CropAndPad, CropNonEmptyMaskIfExists, ElasticTransform, Flip, GridDistortion, GridDropout,
+                            Lambda, LongestMaxSize, MaskDropout, NoOp, OpticalDistortion, PadIfNeeded, Perspective,
+                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropNearBBox, RandomGridShuffle,
+                            RandomResizedCrop, RandomRotate90, RandomScale, RandomSizedBBoxSafeCrop, RandomSizedCrop,
+                            Rotate, SafeRotate, ShiftScaleRotate, SmallestMaxSize, Transpose, AdvancedBlur, Blur,
+                            CLAHE, ChannelDropout, ChannelShuffle, ColorJitter, Downscale, Emboss, Equalize, FDA,
+                            FancyPCA, FromFloat, GaussNoise, GaussianBlur, GlassBlur, HistogramMatching, ISONoise,
+                            HueSaturationValue, ImageCompression, InvertImg, MedianBlur, MotionBlur, Posterize,
+                            MultiplicativeNoise, PixelDistributionAdaptation, RGBShift, RandomBrightnessContrast,
+                            RandomFog, RandomGamma, RandomRain, RandomShadow, RandomSunFlare, RandomSnow, Sharpen,
+                            RandomToneCurve, RingingOvershoot, TemplateTransform, Superpixels, Solarize, ToFloat,
+                            ToGray, ToSepia, UnsharpMask)
 
-from torchok.data.transforms.pixelwise import *
-from torchok.data.transforms.spatial import *
+from albumentations.pytorch.transforms import ToTensorV2
+from albumentations.core.composition import Compose, OneOf
 
 from torchok.constructor import TRANSFORMS
 

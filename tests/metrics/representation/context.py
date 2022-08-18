@@ -97,7 +97,7 @@ def run_model(metric_class: type, metric_params: Dict, trainer_params: Optional[
         trainer_params = {}
 
     trainer_params['num_sanity_val_steps'] = 0
-        
+
     trainer = Trainer(**trainer_params, max_epochs=EPOCH)
 
     # Train the model ⚡

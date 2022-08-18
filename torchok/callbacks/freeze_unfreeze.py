@@ -14,7 +14,7 @@ def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Mod
     Args:
         module_names: Searched module names.
         module: The module in which it is searched.
-    
+
     Returns:
         found_modules: All found modules.
     """
@@ -70,7 +70,7 @@ class FreezeUnfreeze(BaseFinetuning):
 
     def finetune_function(self, pl_module: nn.Module, current_epoch: int, optimizer: Optimizer, optimizer_idx: int):
         """Unfreeze modules from self._epoch2module_names dictionary.
-        
+
         Args:
             pl_module: Module which contain unfreeze modules.
             current_epoch: Current epoch.

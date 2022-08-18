@@ -9,11 +9,11 @@ from timm.models.registry import _natural_key
 
 class Registry:
     """Registry of pipeline's components: models, datasets, metrics, etc.
-    
+
     The registry is meant to be used as a decorator for any classes or function,
     so that they can be accessed by class name for instantiating. It also contains mapping from object name to model
     where this object stored and mapping from module to set of objects stored in module.
-    Example: 
+    Example:
         COMPONENTS = Registry('components')
         @COMPONENTS.register_class
         class SomeComponent:

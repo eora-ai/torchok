@@ -21,7 +21,7 @@ class AbstractTestSegmentationPair:
         self.input = torch.rand(2, 3, 256, 256, device=self.device)
 
     def create_model(self, head_name):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def test_forward_output_shape(self, head_name):
         model = self.create_model(head_name)

@@ -16,7 +16,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
 
     .. csv-table:: UnsupervisedContrastive csv example
         :header: image_path
-        
+
         cat_1.jpg
         dog_1.jpg
     """
@@ -45,11 +45,11 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             grayscale: if True image will be read as grayscale otherwise as RGB.
         """
         super().__init__(transform, augment, image_dtype, grayscale)
-        self.__data_folder = Path(data_folder)
-        self.__csv_path = csv_path
-        self.__csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path'}
-        self.__input_column = self.__csv_columns_mapping['image_path']
-        self.__csv = pd.read_csv(self.__data_folder / self.__csv_path, dtype={self.__input_column: 'str'})
+        self.data_folder = Path(data_folder)
+        self.csv_path = csv_path
+        self.csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path'}
+        self.input_column = self.csv_columns_mapping['image_path']
+        self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str'})
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
@@ -60,8 +60,8 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             sample['image_1'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
             sample['index'] - Index.
         """
-        record = self.__csv.iloc[idx]
-        image_path = self.__data_folder / record[self.__input_column]
+        record = self.csv.iloc[idx]
+        image_path = self.data_folder / record[self.input_column]
         image = self._read_image(image_path)
         sample = {'image': image}
 
@@ -78,9 +78,4 @@ class UnsupervisedContrastiveDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.__csv)
-
-    @property
-    def csv_columns_mapping(self) -> dict:
-        """Column name matching."""
-        return self.__csv_columns_mapping
+        return len(self.csv)

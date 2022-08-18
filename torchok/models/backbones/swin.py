@@ -188,7 +188,7 @@ class SwinTransformerV2(BaseBackbone):
     @torch.jit.ignore
     def no_weight_decay(self) -> List[str]:
         """Create modules names for which weights decay will not be use. See BaseBackbone for more information.
-        
+
         Returns:
             nod: Module names for which weights decay will not be use.
         """

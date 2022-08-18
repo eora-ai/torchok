@@ -440,7 +440,7 @@ class DaViT(BaseBackbone):
                         window_size=window_size,
                     ) if attention_type == 'spatial' else None
                     for attention_id, attention_type in enumerate(self.attention_types)]
-                              ) for layer_id, item in enumerate(block_param)
+                ) for layer_id, item in enumerate(block_param)
             ])
             main_blocks.append(block)
         self.main_blocks = nn.ModuleList(main_blocks)

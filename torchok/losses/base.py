@@ -35,10 +35,10 @@ class JointLoss(Module):
             - ValueError: When only a few weights are specified but not for all the loss modules
         """
         super().__init__()
-        self.__losses = ModuleList(losses)
-        self.__tag2loss = {tag: loss for tag, loss in zip(tags, self.__losses) if tag is not None}
-        self.__tags = tags
-        self.__mappings = mappings
+        self.losses = ModuleList(losses)
+        self.tag2loss = {tag: loss for tag, loss in zip(tags, self.losses) if tag is not None}
+        self.tags = tags
+        self.mappings = mappings
 
         num_specified_weights = len(list(filter(lambda w: w is not None, weights)))
         if num_specified_weights > 0 and num_specified_weights != len(losses):
@@ -46,12 +46,12 @@ class JointLoss(Module):
                              'not specified for any loss function')
 
         if num_specified_weights == 0:
-            self.__weights = [1.] * len(self.__losses)
+            self.weights = [1.] * len(self.losses)
         else:
-            self.__weights = weights
+            self.weights = weights
 
         if normalize_weights:
-            self.__weights = [w / sum(self.__weights) for w in self.__weights]
+            self.weights = [w / sum(self.weights) for w in self.weights]
 
     def forward(self, **kwargs) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Forward the joined loss module.
@@ -74,7 +74,7 @@ class JointLoss(Module):
         """
         total_loss = 0.
         tagged_loss_values = {}
-        for loss_module, mapping, tag, weight in zip(self.__losses, self.__mappings, self.__tags, self.__weights):
+        for loss_module, mapping, tag, weight in zip(self.losses, self.mappings, self.tags, self.weights):
             targeted_kwargs = self.__map_arguments(mapping, **kwargs)
             loss = loss_module(**targeted_kwargs)
             total_loss = total_loss + loss * weight
@@ -94,8 +94,8 @@ class JointLoss(Module):
         Raises:
             - KeyError: When a specified tag cannot be found (often happens when tags are specified not for each loss)
         """
-        if tag in self.__tag2loss:
-            return self.__tag2loss[tag]
+        if tag in self.tag2loss:
+            return self.tag2loss[tag]
         else:
             raise KeyError(f'Cannot access loss {tag}. You should tag your losses for direct access with a tag key')
 

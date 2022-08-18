@@ -16,7 +16,7 @@ class ImageSegmentationDataset(ImageDataset):
 
     .. csv-table:: Segmentation csv example.
         :header: image_path, mask
-        
+
         image1.png, mask1.png
         image2.png, mask2.png
         image3.png, mask3.png
@@ -51,27 +51,27 @@ class ImageSegmentationDataset(ImageDataset):
         """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
 
-        self.__data_folder = Path(data_folder)
-        self.__target_dtype = target_dtype
-        self.__csv_path = csv_path
-        self.__csv_columns_mapping = csv_columns_mapping if csv_columns_mapping is not None\
+        self.data_folder = Path(data_folder)
+        self.target_dtype = target_dtype
+        self.csv_path = csv_path
+        self.csv_columns_mapping = csv_columns_mapping if csv_columns_mapping is not None\
             else {'image_path': 'image_path',
                   'target': 'mask'}
 
-        self.__input_column = self.__csv_columns_mapping['image_path']
-        self.__target_column = self.__csv_columns_mapping['target']
+        self.input_column = self.csv_columns_mapping['image_path']
+        self.target_column = self.csv_columns_mapping['target']
 
-        self.__csv = pd.read_csv(self.__data_folder / self.__csv_path, dtype={self.__input_column: 'str',
-                                                                              self.__target_column: 'str'})
+        self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str',
+                                                                        self.target_column: 'str'})
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
-        record = self.__csv.iloc[idx]
-        image_path = self.__data_folder / record[self.__input_column]
+        record = self.csv.iloc[idx]
+        image_path = self.data_folder / record[self.input_column]
         image = self._read_image(image_path)
         sample = {'image': image}
 
         if not self.test_mode:
-            mask_path = self.__data_folder / record[self.__target_column]
+            mask_path = self.data_folder / record[self.target_column]
             mask = self.__read_mask(mask_path)
             sample['mask'] = mask
 
@@ -82,7 +82,7 @@ class ImageSegmentationDataset(ImageDataset):
         sample['index'] = idx
 
         if not self.test_mode:
-            sample['target'] = sample['mask'].type(torch.__dict__[self.__target_dtype])
+            sample['target'] = sample['mask'].type(torch.__dict__[self.target_dtype])
             del sample['mask']
 
         return sample
@@ -105,14 +105,4 @@ class ImageSegmentationDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.__csv)
-
-    @property
-    def csv_columns_mapping(self) -> dict:
-        """Column name matching."""
-        return self.__csv_columns_mapping
-
-    @property
-    def target_dtype(self) -> str:
-        """It's target type."""
-        return self.__target_dtype
+        return len(self.csv)

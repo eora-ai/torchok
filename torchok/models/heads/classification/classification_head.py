@@ -14,7 +14,7 @@ class ClassificationHead(BaseModel):
     def __init__(self, in_channels: int, num_classes: int, drop_rate: float = 0.0, bias: bool = True):
         """Init ClassificationHead.
 
-        Shape of the input features is (\*, in_features) and shape of the output is (\*, num_classes),
+        Shape of the input features is (*, in_features) and shape of the output is (*, num_classes),
         where * means any number of dimensions. At output the logits are returned, i.e. no softmax is applied.
         When number of classes is equal to 1, the classification task is considered as being a binary classification,
         so the channels dimension is squeezed.
@@ -33,7 +33,7 @@ class ClassificationHead(BaseModel):
         """Forward single input ``x``.
 
         Args:
-            x: Input tensor. 
+            x: Input tensor.
         """
         if self.drop_rate > 0.:
             x = F.dropout(x, p=self.drop_rate, training=self.training)

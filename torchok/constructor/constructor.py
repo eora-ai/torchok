@@ -100,8 +100,8 @@ class Constructor:
         }
 
     @staticmethod
-    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]) -> List[
-        Dict[str, Union[Tensor, float]]]:
+    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]
+                                          ) -> List[Dict[str, Union[Tensor, float]]]:
         if not isinstance(parameters, (Iterable, Module, Tensor)):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):
@@ -184,7 +184,7 @@ class Constructor:
     def _create_dataset(dataset_params: DictConfig) -> ImageDataset:
         transform = Constructor.__create_transforms(dataset_params.transform)
         # TODO remove when OmegaConf is fixing the bug, write to issue to Omegaconf!
-        # Config structure had 'augment' parameter with default value = None, but in loaded config 
+        # Config structure had 'augment' parameter with default value = None, but in loaded config
         # 'augment' is not in keys of dataset_params dictionary. So it must be written like
         # augment_params = dataset_params.augment
         augment_params = dataset_params.get('augment', None)
