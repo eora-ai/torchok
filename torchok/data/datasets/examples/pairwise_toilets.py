@@ -72,14 +72,12 @@ class PAIRWISE_TOILETS(ImageDataset):
             output['negative'] - Negative.
             sample['index'] - Index.
         """
-        output = dict()
         record = self.__csv.iloc[idx]
 
-        output['anchor'] = self.__image_preparation(record, self.__anchor_paths_column)
-        output['positive'] = self.__image_preparation(record, self.__positive_paths_column)
-        output['negative'] = self.__image_preparation(record, self.__negative_paths_column)
-
-        output['index'] = idx
+        output = {'anchor': self.__image_preparation(record, self.__anchor_paths_column),
+                  'positive': self.__image_preparation(record, self.__positive_paths_column),
+                  'negative': self.__image_preparation(record, self.__negative_paths_column),
+                  'index': idx}
 
         return output
     
