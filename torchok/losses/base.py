@@ -75,7 +75,7 @@ class JointLoss(Module):
         total_loss = 0.
         tagged_loss_values = {}
         for loss_module, mapping, tag, weight in zip(self.losses, self.mappings, self.tags, self.weights):
-            targeted_kwargs = self.__map_arguments(mapping, **kwargs)
+            targeted_kwargs = self._parse_match_csv(mapping, **kwargs)
             loss = loss_module(**targeted_kwargs)
             total_loss = total_loss + loss * weight
             if tag is not None:
@@ -100,7 +100,7 @@ class JointLoss(Module):
             raise KeyError(f'Cannot access loss {tag}. You should tag your losses for direct access with a tag key')
 
     @staticmethod
-    def __map_arguments(mapping: Dict[str, str], **model_outputs) -> Dict[str, Any]:
+    def _parse_match_csv(mapping: Dict[str, str], **model_outputs) -> Dict[str, Any]:
         targeted_kwargs = {}
         for target_arg, source_arg in mapping.items():
             if source_arg in model_outputs:

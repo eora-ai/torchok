@@ -65,9 +65,9 @@ class MetricsManager(nn.Module):
         super().__init__()
         self.phase2metrics = nn.ModuleDict()
         for phase in Phase:
-            self.phase2metrics[phase.name] = self.__get_phase_metrics(params, phase)
+            self.phase2metrics[phase.name] = self._get_phase_metrics(params, phase)
 
-    def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
+    def _get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """Generate metric list for current phase.
 
         Args:

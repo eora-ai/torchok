@@ -47,19 +47,19 @@ class FreezeUnfreeze(BaseFinetuning):
                 will be frozen before training.
         """
         super().__init__()
-        self._epoch2module_names = epoch2module_names
+        self.epoch2module_names = epoch2module_names
 
     def freeze_before_training(self, pl_module: nn.Module):
         """Freeze modules before training.
 
-        Freeze all the modules named in self._epoch2module_names.
+        Freeze all the modules named in self.epoch2module_names.
 
         Args:
             pl_module: Module which contain unfreeze modules.
         """
-        # Get all module names from self._epoch2module_names
+        # Get all module names from self.epoch2module_names
         freeze_module_names = []
-        for module_names in self._epoch2module_names.values():
+        for module_names in self.epoch2module_names.values():
             freeze_module_names += module_names
 
         # Get modules by module names
@@ -69,7 +69,7 @@ class FreezeUnfreeze(BaseFinetuning):
             self.freeze(freeze_module)
 
     def finetune_function(self, pl_module: nn.Module, current_epoch: int, optimizer: Optimizer, optimizer_idx: int):
-        """Unfreeze modules from self._epoch2module_names dictionary.
+        """Unfreeze modules from self.epoch2module_names dictionary.
 
         Args:
             pl_module: Module which contain unfreeze modules.
@@ -77,9 +77,9 @@ class FreezeUnfreeze(BaseFinetuning):
             optimizer: Optimizer.
             optimizer_idx: Optimizer index.
         """
-        if current_epoch in self._epoch2module_names:
+        if current_epoch in self.epoch2module_names:
             # Get modules to unfreeze
-            unfreeze_modules = get_modules_by_names(self._epoch2module_names[current_epoch], pl_module)
+            unfreeze_modules = get_modules_by_names(self.epoch2module_names[current_epoch], pl_module)
             # Unfreeze every module
             for unfreeze_module in unfreeze_modules:
                 self.unfreeze_and_add_param_group(

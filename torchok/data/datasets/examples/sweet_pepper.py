@@ -53,13 +53,13 @@ class SweetPepper(ImageSegmentationDataset):
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        self.__data_folder = Path(data_folder)
-        self.__path = self.__data_folder / self.base_folder
+        self.data_folder = Path(data_folder)
+        self.path = self.data_folder / self.base_folder
 
         if download:
-            self.__download()
+            self._download()
 
-        if not self.__path.is_dir():
+        if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
         if train:
@@ -68,7 +68,7 @@ class SweetPepper(ImageSegmentationDataset):
             csv_path = self.valid_csv
 
         super().__init__(
-            data_folder=self.__path,
+            data_folder=self.path,
             csv_path=csv_path,
             transform=transform,
             augment=augment,
@@ -78,9 +78,9 @@ class SweetPepper(ImageSegmentationDataset):
             test_mode=test_mode,
         )
 
-    def __download(self) -> None:
+    def _download(self) -> None:
         """Download archive by url to specific folder."""
-        if self.__path.is_dir():
+        if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)

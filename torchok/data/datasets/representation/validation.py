@@ -123,7 +123,7 @@ class RetrievalDataset(ImageDataset):
                                             self.img_list_map_column['image_path']: str})
 
         self.n_relevant, self.n_queries, self.index2imgid,\
-            self.relevant_arr, self.relevance_scores = self.__parse_match_csv()
+            self.relevant_arr, self.relevance_scores = self._parse_match_csv()
 
         self.imgid2path = dict(zip(self.img_paths[self.img_list_map_column['img_id']],
                                    self.img_paths[self.img_list_map_column['image_path']]))
@@ -165,7 +165,7 @@ class RetrievalDataset(ImageDataset):
             if img_id not in self.imgid2index:
                 self.imgid2index[img_id] = index
 
-        self.scores, self.is_query = self.__get_targets()
+        self.scores, self.is_query = self._get_targets()
 
     def __getitem__(self, index: int) -> dict:
         """Get item sample.
@@ -195,7 +195,7 @@ class RetrievalDataset(ImageDataset):
 
         return sample
 
-    def __parse_match_csv(self) -> Tuple[int, int, dict, list, list]:
+    def _parse_match_csv(self) -> Tuple[int, int, dict, list, list]:
         query_arr = self.matches.loc[:, 'query'].tolist()
         index2imgid = dict(enumerate(query_arr))
         n_queries = len(index2imgid)
@@ -225,7 +225,7 @@ class RetrievalDataset(ImageDataset):
             relevance_scores.append(row_scores)
         return n_relevant, n_queries, index2imgid, relevant_arr, relevance_scores
 
-    def __get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor]:
+    def _get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor]:
         """Maping item scores to queues.
 
         Returns:

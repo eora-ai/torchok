@@ -72,7 +72,7 @@ class ImageSegmentationDataset(ImageDataset):
 
         if not self.test_mode:
             mask_path = self.data_folder / record[self.target_column]
-            mask = self.__read_mask(mask_path)
+            mask = self._read_mask(mask_path)
             sample['mask'] = mask
 
         sample = self._apply_transform(self.augment, sample)
@@ -87,7 +87,7 @@ class ImageSegmentationDataset(ImageDataset):
 
         return sample
 
-    def __read_mask(self, mask_path: str) -> np.ndarray:
+    def _read_mask(self, mask_path: str) -> np.ndarray:
         """Read mask.
 
         Args:
