@@ -1,6 +1,7 @@
-from torch import nn, Tensor
-import torch.nn.functional as F
 from typing import Optional
+
+import torch.nn.functional as F
+from torch import nn, Tensor
 
 from torchok.constructor import HEADS
 from torchok.models.base import BaseModel

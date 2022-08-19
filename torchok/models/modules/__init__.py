@@ -1,3 +1,3 @@
 # Basic bricks and blocks of neural nets (common for backbones, heads, etc.)
-from . import blocks
-from . import bricks
+from torchok.models.modules import blocks
+from torchok.models.modules import bricks

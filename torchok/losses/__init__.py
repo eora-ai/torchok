@@ -1,14 +1,12 @@
-from torch.nn import (
-    L1Loss, NLLLoss, NLLLoss2d, PoissonNLLLoss, GaussianNLLLoss, KLDivLoss, MSELoss, BCELoss,
-    BCEWithLogitsLoss, HingeEmbeddingLoss, MultiLabelMarginLoss, SmoothL1Loss, HuberLoss, SoftMarginLoss,
-    CrossEntropyLoss, MultiLabelSoftMarginLoss, CosineEmbeddingLoss, MarginRankingLoss, MultiMarginLoss,
-    TripletMarginLoss, TripletMarginWithDistanceLoss, CTCLoss
-)
+from torch.nn import (BCELoss, BCEWithLogitsLoss, CosineEmbeddingLoss, CrossEntropyLoss, CTCLoss, GaussianNLLLoss,
+                      HingeEmbeddingLoss, HuberLoss, KLDivLoss, L1Loss, MarginRankingLoss, MSELoss,
+                      MultiLabelMarginLoss, MultiLabelSoftMarginLoss, MultiMarginLoss, NLLLoss, NLLLoss2d,
+                      PoissonNLLLoss, SmoothL1Loss, SoftMarginLoss, TripletMarginLoss, TripletMarginWithDistanceLoss)
 
+import torchok.losses.common
+import torchok.losses.representation
+import torchok.losses.segmentation
 from torchok.constructor import LOSSES
-from .segmentation import dice, lovasz
-from .representation import pairwise
-from .common import cross_entropy, focal
 
 LOSSES.register_class(L1Loss)
 LOSSES.register_class(NLLLoss)

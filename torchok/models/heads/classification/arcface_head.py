@@ -1,5 +1,5 @@
-from typing import Optional
 import math
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -55,47 +55,47 @@ class ArcFaceHead(BaseModel):
             else:
                 margin = .5 * num_classes / (num_classes - 1)
 
-        self.__dynamic_margin = dynamic_margin
+        self.dynamic_margin = dynamic_margin
 
-        if self.__dynamic_margin:
+        if self.dynamic_margin:
             if num_warmup_steps is None or not isinstance(num_warmup_steps, int):
                 raise ValueError('`num_warmup_steps` must be positive int when `dynamic_margin` is True')
             if min_margin is None:
                 raise ValueError('`min_margin` must be float when `dynamic_margin` is True')
-            self.__num_warmup_steps = num_warmup_steps
-            self.__min_margin = min_margin
-            self.__max_margin = margin
-            self.__margin = min_margin
-            self.__register_buffer('step', torch.tensor(0))
+            self.num_warmup_steps = num_warmup_steps
+            self.min_margin = min_margin
+            self.max_margin = margin
+            self.margin = min_margin
+            self.register_buffer('step', torch.tensor(0))
         else:
-            self.__margin = margin
+            self.margin = margin
 
-        self.__scale = scale
-        self.__easy_margin = easy_margin
-        self.__cos_m = torch.scalar_tensor(math.cos(self.__margin))
-        self.__sin_m = torch.scalar_tensor(math.sin(self.__margin))
-        self.__th = torch.scalar_tensor(math.cos(math.pi - self.__margin))
-        self.__mm = torch.scalar_tensor(math.sin(math.pi - self.__margin) * self.__margin)
+        self.scale = scale
+        self.easy_margin = easy_margin
+        self.__cos_m = torch.scalar_tensor(math.cos(self.margin))
+        self.__sin_m = torch.scalar_tensor(math.sin(self.margin))
+        self.__th = torch.scalar_tensor(math.cos(math.pi - self.margin))
+        self.__mm = torch.scalar_tensor(math.sin(math.pi - self.margin) * self.margin)
 
-        self.__weight = nn.Parameter(torch.zeros(num_classes, in_channels), requires_grad=True)
+        self.weight = nn.Parameter(torch.zeros(num_classes, in_channels), requires_grad=True)
 
-        nn.init.xavier_uniform_(self.__weight)
+        nn.init.xavier_uniform_(self.weight)
 
     def __update_margin(self) -> None:
-        if self.__dynamic_margin and self.__step <= self.__num_warmup_steps:
-            frac = self.__step / self.__num_warmup_steps
-            margin_gap = self.__max_margin - self.__min_margin
-            self.__margin = self.__min_margin + frac * margin_gap
-            self.__cos_m = torch.scalar_tensor(math.cos(self.__margin))
-            self.__sin_m = torch.scalar_tensor(math.sin(self.__margin))
-            self.__th = torch.scalar_tensor(math.cos(math.pi - self.__margin))
-            self.__mm = torch.scalar_tensor(math.sin(math.pi - self.__margin) * self.__margin)
+        if self.dynamic_margin and self.__step <= self.num_warmup_steps:
+            frac = self.__step / self.num_warmup_steps
+            margin_gap = self.max_margin - self.min_margin
+            self.margin = self.min_margin + frac * margin_gap
+            self.__cos_m = torch.scalar_tensor(math.cos(self.margin))
+            self.__sin_m = torch.scalar_tensor(math.sin(self.margin))
+            self.__th = torch.scalar_tensor(math.cos(math.pi - self.margin))
+            self.__mm = torch.scalar_tensor(math.sin(math.pi - self.margin) * self.margin)
             self.__step += 1
 
     def __add_margin(self, cosine: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         sine = torch.sqrt((1.0 - torch.pow(cosine, 2)).clamp(0, 1))
         phi = (cosine * self.__cos_m - sine * self.__sin_m).type(cosine.dtype)
-        if self.__easy_margin:
+        if self.easy_margin:
             phi = torch.where(cosine > 0, phi, cosine)
         else:
             phi = torch.where(cosine > self.__th, phi, cosine - self.__mm)
@@ -103,7 +103,7 @@ class ArcFaceHead(BaseModel):
         one_hot = torch.zeros_like(cosine)
         one_hot.scatter_(1, target.view(-1, 1).long(), 1)
         output = torch.where(one_hot == 1, phi, cosine)
-        output *= self.__scale
+        output *= self.scale
 
         return output
 
@@ -112,50 +112,20 @@ class ArcFaceHead(BaseModel):
 
         Args:
             input: Input tensor.
-            target: Target tensor. May be None, if training mode off (inference stage).
+            target: Target tensor. It may be None, if training mode off (inference stage).
 
         Raises:
             ValueError: If training mode on and target is None.
         """
         if not self.training:
-            return F.linear(input, self.__weight)
+            return F.linear(input, self.weight)
         elif target is None:
             raise ValueError('Target is None in training mode.')
 
         x = F.normalize(input)
-        weight = F.normalize(self.__weight)
+        weight = F.normalize(self.weight)
         cosine = F.linear(x, weight)
         output = self.__add_margin(cosine, target)
         self.__update_margin()
 
         return output
-
-    @property
-    def margin(self) -> float:
-        """Angular margin."""
-        return self.__margin
-
-    @property
-    def scale(self) -> float:
-        """Feature scale."""
-        return self.__scale
-
-    @property
-    def dynamic_margin(self) -> bool:
-        """Dynamic margin mode."""
-        return self.__dynamic_margin
-
-    @property
-    def num_warmup_steps(self) -> Optional[int]:
-        """It's number of warm-up steps."""
-        return self.__num_warmup_steps
-
-    @property
-    def min_margin(self) -> Optional[float]:
-        """It's initial margin in `dynamic_margin` mode."""
-        return self.__min_margin
-
-    @property
-    def weights(self) -> torch.Tensor:
-        """It's ArcFaceHead weights."""
-        return self.__weight

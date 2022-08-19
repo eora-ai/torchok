@@ -1,16 +1,15 @@
-from pathlib import Path
-from typing import Union, Optional
 import pickle
+from pathlib import Path
+from typing import Optional, Union
+
 import numpy as np
-
-
 import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
-from torchok.data.datasets.base import ImageDataset
 from torchvision.datasets.utils import check_integrity, download_and_extract_archive
 
 from torchok.constructor import DATASETS
+from torchok.data.datasets.base import ImageDataset
 
 
 @DATASETS.register_class
@@ -120,10 +119,10 @@ class CIFAR10(ImageDataset):
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self._image_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
         sample['index'] = idx
 
-        if self._test_mode:
+        if self.test_mode:
             return sample
 
         sample['target'] = self.__targets[idx]

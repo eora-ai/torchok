@@ -38,6 +38,7 @@ Hacked together by / Copyright 2019, Ross Wightman
 """
 from functools import partial
 
+import torch
 import torch.nn as nn
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 from timm.models.efficientnet_blocks import SqueezeExcite
@@ -476,6 +477,10 @@ class EfficientNet(BaseBackbone):
         self.bn2 = norm_act_layer(self.num_features, inplace=True)
 
         self.create_hooks()
+        self.init_weights()
+
+    @torch.jit.ignore
+    def init_weights(self):
         efficientnet_init_weights(self)
 
     def forward(self, x):

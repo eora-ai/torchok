@@ -6,6 +6,7 @@ from torch import Tensor
 
 class Mlp(nn.Module):
     """ MLP as used in Vision Transformer, MLP-Mixer and related networks."""
+
     def __init__(
             self,
             in_features: int,

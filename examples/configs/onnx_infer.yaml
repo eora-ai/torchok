@@ -56,9 +56,14 @@ trainer:
   accelerator: "gpu"
   max_epochs: 1
 
+hydra:
+  run:
+    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: cifar10
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
 checkpoint:

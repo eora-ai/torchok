@@ -44,13 +44,13 @@ class SOP(ImageDataset):
 
         Args:
             train: If True, train dataset will be used, else - test dataset.
-            download: If True, data will be download and save to data_folder.
+            download: If True, data will be downloaded and save to data_folder.
             data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of of the torch tensors related to the image.
+            image_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
@@ -87,17 +87,17 @@ class SOP(ImageDataset):
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self._image_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
         sample['index'] = idx
 
-        if self._test_mode:
+        if self.test_mode:
             return sample
 
         if self.__train:
-            # The labels starts with 1 for train
+            # The labels start with 1 for train
             sample['target'] = record[self.__target_column] - 1
         else:
-            # The labels starts with 11319 for train
+            # The labels start with 11319 for train
             sample['target'] = record[self.__target_column] - 11319
 
         return sample

@@ -1,35 +1,37 @@
 import datetime
-from pathlib import Path
+import os
 from itertools import chain
+from pathlib import Path
 from typing import Any, Dict, Optional, Union
+
 from pytorch_lightning.loggers.base import LightningLoggerBase
+from pytorch_lightning.loggers.csv_logs import CSVLogger
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
+from pytorch_lightning.loggers.mlflow import rank_zero_only
+from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
-from pytorch_lightning.loggers.csv_logs import CSVLogger
-from pytorch_lightning.loggers.neptune import NeptuneLogger
-from pytorch_lightning.loggers.mlflow import rank_zero_only
 
 
-def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_subdir: bool) -> Path:
+def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = None) -> Path:
     """Create directory for saving checkpoints and logging metrics.
 
     Args:
         log_dir: Base path.
         experiment_name: Sub directory for log_dir.
-        create_datetime_log_subdir: Whether to create log_dir/experiment_name/%Y-%m-%d_%H-%M-%S or
-            log_dir/experiment_name/ folders. This datetime would be some kind a version of experiment.
+        timestamp: If specified, create log_dir/experiment_name/%Y-%m-%d/%H-%M-%S folder, otherwise
+            log_dir/experiment_name/ folders.
 
     Returns:
         full_outputs_path: Directory path to save checkpoints and logging metrics.
     """
-    if create_datetime_log_subdir:
-        experiment_subdir = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    else:
-        experiment_subdir = ''
 
     log_dir = Path(log_dir)
-    full_outputs_path = log_dir / experiment_name / experiment_subdir
+    full_outputs_path = log_dir / experiment_name
+
+    if timestamp is not None:
+        full_outputs_path = full_outputs_path / timestamp
+
     full_outputs_path.mkdir(exist_ok=True, parents=True)
 
     return full_outputs_path
@@ -37,7 +39,7 @@ def create_outputs_path(log_dir: str, experiment_name: str, create_datetime_log_
 
 class MLFlowLoggerX(MLFlowLogger):
     """This logger completely repeats the functionality of Pytorch Lightning MLFlowLogger. But unlike the Lightning
-    logger it upload *.onnx and *.ckpt artifacts to artifact_location path.
+    logger it uploads *.onnx and *.ckpt artifacts to artifact_location path.
 
     Args:
         experiment_name: The name of the experiment
@@ -55,16 +57,15 @@ class MLFlowLoggerX(MLFlowLogger):
         ImportError:
             If required MLFlow package is not installed on the device.
     """
-    def __init__(
-            self,
-            experiment_name: str = 'default',
-            run_name: Optional[str] = None,
-            tracking_uri: Optional[str] = None,
-            tags: Optional[Dict[str, Any]] = None,
-            save_dir: Optional[str] = './mlruns',
-            prefix: str = '',
-            artifact_location: Optional[str] = None
-    ):
+
+    def __init__(self,
+                 experiment_name: str = 'default',
+                 run_name: Optional[str] = None,
+                 tracking_uri: Optional[str] = None,
+                 tags: Optional[Dict[str, Any]] = None,
+                 save_dir: Optional[str] = './mlruns',
+                 prefix: str = '',
+                 artifact_location: Optional[str] = None):
         super().__init__(experiment_name=experiment_name, run_name=run_name, tracking_uri=tracking_uri,
                          tags=tags, save_dir=save_dir, prefix=prefix, artifact_location=artifact_location)
         self._save_dir = Path(save_dir)

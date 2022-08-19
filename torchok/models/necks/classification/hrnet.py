@@ -5,12 +5,12 @@ from timm.models.resnet import Bottleneck
 from torch import Tensor
 
 from torchok.constructor import NECKS
+from torchok.models.base import BaseModel
 from torchok.models.modules.bricks.convbnact import ConvBnAct
-from torchok.models.necks.base_neck import BaseNeck
 
 
 @NECKS.register_class
-class HRNetClassificationNeck(BaseNeck):
+class HRNetClassificationNeck(BaseModel):
     """HRNet neck for classification task."""
 
     def __init__(self, in_channels: Union[List[int], Tuple[int, ...]]):

@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 # Phase utils
@@ -141,7 +141,7 @@ class TrainerParams:
     accelerator: Optional[str] = None
     strategy: Optional[str] = None
     sync_batchnorm: bool = False
-    precision: int = 32
+    precision: Any = 32
     enable_model_summary: bool = True
     weights_save_path: Optional[str] = None  # TODO: Remove in 1.8
     num_sanity_val_steps: int = 2
@@ -172,6 +172,7 @@ class CheckpointParams:
     auto_insert_metric_name: bool = False
     export_to_onnx: bool = False
     onnx_params: Dict = field(default_factory=dict)
+    remove_head: bool = False
 
 
 # Logger
@@ -180,7 +181,7 @@ class LoggerParams:
     name: str
     log_dir: str
     experiment_name: str = 'default'
-    create_datetime_log_subdir: bool = True
+    timestamp: Optional[str] = None
     params: Optional[Dict] = field(default_factory=dict)
 
 

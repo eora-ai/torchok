@@ -4,18 +4,18 @@ Adapted from https://github.com/dingmyu/davit/blob/main/mmseg/mmseg/models/backb
 Licensed under MIT License [see LICENSE for details]
 """
 import itertools
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import DropPath, trunc_normal_
-from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
-from torchok.models.base import BaseModel
+from torchok.models.backbones import BaseBackbone
 from torchok.models.modules.bricks.mlp import Mlp
 
 
@@ -371,7 +371,7 @@ class SpatialBlock(nn.Module):
         return x
 
 
-class DaViT(BaseModel):
+class DaViT(BaseBackbone):
     """ Dual Attention Transformer"""
 
     def __init__(self, img_size: int = 224, in_channels: int = 3, patch_size: int = 4, depths=(1, 1, 3, 1),
@@ -451,9 +451,10 @@ class DaViT(BaseModel):
             layer_name = f'norm{i_layer}'
             self.add_module(layer_name, layer)
 
-        self.__init_weights()
+        self.init_weights()
 
-    def __init_weights(self):
+    @torch.jit.ignore
+    def init_weights(self):
         """Weight initialization."""
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -520,7 +521,7 @@ class DaViT(BaseModel):
         return out
 
 
-def create_davit(variant: str, pretrained: bool = False, **kwargs):
+def _create_davit(variant: str, pretrained: bool = False, **kwargs):
     """Create DaViT base model.
 
     Args:
@@ -537,18 +538,18 @@ def create_davit(variant: str, pretrained: bool = False, **kwargs):
 def davit_t(pretrained: bool = False, **kwargs):
     """It's constructing a davit_t model."""
     model_kwargs = dict(embed_dims=(96, 192, 384, 768), depths=(1, 1, 3, 1), num_heads=(3, 6, 12, 24), **kwargs)
-    return create_davit('davit_t', pretrained, **model_kwargs)
+    return _create_davit('davit_t', pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
 def davit_s(pretrained: bool = False, **kwargs):
     """It's constructing a davit_s model."""
     model_kwargs = dict(embed_dims=(96, 192, 384, 768), depths=(1, 1, 9, 1), num_heads=(3, 6, 12, 24), **kwargs)
-    return create_davit('davit_s', pretrained, **model_kwargs)
+    return _create_davit('davit_s', pretrained, **model_kwargs)
 
 
 @BACKBONES.register_class
 def davit_b(pretrained: bool = False, **kwargs):
     """It's constructing a davit_b model."""
     model_kwargs = dict(embed_dims=(128, 256, 512, 1024), depths=(1, 1, 9, 1), num_heads=(4, 8, 16, 32), **kwargs)
-    return create_davit('davit_b', pretrained, **model_kwargs)
+    return _create_davit('davit_b', pretrained, **model_kwargs)

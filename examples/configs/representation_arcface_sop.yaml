@@ -2,7 +2,7 @@ task:
   name: ClassificationTask
   compute_loss_on_valid: False
   params:
-    backbone_name: swinv2_tiny_window16_256
+    backbone_name: semnasnet_100
     backbone_params:
       pretrained: true
       in_channels: 3
@@ -31,7 +31,7 @@ joint_loss:
       mapping:
           input: prediction
           target: target
-        
+
 optimization:
   - optimizer:
       name: SGD
@@ -51,6 +51,7 @@ data:
       dataset:
         name: SOP
         params:
+          image_dtype: float32
           train: true
           download: true
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
@@ -114,13 +115,14 @@ data:
                     hue: 0.1
   VALID:
     - dataloader:
-        batch_size: 8
-        num_workers: 4
+        batch_size: 64
+        num_workers: 16
         drop_last: false
         shuffle: false
       dataset:
         name: SOP
         params:
+          image_dtype: float32
           train: false
           download: true
           data_folder: *data_folder
@@ -132,11 +134,17 @@ data:
 trainer:
   gpus: [0]
   max_epochs: 30
+  precision: 32
   num_sanity_val_steps: 0
+
+hydra:
+  run:
+    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: sop
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
 checkpoint:
@@ -144,6 +152,8 @@ checkpoint:
   save_last: true
   mode: max
   save_top_k: 2
+  export_to_onnx: true
+  remove_head: true
 
 metrics:
   - name: Accuracy

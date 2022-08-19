@@ -5,7 +5,6 @@ from torch.optim.lr_scheduler import (
 )
 
 from torchok.constructor import SCHEDULERS
-from . import knee_lr_scheduler
 
 SCHEDULERS.register_class(LambdaLR)
 SCHEDULERS.register_class(MultiplicativeLR)

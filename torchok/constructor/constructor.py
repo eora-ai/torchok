@@ -101,9 +101,8 @@ class Constructor:
 
     @staticmethod
     def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]) -> List[
-            Dict[str, Union[Tensor, float]]]:
-        if not isinstance(parameters, Iterable) and not isinstance(parameters, Module) and \
-           not isinstance(parameters, Tensor):
+        Dict[str, Union[Tensor, float]]]:
+        if not isinstance(parameters, (Iterable, Module, Tensor)):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):
             parameters = [parameters]
@@ -124,7 +123,7 @@ class Constructor:
     def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
         # Module names for which weights decay will not be used.
         no_weight_decay_list = []
-        
+
         if hasattr(model, 'no_weight_decay'):
             no_weight_decay_list = model.no_weight_decay()
 
@@ -203,8 +202,7 @@ class Constructor:
             transform_name = transform_info.name
             transform_params = transform_info.get('params', dict())
 
-            if transform_name == 'Compose' or transform_name == 'OneOf' or transform_name == 'SomeOf' or \
-               transform_name == 'PerChannel' or transform_name == 'Sequential':
+            if transform_name in ['Compose', 'OneOf', 'SomeOf', 'PerChannel', 'Sequential']:
                 transform = Constructor.__prepare_base_compose(transform_name, **transform_params)
             elif transform_name == 'OneOrOther':
                 raise ValueError('OneOrOther composition is currently not supported')

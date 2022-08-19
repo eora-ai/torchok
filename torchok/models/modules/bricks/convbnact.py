@@ -12,9 +12,11 @@ class ConvBnAct(nn.Module):
                  in_channels: int,
                  out_channels: int,
                  kernel_size: int,
-                 padding: int,
+                 padding: int = 0,
                  stride: int = 1,
                  bias: bool = False,
+                 use_batchnorm: bool = True,
+                 groups: int = 1,
                  act_layer: Optional[nn.Module] = nn.ReLU):
         """Init ConvBnAct.
 
@@ -27,6 +29,8 @@ class ConvBnAct(nn.Module):
                 default: 1
             bias: Bias.
                 default: False
+            use_batchnorm: If True batchnorm will be applied.
+            groups: Groups for nn.Conv2d.
             act_layer: Activation layer.
                 default: relu.
         """
@@ -36,16 +40,14 @@ class ConvBnAct(nn.Module):
                               kernel_size=kernel_size,
                               stride=stride,
                               padding=padding,
+                              groups=groups,
                               bias=bias)
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.act = act_layer(inplace=True) if act_layer is not None else None
+        self.bn = nn.BatchNorm2d(out_channels) if use_batchnorm else nn.Identity()
+        self.act = act_layer(inplace=True) if act_layer is not None else nn.Identity()
 
     def forward(self, x: torch.Tensor):
         """Forward method."""
         x = self.conv(x)
         x = self.bn(x)
-
-        if self.act is not None:
-            x = self.act(x)
-
+        x = self.act(x)
         return x

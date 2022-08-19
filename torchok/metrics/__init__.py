@@ -1,32 +1,9 @@
-from torchmetrics.aggregation import CatMetric, MaxMetric, MeanMetric, MinMetric, SumMetric  # noqa: E402
-from torchmetrics.classification import (  # noqa: E402
-    AUC,
-    AUROC,
-    ROC,
-    Accuracy,
-    AveragePrecision,
-    BinnedAveragePrecision,
-    BinnedPrecisionRecallCurve,
-    BinnedRecallAtFixedPrecision,
-    CalibrationError,
-    CohenKappa,
-    ConfusionMatrix,
-    CoverageError,
-    F1Score,
-    FBetaScore,
-    HammingDistance,
-    HingeLoss,
-    JaccardIndex,
-    KLDivergence,
-    LabelRankingAveragePrecision,
-    LabelRankingLoss,
-    MatthewsCorrCoef,
-    Precision,
-    PrecisionRecallCurve,
-    Recall,
-    Specificity,
-    StatScores,
-)
+from torchmetrics.classification import (Accuracy, AUC, AUROC, AveragePrecision, BinnedAveragePrecision,
+                                         BinnedPrecisionRecallCurve, BinnedRecallAtFixedPrecision, CalibrationError,
+                                         CohenKappa, ConfusionMatrix, CoverageError, F1Score, FBetaScore,
+                                         HammingDistance, HingeLoss, JaccardIndex, KLDivergence,
+                                         LabelRankingAveragePrecision, LabelRankingLoss, MatthewsCorrCoef, Precision,
+                                         PrecisionRecallCurve, Recall, ROC, Specificity, StatScores)  # noqa: E402
 from torchmetrics.image import (  # noqa: E402
     ErrorRelativeGlobalDimensionlessSynthesis,
     MultiScaleStructuralSimilarityIndexMeasure,
@@ -51,18 +28,10 @@ from torchmetrics.regression import (  # noqa: E402
     WeightedMeanAbsolutePercentageError,
 )
 
-from torchok.metrics.classification import *
-from torchok.metrics.segmentation import *
-from torchok.metrics.representation import (
-    PrecisionAtKMeter,
-    RecallAtKMeter,
-    MeanAveragePrecisionAtKMeter,
-    NDCGAtKMeter,
-)
-from torchok.metrics.metrics_manager import *
-
 from torchok.constructor import METRICS
 from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
+from torchok.metrics.representation import (MeanAveragePrecisionAtKMeter, NDCGAtKMeter, PrecisionAtKMeter,
+                                            RecallAtKMeter)
 
 METRICS.register_class(AUC)
 METRICS.register_class(AUROC)
@@ -111,7 +80,6 @@ METRICS.register_class(SpearmanCorrCoef)
 METRICS.register_class(SymmetricMeanAbsolutePercentageError)
 METRICS.register_class(TweedieDevianceScore)
 METRICS.register_class(WeightedMeanAbsolutePercentageError)
-
 
 __all__ = [
     'MetricsManager',

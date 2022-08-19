@@ -1,11 +1,10 @@
 import cv2
 import hydra
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import DictConfig, OmegaConf
 
+from torchok.constructor import TASKS
 from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer
-from torchok.constructor import TASKS
-
 
 # Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
 # (more info: https://github.com/pytorch/pytorch/issues/1355)
