@@ -51,6 +51,7 @@ class IndexBasedMeter(Metric, ABC):
     Compute method return generator with relevant and closest (FAISS searched) indexes. The relevant index contain
     its relevant index with scores for current query. And the closest contain the closest index with its distance.
     """
+    full_state_update: bool = False
 
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
                  metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None,

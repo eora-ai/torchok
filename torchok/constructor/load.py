@@ -199,7 +199,7 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
     """
     # If no checkpoints to load
     if base_ckpt_path is None and overridden_name2ckpt_path is None:
-        logging.warning('Load checkpoint function. You wrote checkpoint parameters in yaml config without base '
+        logging.info('Load checkpoint function. You wrote checkpoint parameters in yaml config without base '
                         'checkpoint path and overridden checkpoint paths!')
         return
 
