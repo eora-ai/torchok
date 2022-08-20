@@ -81,7 +81,7 @@ class Constructor:
 
     @staticmethod
     def _create_optimizer(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
-                           optimizer_params: DictConfig) -> Optimizer:
+                          optimizer_params: DictConfig) -> Optimizer:
         optimizer_class = OPTIMIZERS.get(optimizer_params.name)
         parameters = Constructor._set_weight_decay_for_parameters(parameters)
         optimizer = optimizer_class(parameters, **optimizer_params.params)
@@ -101,7 +101,7 @@ class Constructor:
 
     @staticmethod
     def _set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]
-                                          ) -> List[Dict[str, Union[Tensor, float]]]:
+                                         ) -> List[Dict[str, Union[Tensor, float]]]:
         if not isinstance(parameters, (Iterable, Module, Tensor)):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):

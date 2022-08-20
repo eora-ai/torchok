@@ -63,8 +63,8 @@ class ImageClassificationDataset(ImageDataset):
             test_mode: If True, only image without labels will be returned.
             multilabel: If True, targets are being converted to multihot vector for multilabel task.
                         If False, dataset prepares targets for multiclass classification.
-            lazy_init: If True, the target variable is converted to multihot
-                when ``__getitem__`` is called (multilabel).
+            lazy_init: If True, for multilabel the target variable is converted to multihot
+                when __getitem__ is called.
                 For multiclass will check the class index to fit the range when ``__getitem__`` is called.
 
         .. _albumentations: https://albumentations.ai/docs/
