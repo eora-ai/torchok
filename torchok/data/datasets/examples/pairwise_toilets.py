@@ -14,7 +14,7 @@ from torchok.constructor import DATASETS
 
 @DATASETS.register_class
 class PAIRWISE_TOILETS(ImageDataset):
-    """A class represent pairwise dateset - Toilets dataset."""
+    """A class represent pairwise dateset - Toilets dataset.(only for training)"""
     base_folder = 'toilets'
     filename = 'toilets.tar.gz'
 
@@ -24,7 +24,6 @@ class PAIRWISE_TOILETS(ImageDataset):
     train_csv = 'train.csv'
 
     def __init__(self,
-                 train: bool,
                  download: bool,
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
@@ -35,7 +34,6 @@ class PAIRWISE_TOILETS(ImageDataset):
         """Init PAIRWISE_TOILETS.
 
         Args:
-            train: If True, train dataset will be used, else - test dataset.
             download: If True, data will be downloaded and save to data_folder.
             data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
@@ -47,20 +45,20 @@ class PAIRWISE_TOILETS(ImageDataset):
             test_mode: If True, only image without labels will be returned.
         """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
-        self.__data_folder = Path(data_folder)
-        self.__path = self.__data_folder / self.base_folder
+        self.data_folder = Path(data_folder)
+        self.path = self.data_folder / self.base_folder
 
         if download:
             self.__download()
 
-        if not self.__path.is_dir():
+        if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        self.__csv = pd.read_csv(self.__path / self.train_csv)
+        self.csv = pd.read_csv(self.path / self.train_csv)
 
-        self.__anchor_paths_column = 'anchor'
-        self.__positive_paths_column = 'positive'
-        self.__negative_paths_column = 'negative'
+        self.anchor_paths_column = 'anchor'
+        self.positive_paths_column = 'positive'
+        self.negative_paths_column = 'negative'
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
@@ -72,17 +70,17 @@ class PAIRWISE_TOILETS(ImageDataset):
             output['negative'] - Negative.
             sample['index'] - Index.
         """
-        record = self.__csv.iloc[idx]
+        record = self.csv.iloc[idx]
 
-        output = {'anchor': self.__image_preparation(record, self.__anchor_paths_column),
-                  'positive': self.__image_preparation(record, self.__positive_paths_column),
-                  'negative': self.__image_preparation(record, self.__negative_paths_column),
+        output = {'anchor': self.__image_preparation(record, self.anchor_paths_column),
+                  'positive': self.__image_preparation(record, self.positive_paths_column),
+                  'negative': self.__image_preparation(record, self.negative_paths_column),
                   'index': idx}
 
         return output
-    
+
     def __image_preparation(self, record: pd.Series, column_name: str) -> Dict[str, Tensor]:
-        image = self._read_image(self.__path / record[column_name])
+        image = self._read_image(self.path / record[column_name])
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
@@ -91,11 +89,11 @@ class PAIRWISE_TOILETS(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.__csv)
+        return len(self.csv)
 
     def __download(self) -> None:
         """Download archive by url to specific folder."""
-        if self.__path.is_dir():
+        if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)

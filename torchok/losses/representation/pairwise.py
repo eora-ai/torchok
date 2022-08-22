@@ -16,11 +16,11 @@ class BasePairwiseLoss(Module):
         reduction: type of reduction for output loss vector, possible values: mean, sum.
             If None, no reduction is applied
     """
-    def __init__(self, reg: Optional[str] = None, reduction: Optional[str] = 'mean'):
+    def __init__(self, reg: Optional[str] = None, reduction: Optional[str] = 'mean', eps: Optional[float] = None):
         super().__init__()
         self.reg = reg
         self.reduction = reduction
-        self.eps = 1e-5
+        self.eps = 1e-3 if eps is None else eps
 
     def regularize(self, L: torch.Tensor, emb: torch.Tensor) -> torch.Tensor:
         """
@@ -33,14 +33,14 @@ class BasePairwiseLoss(Module):
             Updated loss value, shape (B), where B - batch size
 
         """
-        if self.reg is not None and self.reg == 'L2':
-            return L + 0.001 * torch.norm(emb, p=None, dim=1)
-        elif self.reg is not None and self.reg == 'L1':
-            return L + 0.001 * emb.abs().sum(1)
-        elif self.reg is not None:
-            raise ValueError(f'Unknown regularization type: {self.reg}')
-        else:
+        if self.reg is None:
             return L
+        elif self.reg == 'L1':
+            return L + self.eps * emb.abs().sum(1)
+        elif self.reg == 'L2':
+            return L + self.eps * torch.norm(emb, p=None, dim=1)
+        else:
+            raise ValueError(f'Unknown regularization type: {self.reg}')
 
     def apply_reduction(self, L: torch.Tensor) -> torch.Tensor:
         """
@@ -56,7 +56,7 @@ class BasePairwiseLoss(Module):
             L = L.mean()
         elif self.reduction == 'sum':
             L = L.sum()
-        elif self.reg is not None:
+        else:
             raise ValueError(f'Unknown reduction type: {self.reduction}')
 
         return L

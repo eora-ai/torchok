@@ -43,7 +43,6 @@ data:
         name: PAIRWISE_TOILETS
         params:
           image_dtype: float32
-          train: true
           download: true
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/toilets
         transform:
