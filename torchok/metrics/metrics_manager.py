@@ -15,57 +15,42 @@ class MetricWithUtils(nn.Module):
 
     def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
         """Initalize MetricWithUtils.
-        
+
         Args:
             metric: Metric written with TorchMetrics.
             mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
             log_name: The metric name used in logs.
         """
         super().__init__()
-        self._metric = metric
-        self._mapping = mapping
-        self._log_name = log_name
-
-    @property
-    def metric(self) -> Metric:
-        """The metric."""
-        return self._metric
-
-    @property
-    def log_name(self) -> str:
-        """The metric name used in logs."""
-        return self._log_name
-
-    @property
-    def mapping(self) -> Dict[str, str]:
-        """Dictionary for mapping Metric forward input keys with Task output dictionary keys."""
-        return self._mapping
+        self.metric = metric
+        self.mapping = mapping
+        self.log_name = log_name
 
     def forward(self, *args, **kwargs):
         """Forward metric.
-        
+
         This method cache the states, then do reset current metric state,
         then call update function for current *args and **kwargs (usually it is batch),
         then call compute to calculate the metric result and then restore cached states and call update for *args
         and **kwargs. For more information see forward method of Metric class in torchmetrics.
         """
-        return self._metric(*args, **kwargs)
+        return self.metric(*args, **kwargs)
 
     def update(self, *args, **kwargs):
         """Update metric states.
 
-        Add *args and **kwargs (usually it is batch) to current state. 
+        Add *args and **kwargs (usually it is batch) to current state.
         """
-        self._metric.update(*args, **kwargs)
+        self.metric.update(*args, **kwargs)
 
     def compute(self):
         """Compute metric on the whole current state."""
-        value = self._metric.compute()
+        value = self.metric.compute()
         return value
 
     def reset(self):
         """Reset metric states."""
-        self._metric.reset()
+        self.metric.reset()
 
 
 class MetricsManager(nn.Module):
@@ -78,11 +63,11 @@ class MetricsManager(nn.Module):
             params: Metric parameters.
         """
         super().__init__()
-        self.__phase2metrics = nn.ModuleDict()
+        self.phase2metrics = nn.ModuleDict()
         for phase in Phase:
-            self.__phase2metrics[phase.name] = self.__get_phase_metrics(params, phase)
+            self.phase2metrics[phase.name] = self._get_phase_metrics(params, phase)
 
-    def __get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
+    def _get_phase_metrics(self, params: List[MetricParams], phase: Phase) -> nn.ModuleList:
         """Generate metric list for current phase.
 
         Args:
@@ -120,7 +105,7 @@ class MetricsManager(nn.Module):
     def forward(self, phase: Phase, *args, **kwargs):
         """Update states of all metrics on phase loop.
 
-        MetricsManager forward method use only update method of metrics. Because metric forward method  
+        MetricsManager forward method use only update method of metrics. Because metric forward method
         increases computation time (see MetricWithUtils forward method for more information).
 
         Args:
@@ -128,13 +113,13 @@ class MetricsManager(nn.Module):
         """
         args = list(args)
 
-        for metric_with_utils in self.__phase2metrics[phase.name]:
+        for metric_with_utils in self.phase2metrics[phase.name]:
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             metric_with_utils.update(*args, **targeted_kwargs)
 
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
         """Summarize epoch values and return log.
-        
+
         Args:
             phase: Run metric phase.
 
@@ -146,7 +131,7 @@ class MetricsManager(nn.Module):
             ValueError: If metric.compute() returns not numerical value.
         """
         log = {}
-        for metric_with_utils in self.__phase2metrics[phase.name]:
+        for metric_with_utils in self.phase2metrics[phase.name]:
             metric_value = metric_with_utils.compute()
             # If its tensor type with wrong shape.
             if isinstance(metric_value, Tensor) and len(metric_value.shape) != 0:
@@ -157,8 +142,8 @@ class MetricsManager(nn.Module):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
                                  f'not numpy array with shape {metric_value.shape}.')
             # If it numpy array with one element but wrong dtype
-            if (isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and
-                    np.issubdtype(metric_value.dtype, np.number)):
+            if isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and\
+                    np.issubdtype(metric_value.dtype, np.number):
                 raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
                                  f'not numpy array element with dtype {metric_value.dtype}.')
 
@@ -201,8 +186,3 @@ class MetricsManager(nn.Module):
                                  f'You should either add {metric_source} output to your model or remove the mapping '
                                  f'from configuration')
         return metric_input
-
-    @property
-    def phase2metrics(self) -> Dict[Phase, nn.ModuleList]:
-        """Dictionary of phase to their metrics list with type nn.ModuleList([MetricWithUtils])"""
-        return self.__phase2metrics

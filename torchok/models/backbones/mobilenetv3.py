@@ -36,69 +36,69 @@ default_cfgs = {
     'mobilenetv3_large_075': _cfg(url=''),
     'mobilenetv3_large_100': _cfg(
         interpolation='bicubic',
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_large_100_ra-f55367f5.pth'),
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_large_100_ra-f55367f5.pth'), # noqa
     'mobilenetv3_large_100_miil': _cfg(
         interpolation='bilinear', mean=(0, 0, 0), std=(1, 1, 1),
-        url='https://miil-public-eu.oss-eu-central-1.aliyuncs.com/model-zoo/ImageNet_21K_P/models/timm/mobilenetv3_large_100_1k_miil_78_0.pth'),
+        url='https://miil-public-eu.oss-eu-central-1.aliyuncs.com/model-zoo/ImageNet_21K_P/models/timm/mobilenetv3_large_100_1k_miil_78_0.pth'), # noqa
     'mobilenetv3_large_100_miil_in21k': _cfg(
         interpolation='bilinear', mean=(0, 0, 0), std=(1, 1, 1),
-        url='https://miil-public-eu.oss-eu-central-1.aliyuncs.com/model-zoo/ImageNet_21K_P/models/timm/mobilenetv3_large_100_in21k_miil.pth',
+        url='https://miil-public-eu.oss-eu-central-1.aliyuncs.com/model-zoo/ImageNet_21K_P/models/timm/mobilenetv3_large_100_in21k_miil.pth', # noqa
         num_classes=11221),
 
     'mobilenetv3_small_050': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_small_050_lambc-4b7bbe87.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_small_050_lambc-4b7bbe87.pth', # noqa
         interpolation='bicubic'),
     'mobilenetv3_small_075': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_small_075_lambc-384766db.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_small_075_lambc-384766db.pth', # noqa
         interpolation='bicubic'),
     'mobilenetv3_small_100': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_small_100_lamb-266a294c.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_small_100_lamb-266a294c.pth', # noqa
         interpolation='bicubic'),
 
     'mobilenetv3_rw': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_100-35495452.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/mobilenetv3_100-35495452.pth', # noqa
         interpolation='bicubic'),
 
     'tf_mobilenetv3_large_075': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_large_075-150ee8b0.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_large_075-150ee8b0.pth', # noqa
         mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
     'tf_mobilenetv3_large_100': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_large_100-427764d5.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_large_100-427764d5.pth', # noqa
         mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
     'tf_mobilenetv3_large_minimal_100': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_large_minimal_100-8596ae28.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_large_minimal_100-8596ae28.pth', # noqa
         mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
     'tf_mobilenetv3_small_075': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_small_075-da427f52.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_small_075-da427f52.pth', # noqa
         mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
     'tf_mobilenetv3_small_100': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_small_100-37f49e2b.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_small_100-37f49e2b.pth', # noqa
         mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
     'tf_mobilenetv3_small_minimal_100': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_small_minimal_100-922a7843.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_mobilenetv3_small_minimal_100-922a7843.pth', # noqa
         mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
 
     'fbnetv3_b': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/fbnetv3_b_224-ead5d2a1.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/fbnetv3_b_224-ead5d2a1.pth', # noqa
         test_input_size=(3, 256, 256), crop_pct=0.95),
     'fbnetv3_d': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/fbnetv3_d_224-c98bce42.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/fbnetv3_d_224-c98bce42.pth', # noqa
         test_input_size=(3, 256, 256), crop_pct=0.95),
     'fbnetv3_g': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/fbnetv3_g_240-0b1df83b.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/fbnetv3_g_240-0b1df83b.pth', # noqa
         input_size=(3, 240, 240), test_input_size=(3, 288, 288), crop_pct=0.95, pool_size=(8, 8)),
 
     "lcnet_035": _cfg(),
     "lcnet_050": _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/lcnet_050-f447553b.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/lcnet_050-f447553b.pth', # noqa
         interpolation='bicubic',
     ),
     "lcnet_075": _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/lcnet_075-318cad2c.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/lcnet_075-318cad2c.pth', # noqa
         interpolation='bicubic',
     ),
     "lcnet_100": _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/lcnet_100-a929038c.pth',
+        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/lcnet_100-a929038c.pth', # noqa
         interpolation='bicubic',
     ),
     "lcnet_150": _cfg(),
@@ -340,7 +340,7 @@ def _gen_fbnetv3(variant, channel_multiplier=1.0, pretrained=False, **kwargs):
             ['cn_r1_k1_s1_c1728'],
         ]
     else:
-        raise NotImplemented
+        raise NotImplementedError
     round_chs_fn = partial(round_channels, multiplier=channel_multiplier, round_limit=0.95)
     se_layer = partial(SqueezeExcite, gate_layer='hard_sigmoid', rd_round_fn=round_chs_fn)
     act_layer = resolve_act_layer(kwargs, 'hard_swish')

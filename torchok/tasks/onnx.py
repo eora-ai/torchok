@@ -29,28 +29,28 @@ class ONNXTask(BaseTask):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__(hparams)
-        self.__infer_params = self._hparams.task.params
-        model_path = self.__infer_params.path_to_onnx
+        self.infer_params = self._hparams.task.params
+        model_path = self.infer_params.path_to_onnx
 
         onnx_model = onnx.load(model_path)
         onnx.checker.check_model(onnx_model)
 
-        self._sess = onnxrt.InferenceSession(model_path, providers=self.__infer_params.providers)
-        self.__binding = self._sess.io_binding()
+        self.sess = onnxrt.InferenceSession(model_path, providers=self.infer_params.providers)
+        self.binding = self.sess.io_binding()
 
-        self.__inputs = [{'name': item.name,
-                          'dtype': self.str_type2numpy_type[item.type]} for item in self._sess.get_inputs()]
+        self.inputs = [{'name': item.name,
+                        'dtype': self.str_type2numpy_type[item.type]} for item in self.sess.get_inputs()]
 
-        input_names = [input['name'] for input in self.__inputs]
+        input_names = [input['name'] for input in self.inputs]
         logging.info(f'ONNX model input names: {input_names}')
 
-        self.__keys_mapping_onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset
+        self.keys_mapping_onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset
 
-        self.__outputs = [{'name': item.name,
-                           'shape': item.shape,
-                           'dtype': self.str_type2numpy_type[item.type]} for item in self._sess.get_outputs()]
+        self.outputs = [{'name': item.name,
+                         'shape': item.shape,
+                         'dtype': self.str_type2numpy_type[item.type]} for item in self.sess.get_outputs()]
 
-        output_names = [output['name'] for output in self.__outputs]
+        output_names = [output['name'] for output in self.outputs]
         logging.info(f'ONNX model output names: {output_names}')
 
     def forward(self, x: Tensor) -> Tensor:
@@ -65,12 +65,12 @@ class ONNXTask(BaseTask):
     def foward_infer(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """Forward onnx model."""
 
-        for input in self.__inputs:
+        for input in self.inputs:
             # TODO: Hardcode device_id check that it doesn't matter
-            input_tensor = inputs[self.__keys_mapping_onnx2dataset[input['name']]]
+            input_tensor = inputs[self.keys_mapping_onnx2dataset[input['name']]]
             self.batch_dim = input_tensor.shape[0]
 
-            self.__binding.bind_input(
+            self.binding.bind_input(
                 name=input['name'],
                 device_type=self.device,
                 device_id=0,
@@ -80,11 +80,11 @@ class ONNXTask(BaseTask):
 
         output = dict()
 
-        for output_params in self.__outputs:
+        for output_params in self.outputs:
             output_tensor = torch.empty((self.batch_dim, *output_params['shape'][1:]),
                                         dtype=torch.__dict__[output_params['dtype']],
                                         device=self.device).contiguous()
-            self.__binding.bind_output(
+            self.binding.bind_output(
                 name=output_params['name'],
                 device_type=self.device,
                 device_id=0,
@@ -94,7 +94,7 @@ class ONNXTask(BaseTask):
 
             output[output_params['name']] = output_tensor
 
-        self._sess.run_with_iobinding(self.__binding)
+        self.sess.run_with_iobinding(self.binding)
         return output
 
     def forward_infer_with_gt(self, batch: Dict[str, Any]) -> Dict[str, Tensor]:

@@ -63,42 +63,42 @@ class CIFAR10(ImageDataset):
             RuntimeError: if dataset or metadata file not found or corrupted.
         """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
-        self.__data_folder = Path(data_folder)
-        self.__train = train
+        self.data_folder = Path(data_folder)
+        self.train = train
 
         if download:
-            self.__download()
+            self._download()
 
         if not self._check_integrity():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        if self.__train:
+        if self.train:
             downloaded_list = self.train_list
         else:
             downloaded_list = self.test_list
 
-        self.__images = []
-        self.__targets = []
+        self.images = []
+        self.targets = []
 
         for file_name, _ in downloaded_list:
-            file_path = self.__data_folder / self.base_folder / file_name
+            file_path = self.data_folder / self.base_folder / file_name
             with open(file_path, 'rb') as f:
                 entry = pickle.load(f, encoding='latin1')
-                self.__images.append(entry['data'])
+                self.images.append(entry['data'])
                 if 'labels' in entry:
-                    self.__targets.extend(entry['labels'])
+                    self.targets.extend(entry['labels'])
                 else:
-                    self.__targets.extend(entry['fine_labels'])
+                    self.targets.extend(entry['fine_labels'])
 
-        self.__targets = np.array(self.__targets, dtype=np.int64)
-        self.__images = np.vstack(self.__images).reshape(-1, 3, 32, 32)
-        self.__images = self.__images.transpose((0, 2, 3, 1))  # convert to HWC
+        self.targets = np.array(self.targets, dtype=np.int64)
+        self.images = np.vstack(self.images).reshape(-1, 3, 32, 32)
+        self.images = self.images.transpose((0, 2, 3, 1))  # convert to HWC
 
         self._load_meta()
 
     def _load_meta(self) -> None:
         """Load metadata."""
-        path = self.__data_folder / self.base_folder / self.meta['filename']
+        path = self.data_folder / self.base_folder / self.meta['filename']
         if not check_integrity(path, self.meta['md5']):
             raise RuntimeError('Dataset metadata file not found or corrupted. You can use download=True to download it')
         with open(path, 'rb') as infile:
@@ -115,7 +115,7 @@ class CIFAR10(ImageDataset):
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['index'] - Index.
         """
-        image = self.__images[idx]
+        image = self.images[idx]
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
@@ -125,26 +125,26 @@ class CIFAR10(ImageDataset):
         if self.test_mode:
             return sample
 
-        sample['target'] = self.__targets[idx]
+        sample['target'] = self.targets[idx]
 
         return sample
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.__images)
+        return len(self.images)
 
     def _check_integrity(self) -> bool:
         """Check integrity."""
         for fentry in (self.train_list + self.test_list):
             filename, md5 = fentry[0], fentry[1]
-            fpath = self.__data_folder / self.base_folder / filename
+            fpath = self.data_folder / self.base_folder / filename
             if not check_integrity(fpath, md5):
                 return False
         return True
 
-    def __download(self) -> None:
+    def _download(self) -> None:
         """Download archive by url to specific folder."""
         if self._check_integrity():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)

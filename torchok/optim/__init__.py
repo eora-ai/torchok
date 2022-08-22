@@ -1,2 +1,2 @@
-from . import optimizers
-from . import schedulers
+from . import optimizers  # noqa: F401
+from . import schedulers  # noqa: F401

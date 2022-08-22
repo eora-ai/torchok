@@ -1,3 +1,6 @@
 # Low level modules like ConvBnAct
-from torchok.models.modules.bricks import convbnact
-from torchok.models.modules.bricks import mlp
+from torchok.models.modules.bricks.convbnact import ConvBnAct
+from torchok.models.modules.bricks.mlp import Mlp
+
+
+__all__ = ['ConvBnAct', 'Mlp']

@@ -51,6 +51,7 @@ class IndexBasedMeter(Metric, ABC):
     Compute method return generator with relevant and closest (FAISS searched) indexes. The relevant index contain
     its relevant index with scores for current query. And the closest contain the closest index with its distance.
     """
+    full_state_update: bool = False
 
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
                  metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None,
@@ -170,8 +171,8 @@ class IndexBasedMeter(Metric, ABC):
             scores = torch.cat(self.scores).numpy()
             query_idxs = torch.cat(self.query_idxs).numpy()
             # prepare data
-            relevant_idxs, gallery_idxs, query_column_idxs, \
-            query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
+            relevant_idxs, gallery_idxs, query_column_idxs,\
+                query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
 
         # build index
         vectors = vectors.astype(np.float32)

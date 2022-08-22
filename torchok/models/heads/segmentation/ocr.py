@@ -35,7 +35,7 @@ class SpatialGather_Module(nn.Module):
         self.scale = scale
 
     def forward(self, feats: Tensor, probs: Tensor) -> Tensor:
-        batch_size, c, h, w = probs.size(0), probs.size(1), probs.size(2), probs.size(3)
+        batch_size, c, _, _ = probs.size(0), probs.size(1), probs.size(2), probs.size(3)
         probs = probs.view(batch_size, c, -1)
         feats = feats.view(batch_size, feats.size(1), -1)
         feats = feats.permute(0, 2, 1)  # batch x hw x c

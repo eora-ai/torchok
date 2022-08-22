@@ -93,9 +93,10 @@ class UnetNeck(BaseModel):
             use_batchnorm: If ``True``, ``BatchNormalisation`` applied between every ``Conv2D`` and activation layers.
             use_attention: If ``True`` will use ``SCSEModule``.
             center: If ``True`` will use ''CenterBlock''.
-        
+
         Raises:
-            ValueError: If the number of blocks is not equal to the length of the `decoder_channels` or `encoder_channels - 1`.
+            ValueError: If the number of blocks is not equal to the length of the `decoder_channels`
+                or `encoder_channels - 1`.
         """
         super().__init__(in_channels=in_channels, out_channels=decoder_channels[-1])
 

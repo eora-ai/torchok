@@ -74,7 +74,10 @@ class Beit(BaseBackbone):
         self._out_channels = embed_dim
         self._out_encoder_channels = self.encoder_channels
 
-        self.patch_embed = PatchEmbed(img_size=img_size, patch_size=patch_size, in_chans=in_channels, embed_dim=embed_dim)
+        self.patch_embed = PatchEmbed(img_size=img_size,
+                                      patch_size=patch_size,
+                                      in_chans=in_channels,
+                                      embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))

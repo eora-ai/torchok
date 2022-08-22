@@ -4,9 +4,6 @@ from torchok.tasks.onnx import ONNXTask
 from torchok.tasks.segmentation import SegmentationTask
 from torchok.tasks.simmim import SimMIMTask
 
-# from src.tasks.moby import
-# from src.tasks.segmentation import 
-# from src.tasks.representation import 
 
 __all__ = [
     'BaseTask',

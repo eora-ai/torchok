@@ -25,7 +25,7 @@ class AbstractTestSegmentationNeck:
         self.input = torch.rand(2, 3, *self.img_size, device=self.device)
 
     def create_model(self, head_name):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def test_forward_output_shape(self, backbone_name):
         model = self.create_model(backbone_name)
