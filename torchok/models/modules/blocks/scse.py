@@ -14,7 +14,7 @@ class SCSEModule(nn.Module):
 
     def __init__(self, channels: int, reduction: int = 16):
         """Init SCSEModule
-        
+
         Args:
             channels: Number input channels.
             reduction: Reduction coefficient.
@@ -31,7 +31,7 @@ class SCSEModule(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward method.
-        
+
         Args:
             x: Input tensor.
         """

@@ -9,11 +9,11 @@ from timm.models.registry import _natural_key
 
 class Registry:
     """Registry of pipeline's components: models, datasets, metrics, etc.
-    
+
     The registry is meant to be used as a decorator for any classes or function,
     so that they can be accessed by class name for instantiating. It also contains mapping from object name to model
     where this object stored and mapping from module to set of objects stored in module.
-    Example: 
+    Example:
         COMPONENTS = Registry('components')
         @COMPONENTS.register_class
         class SomeComponent:
@@ -25,38 +25,22 @@ class Registry:
         Args:
             name: Component name.
         """
-        self.__name = name
+        self.name = name
 
-        self.__entrypoints = {}  # mapping of class/function names to entrypoint fns
-        self.__module_to_objects = defaultdict(set)  # dict of sets to check membership of class/function in module
-        self.__object_to_module = {}  # mapping of class/function names to its module name
+        self.entrypoints = {}  # mapping of class/function names to entrypoint fns
+        self.module_to_objects = defaultdict(set)  # dict of sets to check membership of class/function in module
+        self.object_to_module = {}  # mapping of class/function names to its module name
 
     def __repr__(self):
         format_str = self.__class__.__name__
-        format_str += f'(name={self.__name}, items={list(self.__entrypoints)})'
+        format_str += f'(name={self.name}, items={list(self.entrypoints)})'
         return format_str
 
     def __contains__(self, item):
-        return item in self.__entrypoints
+        return item in self.entrypoints
 
     def __getitem__(self, key):
         return self.get(key)
-
-    @property
-    def name(self):
-        return self.__name
-
-    @property
-    def entrypoints(self):
-        return self.__entrypoints
-
-    @property
-    def module_to_objects(self):
-        return self.__module_to_objects
-
-    @property
-    def object_to_module(self):
-        return self.__object_to_module
 
     def get(self, key: str):
         """Search class type by class name.
@@ -70,10 +54,10 @@ class Registry:
         Raises:
             KeyError: If key not in dictionary.
         """
-        if key not in self.__entrypoints:
-            raise KeyError(f'{key} is not in the {self.__name} registry')
+        if key not in self.entrypoints:
+            raise KeyError(f'{key} is not in the {self.name} registry')
 
-        result = self.__entrypoints[key]
+        result = self.entrypoints[key]
 
         return result
 
@@ -93,8 +77,8 @@ class Registry:
         if not callable(fn):
             raise TypeError(f'{fn} must be callable')
         class_name = fn.__name__
-        if class_name in self.__entrypoints:
-            raise KeyError(f'{class_name} is already registered in {self.__name}')
+        if class_name in self.entrypoints:
+            raise KeyError(f'{class_name} is already registered in {self.name}')
 
         mod = sys.modules[fn.__module__]
         module_name_split = fn.__module__.split('.')
@@ -108,9 +92,9 @@ class Registry:
             mod.__all__ = [model_name]
 
         # add entries to registry dict/sets
-        self.__entrypoints[model_name] = fn
-        self.__object_to_module[model_name] = module_name
-        self.__module_to_objects[module_name].add(model_name)
+        self.entrypoints[model_name] = fn
+        self.object_to_module[model_name] = module_name
+        self.module_to_objects[module_name].add(model_name)
 
         return fn
 
@@ -131,9 +115,9 @@ class Registry:
             model_list('*resnext*, 'resnet') -- returns all models with 'resnext' in 'resnet' module
         """
         if module:
-            all_models = list(self.__module_to_objects[module])
+            all_models = list(self.module_to_objects[module])
         else:
-            all_models = self.__entrypoints.keys()
+            all_models = self.entrypoints.keys()
         if filter:
             models = []
             include_filters = filter if isinstance(filter, (tuple, list)) else [filter]

@@ -14,13 +14,13 @@ from torchok.constructor import DATASETS
 @DATASETS.register_class
 class SOP(ImageDataset):
     """A class represent Stanford Online Products - SOP dataset.
-    
-    Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products 
+
+    Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products
     for metric learning. The homepage of SOP is https://cvgl.stanford.edu/projects/lifted_struct/.
     """
     base_folder = 'Stanford_Online_Products'
     filename = 'Stanford_Online_Products.tar.gz'
-    
+
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/Stanford_Online_Products.tar.gz'
     tgz_md5 = '26513716999698fd361a21c93f77ed32'
 
@@ -38,7 +38,7 @@ class SOP(ImageDataset):
                  test_mode: bool = False):
         """Init SOP.
 
-        Have 120,053 images with 22,634 classes in the dataset in total. 
+        Have 120,053 images with 22,634 classes in the dataset in total.
         Train have 59551 images with 11318 classes.
         Test have 60502 images with 11316 classes.
 
@@ -55,23 +55,23 @@ class SOP(ImageDataset):
             test_mode: If True, only image without labels will be returned.
         """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
-        self.__data_folder = Path(data_folder)
-        self.__path = self.__data_folder / self.base_folder
-        self.__train = train
+        self.data_folder = Path(data_folder)
+        self.path = self.data_folder / self.base_folder
+        self.train = train
 
         if download:
-            self.__download()
+            self._download()
 
-        if not self.__path.is_dir():
+        if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        if self.__train:
-            self.__csv = pd.read_csv(self.__path / self.train_txt, sep=' ')
+        if self.train:
+            self.csv = pd.read_csv(self.path / self.train_txt, sep=' ')
         else:
-            self.__csv = pd.read_csv(self.__path / self.test_txt, sep=' ')
+            self.csv = pd.read_csv(self.path / self.test_txt, sep=' ')
 
-        self.__target_column = 'class_id'
-        self.__path_column = 'path'
+        self.target_column = 'class_id'
+        self.path_column = 'path'
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
@@ -82,8 +82,8 @@ class SOP(ImageDataset):
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['index'] - Index.
         """
-        record = self.__csv.iloc[idx]
-        image = self._read_image(self.__path / record[self.__path_column])
+        record = self.csv.iloc[idx]
+        image = self._read_image(self.path / record[self.path_column])
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
@@ -93,22 +93,22 @@ class SOP(ImageDataset):
         if self.test_mode:
             return sample
 
-        if self.__train:
+        if self.train:
             # The labels start with 1 for train
-            sample['target'] = record[self.__target_column] - 1
+            sample['target'] = record[self.target_column] - 1
         else:
             # The labels start with 11319 for train
-            sample['target'] = record[self.__target_column] - 11319
+            sample['target'] = record[self.target_column] - 11319
 
         return sample
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.__csv)
+        return len(self.csv)
 
-    def __download(self) -> None:
+    def _download(self) -> None:
         """Download archive by url to specific folder."""
-        if self.__path.is_dir():
+        if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.__data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)

@@ -3,9 +3,7 @@ from torch.nn import (BCELoss, BCEWithLogitsLoss, CosineEmbeddingLoss, CrossEntr
                       MultiLabelMarginLoss, MultiLabelSoftMarginLoss, MultiMarginLoss, NLLLoss, NLLLoss2d,
                       PoissonNLLLoss, SmoothL1Loss, SoftMarginLoss, TripletMarginLoss, TripletMarginWithDistanceLoss)
 
-import torchok.losses.common
-import torchok.losses.representation
-import torchok.losses.segmentation
+import torchok.losses.segmentation # noqa
 from torchok.constructor import LOSSES
 
 LOSSES.register_class(L1Loss)

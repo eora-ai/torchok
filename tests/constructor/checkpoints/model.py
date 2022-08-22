@@ -21,4 +21,3 @@ class Model(nn.Module):
         super().__init__()
         self.layer = Layer()
         self.linear = nn.Linear(1, 1)
-    

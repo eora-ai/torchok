@@ -68,11 +68,11 @@ class Constructor:
 
         opt_sched_list = []
         for optim_params in optims_params:
-            optimizer = self.__create_optimizer(parameters, optim_params.optimizer)
+            optimizer = self._create_optimizer(parameters, optim_params.optimizer)
             opt_sched = {'optimizer': optimizer}
 
             if optim_params.scheduler is not None:
-                scheduler_dict = self.__create_scheduler(optimizer, optim_params.scheduler)
+                scheduler_dict = self._create_scheduler(optimizer, optim_params.scheduler)
                 opt_sched['lr_scheduler'] = scheduler_dict
 
             opt_sched_list.append(opt_sched)
@@ -80,16 +80,16 @@ class Constructor:
         return opt_sched_list
 
     @staticmethod
-    def __create_optimizer(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
-                           optimizer_params: DictConfig) -> Optimizer:
+    def _create_optimizer(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]],
+                          optimizer_params: DictConfig) -> Optimizer:
         optimizer_class = OPTIMIZERS.get(optimizer_params.name)
-        parameters = Constructor.__set_weight_decay_for_parameters(parameters)
+        parameters = Constructor._set_weight_decay_for_parameters(parameters)
         optimizer = optimizer_class(parameters, **optimizer_params.params)
 
         return optimizer
 
     @staticmethod
-    def __create_scheduler(optimizer: Optimizer, scheduler_params: DictConfig) -> Dict[str, Any]:
+    def _create_scheduler(optimizer: Optimizer, scheduler_params: DictConfig) -> Dict[str, Any]:
         scheduler_class = SCHEDULERS.get(scheduler_params.name)
         scheduler = scheduler_class(optimizer, **scheduler_params.params)
         pl_params = scheduler_params.pl_params
@@ -100,8 +100,8 @@ class Constructor:
         }
 
     @staticmethod
-    def __set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]) -> List[
-        Dict[str, Union[Tensor, float]]]:
+    def _set_weight_decay_for_parameters(parameters: Union[Module, Tensor, List[Union[Module, Tensor]]]
+                                         ) -> List[Dict[str, Union[Tensor, float]]]:
         if not isinstance(parameters, (Iterable, Module, Tensor)):
             raise ValueError(f'Unsupported parameters type for optimizer: {type(parameters)}')
         elif not isinstance(parameters, Iterable):
@@ -110,7 +110,7 @@ class Constructor:
         param_groups = []
         for model in parameters:
             if isinstance(model, Module):
-                param_groups.extend(Constructor.__param_groups_weight_decay(model))
+                param_groups.extend(Constructor._param_groups_weight_decay(model))
             elif isinstance(model, Tensor) and model.requires_grad:
                 param_groups.append({'params': model})
 
@@ -120,7 +120,7 @@ class Constructor:
     # Copyright 2019 Ross Wightman
     # Licensed under The Apache 2.0 License [see LICENSE for details]
     @staticmethod
-    def __param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
+    def _param_groups_weight_decay(model: Module) -> List[Dict[str, Union[Parameter, float]]]:
         # Module names for which weights decay will not be used.
         no_weight_decay_list = []
 
@@ -163,14 +163,14 @@ class Constructor:
         """
         if phase in self.hparams.data:
             return [
-                self.__prepare_dataloader(phase_params.dataset, phase_params.dataloader)
+                self._prepare_dataloader(phase_params.dataset, phase_params.dataloader)
                 for phase_params in self.hparams.data[phase] if phase_params is not None
             ]
         else:
             return []
 
     @staticmethod
-    def __prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:
+    def _prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:
         dataset = Constructor._create_dataset(dataset_params)
         collate_fn = dataset.collate_fn if hasattr(dataset, 'collate_fn') else None
 
@@ -182,20 +182,20 @@ class Constructor:
 
     @staticmethod
     def _create_dataset(dataset_params: DictConfig) -> ImageDataset:
-        transform = Constructor.__create_transforms(dataset_params.transform)
+        transform = Constructor._create_transforms(dataset_params.transform)
         # TODO remove when OmegaConf is fixing the bug, write to issue to Omegaconf!
-        # Config structure had 'augment' parameter with default value = None, but in loaded config 
+        # Config structure had 'augment' parameter with default value = None, but in loaded config
         # 'augment' is not in keys of dataset_params dictionary. So it must be written like
         # augment_params = dataset_params.augment
         augment_params = dataset_params.get('augment', None)
-        augment = Constructor.__create_transforms(augment_params)
+        augment = Constructor._create_transforms(augment_params)
 
         dataset_class = DATASETS.get(dataset_params.name)
 
         return dataset_class(transform=transform, augment=augment, **dataset_params.params)
 
     @staticmethod
-    def __prepare_transforms_recursively(transforms: ListConfig) -> List[Union[A.Compose, A.BaseCompose]]:
+    def _prepare_transforms_recursively(transforms: ListConfig) -> List[Union[A.Compose, A.BaseCompose]]:
         transforms_list = []
 
         for transform_info in transforms:
@@ -203,7 +203,7 @@ class Constructor:
             transform_params = transform_info.get('params', dict())
 
             if transform_name in ['Compose', 'OneOf', 'SomeOf', 'PerChannel', 'Sequential']:
-                transform = Constructor.__prepare_base_compose(transform_name, **transform_params)
+                transform = Constructor._prepare_base_compose(transform_name, **transform_params)
             elif transform_name == 'OneOrOther':
                 raise ValueError('OneOrOther composition is currently not supported')
             else:
@@ -214,22 +214,22 @@ class Constructor:
         return transforms_list
 
     @staticmethod
-    def __prepare_base_compose(compose_name: str, **kwargs) -> A.Compose:
+    def _prepare_base_compose(compose_name: str, **kwargs) -> A.Compose:
         transforms = kwargs.pop('transforms', None)
         if transforms is None:
             raise ValueError(f'There are transforms must be specified for {compose_name} composition')
 
-        transforms_list = Constructor.__prepare_transforms_recursively(transforms)
+        transforms_list = Constructor._prepare_transforms_recursively(transforms)
         transform = TRANSFORMS.get(compose_name)(transforms=transforms_list, **kwargs)
 
         return transform
 
     @staticmethod
-    def __create_transforms(transforms_params: ListConfig) -> Optional[A.Compose]:
+    def _create_transforms(transforms_params: ListConfig) -> Optional[A.Compose]:
         if transforms_params is None:
             return None
 
-        return Constructor.__prepare_base_compose('Compose', transforms=transforms_params)
+        return Constructor._prepare_base_compose('Compose', transforms=transforms_params)
 
     def configure_metrics_manager(self):
         """Create list of metrics wrapping them into a MetricManager module.

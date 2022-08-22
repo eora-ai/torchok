@@ -18,7 +18,7 @@ class ImageClassificationDataset(ImageDataset):
 
     .. csv-table:: Multiclass task csv example.
         :header: image_path, label
-        
+
         cat_1.jpg, 1
         dog_1.jpg, 0
 
@@ -63,34 +63,35 @@ class ImageClassificationDataset(ImageDataset):
             test_mode: If True, only image without labels will be returned.
             multilabel: If True, targets are being converted to multihot vector for multilabel task.
                         If False, dataset prepares targets for multiclass classification.
-            lazy_init: If True, the target variable is converted to multihot when ``__getitem__`` is called (multilabel).
-                       For multiclass will check the class index to fit the range when ``__getitem__`` is called.
+            lazy_init: If True, for multilabel the target variable is converted to multihot
+                when __getitem__ is called.
+                For multiclass will check the class index to fit the range when ``__getitem__`` is called.
 
         .. _albumentations: https://albumentations.ai/docs/
         """
         super().__init__(transform, augment, image_dtype, grayscale, test_mode)
 
-        self.__data_folder = Path(data_folder)
-        self.__num_classes = num_classes
-        self.__target_dtype = target_dtype
-        self.__multilabel = multilabel
-        self.__lazy_init = lazy_init
-        self.__csv_path = csv_path
-        self.__csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path', 'label': 'label'}
+        self.data_folder = Path(data_folder)
+        self.num_classes = num_classes
+        self.target_dtype = target_dtype
+        self.multilabel = multilabel
+        self.lazy_init = lazy_init
+        self.csv_path = csv_path
+        self.csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path', 'label': 'label'}
 
-        self.__input_column = self.__csv_columns_mapping['image_path']
-        self.__target_column = self.__csv_columns_mapping['label']
+        self.input_column = self.csv_columns_mapping['image_path']
+        self.target_column = self.csv_columns_mapping['label']
 
-        if self.__multilabel:
-            self.__csv = pd.read_csv(self.__data_folder / self.__csv_path, dtype={self.__input_column: 'str',
-                                                                                  self.__target_column: 'str'})
-            if not self.__lazy_init and not self.test_mode:
-                self.__csv[self.__target_column] = self.__csv[self.__target_column].apply(self.__process_multilabel)
+        if self.multilabel:
+            self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str',
+                                                                            self.target_column: 'str'})
+            if not self.lazy_init and not self.test_mode:
+                self.csv[self.target_column] = self.csv[self.target_column].apply(self.__process_multilabel)
         else:
-            self.__csv = pd.read_csv(self.__data_folder / self.__csv_path, dtype={self.__input_column: 'str',
-                                                                                  self.__target_column: 'int'})
-            if not self.__lazy_init and not self.test_mode:
-                self.__csv[self.__target_column] = self.__csv[self.__target_column].apply(self.__process_multiclass)
+            self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str',
+                                                                            self.target_column: 'int'})
+            if not self.lazy_init and not self.test_mode:
+                self.csv[self.target_column] = self.csv[self.target_column].apply(self.__process_multiclass)
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
@@ -101,8 +102,8 @@ class ImageClassificationDataset(ImageDataset):
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['index'] - Index.
         """
-        record = self.__csv.iloc[idx]
-        image_path = self.__data_folder / record[self.__input_column]
+        record = self.csv.iloc[idx]
+        image_path = self.data_folder / record[self.input_column]
         image = self._read_image(image_path)
         sample = {'image': image}
         sample = self._apply_transform(self.augment, sample)
@@ -113,22 +114,22 @@ class ImageClassificationDataset(ImageDataset):
         if self.test_mode:
             return sample
 
-        sample['target'] = record[self.__target_column]
+        sample['target'] = record[self.target_column]
 
-        if self.__lazy_init:
-            if self.__multilabel:
+        if self.lazy_init:
+            if self.multilabel:
                 sample['target'] = self.__process_multilabel(str(sample['target']))
                 sample['target'] = sample['target'].astype(self.target_dtype)
             else:
                 sample['target'] = self.__process_multiclass(sample['target'])
 
-        sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.__target_dtype])
+        sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.target_dtype])
 
         return sample
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.__csv)
+        return len(self.csv)
 
     def __process_multiclass(self, class_idx: int) -> int:
         """Check the class index to fit the range.
@@ -142,9 +143,9 @@ class ImageClassificationDataset(ImageDataset):
         Raises:
             ValueError: If class index is out of range.
         """
-        if class_idx >= self.__num_classes:
+        if class_idx >= self.num_classes:
             raise ValueError(f'Target column contains class index: {class_idx}, '
-                             f'it\'s more than num_classes = {self.__num_classes}')
+                             f'it\'s more than num_classes = {self.num_classes}')
         return class_idx
 
     def __process_multilabel(self, labels: str) -> np.array:
@@ -164,35 +165,10 @@ class ImageClassificationDataset(ImageDataset):
 
         max_label = max(labels)
 
-        if max_label < self.__num_classes:
-            multihot = np.zeros((self.__num_classes,), dtype=bool)
+        if max_label < self.num_classes:
+            multihot = np.zeros((self.num_classes,), dtype=bool)
             multihot[labels] = True
         else:
             raise ValueError(f'Target column contains label: {max_label}, '
-                             f'it\'s more than num_classes = {self.__num_classes}')
+                             f'it\'s more than num_classes = {self.num_classes}')
         return multihot
-
-    @property
-    def csv_columns_mapping(self) -> dict:
-        """Column name matching."""
-        return self.__csv_columns_mapping
-
-    @property
-    def target_dtype(self) -> str:
-        """Is target type."""
-        return self.__target_dtype
-
-    @property
-    def multilabel(self) -> bool:
-        """Is task mode."""
-        return self.__multilabel
-
-    @property
-    def num_classes(self) -> int:
-        """Is number of classes."""
-        return self.__num_classes
-
-    @property
-    def lazy_init(self) -> bool:
-        """Is lazy init mode."""
-        return self.__lazy_init

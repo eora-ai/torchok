@@ -171,8 +171,8 @@ class IndexBasedMeter(Metric, ABC):
             scores = torch.cat(self.scores).numpy()
             query_idxs = torch.cat(self.query_idxs).numpy()
             # prepare data
-            relevant_idxs, gallery_idxs, query_column_idxs, \
-            query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
+            relevant_idxs, gallery_idxs, query_column_idxs,\
+                query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
 
         # build index
         vectors = vectors.astype(np.float32)

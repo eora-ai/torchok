@@ -24,7 +24,7 @@ def load_state_dict_with_prefix(state_dict_path: str, prefix: str) -> Dict[str, 
     return prefix_state_dict
 
 
-def compare_state_dicts(current_state_dict: Dict[str, torch.Tensor], load_state_dict: Dict[str, torch.Tensor], 
+def compare_state_dicts(current_state_dict: Dict[str, torch.Tensor], load_state_dict: Dict[str, torch.Tensor],
                         check_keys: Optional[List[str]] = None):
     """Compare state dicts by check_keys. Assert if check keys is not equal.
 
@@ -43,19 +43,19 @@ class TestCheckpoint(unittest.TestCase):
     layer_path = 'tests/constructor/checkpoints/layer.pth'
 
     model_keys = [
-        'layer1.module.conv1.weight', 
+        'layer1.module.conv1.weight',
         'layer1.linear.weight',
         'linear.weight',
     ]
 
     initial_state_dict = {
-        'layer1.module.conv1.weight': 0, 
+        'layer1.module.conv1.weight': 0,
         'layer1.linear.weight': 0,
         'linear.weight': 0,
     }
 
     base_state_dict = {
-        'layer1.module.conv1.weight': 1, 
+        'layer1.module.conv1.weight': 1,
         'layer1.linear.weight': 2,
         'linear.weight': 3,
     }
@@ -65,8 +65,8 @@ class TestCheckpoint(unittest.TestCase):
         overridden_state_dict = dict()
         exclude_keys = list()
         answer_state_dict = self.base_state_dict
-        
-        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
+
+        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict,
                                                             exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
@@ -82,12 +82,12 @@ class TestCheckpoint(unittest.TestCase):
         exclude_keys = list()
 
         answer_state_dict = {
-            'layer1.module.conv1.weight': 11, 
+            'layer1.module.conv1.weight': 11,
             'layer1.linear.weight': 22,
             'linear.weight': 3,
         }
 
-        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
+        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict,
                                                             exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
@@ -105,10 +105,10 @@ class TestCheckpoint(unittest.TestCase):
         answer_state_dict = {
             'layer1.linear.weight': 22,
             'linear.weight': 3,
-            'layer1.module.conv1.weight': 0 
+            'layer1.module.conv1.weight': 0
         }
 
-        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
+        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict,
                                                             exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
@@ -132,11 +132,11 @@ class TestCheckpoint(unittest.TestCase):
             'layer1.module.conv1.weight': 0
         }
 
-        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict, 
+        generated_state_dict = generate_required_state_dict(self.base_state_dict, overridden_state_dict,
                                                             exclude_keys, self.model_keys, self.initial_state_dict)
 
         self.assertDictEqual(answer_state_dict, generated_state_dict)
-    
+
     def test_checkpoint_load_when_full_parameters_was_defined(self):
         model = Model()
         initial_state_dict = copy.deepcopy(model.state_dict())
@@ -155,8 +155,8 @@ class TestCheckpoint(unittest.TestCase):
         base_state_dict = torch.load(self.base_path)
 
         full_exclude_keys = [
-            'layer.block2.conv.weight', 'layer.block2.conv.bias', 
-            'layer.block2.linear.weight', 'layer.block2.linear.bias', 
+            'layer.block2.conv.weight', 'layer.block2.conv.bias',
+            'layer.block2.linear.weight', 'layer.block2.linear.bias',
         ]
 
         answer_state_dict.update(base_state_dict)
@@ -173,7 +173,7 @@ class TestCheckpoint(unittest.TestCase):
         model = Model()
 
         base_path = self.layer_path
-        full_overridden_keys = dict() 
+        full_overridden_keys = dict()
         exclude_keys = list()
 
         with self.assertRaises(Exception):
@@ -196,4 +196,3 @@ class TestCheckpoint(unittest.TestCase):
 
         with self.assertRaises(Exception):
             load_checkpoint(model, self.base_path, full_overridden_keys, exclude_keys)
-    
