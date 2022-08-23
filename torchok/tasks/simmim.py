@@ -51,7 +51,7 @@ class SimMIMTask(BaseTask):
         self.token_count = self.rand_size ** 2
         self.mask_count = int(math.ceil(self.token_count * self.mask_ratio))
 
-        self.backbone.patch_embed.register_forward_hook(self.hook)
+        self.hook_handle = self.backbone.patch_embed.register_forward_hook(self.hook)
         self.backbone.patch_embed.mask_token = nn.Parameter(torch.zeros(1, 1, self.backbone.embed_dim))
 
     @torch.jit.ignore
@@ -111,4 +111,4 @@ class SimMIMTask(BaseTask):
 
     def as_module(self) -> nn.Sequential:
         """Method for model representation as sequential of modules(need for checkpointing)."""
-        return nn.Sequential(self.backbone, self.neck, self.pooling)
+        return nn.Sequential(self.backbone, self.pooling)
