@@ -61,7 +61,7 @@ class RetrievalDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  gallery_folder: Optional[str] = None,
                  gallery_list_csv_path: Optional[str] = None,
-                 image_dtype: str = 'float32',
+                 input_dtype: str = 'float32',
                  img_list_map_column: dict = None,
                  matches_map_column: dict = None,
                  gallery_map_column: dict = None,
@@ -81,7 +81,7 @@ class RetrievalDataset(ImageDataset):
                             When the gallery not specified all the remaining queries and relevant
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
-            image_dtype: Data type of of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             img_list_map_column: Image mapping column names. Key - TorchOk column name, Value - csv column name.
                 default value: {'image_path': 'image_path', 'img_id': 'id'}
             matches_map_column: Matches mapping column names. Key - TorchOk column name, Value - csv column name.
@@ -93,20 +93,11 @@ class RetrievalDataset(ImageDataset):
         Raises:
             ValueError: if gallery_folder True, but gallery_list_csv_path is None
         """
-        super().__init__(transform, augment, image_dtype, grayscale)
+        super().__init__(transform, augment, input_dtype, grayscale)
         self.data_folder = Path(data_folder)
-        self.matches_map_column = matches_map_column if matches_map_column is not None\
-            else {'query': 'query',
-                  'relevant': 'relevant',
-                  'scores': 'scores'}
-
-        self.img_list_map_column = img_list_map_column if img_list_map_column is not None\
-            else {'image_path': 'image_path',
-                  'img_id': 'id'}
-
-        self.gallery_map_column = gallery_map_column if gallery_map_column is not None\
-            else {'gallery_path': 'image_path',
-                  'gallery_id': 'id'}
+        self.matches_map_column = matches_map_column or {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
+        self.img_list_map_column = img_list_map_column or {'image_path': 'image_path', 'img_id': 'id'}
+        self.gallery_map_column = gallery_map_column or {'gallery_path': 'image_path', 'gallery_id': 'id'}
 
         self.matches = pd.read_csv(self.data_folder / matches_csv_path,
                                    usecols=[self.matches_map_column['query'],
@@ -188,7 +179,7 @@ class RetrievalDataset(ImageDataset):
         sample = {'image': image}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
         sample['index'] = index
         sample['is_query'] = self.is_query[index]
         sample['scores'] = self.scores[index]

@@ -26,9 +26,10 @@ class ImageSegmentationDataset(ImageDataset):
                  csv_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
+                 input_column: str = 'image_path',
+                 input_dtype: str = 'float32',
+                 target_column: str = 'mask_path',
                  target_dtype: str = 'int64',
-                 csv_columns_mapping: Dict[str, str] = None,
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init ImageSegmentationDataset.
@@ -42,48 +43,44 @@ class ImageSegmentationDataset(ImageDataset):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of of the torch tensors related to the image.
-            target_dtype: Data type of of the torch tensors related to the target.
-            csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'image_path': 'image_path', 'target': 'mask'}
+            input_column: column name containing paths to the images.
+            input_dtype: Data type of the torch tensors related to the image.
+            target_dtype: Data type of the torch tensors related to the target.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        super().__init__(transform, augment, image_dtype, grayscale, test_mode)
+        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
 
         self.data_folder = Path(data_folder)
-        self.target_dtype = target_dtype
         self.csv_path = csv_path
-        self.csv_columns_mapping = csv_columns_mapping if csv_columns_mapping is not None\
-            else {'image_path': 'image_path',
-                  'target': 'mask'}
-
-        self.input_column = self.csv_columns_mapping['image_path']
-        self.target_column = self.csv_columns_mapping['target']
+        self.input_column = input_column
+        self.target_column = target_column
+        self.target_dtype = target_dtype
 
         self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str',
                                                                         self.target_column: 'str'})
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
+    def get_raw(self, idx: int) -> dict:
         record = self.csv.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
-        image = self._read_image(image_path)
-        sample = {'image': image}
+        sample = {'image': self._read_image(image_path), 'index': idx}
 
         if not self.test_mode:
             mask_path = self.data_folder / record[self.target_column]
-            mask = self._read_mask(mask_path)
-            sample['mask'] = mask
+            sample['mask'] = self._read_mask(mask_path)
 
         sample = self._apply_transform(self.augment, sample)
+
+        return sample
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
 
-        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
-        sample['index'] = idx
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         if not self.test_mode:
-            sample['target'] = sample['mask'].type(torch.__dict__[self.target_dtype])
-            del sample['mask']
+            sample['target'] = sample.pop('mask').type(torch.__dict__[self.target_dtype])
 
         return sample
 

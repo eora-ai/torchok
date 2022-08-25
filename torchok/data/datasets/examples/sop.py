@@ -33,7 +33,7 @@ class SOP(ImageDataset):
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
+                 input_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init SOP.
@@ -50,11 +50,11 @@ class SOP(ImageDataset):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        super().__init__(transform, augment, image_dtype, grayscale, test_mode)
+        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
         self.data_folder = Path(data_folder)
         self.path = self.data_folder / self.base_folder
         self.train = train
@@ -65,10 +65,8 @@ class SOP(ImageDataset):
         if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        if self.train:
-            self.csv = pd.read_csv(self.path / self.train_txt, sep=' ')
-        else:
-            self.csv = pd.read_csv(self.path / self.test_txt, sep=' ')
+        txt = self.train_txt if self.train else self.test_txt
+        self.csv = pd.read_csv(self.path / txt, sep=' ')
 
         self.target_column = 'class_id'
         self.path_column = 'path'
@@ -84,11 +82,10 @@ class SOP(ImageDataset):
         """
         record = self.csv.iloc[idx]
         image = self._read_image(self.path / record[self.path_column])
-        sample = {"image": image}
+        sample = {"image": image, 'index': idx}
         sample = self._apply_transform(self.augment, sample)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
-        sample['index'] = idx
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         if self.test_mode:
             return sample
@@ -111,4 +108,5 @@ class SOP(ImageDataset):
         if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder.as_posix(),
+                                         filename=self.filename, md5=self.tgz_md5)

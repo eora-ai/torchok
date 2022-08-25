@@ -34,7 +34,7 @@ class TestUnsupervisedContrastiveDataset(unittest.TestCase):
     def test_input_dtype_when_specified(self):
         input_dtype = 'float32'
         self.__ds = UnsupervisedContrastiveDataset(self.__data_folder, self.__csv_path, self.__transform,
-                                                   image_dtype=input_dtype)
+                                                   input_dtype=input_dtype)
         self.assertEqual(self.__ds[0]['image_0'].dtype, torch.__dict__[input_dtype])
 
     def test_output_format(self):

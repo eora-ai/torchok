@@ -26,8 +26,8 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                  csv_path: str,
                  transform: Union[BasicTransform, BaseCompose],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
-                 csv_columns_mapping: dict = None,
+                 input_column: str = 'image_path',
+                 input_dtype: str = 'float32',
                  grayscale: bool = False):
         """Init UnsupervisedContrastiveDataset.
 
@@ -39,16 +39,14 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: data type of the torch tensors related to the image.
-            csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'image_path': 'image_path'}
+            input_column: column name containing paths to the images.
+            input_dtype: data type of the torch tensors related to the image.
             grayscale: if True image will be read as grayscale otherwise as RGB.
         """
-        super().__init__(transform, augment, image_dtype, grayscale)
+        super().__init__(transform, augment, input_dtype, grayscale)
         self.data_folder = Path(data_folder)
         self.csv_path = csv_path
-        self.csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path'}
-        self.input_column = self.csv_columns_mapping['image_path']
+        self.input_column = input_column
         self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str'})
 
     def __getitem__(self, idx: int) -> dict:
@@ -71,8 +69,8 @@ class UnsupervisedContrastiveDataset(ImageDataset):
         sample_0_augmented = self._apply_transform(self.transform, {'image': sample_0_transformed})
         sample_1_augmented = self._apply_transform(self.transform, {'image': sample_1_transformed})
 
-        sample_0 = sample_0_augmented['image'].type(torch.__dict__[self.image_dtype])
-        sample_1 = sample_1_augmented['image'].type(torch.__dict__[self.image_dtype])
+        sample_0 = sample_0_augmented['image'].type(torch.__dict__[self.input_dtype])
+        sample_1 = sample_1_augmented['image'].type(torch.__dict__[self.input_dtype])
 
         return {'image_0': sample_0, 'image_1': sample_1, 'index': idx}
 

@@ -34,7 +34,7 @@ class SweetPepper(ImageSegmentationDataset):
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
+                 input_dtype: str = 'float32',
                  target_dtype: str = 'int64',
                  grayscale: bool = False,
                  test_mode: bool = False):
@@ -48,7 +48,7 @@ class SweetPepper(ImageSegmentationDataset):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             target_dtype: Data type of the torch tensors related to the target.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
@@ -62,17 +62,15 @@ class SweetPepper(ImageSegmentationDataset):
         if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        if train:
-            csv_path = self.train_csv
-        else:
-            csv_path = self.valid_csv
+        csv_path = self.train_csv if train else self.valid_csv
 
         super().__init__(
             data_folder=self.path,
             csv_path=csv_path,
             transform=transform,
             augment=augment,
-            image_dtype=image_dtype,
+            input_dtype=input_dtype,
+            target_column='mask',
             target_dtype=target_dtype,
             grayscale=grayscale,
             test_mode=test_mode,
@@ -83,4 +81,5 @@ class SweetPepper(ImageSegmentationDataset):
         if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder.as_posix(),
+                                         filename=self.filename, md5=self.tgz_md5)
