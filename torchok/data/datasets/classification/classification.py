@@ -102,15 +102,14 @@ class ImageClassificationDataset(ImageDataset):
         record = self.csv.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         sample = {'image': self._read_image(image_path), 'index': idx}
+
+        if not self.test_mode:
+            target = record[self.target_column]
+            if self.lazy_init:
+                target = self.process_function(target)
+            sample['target'] = target
+
         sample = self._apply_transform(self.augment, sample)
-
-        if self.test_mode:
-            return sample
-
-        sample['target'] = record[self.target_column]
-
-        if self.lazy_init:
-            sample['target'] = self.process_function(sample['target'])
 
         return sample
 
