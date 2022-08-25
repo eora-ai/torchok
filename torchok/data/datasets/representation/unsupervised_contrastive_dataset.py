@@ -49,6 +49,25 @@ class UnsupervisedContrastiveDataset(ImageDataset):
         self.input_column = input_column
         self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str'})
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image_0'] - Tensor, representing image after augmentations.
+            sample['image_1'] - Tensor, representing image after augmentations.
+            sample['index'] - Index.
+        """
+        record = self.csv.iloc[idx]
+        image_path = self.data_folder / record[self.input_column]
+        image = self._read_image(image_path)
+        sample = {'image': image}
+
+        sample_0 = self._apply_transform(self.augment, sample)['image']
+        sample_1 = self._apply_transform(self.augment, sample)['image']
+
+        return {'image_0': sample_0, 'image_1': sample_1, 'index': idx}
+
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 
@@ -58,21 +77,15 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             sample['image_1'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
             sample['index'] - Index.
         """
-        record = self.csv.iloc[idx]
-        image_path = self.data_folder / record[self.input_column]
-        image = self._read_image(image_path)
-        sample = {'image': image}
+        sample = self.get_raw(idx)
 
-        sample_0_transformed = self._apply_transform(self.augment, sample)['image']
-        sample_1_transformed = self._apply_transform(self.augment, sample)['image']
+        sample['image_0'] = self._apply_transform(self.transform, {'image': sample['image_0']})['image']
+        sample['image_1'] = self._apply_transform(self.transform, {'image': sample['image_1']})['image']
 
-        sample_0_augmented = self._apply_transform(self.transform, {'image': sample_0_transformed})
-        sample_1_augmented = self._apply_transform(self.transform, {'image': sample_1_transformed})
+        sample['image_0'] = sample['image_0'].type(torch.__dict__[self.input_dtype])
+        sample['image_1'] = sample['image_1'].type(torch.__dict__[self.input_dtype])
 
-        sample_0 = sample_0_augmented['image'].type(torch.__dict__[self.input_dtype])
-        sample_1 = sample_1_augmented['image'].type(torch.__dict__[self.input_dtype])
-
-        return {'image_0': sample_0, 'image_1': sample_1, 'index': idx}
+        return sample
 
     def __len__(self) -> int:
         """Dataset length."""

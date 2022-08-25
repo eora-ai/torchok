@@ -5,27 +5,35 @@ from torchok.data.datasets.segmentation.image_segmentation import ImageSegmentat
 
 
 class TestSegmentationDataset(TestImageDataset, unittest.TestCase):
-    def __init__(self, method_name=...) -> None:
-        kwargs = {}
-        args = []
-        super().__init__(ImageSegmentationDataset, 'data/segmentation_data/',
-                         'segmentation_test.csv', args, kwargs, method_name)
+    data_cls = ImageSegmentationDataset
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.dataset_kwargs['data_folder'] = 'tests/data/datasets/data/segmentation_data'
+        self.dataset_kwargs['csv_path'] = 'segmentation_test.csv'
+        self.dataset_kwargs['target_column'] = 'mask'
+        self.ds_len = 3
+        self.output_format = ['image', 'target', 'index']
 
     def test_len(self):
-        super().test_len(num_samples=3)
+        super().test_len()
 
     def test_shape_when_transformed(self):
-        super().test_shape_when_transformed(image_shape=(3, 224, 224))
+        super().test_shape_when_transformed()
 
-    def test_shape_when_grayscale_true(self):
-        super().test_shape_when_grayscale_true(image_shape=(1, 224, 224))
+    def test_shape_when_grayscale(self):
+        super().test_shape_when_grayscale()
 
-    def test_when_augment_not_none(self):
-        super().test_when_augment_not_none(image_shape=(3, 224, 224))
+    def test_augment_not_none(self):
+        super().test_augment_not_none()
 
-    def test_when_augment_not_none_and_grayscale_true(self):
-        super().test_when_augment_not_none_and_grayscale_true(image_shape=(1, 224, 224))
+    def test_augment_not_none_and_grayscale(self):
+        super().test_augment_not_none_and_grayscale()
 
+    def test_input_dtype(self):
+        super().test_input_dtype()
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_input_target_spatial_shape_equality(self):
+        ds = self.create_dataset()
+        sample = ds[0]
+        self.assertTupleEqual(sample['image'].shape[-2:], sample['target'].shape[-2:])

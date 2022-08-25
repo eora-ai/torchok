@@ -158,6 +158,27 @@ class RetrievalDataset(ImageDataset):
 
         self.scores, self.is_query = self._get_targets()
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - np.array, representing image after augmentations, dtype=image_dtype.
+            sample['index'] - Index.
+            sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
+            sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
+        """
+        if idx < self.n_queries + self.n_relevant:
+            img_id = self.index2imgid[idx]
+            image_path = self.data_folder / self.imgid2path[img_id]
+        else:
+            img_id = self.gallery_index2imgid[idx]
+            image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
+
+        image = self._read_image(image_path)
+        sample = {'image': image, 'index': idx, 'is_query': self.is_query[idx], 'scores': self.scores[idx]}
+        return self._apply_transform(self.augment, sample)
+
     def __getitem__(self, index: int) -> dict:
         """Get item sample.
 
@@ -168,21 +189,9 @@ class RetrievalDataset(ImageDataset):
             sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
             sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
         """
-        if index < self.n_queries + self.n_relevant:
-            img_id = self.index2imgid[index]
-            image_path = self.data_folder / self.imgid2path[img_id]
-        else:
-            img_id = self.gallery_index2imgid[index]
-            image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
-
-        image = self._read_image(image_path)
-        sample = {'image': image}
-        sample = self._apply_transform(self.augment, sample)
+        sample = self.get_raw(index)
         sample = self._apply_transform(self.transform, sample)
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
-        sample['index'] = index
-        sample['is_query'] = self.is_query[index]
-        sample['scores'] = self.scores[index]
 
         return sample
 
