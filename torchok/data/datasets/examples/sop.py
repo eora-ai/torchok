@@ -1,14 +1,14 @@
 from pathlib import Path
-from typing import Union, Optional
-import pandas as pd
+from typing import Optional, Union
 
+import pandas as pd
 import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
-from torchok.data.datasets.base import ImageDataset
 from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.constructor import DATASETS
+from torchok.data.datasets.base import ImageDataset
 
 
 @DATASETS.register_class
@@ -71,31 +71,43 @@ class SOP(ImageDataset):
         self.target_column = 'class_id'
         self.path_column = 'path'
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations.
+            sample['target'] - Target class or labels.
+            sample['index'] - Index.
+        """
+        record = self.csv.iloc[idx]
+        image = self._read_image(self.path / record[self.path_column])
+        sample = {"image": image, 'index': idx}
+
+        if not self.test_mode:
+            if self.train:
+                # The labels start with 1 for train
+                sample['target'] = record[self.target_column] - 1
+            else:
+                # The labels start with 11319 for train
+                sample['target'] = record[self.target_column] - 11319
+
+        sample = self._apply_transform(self.augment, sample)
+
+        return sample
+
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 
         Returns:
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
-            sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['target'] - Target class or labels.
             sample['index'] - Index.
         """
-        record = self.csv.iloc[idx]
-        image = self._read_image(self.path / record[self.path_column])
-        sample = {"image": image, 'index': idx}
-        sample = self._apply_transform(self.augment, sample)
+        sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
-
-        if self.test_mode:
-            return sample
-
-        if self.train:
-            # The labels start with 1 for train
-            sample['target'] = record[self.target_column] - 1
-        else:
-            # The labels start with 11319 for train
-            sample['target'] = record[self.target_column] - 11319
 
         return sample
 

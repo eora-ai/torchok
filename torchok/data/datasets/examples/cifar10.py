@@ -106,26 +106,36 @@ class CIFAR10(ImageDataset):
             self.classes = data[self.meta['key']]
         self.class_to_idx = {_class: i for i, _class in enumerate(self.classes)}
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations.
+            sample['target'] - Target class or labels.
+            sample['index'] - Index.
+        """
+        image = self.images[idx]
+        sample = {"image": image, 'index': idx}
+        if not self.test_mode:
+            sample['target'] = self.targets[idx]
+
+        sample = self._apply_transform(self.augment, sample)
+
+        return sample
+
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 
         Returns:
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
-            sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['target'] - Target class or labels.
             sample['index'] - Index.
         """
-        image = self.images[idx]
-        sample = {"image": image}
-        sample = self._apply_transform(self.augment, sample)
+        sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
-        sample['index'] = idx
-
-        if self.test_mode:
-            return sample
-
-        sample['target'] = self.targets[idx]
 
         return sample
 
@@ -147,4 +157,5 @@ class CIFAR10(ImageDataset):
         if self._check_integrity():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder.as_posix(),
+                                         filename=self.filename, md5=self.tgz_md5)
