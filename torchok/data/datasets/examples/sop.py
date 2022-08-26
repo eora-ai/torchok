@@ -101,7 +101,7 @@ class SOP(ImageDataset):
 
         Returns:
             sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels.
             sample['index'] - Index.
         """

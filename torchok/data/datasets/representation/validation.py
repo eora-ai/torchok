@@ -163,7 +163,7 @@ class RetrievalDataset(ImageDataset):
 
         Returns:
             sample: dict, where
-            sample['image'] - np.array, representing image after augmentations, dtype=image_dtype.
+            sample['image'] - np.array, representing image after augmentations, dtype=input_dtype.
             sample['index'] - Index.
             sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
             sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
@@ -184,7 +184,7 @@ class RetrievalDataset(ImageDataset):
 
         Returns:
             sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['index'] - Index.
             sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
             sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.

@@ -118,7 +118,7 @@ class ImageClassificationDataset(ImageDataset):
 
         Returns:
             sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['index'] - Index.
         """

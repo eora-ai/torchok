@@ -73,8 +73,8 @@ class UnsupervisedContrastiveDataset(ImageDataset):
 
         Returns:
             sample: dict, where
-            sample['image_0'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
-            sample['image_1'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['image_0'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
+            sample['image_1'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['index'] - Index.
         """
         sample = self.get_raw(idx)
