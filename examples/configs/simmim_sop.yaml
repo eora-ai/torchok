@@ -11,7 +11,7 @@ task:
     encoder_stride: 32
     inputs:
       - shape: [3, &height 256, &width 256]
-        dtype: 'bfloat16'
+        dtype: &input_dtype bfloat16
 
 joint_loss:
   losses:
@@ -44,7 +44,7 @@ data:
       dataset:
         name: SOP
         params:
-          image_dtype: bfloat16
+          input_dtype: *input_dtype
           train: true
           download: true
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
@@ -115,7 +115,7 @@ data:
       dataset:
         name: SOP
         params:
-          image_dtype: bfloat16
+          input_dtype: *input_dtype
           train: false
           download: true
           data_folder: *data_folder
