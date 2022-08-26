@@ -14,7 +14,7 @@ task:
       num_classes: &num_classes 11318
     inputs:
       - shape: [3, &height 256, &width 256]
-        dtype: 'float32'
+        dtype: &input_dtype float32
 
 callbacks:
   - name: FreezeUnfreeze
@@ -51,7 +51,7 @@ data:
       dataset:
         name: SOP
         params:
-          image_dtype: float32
+          input_dtype: *input_dtype
           train: true
           download: true
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
@@ -122,7 +122,7 @@ data:
       dataset:
         name: SOP
         params:
-          image_dtype: float32
+          input_dtype: *input_dtype
           train: false
           download: true
           data_folder: *data_folder

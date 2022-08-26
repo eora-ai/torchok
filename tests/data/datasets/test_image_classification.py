@@ -1,127 +1,98 @@
-from typing import List, Tuple
-import unittest
-from pathlib import Path
-
 import torch
-from albumentations.pytorch import ToTensorV2
+import unittest
+
+from albumentations import HorizontalFlip, Resize, VerticalFlip
 from albumentations.core.composition import Compose
-from albumentations import Resize, HorizontalFlip, VerticalFlip
+from albumentations.pytorch import ToTensorV2
 
 from torchok.data.datasets.classification.classification import ImageClassificationDataset
 
 
 class TestImageDataset:
+    data_cls = None
+    dataset_kwargs = {}
+    ds_len = 0
+    output_format = []
 
-    def __init__(self, data_cls, data_folder, csv_path, args, kwargs, method_name) -> None:
-        super().__init__(method_name)
-        self.__root_dir = Path(__file__).parent
-        self._data_folder = self.__root_dir / data_folder
-        self._csv_path = self.__root_dir / data_folder / csv_path
-        self._transform = Compose([Resize(224, 224), ToTensorV2()], p=1.0)
-        self._augment = Compose([HorizontalFlip(p=0.5), VerticalFlip(p=0.5)])
-        self._dataset_args = args
-        self._dataset_kwargs = kwargs
-        self._data_cls = data_cls
+    def setUp(self) -> None:
+        self.dataset_kwargs = dict(
+            data_folder='tests/data/datasets/data',
+            transform=Compose([Resize(224, 224), ToTensorV2()], p=1.0),
+        )
+        self.augment = Compose([HorizontalFlip(p=0.5), VerticalFlip(p=0.5)])
 
-    def test_len(self, num_samples):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, **self._dataset_kwargs)
-        self.assertEqual(len(self.__ds), num_samples)
-
-    def test_shape_when_transformed(self, image_shape: Tuple[int, int, int]):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, **self._dataset_kwargs)
-        self.assertTupleEqual(self.__ds[0]['image'].shape, image_shape)
-
-    def test_shape_when_grayscale_true(self, image_shape: Tuple[int, int, int]):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, grayscale=True, **self._dataset_kwargs)
-        self.assertTupleEqual(self.__ds[0]['image'].shape, image_shape)
-
-    def test_input_dtype_when_specified(self, image_dtype: str = 'float32'):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, image_dtype=image_dtype, **self._dataset_kwargs)
-        self.assertEqual(self.__ds[0]['image'].dtype, torch.__dict__[image_dtype])
-
-    def test_target_dtype_when_specified(self, target_dtype: str = 'float32'):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, target_dtype=target_dtype, **self._dataset_kwargs)
-        self.assertEqual(self.__ds[0]['target'].dtype, torch.__dict__[target_dtype])
-
-    def test_input_when_test_mode_true(self, sample_keys: List[str] = None):
-        sample_keys = ['image', 'index'] if sample_keys is None else sample_keys
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, test_mode=True, **self._dataset_kwargs)
-        self.assertListEqual([*self.__ds[0]], sample_keys)
-
-    def test_getitem_when_test_mode_false(self, sample_keys: List[str] = None):
-        sample_keys = ['image', 'index', 'target'] if sample_keys is None else sample_keys
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, test_mode=False, **self._dataset_kwargs)
-        self.assertListEqual([*self.__ds[0]], sample_keys)
-
-    def test_when_augment_not_none(self, image_shape: Tuple[int, int, int]):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, augment=self._augment, **self._dataset_kwargs)
-        self.assertTupleEqual(self.__ds[0]['image'].shape, image_shape)
-
-    def test_when_augment_not_none_and_grayscale_true(self, image_shape: Tuple[int, int, int]):
-        self.__ds = self._data_cls(self._data_folder, self._csv_path, *self._dataset_args,
-                                   self._transform, augment=self._augment, grayscale=True, **self._dataset_kwargs)
-        self.assertTupleEqual(self.__ds[0]['image'].shape, image_shape)
-
-
-class TestClassificationMulticlass(TestImageDataset, unittest.TestCase):
-    def __init__(self, method_name=...) -> None:
-        self.__num_classes = 3
-        kwargs = {}
-        args = [self.__num_classes]
-        super().__init__(ImageClassificationDataset, 'data/', 'multiclass_test.csv', args, kwargs, method_name)
+    def create_dataset(self):
+        return self.data_cls(**self.dataset_kwargs)
 
     def test_len(self):
-        super().test_len(num_samples=7)
+        ds = self.create_dataset()
+        self.assertEqual(len(ds), self.ds_len)
 
     def test_shape_when_transformed(self):
-        super().test_shape_when_transformed(image_shape=(3, 224, 224))
+        ds = self.create_dataset()
+        self.assertTupleEqual(ds[0]['image'].shape, (3, 224, 224))
 
-    def test_shape_when_grayscale_true(self):
-        super().test_shape_when_grayscale_true(image_shape=(1, 224, 224))
+    def test_shape_when_grayscale(self):
+        self.dataset_kwargs['grayscale'] = True
+        ds = self.create_dataset()
+        self.assertTupleEqual(ds[0]['image'].shape, (1, 224, 224))
 
-    def test_when_augment_not_none(self):
-        super().test_when_augment_not_none(image_shape=(3, 224, 224))
+    def test_augment_not_none(self):
+        self.dataset_kwargs['augment'] = self.augment
+        ds = self.create_dataset()
+        self.assertTupleEqual(ds[0]['image'].shape, (3, 224, 224))
 
-    def test_when_augment_not_none_and_grayscale_true(self):
-        super().test_when_augment_not_none_and_grayscale_true(image_shape=(1, 224, 224))
+    def test_augment_not_none_and_grayscale(self):
+        self.dataset_kwargs['augment'] = self.augment
+        self.dataset_kwargs['grayscale'] = True
+        ds = self.create_dataset()
+        self.assertTupleEqual(ds[0]['image'].shape, (1, 224, 224))
+
+    def test_input_dtype(self):
+        self.dataset_kwargs['input_dtype'] = 'float16'
+        ds = self.create_dataset()
+        self.assertEqual(ds[0]['image'].dtype, torch.float16)
+
+    def test_output_format(self):
+        ds = self.create_dataset()
+        self.assertListEqual(sorted(ds[0].keys()), sorted(self.output_format))
 
 
-class TestClassificationMultilabel(TestImageDataset, unittest.TestCase):
-    def __init__(self, methodName=...) -> None:
-        self.__num_classes = 2
-        kwargs = {'multilabel': True}
-        args = [self.__num_classes]
-        super().__init__(ImageClassificationDataset, 'data/', 'multilabel_test.csv',
-                         args, kwargs, methodName)
+class TestClassificationDataset(TestImageDataset, unittest.TestCase):
+    data_cls = ImageClassificationDataset
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.dataset_kwargs['data_folder'] = 'tests/data/datasets/data'
+        self.dataset_kwargs['csv_path'] = 'multiclass_test.csv'
+        self.ds_len = 7
+        self.output_format = ['image', 'target', 'index']
 
     def test_len(self):
-        super().test_len(num_samples=4)
+        super().test_len()
 
     def test_shape_when_transformed(self):
-        super().test_shape_when_transformed(image_shape=(3, 224, 224))
+        super().test_shape_when_transformed()
 
-    def test_shape_when_grayscale_true(self):
-        super().test_shape_when_grayscale_true(image_shape=(1, 224, 224))
+    def test_shape_when_grayscale(self):
+        super().test_shape_when_grayscale()
 
-    def test_when_augment_not_none(self):
-        super().test_when_augment_not_none(image_shape=(3, 224, 224))
+    def test_augment_not_none(self):
+        super().test_augment_not_none()
 
-    def test_when_augment_not_none_and_grayscale_true(self):
-        super().test_when_augment_not_none_and_grayscale_true(image_shape=(1, 224, 224))
+    def test_augment_not_none_and_grayscale(self):
+        super().test_augment_not_none_and_grayscale()
 
-    def test_target_multihot_vector_len(self):
-        self.__ds = ImageClassificationDataset(self._data_folder, self._csv_path, self.__num_classes,
-                                               self._transform, multilabel=True)
-        self.assertEqual(len(self.__ds[0]['target']), self.__num_classes)
+    def test_input_dtype(self):
+        super().test_input_dtype()
 
+    def test_output_format(self):
+        super().test_output_format()
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_target_multilabel_vector_len(self):
+        self.dataset_kwargs['csv_path'] = 'multilabel_test.csv'
+        self.dataset_kwargs['multilabel'] = True
+        self.dataset_kwargs['num_classes'] = 2
+
+        ds = self.create_dataset()
+        self.assertEqual(len(ds[0]['target']), self.dataset_kwargs['num_classes'])

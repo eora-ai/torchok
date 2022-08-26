@@ -61,7 +61,7 @@ class RetrievalDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  gallery_folder: Optional[str] = None,
                  gallery_list_csv_path: Optional[str] = None,
-                 image_dtype: str = 'float32',
+                 input_dtype: str = 'float32',
                  img_list_map_column: dict = None,
                  matches_map_column: dict = None,
                  gallery_map_column: dict = None,
@@ -81,7 +81,7 @@ class RetrievalDataset(ImageDataset):
                             When the gallery not specified all the remaining queries and relevant
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
-            image_dtype: Data type of of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             img_list_map_column: Image mapping column names. Key - TorchOk column name, Value - csv column name.
                 default value: {'image_path': 'image_path', 'img_id': 'id'}
             matches_map_column: Matches mapping column names. Key - TorchOk column name, Value - csv column name.
@@ -93,20 +93,11 @@ class RetrievalDataset(ImageDataset):
         Raises:
             ValueError: if gallery_folder True, but gallery_list_csv_path is None
         """
-        super().__init__(transform, augment, image_dtype, grayscale)
+        super().__init__(transform, augment, input_dtype, grayscale)
         self.data_folder = Path(data_folder)
-        self.matches_map_column = matches_map_column if matches_map_column is not None\
-            else {'query': 'query',
-                  'relevant': 'relevant',
-                  'scores': 'scores'}
-
-        self.img_list_map_column = img_list_map_column if img_list_map_column is not None\
-            else {'image_path': 'image_path',
-                  'img_id': 'id'}
-
-        self.gallery_map_column = gallery_map_column if gallery_map_column is not None\
-            else {'gallery_path': 'image_path',
-                  'gallery_id': 'id'}
+        self.matches_map_column = matches_map_column or {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
+        self.img_list_map_column = img_list_map_column or {'image_path': 'image_path', 'img_id': 'id'}
+        self.gallery_map_column = gallery_map_column or {'gallery_path': 'image_path', 'gallery_id': 'id'}
 
         self.matches = pd.read_csv(self.data_folder / matches_csv_path,
                                    usecols=[self.matches_map_column['query'],
@@ -167,31 +158,40 @@ class RetrievalDataset(ImageDataset):
 
         self.scores, self.is_query = self._get_targets()
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - np.array, representing image after augmentations, dtype=input_dtype.
+            sample['index'] - Index.
+            sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
+            sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
+        """
+        if idx < self.n_queries + self.n_relevant:
+            img_id = self.index2imgid[idx]
+            image_path = self.data_folder / self.imgid2path[img_id]
+        else:
+            img_id = self.gallery_index2imgid[idx]
+            image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
+
+        image = self._read_image(image_path)
+        sample = {'image': image, 'index': idx, 'is_query': self.is_query[idx], 'scores': self.scores[idx]}
+        return self._apply_transform(self.augment, sample)
+
     def __getitem__(self, index: int) -> dict:
         """Get item sample.
 
         Returns:
             sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['index'] - Index.
             sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
             sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
         """
-        if index < self.n_queries + self.n_relevant:
-            img_id = self.index2imgid[index]
-            image_path = self.data_folder / self.imgid2path[img_id]
-        else:
-            img_id = self.gallery_index2imgid[index]
-            image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
-
-        image = self._read_image(image_path)
-        sample = {'image': image}
-        sample = self._apply_transform(self.augment, sample)
+        sample = self.get_raw(index)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
-        sample['index'] = index
-        sample['is_query'] = self.is_query[index]
-        sample['scores'] = self.scores[index]
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         return sample
 

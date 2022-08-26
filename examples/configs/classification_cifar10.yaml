@@ -11,7 +11,7 @@ task:
       num_classes: &num_classes 10
     inputs:
       - shape: [3, &height 32, &width 32]
-        dtype: 'bfloat16'
+        dtype: &input_dtype float16
 
 joint_loss:
   losses:
@@ -40,7 +40,7 @@ data:
       dataset:
         name: CIFAR10
         params:
-          image_dtype: bfloat16
+          input_dtype: *input_dtype
           train: true
           download: true
           data_folder: &data_folder C:\\Users\\Vyacheslav\\Documents\\datasets\\cifar10
@@ -66,7 +66,7 @@ data:
       dataset:
         name: CIFAR10
         params:
-          image_dtype: bfloat16
+          input_dtype: *input_dtype
           train: false
           download: true
           data_folder: *data_folder
@@ -81,7 +81,7 @@ trainer:
   limit_train_batches: 10
   limit_val_batches: 10
   log_every_n_steps: 1000
-  precision: bf16
+  precision: 16
   num_sanity_val_steps: 0
 
 hydra:

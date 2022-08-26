@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -36,9 +36,10 @@ class ImageClassificationDataset(ImageDataset):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  num_classes: int = None,
-                 image_dtype: str = 'float32',
+                 input_column: str = 'image_path',
+                 input_dtype: str = 'float32',
+                 target_column: str = 'label',
                  target_dtype: str = 'long',
-                 csv_columns_mapping: dict = None,
                  grayscale: bool = False,
                  test_mode: bool = False,
                  multilabel: bool = False,
@@ -55,10 +56,10 @@ class ImageClassificationDataset(ImageDataset):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations`_ library.
             num_classes: Number of classes (i.e. maximum class index in the dataset).
-            image_dtype: Data type of the torch tensors related to the image.
+            input_column: column name containing paths to the images.
+            input_dtype: Data type of the torch tensors related to the image.
+            target_column: column name containing image label.
             target_dtype: Data type of the torch tensors related to the target.
-            csv_columns_mapping: Matches mapping column names. Key - TorchOK column name, Value - csv column name.
-                default value: {'image_path': 'image_path', 'label': 'label'}
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
             multilabel: If True, targets are being converted to multihot vector for multilabel task.
@@ -68,21 +69,19 @@ class ImageClassificationDataset(ImageDataset):
 
         .. _albumentations: https://albumentations.ai/docs/
         """
-        super().__init__(transform, augment, image_dtype, grayscale, test_mode)
+        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
 
         if num_classes is None and multilabel:
             raise ValueError('``num_classes`` must be specified when ``multilabel`` is `True`')
 
         self.data_folder = Path(data_folder)
         self.num_classes = num_classes
+        self.input_column = input_column
+        self.target_column = target_column
         self.target_dtype = target_dtype
         self.multilabel = multilabel
         self.lazy_init = lazy_init
         self.csv_path = csv_path
-        self.csv_columns_mapping = csv_columns_mapping or {'image_path': 'image_path', 'label': 'label'}
-
-        self.input_column = self.csv_columns_mapping['image_path']
-        self.target_column = self.csv_columns_mapping['label']
 
         csv_path = self.data_folder / self.csv_path
         dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
@@ -91,33 +90,44 @@ class ImageClassificationDataset(ImageDataset):
         if not self.lazy_init and not self.test_mode:
             self.csv[self.target_column] = self.csv[self.target_column].apply(self.process_function)
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample without transform application.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - np.array, representing image after augmentations.
+            sample['target'] - Target class or labels.
+            sample['index'] - Index.
+        """
+        record = self.csv.iloc[idx]
+        image_path = self.data_folder / record[self.input_column]
+        sample = {'image': self._read_image(image_path), 'index': idx}
+
+        if not self.test_mode:
+            target = record[self.target_column]
+            if self.lazy_init:
+                target = self.process_function(target)
+            sample['target'] = target
+
+        sample = self._apply_transform(self.augment, sample)
+
+        return sample
+
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 
         Returns:
             sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['index'] - Index.
         """
-        record = self.csv.iloc[idx]
-        image_path = self.data_folder / record[self.input_column]
-        image = self._read_image(image_path)
-        sample = {'image': image}
-        sample = self._apply_transform(self.augment, sample)
+        sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
-        sample['index'] = idx
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
-        if self.test_mode:
-            return sample
-
-        sample['target'] = record[self.target_column]
-
-        if self.lazy_init:
-            sample['target'] = self.process_function(sample['target'])
-
-        sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.target_dtype])
+        if not self.test_mode:
+            sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.target_dtype])
 
         return sample
 
