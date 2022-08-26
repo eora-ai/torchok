@@ -14,7 +14,7 @@ class ImageDataset(Dataset, ABC):
     def __init__(self,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
+                 input_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init ImageDataset.
@@ -24,14 +24,14 @@ class ImageDataset(Dataset, ABC):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
         self.test_mode = test_mode
         self.transform = transform
         self.augment = augment
-        self.image_dtype = image_dtype
+        self.input_dtype = input_dtype
         self.grayscale = grayscale
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
@@ -69,6 +69,11 @@ class ImageDataset(Dataset, ABC):
         pass
 
     @abstractmethod
-    def __getitem__(self, item: int) -> dict:
+    def __getitem__(self, idx: int) -> dict:
         """Get item sample."""
+        pass
+
+    @abstractmethod
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample without transform application."""
         pass

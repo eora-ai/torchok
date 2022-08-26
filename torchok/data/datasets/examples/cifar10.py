@@ -42,27 +42,27 @@ class CIFAR10(ImageDataset):
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
+                 input_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init CIFAR10.
 
         Args:
             train: If True, train dataset will be used, else - test dataset.
-            download: If True, data will be download and save to data_folder.
+            download: If True, data will be downloaded and save to data_folder.
             data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
 
         Raises:
             RuntimeError: if dataset or metadata file not found or corrupted.
         """
-        super().__init__(transform, augment, image_dtype, grayscale, test_mode)
+        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
         self.data_folder = Path(data_folder)
         self.train = train
 
@@ -106,26 +106,36 @@ class CIFAR10(ImageDataset):
             self.classes = data[self.meta['key']]
         self.class_to_idx = {_class: i for i, _class in enumerate(self.classes)}
 
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations.
+            sample['target'] - Target class or labels.
+            sample['index'] - Index.
+        """
+        image = self.images[idx]
+        sample = {"image": image, 'index': idx}
+        if not self.test_mode:
+            sample['target'] = self.targets[idx]
+
+        sample = self._apply_transform(self.augment, sample)
+
+        return sample
+
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 
         Returns:
             sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=image_dtype.
-            sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
+            sample['target'] - Target class or labels.
             sample['index'] - Index.
         """
-        image = self.images[idx]
-        sample = {"image": image}
-        sample = self._apply_transform(self.augment, sample)
+        sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.image_dtype])
-        sample['index'] = idx
-
-        if self.test_mode:
-            return sample
-
-        sample['target'] = self.targets[idx]
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         return sample
 
@@ -147,4 +157,5 @@ class CIFAR10(ImageDataset):
         if self._check_integrity():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)
+            download_and_extract_archive(self.url, self.data_folder.as_posix(),
+                                         filename=self.filename, md5=self.tgz_md5)
