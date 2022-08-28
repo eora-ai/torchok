@@ -14,7 +14,7 @@ class PoolingLinear(Pooling):
         self.init_weights()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        super().forward(x)
+        x = super().forward(x)
         x = self.fc(x)
         return x
 
