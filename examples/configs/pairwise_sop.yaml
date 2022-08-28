@@ -1,5 +1,5 @@
 task:
-  name: RepresentationLearnTask
+  name: PairwiseLearnTask
   params:
     backbone_name: resnet18
     backbone_params:
@@ -13,31 +13,24 @@ task:
     inputs:
       - shape: [3, &height 224, &width 224]
         dtype: 'float32'
-    num_classes: 82
 
 joint_loss:
   losses:
-    - name: ContrastiveLoss
-      params:
-        margin: 1.0
+    - name: TripletMarginLoss
       mapping:
-        emb1 : emb1
-        emb2 : emb2
-        R : R
-
+        anchor : anchor
+        positive : positive
+        negative : negative
 
 optimization:
   - optimizer: 
       name: Adam
       params:
-        lr: &initial_lr 0.0001
+        lr: 0.0001
     scheduler:
-      name: OneCycleLR
+      name: ExponentialLR
       params:
-        epochs: 20
-        steps_per_epoch: 100
-        max_lr: *initial_lr
-        pct_start: 0.1
+        gamma: 0.97
 
 data:
   TRAIN:
@@ -47,12 +40,12 @@ data:
         drop_last: true
         shuffle: true
       dataset:
-        name: MULTILABEL_TOILETS
+        name: PAIRWISE_SOP
         params:
+          train: true
           image_dtype: float32
-          download: false
-          num_classes: 82
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/toilets
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
         transform:
           - &resize
             name: Resize
@@ -66,6 +59,25 @@ data:
               std: [ 0.229, 0.224, 0.225 ]
           - &totensor
             name: ToTensorV2
+
+  VALID:
+    - dataloader:
+        batch_size: 4
+        num_workers: 4
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: PAIRWISE_SOP
+        params:
+          train: false
+          image_dtype: float32
+          download: true
+          data_folder: *data_folder
+        transform:
+          - *resize
+          - *normalize
+          - *totensor
+
 
 trainer:
   accelerator: 'gpu'
@@ -85,7 +97,7 @@ logger:
 checkpoint:
   monitor: valid/loss
   save_last: true
-  mode: max
+  mode: min
   export_to_onnx: true
 
 metrics: []

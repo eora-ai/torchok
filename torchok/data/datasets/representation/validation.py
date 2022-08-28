@@ -8,8 +8,10 @@ from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
 from torchok.data.datasets.base import ImageDataset
+from torchok.constructor import DATASETS
 
 
+@DATASETS.register_class
 class RetrievalDataset(ImageDataset):
     """Dataset for image retrieval validation.
 
