@@ -62,7 +62,7 @@ class PAIRWISE_SOP(ImageDataset):
 
         if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
-        
+
         if self.train:
             self.csv = pd.read_csv(self.path / self.train_csv)
         else:
@@ -109,4 +109,3 @@ class PAIRWISE_SOP(ImageDataset):
             print('Files already downloaded and verified')
         else:
             download_and_extract_archive(self.url, self.data_folder, filename=self.filename, md5=self.tgz_md5)
-

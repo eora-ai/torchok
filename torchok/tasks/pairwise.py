@@ -1,9 +1,9 @@
 from typing import Dict, Union
 
-from omegaconf import DictConfig
 from torch import Tensor
+from omegaconf import DictConfig
 
-from torchok.constructor import  TASKS
+from torchok.constructor import TASKS
 from torchok.tasks.classification import ClassificationTask
 
 

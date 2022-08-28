@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Optional, Union
 
-import pandas as pd
 import torch
 import pandas as pd
 from albumentations import BasicTransform
@@ -10,7 +9,6 @@ from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.data.datasets.base import ImageDataset
 from torchok.constructor import DATASETS
-from torchok.data.datasets.base import ImageDataset
 
 
 @DATASETS.register_class
