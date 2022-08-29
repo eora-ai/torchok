@@ -9,11 +9,11 @@ from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.composition import BasicTransform
 
 from torchok.constructor import DATASETS
-from torchok.data.datasets.classification import ImageClassificationDataset
+from torchok.data.datasets.base import ImageDataset
 
 
 @DATASETS.register_class
-class DetectionDataset(ImageClassificationDataset):
+class DetectionDataset(ImageDataset):
     """
     """
     def __init__(self,
@@ -21,7 +21,6 @@ class DetectionDataset(ImageClassificationDataset):
                  csv_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 num_classes: int = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
                  bbox_column: str = 'bbox',
@@ -30,30 +29,27 @@ class DetectionDataset(ImageClassificationDataset):
                  target_dtype: str = 'long',
                  grayscale: bool = False,
                  test_mode: bool = False,
-                 multilabel: bool = False,
-                 lazy_init: bool = False,
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
                  min_visibility: float = 0.0,):
 
         super().__init__(
-            data_folder=data_folder,
-            csv_path=csv_path,
             transform=transform,
             augment=augment,
-            num_classes=num_classes,
-            input_column=input_column,
             input_dtype=input_dtype,
-            target_column=target_column,
-            target_dtype=target_dtype,
             grayscale=grayscale,
-            test_mode=test_mode,
-            multilabel=multilabel,
-            lazy_init=lazy_init,
+            test_mode=test_mode
         )
+        self.data_folder = Path(data_folder)
+        self.csv = pd.read_csv(self.data_folder / csv_path)
+        self.input_column = input_column
+        
+        self.target_column = target_column
+        self.target_dtype = target_dtype
 
         self.bbox_column = bbox_column
         self.bbox_dtype = bbox_dtype
+
         self.bbox_format = bbox_format
 
         self.csv[self.bbox_column] = self.csv[self.bbox_column].apply(literal_eval)
@@ -64,7 +60,7 @@ class DetectionDataset(ImageClassificationDataset):
                 self.augment,
                 bbox_params=BboxParams(
                     format=self.bbox_format,
-                    label_fields=['category_ids'],
+                    label_fields=['label'],
                     min_area=min_area,
                     min_visibility=min_visibility
                 )
@@ -74,27 +70,14 @@ class DetectionDataset(ImageClassificationDataset):
             self.transform,
             bbox_params=BboxParams(
                 format=self.bbox_format,
-                label_fields=['category_ids'],
+                label_fields=['label'],
                 min_area=min_area,
                 min_visibility=min_visibility
             )
         )
 
-    def __getitem__(self, idx: int):
-        sample = self.get_raw(idx // self.expand_rate)
-        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
-
-        output = {
-            'input': sample['image'],
-            'target_bboxes': torch.tensor(sample['bboxes']).type(torch.__dict__[self.target_dtype]),
-            'target_classes': torch.tensor(sample['category_ids']).type(torch.long),
-            'bbox_count': torch.tensor(sample['bbox_count']),
-            'pad_shape': torch.tensor(sample['pad_shape'], dtype=torch.long),
-            'img_shape': torch.tensor(sample['img_shape'], dtype=torch.long),
-            'scale_factor': torch.tensor(sample['scale_factor'], dtype=torch.__dict__[self.target_dtype])
-        }
-
-        return output
+    def __len__(self) -> int:
+        return len(self.csv)
 
     def get_raw(self, idx: int):
         record = self.csv.iloc[idx]
@@ -104,9 +87,7 @@ class DetectionDataset(ImageClassificationDataset):
         if not self.test_mode:
             target = record[self.target_column]
             bboxes = record[self.bbox_column]
-            if self.lazy_init:
-                target = self.process_function(target)
-            sample['target'] = target
+            sample['label'] = target
             sample['bboxes'] = bboxes
 
         sample = self._apply_transform(self.augment, sample)
@@ -128,7 +109,7 @@ class DetectionDataset(ImageClassificationDataset):
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         if not self.test_mode:
-            sample['target'] = torch.tensor(sample['target']).type(torch.__dict__[self.target_dtype])
+            sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype])
             sample['bboxes'] = torch.tensor(sample['bboxes']).type(torch.__dict__[self.bbox_dtype])
 
         return sample
