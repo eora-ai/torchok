@@ -120,6 +120,7 @@ class DetectionDataset(ImageClassificationDataset):
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['bboxes'] - Target bboxes, dtype=bbox_dtype.
             sample['index'] - Index.
         """
         sample = self.get_raw(idx)
