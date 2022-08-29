@@ -26,16 +26,6 @@ class MetricWithUtils(nn.Module):
         self.mapping = mapping
         self.log_name = log_name
 
-    def forward(self, *args, **kwargs):
-        """Forward metric.
-
-        This method cache the states, then do reset current metric state,
-        then call update function for current *args and **kwargs (usually it is batch),
-        then call compute to calculate the metric result and then restore cached states and call update for *args
-        and **kwargs. For more information see forward method of Metric class in torchmetrics.
-        """
-        return self.metric(*args, **kwargs)
-
     def update(self, *args, **kwargs):
         """Update metric states.
 
@@ -102,10 +92,10 @@ class MetricsManager(nn.Module):
 
         return metrics
 
-    def forward(self, phase: Phase, *args, **kwargs):
+    def update(self, phase: Phase, *args, **kwargs):
         """Update states of all metrics on phase loop.
 
-        MetricsManager forward method use only update method of metrics. Because metric forward method
+        MetricsManager update method use only update method of metrics. Because metric forward method
         increases computation time (see MetricWithUtils forward method for more information).
 
         Args:
