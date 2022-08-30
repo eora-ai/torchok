@@ -14,7 +14,7 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
         super().setUp()
         root = Path('tests/data/datasets/detection')
         self.dataset_kwargs['data_folder'] = root
-        self.dataset_kwargs['csv_path'] = 'coco_valid.csv'
+        self.dataset_kwargs['annotation_path'] = 'coco_valid.pkl'
         self.ds_len = 5
 
     def test_len(self):
@@ -30,6 +30,11 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
         super().test_input_dtype()
 
     def test_output_format(self):
+        ds = self.create_dataset()
+        self.assertListEqual(list(ds[0].keys()), ['image', 'index', 'label', 'bboxes'])
+
+    def test_output_format_when_annotation_is_csv(self):
+        self.dataset_kwargs['annotation_path'] = 'coco_valid.csv'
         ds = self.create_dataset()
         self.assertListEqual(list(ds[0].keys()), ['image', 'index', 'label', 'bboxes'])
 

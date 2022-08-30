@@ -80,24 +80,21 @@ class DetectionDataset(ImageDataset):
             test_mode=test_mode
         )
         self.data_folder = Path(data_folder)
+        
+        self.input_column = input_column
+        self.target_column = target_column
+        self.target_dtype = target_dtype
+        self.bbox_column = bbox_column
+        self.bbox_dtype = bbox_dtype
+
+        self.bbox_format = bbox_format
+
         if annotation_path.endswith('csv'):
             self.df = pd.read_csv(self.data_folder / annotation_path)
             self.df[self.bbox_column] = self.df[self.bbox_column].apply(json.loads)
             self.df[self.target_column] = self.df[self.target_column].apply(json.loads)
         else:
             self.df = pd.read_pickle(self.data_folder / annotation_path)
-
-        self.input_column = input_column
-        
-        self.target_column = target_column
-        self.target_dtype = target_dtype
-
-        self.bbox_column = bbox_column
-        self.bbox_dtype = bbox_dtype
-
-        self.bbox_format = bbox_format
-
-
 
         if self.augment is not None:
             self.augment = Compose(
