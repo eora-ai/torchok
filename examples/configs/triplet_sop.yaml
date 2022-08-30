@@ -1,5 +1,6 @@
 task:
-  name: PairwiseLearnTask
+  name: TripletLearnTask
+  compute_loss_on_valid: False
   params:
     backbone_name: resnet18
     backbone_params:
@@ -13,45 +14,39 @@ task:
     inputs:
       - shape: [3, &height 224, &width 224]
         dtype: &input_dtype float32
-    num_classes: 11318
 
 joint_loss:
   losses:
-    - name: ContrastiveLoss
-      params:
-        margin: 1.0
+    - name: TripletMarginLoss
       mapping:
-        emb1 : emb1
-        emb2 : emb2
-        R : R
+        anchor : anchor
+        positive : positive
+        negative : negative
 
 optimization:
   - optimizer: 
       name: Adam
       params:
-        lr: &initial_lr 0.0001
+        lr: 0.0001
     scheduler:
-      name: OneCycleLR
+      name: ExponentialLR
       params:
-        epochs: 20
-        steps_per_epoch: 100
-        max_lr: *initial_lr
-        pct_start: 0.1
+        gamma: 0.97
 
 data:
   TRAIN:
     - dataloader:
-        batch_size: 64
+        batch_size: 4
         num_workers: 4
         drop_last: true
         shuffle: true
       dataset:
-        name: SOP
+        name: TRIPLET_SOP
         params:
           train: true
+          input_dtype: *input_dtype
           download: true
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
-          input_dtype: *input_dtype
         transform:
           - &resize
             name: Resize
@@ -65,36 +60,6 @@ data:
               std: [ 0.229, 0.224, 0.225 ]
           - &totensor
             name: ToTensorV2
-        augment:
-          - name: HorizontalFlip
-          - name: VerticalFlip
-          - name: Compose
-            params:
-              p: 0.5
-              transforms:
-                - name: PadIfNeeded
-                  params:
-                    min_height: *height
-                    min_width: *width
-                - name: CenterCrop
-                  params:
-                    height: *height
-                    width: *width
-          - name: OneOf
-            params:
-              p: 1.0
-              transforms:
-                - name: ElasticTransform
-                  params:
-                    border_mode: 1
-                - name: GridDistortion
-                - name: GaussNoise
-                - name: ColorJitter
-                  params:
-                    brightness: 0.4
-                    contrast: 0.4
-                    saturation: 0.4
-                    hue: 0.1
 
   VALID:
     - dataloader:
@@ -108,6 +73,7 @@ data:
           train: false
           download: true
           data_folder: *data_folder
+          input_dtype: *input_dtype
         transform:
           - *resize
           - *normalize
@@ -115,8 +81,10 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 30
+  max_epochs: 2
   log_every_n_steps: 10
+  limit_train_batches: 10
+  limit_val_batches: 10
 
 hydra:
   run:
@@ -124,7 +92,7 @@ hydra:
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: pairwise_sop
+  experiment_name: triplet_sop
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
@@ -143,6 +111,6 @@ metrics:
       normalize_vectors: True
       search_batch_size: 256
     mapping:
-      vectors: emb1
+      vectors: embeddings
       targets: target
     phases: [VALID]

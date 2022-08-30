@@ -1,5 +1,2 @@
 # Higher level modules like SE (Squeeze Excitation)
-from torchok.models.modules.blocks.scse import SCSEModule
-
-
-__all__ = ['SCSEModule']
+from torchok.models.modules.blocks.scse import SCSEModule # noqa: F401

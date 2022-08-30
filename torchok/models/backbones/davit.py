@@ -15,7 +15,7 @@ from timm.models.layers import DropPath, trunc_normal_
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones import BaseBackbone
+from torchok.models.backbones.base_backbone import BaseBackbone
 from torchok.models.modules.bricks.mlp import Mlp
 
 

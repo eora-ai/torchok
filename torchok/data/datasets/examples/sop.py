@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Optional, Union
 
-import torch
 import pandas as pd
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from torchvision.datasets.utils import download_and_extract_archive

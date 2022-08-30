@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch.nn.functional as F
 from torch import nn, Tensor
 
@@ -22,7 +24,7 @@ class LinearHead(BaseModel):
         self.normalize = normalize
         self.fc = nn.Linear(in_channels, out_channels, bias=bias)
 
-    def forward(self, x: Tensor, targets: Tensor = None) -> Tensor:
+    def forward(self, x: Tensor, targets: Optional[Tensor] = None) -> Tensor:
         if self.drop_rate > 0.:
             x = F.dropout(x, p=self.drop_rate, training=self.training)
 

@@ -30,7 +30,7 @@ from timm.models.vision_transformer import checkpoint_filter_fn
 from timm.models.layers.helpers import to_2tuple
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones import BaseBackbone
+from torchok.models.backbones.base_backbone import BaseBackbone
 
 
 def _cfg(url='', **kwargs):

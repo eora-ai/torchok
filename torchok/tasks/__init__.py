@@ -1,16 +1,6 @@
-from torchok.tasks.base import BaseTask
-from torchok.tasks.classification import ClassificationTask
-from torchok.tasks.onnx import ONNXTask
-from torchok.tasks.segmentation import SegmentationTask
-from torchok.tasks.pairwise import PairwiseLearnTask
-from torchok.tasks.representation import RepresentationLearnTask
-
-
-__all__ = [
-    'BaseTask',
-    'ClassificationTask',
-    'SegmentationTask',
-    'ONNXTask',
-    'PairwiseLearnTask',
-    'RepresentationLearnTask'
-]
+import torchok.tasks.classification # noqa: F401
+import torchok.tasks.onnx # noqa: F401
+import torchok.tasks.segmentation # noqa: F401
+import torchok.tasks.triplet_task # noqa: F401
+import torchok.tasks.pairwise_task # noqa: F401
+from torchok.tasks.base import BaseTask # noqa: F401

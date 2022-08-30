@@ -5,14 +5,15 @@ from omegaconf import DictConfig
 
 from torchok.constructor import TASKS
 from torchok.tasks.classification import ClassificationTask
+from torchok.constructor.config_structure import Phase
 
 
 @TASKS.register_class
-class PairwiseLearnTask(ClassificationTask):
-    """A class for pairwise learning task."""
+class TripletLearnTask(ClassificationTask):
+    """A class for triplet learning task."""
 
     def __init__(self, hparams: DictConfig):
-        """Init PairwiseLearnTask.
+        """Init TripletLearnTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
@@ -32,3 +33,17 @@ class PairwiseLearnTask(ClassificationTask):
         output = {'anchor': anchor, 'positive': positive, 'negative': negative}
 
         return output
+
+    def validation_step(self, batch: Dict[str, Union[Tensor, int]], batch_idx: int) -> Dict[str, Tensor]:
+        """Complete validation loop."""
+        output = super(TripletLearnTask, self).forward_with_gt(batch)
+        self.metrics_manager.forward(Phase.VALID, **output)
+
+        if self._hparams.task.compute_loss_on_valid:
+            total_loss, tagged_loss_values = self.losses(**output)
+            output_dict = {'loss': total_loss}
+            output_dict.update(tagged_loss_values)
+        else:
+            output_dict = {}
+
+        return output_dict

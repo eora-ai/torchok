@@ -1,6 +1,2 @@
-from torchok.models.necks.segmentation.hrnet import HRNetSegmentationNeck
-from torchok.models.necks.segmentation.unet import UnetNeck
-
-
-__all__ = ['HRNetSegmentationNeck',
-           'UnetNeck']
+import torchok.models.necks.segmentation.hrnet # noqa: F401
+import torchok.models.necks.segmentation.unet # noqa: F401

@@ -13,7 +13,7 @@ from torchok.constructor import DATASETS
 
 
 @DATASETS.register_class
-class PAIRWISE_SOP(ImageDataset):
+class TRIPLET_SOP(ImageDataset):
     """A class represent Stanford Online Products - SOP dataset.
 
     Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products
@@ -34,10 +34,13 @@ class PAIRWISE_SOP(ImageDataset):
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 image_dtype: str = 'float32',
+                 anchor_column: str = 'anchor',
+                 positive_column: str = 'positive',
+                 negative_column: str = 'negative',
+                 input_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
-        """Init PAIRWISE SOP.
+        """Init TRIPLET SOP.
 
         Dataset have 11319 image pair(anchor, positive, negative).
 
@@ -48,13 +51,16 @@ class PAIRWISE_SOP(ImageDataset):
                 interface of transforms in `albumentations` library.
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
-            image_dtype: Data type of the torch tensors related to the image.
+            input_dtype: Data type of the torch tensors related to the image.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        super().__init__(transform, augment, image_dtype, grayscale, test_mode)
+        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
         self.data_folder = Path(data_folder)
         self.path = self.data_folder / self.base_folder
+        self.anchor_column = anchor_column
+        self.positive_column = positive_column
+        self.negative_column = negative_column
         self.train = train
 
         if download:
@@ -68,10 +74,6 @@ class PAIRWISE_SOP(ImageDataset):
         else:
             self.csv = pd.read_csv(self.path / self.test_csv)
 
-        self.anchor_paths_column = 'anchor'
-        self.positive_paths_column = 'positive'
-        self.negative_paths_column = 'negative'
-
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 
@@ -82,22 +84,40 @@ class PAIRWISE_SOP(ImageDataset):
             output['negative'] - Negative.
             sample['index'] - Index.
         """
-        record = self.csv.iloc[idx]
-
-        output = {'anchor': self._image_preparation(record, self.anchor_paths_column),
-                  'positive': self._image_preparation(record, self.positive_paths_column),
-                  'negative': self._image_preparation(record, self.negative_paths_column),
+        output = {'anchor': self._image_preparation(idx, self.anchor_column),
+                  'positive': self._image_preparation(idx, self.positive_column),
+                  'negative': self._image_preparation(idx, self.negative_column),
                   'index': idx}
 
         return output
 
-    def _image_preparation(self, record: pd.Series, column_name: str) -> Dict[str, Tensor]:
+    def _image_preparation(self, idx: int, column_name: str, apply_transform: bool = True) -> Dict[str, Tensor]:
+        record = self.csv.iloc[idx]
         image = self._read_image(self.path / record[column_name])
         sample = {"image": image}
         sample = self._apply_transform(self.augment, sample)
-        sample = self._apply_transform(self.transform, sample)
-        image = sample['image'].type(torch.__dict__[self.image_dtype])
+
+        if apply_transform:
+            sample = self._apply_transform(self.transform, sample)
+            image = sample['image'].type(torch.__dict__[self.input_dtype])
+
         return image
+
+    def get_raw(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations.
+            sample['target'] - Target class or labels.
+            sample['index'] - Index.
+        """
+        output = {'anchor': self._image_preparation(idx, self.anchor_column, apply_transform = False),
+                  'positive': self._image_preparation(idx, self.positive_column, apply_transform = False),
+                  'negative': self._image_preparation(idx, self.negative_column, apply_transform = False),
+                  'index': idx}
+
+        return output
 
     def __len__(self) -> int:
         """Dataset length."""

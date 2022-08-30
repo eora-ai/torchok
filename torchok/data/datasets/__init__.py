@@ -1,11 +1,6 @@
-from torchok.data.datasets import classification  # noqa: F401
-from torchok.data.datasets import detection  # noqa: F401
-from torchok.data.datasets import examples  # noqa: F401
-from torchok.data.datasets import representation  # noqa: F401
-from torchok.data.datasets.representation.validation import RetrievalDataset  # noqa: F401
-from torchok.data.datasets.base import ImageDataset
-
-__all__ = [
-    'ImageDataset',
-    'RetrievalDataset'
-]
+import torchok.data.datasets.classification  # noqa: F401
+import torchok.data.datasets.detection  # noqa: F401
+import torchok.data.datasets.examples  # noqa: F401
+import torchok.data.datasets.representation  # noqa: F401
+import torchok.data.datasets.segmentation # noqa: F401
+from torchok.data.datasets.base import ImageDataset # noqa: F401

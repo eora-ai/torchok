@@ -20,7 +20,7 @@ class BasePairwiseLoss(Module):
         super().__init__()
         self.reg = reg
         self.reduction = reduction
-        self.eps = 1e-3 if eps is None else eps
+        self.eps = eps or 1e-3
 
     def regularize(self, L: torch.Tensor, emb: torch.Tensor) -> torch.Tensor:
         """

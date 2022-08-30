@@ -29,9 +29,8 @@ from torchmetrics.regression import (  # noqa: E402
 )
 
 from torchok.constructor import METRICS
-from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
-from torchok.metrics.representation import (MeanAveragePrecisionAtKMeter, NDCGAtKMeter, PrecisionAtKMeter,
-                                            RecallAtKMeter)
+from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils # noqa: F401
+import torchok.metrics.representation # noqa: F401
 
 METRICS.register_class(AUC)
 METRICS.register_class(AUROC)
@@ -80,12 +79,3 @@ METRICS.register_class(SpearmanCorrCoef)
 METRICS.register_class(SymmetricMeanAbsolutePercentageError)
 METRICS.register_class(TweedieDevianceScore)
 METRICS.register_class(WeightedMeanAbsolutePercentageError)
-
-__all__ = [
-    'MetricsManager',
-    'MetricWithUtils',
-    'PrecisionAtKMeter',
-    'RecallAtKMeter',
-    'MeanAveragePrecisionAtKMeter',
-    'NDCGAtKMeter',
-]

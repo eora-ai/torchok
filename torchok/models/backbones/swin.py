@@ -20,7 +20,7 @@ from timm.models.layers import trunc_normal_
 from timm.models.swin_transformer_v2 import BasicLayer as SwinBasicLayer, checkpoint_filter_fn, PatchEmbed, PatchMerging
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones import BaseBackbone
+from torchok.models.backbones.base_backbone import BaseBackbone
 
 
 def _cfg(url='', **kwargs):

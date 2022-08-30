@@ -14,7 +14,7 @@ from timm.models.hrnet import _BN_MOMENTUM, BasicBlock, blocks_dict, Bottleneck,
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones import BaseBackbone
+from torchok.models.backbones.base_backbone import BaseBackbone
 
 
 def _cfg(url: str = '', **kwargs):

@@ -1,6 +1,6 @@
-from . import model_checkpoint_with_onnx  # noqa: F401
-from . import finalize_logger  # noqa: F401
-from . import freeze_unfreeze  # noqa: F401
+import torchok.callbacks.model_checkpoint_with_onnx  # noqa: F401
+import torchok.callbacks.finalize_logger  # noqa: F401
+import torchok.callbacks.freeze_unfreeze  # noqa: F401
 
 from pytorch_lightning.callbacks import (
     DeviceStatsMonitor, EarlyStopping, GradientAccumulationScheduler, LearningRateMonitor, ModelPruning,

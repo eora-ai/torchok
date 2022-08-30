@@ -4,8 +4,8 @@ from torch.nn import (BCELoss, BCEWithLogitsLoss, CosineEmbeddingLoss, CrossEntr
                       PoissonNLLLoss, SmoothL1Loss, SoftMarginLoss, TripletMarginLoss, TripletMarginWithDistanceLoss)
 from torch.nn import Identity
 
-from torchok.losses import segmentation # noqa
-from torchok.losses import representation
+import torchok.losses.segmentation # noqa: F401
+import torchok.losses.representation # noqa: F401
 from torchok.constructor import LOSSES
 
 LOSSES.register_class(L1Loss)
@@ -31,9 +31,3 @@ LOSSES.register_class(TripletMarginLoss)
 LOSSES.register_class(TripletMarginWithDistanceLoss)
 LOSSES.register_class(CTCLoss)
 LOSSES.register_class(Identity)
-
-
-__all__ = [
-    'representation',
-    'segmentation'
-]

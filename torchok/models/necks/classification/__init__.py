@@ -1,4 +1,1 @@
-from torchok.models.necks.classification.hrnet import HRNetClassificationNeck
-
-
-__all__ = ['HRNetClassificationNeck']
+import torchok.models.necks.classification.hrnet # noqa: F401

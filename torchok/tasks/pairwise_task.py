@@ -9,7 +9,7 @@ from torchok.tasks.classification import ClassificationTask
 
 
 @TASKS.register_class
-class RepresentationLearnTask(ClassificationTask):
+class PairwiseLearnTask(ClassificationTask):
     """
     Deep Metric Learning task for pairwise losses.
     """
@@ -55,6 +55,6 @@ class RepresentationLearnTask(ClassificationTask):
             y = input_label.scatter_(1, y[:, None], 1)
 
         intersections = torch.matmul(y, y.transpose(1, 0))
-        rel_matrix = (intersections > 0).type(torch.float32)
+        rel_matrix = torch.where(intersections > 0, 1., 0.)
 
         return rel_matrix

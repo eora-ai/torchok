@@ -1,5 +1,1 @@
-from torchok.data.datasets.classification.classification import ImageClassificationDataset
-
-__all__ = [
-    'ImageClassificationDataset',
-]
+import torchok.data.datasets.classification.classification # noqa: F401
