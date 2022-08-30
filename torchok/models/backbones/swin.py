@@ -254,7 +254,7 @@ class SwinTransformerV2(BaseBackbone):
 
 
 def _create_swin_transformer_v2(variant, pretrained=False, **kwargs):
-    kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans'])
     model = build_model_with_cfg(SwinTransformerV2, variant, pretrained, pretrained_strict=False,
                                  kwargs_filter=kwargs_filter, pretrained_filter_fn=checkpoint_filter_fn, **kwargs)
     return model
