@@ -33,8 +33,8 @@ class COCODetection(DetectionDataset):
     annotations_url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
     annotations_hash = 'f4bbac642086de4f52a3fdda2de5fa2c'
 
-    train_csv = 'train.csv'
-    valid_csv = 'valid.csv'
+    train_pkl = 'train.pkl'
+    valid_pkl = 'valid.pkl'
 
     def __init__(self,
                  train: bool,
@@ -86,24 +86,24 @@ class COCODetection(DetectionDataset):
 
             # Create train csv
             train_annotation_path = self.path / 'annotations/instances_train2017.json'
-            train_csv_path = self.path / self.train_csv
+            train_df_path = self.path / self.train_pkl
             train_image_folder = Path('train2017')
-            self.create_csv(train_annotation_path, train_image_folder, train_csv_path)
+            self.create_annotation(train_annotation_path, train_image_folder, train_df_path)
 
             # Create valid csv
             val_annotation_path = self.path / 'annotations/instances_val2017.json'
-            val_csv_path = self.path / self.valid_csv
+            val_df_path = self.path / self.valid_pkl
             val_image_folder = Path('val2017')
-            self.create_csv(val_annotation_path, val_image_folder, val_csv_path)
+            self.create_annotation(val_annotation_path, val_image_folder, val_df_path)
 
         if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        csv_path = self.train_csv if train else self.valid_csv
+        annotation_path = self.train_pkl if train else self.valid_pkl
 
         super().__init__(
             data_folder=self.path,
-            csv_path=csv_path,
+            annotation_path=annotation_path,
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
@@ -115,13 +115,13 @@ class COCODetection(DetectionDataset):
             min_visibility=min_visibility
         )
 
-    def create_csv(self, json_path: str, image_folder: str, output_name: str):
+    def create_annotation(self, json_path: str, image_folder: str, save_df_path: str):
         """Create train-valid csv for loaded COCO dataset.
 
         Args:
             json_path: COCO json annotation file path.
             image_folder: COCO images folder.
-            output_name: Csv save name.
+            save_df_path: Pickle save name.
         """
         # Read json
         f = open(json_path)
@@ -161,8 +161,8 @@ class COCODetection(DetectionDataset):
             curr_df = annot_df.loc[annot_df['id'] == curr_id]
             bboxes = curr_df.bbox.tolist()
             labels = curr_df.label.tolist()
-            all_bboxes.append(str(bboxes))
-            all_labels.append(str(labels))
+            all_bboxes.append(bboxes)
+            all_labels.append(labels)
 
         df['bbox'] = all_bboxes
         df['label'] = all_labels
@@ -171,16 +171,16 @@ class COCODetection(DetectionDataset):
         df = df.drop(columns=['id'])
         
         # Save csv
-        df.to_csv(output_name, index=False)
+        df.to_pickle(save_df_path)
 
     def _download(self) -> None:
         """Download archive by url to specific folder."""
         if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.train_data_url, self.path.as_posix(),
-                                         filename=self.train_data_filename, md5=self.train_data_hash)
-            download_and_extract_archive(self.valid_data_url, self.path.as_posix(),
-                                         filename=self.valid_data_filename, md5=self.valid_data_hash)
-            download_and_extract_archive(self.annotations_url, self.path.as_posix(),
-                                         filename=self.annotations_filename, md5=self.annotations_hash)
+            download_and_extract_archive(self.train_data_url, self.path.as_posix(), filename=self.train_data_filename,
+                                         md5=self.train_data_hash, remove_finished=True)
+            download_and_extract_archive(self.valid_data_url, self.path.as_posix(), filename=self.valid_data_filename,
+                                         md5=self.valid_data_hash, remove_finished=True)
+            download_and_extract_archive(self.annotations_url, self.path.as_posix(), filename=self.annotations_filename,
+                                         md5=self.annotations_hash, remove_finished=True)

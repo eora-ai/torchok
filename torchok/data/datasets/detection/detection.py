@@ -1,9 +1,9 @@
-from ast import literal_eval
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import pandas as pd
 import torch
+import json
 
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.composition import BasicTransform
@@ -25,7 +25,7 @@ class DetectionDataset(ImageDataset):
     """
     def __init__(self,
                  data_folder: str,
-                 csv_path: str,
+                 annotation_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_column: str = 'image_path',
@@ -43,7 +43,7 @@ class DetectionDataset(ImageDataset):
 
         Args:
             data_folder: Directory with all the images.
-            csv_path: Path to the csv file with path to images and masks.
+            annotation_path: Path to the pkl or csv file with image paths, bboxes and labels.
                 Path to images must be under column `image_path`, bboxes must be under `bbox` column and bbox labels 
                 must be under `label` column.
                 User can change column names, if the input_column, bbox_column or target_column is given.
@@ -80,7 +80,13 @@ class DetectionDataset(ImageDataset):
             test_mode=test_mode
         )
         self.data_folder = Path(data_folder)
-        self.csv = pd.read_csv(self.data_folder / csv_path)
+        if annotation_path.endswith('csv'):
+            self.df = pd.read_csv(self.data_folder / annotation_path)
+            self.df[self.bbox_column] = self.df[self.bbox_column].apply(json.loads)
+            self.df[self.target_column] = self.df[self.target_column].apply(json.loads)
+        else:
+            self.df = pd.read_pickle(self.data_folder / annotation_path)
+
         self.input_column = input_column
         
         self.target_column = target_column
@@ -91,8 +97,7 @@ class DetectionDataset(ImageDataset):
 
         self.bbox_format = bbox_format
 
-        self.csv[self.bbox_column] = self.csv[self.bbox_column].apply(literal_eval)
-        self.csv[self.target_column] = self.csv[self.target_column].apply(literal_eval)
+
 
         if self.augment is not None:
             self.augment = Compose(
@@ -117,10 +122,10 @@ class DetectionDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.csv)
+        return len(self.df)
 
     def get_raw(self, idx: int) -> dict:
-        record = self.csv.iloc[idx]
+        record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         sample = {'image': self._read_image(image_path), 'index': idx}
 

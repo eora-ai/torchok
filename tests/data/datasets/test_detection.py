@@ -10,13 +10,11 @@ from torchok.data.datasets.detection import DetectionDataset
 class TestDetectionDataset(TestImageDataset, unittest.TestCase):
     data_cls = DetectionDataset
 
-
     def setUp(self) -> None:
         super().setUp()
         root = Path('tests/data/datasets/detection')
         self.dataset_kwargs['data_folder'] = root
         self.dataset_kwargs['csv_path'] = 'coco_valid.csv'
-        self.dataset_kwargs['augment'] = None
         self.ds_len = 5
 
     def test_len(self):
