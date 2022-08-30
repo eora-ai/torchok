@@ -142,7 +142,7 @@ class COCODetection(DetectionDataset):
             curr_id = df.iloc[i]['id']
             curr_df = annot_df.loc[annot_df['id'] == curr_id]
             bboxes = curr_df.bbox.tolist()
-            labels = curr_df.category_id.tolist()
+            labels = curr_df.label.tolist()
             all_bboxes.append(str(bboxes))
             all_labels.append(str(labels))
 
@@ -155,16 +155,14 @@ class COCODetection(DetectionDataset):
         # Save csv
         df.to_csv(output_name, index=False)
 
-
-
     def _download(self) -> None:
         """Download archive by url to specific folder."""
         if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.train_data_url, self.data_folder.as_posix(),
+            download_and_extract_archive(self.train_data_url, self.path.as_posix(),
                                          filename=self.train_data_filename, md5=self.train_data_hash)
-            download_and_extract_archive(self.valid_data_url, self.data_folder.as_posix(),
+            download_and_extract_archive(self.valid_data_url, self.path.as_posix(),
                                          filename=self.valid_data_filename, md5=self.valid_data_hash)
-            download_and_extract_archive(self.annotations_url, self.data_folder.as_posix(),
+            download_and_extract_archive(self.annotations_url, self.path.as_posix(),
                                          filename=self.annotations_filename, md5=self.annotations_hash)
