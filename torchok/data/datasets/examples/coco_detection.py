@@ -13,13 +13,11 @@ from torchok.data.datasets.detection import DetectionDataset
 
 @DATASETS.register_class
 class COCODetection(DetectionDataset):
-    """A class represent segmentation dataset Sweet Pepper from Kaggle
-    https://www.kaggle.com/datasets/lemontyc/sweet-pepper.
+    """A class represent detection COCO dataset https://cocodataset.org/#home.
 
-    The main task for this dataset is segment peppers (fruit) and peduncle on the images, obtained from different
-    farm locations.
-    Dataset has 3 labels: 0 - background, 1 - fruit and 2 - peduncle.
-    Dataset contain 620 images in HD resolution, 500 - for train and 120 for validate.
+    The COCO Object Detection Task is designed to push the state of the art in object detection forward.
+    COCO features two object detection tasks: using either bounding box output or object segmentation output
+    (the latter is also known as instance segmentation). 
     """
     base_folder = 'COCO'
 
@@ -63,9 +61,22 @@ class COCODetection(DetectionDataset):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
-            target_dtype: Data type of the torch tensors related to the target.
+            target_dtype: Data type of the torch tensors related to the bboxes labels.
+            bbox_dtype: Data type of the torch tensors related to the bboxes.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
+            bbox_format: Bboxes format, for albumentations transform. Supports the following formats:
+                pascal_voc - [x_min, y_min, x_max, y_max] = [98, 345, 420, 462]
+                albumentations - [x_min, y_min, x_max, y_max] = [0.1531, 0.71875, 0.65625, 0.9625]
+                coco - [x_min, y_min, width, height] = [98, 345, 322, 117]
+                yolo - [x_center, y_center, width, height] = [0.4046875, 0.8614583, 0.503125, 0.24375]
+            min_area: Value in pixels  If the area of a bounding box after augmentation becomes smaller than min_area,
+                Albumentations will drop that box. So the returned list of augmented bounding boxes won't contain
+                that bounding box.
+            min_visibility: Value between 0 and 1. If the ratio of the bounding box area after augmentation to the area
+                of the bounding box before augmentation becomes smaller than min_visibility,
+                Albumentations will drop that box. So if the augmentation process cuts the most of the bounding box,
+                that box won't be present in the returned list of the augmented bounding boxes.
         """
         self.data_folder = Path(data_folder)
         self.path = self.data_folder / self.base_folder
@@ -105,6 +116,13 @@ class COCODetection(DetectionDataset):
         )
 
     def create_csv(self, json_path: str, image_folder: str, output_name: str):
+        """Create train-valid csv for loaded COCO dataset.
+
+        Args:
+            json_path: COCO json annotation file path.
+            image_folder: COCO images folder.
+            output_name: Csv save name.
+        """
         # Read json
         f = open(json_path)
         data = json.load(f)

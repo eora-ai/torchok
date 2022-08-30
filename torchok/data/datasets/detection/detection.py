@@ -2,9 +2,9 @@ from ast import literal_eval
 from pathlib import Path
 from typing import Any, Optional, Union
 
-import numpy as np
 import pandas as pd
 import torch
+
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.composition import BasicTransform
 
@@ -14,7 +14,14 @@ from torchok.data.datasets.base import ImageDataset
 
 @DATASETS.register_class
 class DetectionDataset(ImageDataset):
-    """
+    """A dataset for image detection task.
+
+    .. csv-table:: Detection csv example.
+        :header: image_path, bbox, label
+
+        image1.png, [[217.62, 240.54, 38.99, 57.75], [1.0, 240.24, 346.63, 186.76]], [0, 1]
+        image2.png, [[102.49, 118.47, 7.9, 17.31]], [2, 1]
+        image3.png, [[253.21, 271.07, 59.59, 60.97], [257.85, 224.48, 44.13, 97.0]], [2, 0] 
     """
     def __init__(self,
                  data_folder: str,
@@ -32,7 +39,39 @@ class DetectionDataset(ImageDataset):
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
                  min_visibility: float = 0.0,):
+        """Init DetectionDataset.
 
+        Args:
+            data_folder: Directory with all the images.
+            csv_path: Path to the csv file with path to images and masks.
+                Path to images must be under column `image_path`, bboxes must be under `bbox` column and bbox labels 
+                must be under `label` column.
+                User can change column names, if the input_column, bbox_column or target_column is given.
+            transform: Transform to be applied on a sample. This should have the
+                interface of transforms in `albumentations` library.
+            augment: Optional augment to be applied on a sample.
+                This should have the interface of transforms in `albumentations` library.
+            input_column: Column name containing paths to the images.
+            input_dtype: Data type of the torch tensors related to the image.
+            bbox_column: Column name containing list of bboxes for every image.
+            bbox_dtype: Data type of the torch tensors related to the bboxes.
+            target_column: Column name containing bboxes labels.
+            target_dtype: Data type of the torch tensors related to the bboxes labels.
+            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            test_mode: If True, only image without labels will be returned.
+            bbox_format: Bboxes format, for albumentations transform. Supports the following formats:
+                pascal_voc - [x_min, y_min, x_max, y_max] = [98, 345, 420, 462]
+                albumentations - [x_min, y_min, x_max, y_max] = [0.1531, 0.71875, 0.65625, 0.9625]
+                coco - [x_min, y_min, width, height] = [98, 345, 322, 117]
+                yolo - [x_center, y_center, width, height] = [0.4046875, 0.8614583, 0.503125, 0.24375]
+            min_area: Value in pixels  If the area of a bounding box after augmentation becomes smaller than min_area,
+                Albumentations will drop that box. So the returned list of augmented bounding boxes won't contain
+                that bounding box.
+            min_visibility: Value between 0 and 1. If the ratio of the bounding box area after augmentation to the area
+                of the bounding box before augmentation becomes smaller than min_visibility,
+                Albumentations will drop that box. So if the augmentation process cuts the most of the bounding box,
+                that box won't be present in the returned list of the augmented bounding boxes.
+        """
         super().__init__(
             transform=transform,
             augment=augment,
@@ -77,9 +116,10 @@ class DetectionDataset(ImageDataset):
         )
 
     def __len__(self) -> int:
+        """Dataset length."""
         return len(self.csv)
 
-    def get_raw(self, idx: int):
+    def get_raw(self, idx: int) -> dict:
         record = self.csv.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         sample = {'image': self._read_image(image_path), 'index': idx}
