@@ -1,1 +1,1 @@
-import torchok.models.necks.classification.hrnet # noqa: F401
+import torchok.models.necks.classification.hrnet  # noqa: F401

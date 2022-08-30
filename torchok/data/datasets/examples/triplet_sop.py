@@ -112,9 +112,9 @@ class TRIPLET_SOP(ImageDataset):
             sample['target'] - Target class or labels.
             sample['index'] - Index.
         """
-        output = {'anchor': self._image_preparation(idx, self.anchor_column, apply_transform = False),
-                  'positive': self._image_preparation(idx, self.positive_column, apply_transform = False),
-                  'negative': self._image_preparation(idx, self.negative_column, apply_transform = False),
+        output = {'anchor': self._image_preparation(idx, self.anchor_column, apply_transform=False),
+                  'positive': self._image_preparation(idx, self.positive_column, apply_transform=False),
+                  'negative': self._image_preparation(idx, self.negative_column, apply_transform=False),
                   'index': idx}
 
         return output

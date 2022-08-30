@@ -1,1 +1,1 @@
-import torchok.losses.representation.pairwise # noqa: F401
+import torchok.losses.representation.pairwise  # noqa: F401

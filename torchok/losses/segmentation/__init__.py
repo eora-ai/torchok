@@ -1,1 +1,1 @@
-import torchok.losses.segmentation.dice # noqa: F401
+import torchok.losses.segmentation.dice  # noqa: F401

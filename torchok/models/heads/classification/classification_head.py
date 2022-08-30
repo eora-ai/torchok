@@ -1,6 +1,5 @@
 from typing import Optional
 
-import torch.nn.functional as F
 from torch import Tensor
 
 from torchok.constructor import HEADS
