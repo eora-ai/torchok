@@ -22,7 +22,7 @@ class SOP(ImageDataset):
     filename = 'Stanford_Online_Products.tar.gz'
 
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/Stanford_Online_Products.tar.gz'
-    tgz_md5 = '26513716999698fd361a21c93f77ed32'
+    tgz_md5 = 'b96128cf2b75493708511ff5c400eefe'
 
     train_txt = 'Ebay_train.txt'
     test_txt = 'Ebay_test.txt'

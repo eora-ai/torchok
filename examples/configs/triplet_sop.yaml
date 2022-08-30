@@ -83,8 +83,6 @@ trainer:
   accelerator: 'gpu'
   max_epochs: 2
   log_every_n_steps: 10
-  limit_train_batches: 10
-  limit_val_batches: 10
 
 hydra:
   run:

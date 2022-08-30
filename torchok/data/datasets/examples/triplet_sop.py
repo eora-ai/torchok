@@ -23,10 +23,10 @@ class TRIPLET_SOP(ImageDataset):
     filename = 'Stanford_Online_Products.tar.gz'
 
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/Stanford_Online_Products.tar.gz'
-    tgz_md5 = 'ee7588000020432b7c161079b63efc4f'
+    tgz_md5 = 'b96128cf2b75493708511ff5c400eefe'
 
-    train_csv = 'sop_pairwise_train.csv'
-    test_csv = 'sop_pairwise_test.csv'
+    train_csv = 'sop_triplet_train.csv'
+    test_csv = 'sop_triplet_test.csv'
 
     def __init__(self,
                  train: bool,
