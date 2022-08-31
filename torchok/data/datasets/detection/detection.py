@@ -71,6 +71,9 @@ class DetectionDataset(ImageDataset):
                 of the bounding box before augmentation becomes smaller than min_visibility,
                 Albumentations will drop that box. So if the augmentation process cuts the most of the bounding box,
                 that box won't be present in the returned list of the augmented bounding boxes.
+
+        Raises:
+            RuntimeError: if annotation_path is not in `pkl` or `csv` format.
         """
         super().__init__(
             transform=transform,
@@ -93,8 +96,10 @@ class DetectionDataset(ImageDataset):
             self.df = pd.read_csv(self.data_folder / annotation_path)
             self.df[self.bbox_column] = self.df[self.bbox_column].apply(json.loads)
             self.df[self.target_column] = self.df[self.target_column].apply(json.loads)
-        else:
+        elif annotation_path.endswith('pkl'):
             self.df = pd.read_pickle(self.data_folder / annotation_path)
+        else:
+            raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
 
         if self.augment is not None:
             self.augment = Compose(

@@ -31,12 +31,12 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
         super().test_input_dtype()
 
     def test_output_format(self):
-        ds = self.create_dataset()
+        ds = super().create_dataset()
         self.assertListEqual(list(ds[0].keys()), self.output_format)
 
     def test_output_format_when_annotation_is_csv(self):
         self.dataset_kwargs['annotation_path'] = 'coco_valid.csv'
-        ds = self.create_dataset()
+        ds = super().create_dataset()
         self.assertListEqual(list(ds[0].keys()), self.output_format)
 
     def test_bboxes_when_transformed(self):
@@ -48,7 +48,7 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
 
         sample = {'image': img, 'bboxes': bboxes, 'label': label}
 
-        transform = self.create_dataset().transform
+        transform = super().create_dataset().transform
         transformed_sample = transform(**sample)
 
         # need to convert to int
