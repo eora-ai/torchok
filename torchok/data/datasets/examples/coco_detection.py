@@ -8,7 +8,7 @@ from albumentations.core.composition import BaseCompose
 from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.constructor import DATASETS
-from torchok.data.datasets.detection import DetectionDataset
+from torchok.data.datasets.detection.detection import DetectionDataset
 
 
 @DATASETS.register_class

@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from tests.data.datasets.test_image_classification import TestImageDataset
-from torchok.data.datasets.detection import DetectionDataset 
+from torchok.data.datasets.detection.detection import DetectionDataset 
 
 
 class TestDetectionDataset(TestImageDataset, unittest.TestCase):

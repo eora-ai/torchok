@@ -1,1 +1,1 @@
-from torchok.data.datasets.detection.detection import DetectionDataset
+import torchok.data.datasets.detection.detection
