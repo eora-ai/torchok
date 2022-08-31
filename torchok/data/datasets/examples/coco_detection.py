@@ -19,7 +19,7 @@ class COCODetection(DetectionDataset):
     COCO features two object detection tasks: using either bounding box output or object segmentation output
     (the latter is also known as instance segmentation).
 
-    COCO dataset has 90 categories where 0 - background label.
+    COCO dataset has 90 categories where 0 - background label. Train set contains 118287 images, validation set - 5000.
     
     This Dataset loads about 20 minutes and occupies 20 Gb of memory.
     """
