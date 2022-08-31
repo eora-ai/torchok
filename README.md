@@ -7,6 +7,9 @@
 </div>
 
 ## A day-to-day Computer Vision Engineer backpack
+
+[![Build Status](https://github.com/eora-ai/torchok/actions/workflows/flake8_checks.yaml/badge.svg?branch=main)](https://github.com/eora-ai/torchok/actions/workflows/flake8_checks.yaml)
+
 TorchOk is based on [PyTorch](https://github.com/pytorch/pytorch) and utilizes [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning) for training pipeline routines.
 
 The toolkit consists of:
