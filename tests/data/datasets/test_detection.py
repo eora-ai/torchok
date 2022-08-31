@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from tests.data.datasets.test_image_classification import TestImageDataset
-from torchok.data.datasets.detection.detection import DetectionDataset 
+from torchok.data.datasets.detection.detection import DetectionDataset
 
 
 class TestDetectionDataset(TestImageDataset, unittest.TestCase):
@@ -31,12 +31,11 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
         super().test_input_dtype()
 
     def test_output_format(self):
-        ds = super().create_dataset()
-        self.assertListEqual(list(ds[0].keys()), self.output_format)
+        super().test_output_format()
 
     def test_output_format_when_annotation_is_csv(self):
         self.dataset_kwargs['annotation_path'] = 'coco_valid.csv'
-        ds = super().create_dataset()
+        ds = self.create_dataset()
         self.assertListEqual(list(ds[0].keys()), self.output_format)
 
     def test_bboxes_when_transformed(self):
@@ -48,7 +47,7 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
 
         sample = {'image': img, 'bboxes': bboxes, 'label': label}
 
-        transform = super().create_dataset().transform
+        transform = self.create_dataset().transform
         transformed_sample = transform(**sample)
 
         # need to convert to int
