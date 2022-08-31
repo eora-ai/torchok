@@ -176,7 +176,7 @@ class Beit(BaseBackbone):
         for i in range(len(features)):
             features[i] = ops[i](features[i])
 
-        return input_image, *features
+        return (input_image, *features)
 
     def forward(self, x):
         x = self.patch_embed(x)
