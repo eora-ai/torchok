@@ -8,7 +8,6 @@ from torchok.models.base import BaseModel
 
 from mmdet.core.utils import filter_scores_and_topk, select_single_mlvl
 
-
 class BaseDenseHead(BaseModel, metaclass=ABCMeta):
     """Base class for DenseHeads."""
 
