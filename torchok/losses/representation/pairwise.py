@@ -7,20 +7,23 @@ from torchok.constructor import LOSSES
 
 
 class BasePairwiseLoss(Module):
-    """
-    Contains basic operations on loss: regularization and reduction
-    Args:
-        margin: margin that controls how far samples take from easy decision boundary
-        reg: type of regularization that is applied to input embeddings, possible values: L1, L2.
-            If None, no regularization is applied
-        reduction: type of reduction for output loss vector, possible values: mean, sum.
-            If None, no reduction is applied
-    """
-    def __init__(self, reg: Optional[str] = None, reduction: Optional[str] = 'mean', eps: Optional[float] = None):
+    """Contains basic operations on loss: regularization and reduction."""
+
+    def __init__(self, reg: Optional[str] = None, reduction: Optional[str] = 'mean', eps: Optional[float] = 1e-3):
+        """Init BasePairwiseLoss.
+
+        Args:
+            margin: Margin that controls how far samples take from easy decision boundary.
+            reg: Type of regularization that is applied to input embeddings, possible values: L1, L2.
+                If None, no regularization is applied
+            reduction: Type of reduction for output loss vector, possible values: mean, sum.
+                If None, no reduction is applied
+            eps: Eps (default: 1e-3).
+        """
         super().__init__()
         self.reg = reg
         self.reduction = reduction
-        self.eps = eps or 1e-3
+        self.eps = eps
 
     def regularize(self, L: torch.Tensor, emb: torch.Tensor) -> torch.Tensor:
         """
@@ -63,20 +66,24 @@ class BasePairwiseLoss(Module):
 
 
 class GeneralPairWeightingLoss(BasePairwiseLoss):
-    """
-    General Pair Weighting framework as described in paper `Cross-Batch Memory for Embedding Learning`_
-    Args:
-        margin: margin that controls how far samples take from easy decision boundary
-        reg: type of regularization that is applied to input embeddings, possible values: L1, L2.
-            If None, no regularization is applied
-        reduction: type of reduction for output loss vector, possible values: mean, sum.
-            If None, no reduction is applied
+    """General Pair Weighting framework as described in paper `Cross-Batch Memory for Embedding Learning`_
 
     .. _Cross-Batch Memory for Embedding Learning:
             https://arxiv.org/abs/1912.06798
     """
-    def __init__(self, margin: float, reg: Optional[str] = None, reduction: Optional[str] = 'mean'):
-        super().__init__(reg=reg, reduction=reduction)
+    def __init__(self, margin: float, reg: Optional[str] = None,
+                 reduction: Optional[str] = 'mean', eps: Optional[float] = 1e-3):
+        """Init GeneralPairWeightingLoss.
+
+        Args:
+            margin: Margin that controls how far samples take from easy decision boundary.
+            reg: Type of regularization that is applied to input embeddings, possible values: L1, L2.
+                If None, no regularization is applied
+            reduction: Type of reduction for output loss vector, possible values: mean, sum.
+                If None, no reduction is applied
+            eps: Eps (default: 1e-3).
+        """
+        super().__init__(reg=reg, reduction=reduction, eps=eps)
         self.margin = margin
 
     def forward(self, emb1: torch.Tensor, emb2: torch.Tensor, R: torch.Tensor) -> torch.Tensor:

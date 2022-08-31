@@ -10,7 +10,7 @@ from albumentations.core.composition import BaseCompose
 from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.constructor import DATASETS
-from torchok.data.datasets.segmentation import ImageSegmentationDataset
+from torchok.data.datasets.segmentation.image_segmentation import ImageSegmentationDataset
 
 
 @DATASETS.register_class
@@ -114,7 +114,7 @@ class COCOSegmentation(ImageSegmentationDataset):
         """
         image_paths = []
         mask_paths = []
-        coco=COCO(json_path)
+        coco = COCO(json_path)
         ids = coco.getImgIds()
         for image_id in ids:
             # add image_path

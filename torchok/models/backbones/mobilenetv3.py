@@ -19,7 +19,7 @@ from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import create_conv2d
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones.base_backbone import BaseBackbone
+from torchok.models.backbones import BaseBackbone
 
 
 def _cfg(url='', **kwargs):

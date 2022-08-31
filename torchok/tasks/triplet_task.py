@@ -37,7 +37,7 @@ class TripletLearnTask(ClassificationTask):
     def validation_step(self, batch: Dict[str, Union[Tensor, int]], batch_idx: int) -> Dict[str, Tensor]:
         """Complete validation loop."""
         output = super(TripletLearnTask, self).forward_with_gt(batch)
-        self.metrics_manager.forward(Phase.VALID, **output)
+        self.metrics_manager.update(Phase.VALID, **output)
 
         if self._hparams.task.compute_loss_on_valid:
             total_loss, tagged_loss_values = self.losses(**output)

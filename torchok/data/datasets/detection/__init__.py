@@ -1,1 +1,1 @@
-import torchok.data.datasets.detection.detection
+import torchok.data.datasets.detection.detection  # noqa: F401
