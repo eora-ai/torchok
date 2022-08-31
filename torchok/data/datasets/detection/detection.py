@@ -127,10 +127,8 @@ class DetectionDataset(ImageDataset):
         sample = {'image': self._read_image(image_path), 'index': idx}
 
         if not self.test_mode:
-            target = record[self.target_column]
-            bboxes = record[self.bbox_column]
-            sample['label'] = target
-            sample['bboxes'] = bboxes
+            sample['label'] = record[self.target_column]
+            sample['bboxes'] = record[self.bbox_column]
 
         sample = self._apply_transform(self.augment, sample)
 
