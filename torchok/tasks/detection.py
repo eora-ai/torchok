@@ -10,9 +10,9 @@ from torchok.tasks.base import BaseTask
 
 
 @TASKS.register_class
-class SegmentationTask(BaseTask):
+class SingleStageDetectionTask(BaseTask):
     def __init__(self, hparams: DictConfig):
-        """Init SegmentationTask.
+        """Init SingleStageDetectionTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
