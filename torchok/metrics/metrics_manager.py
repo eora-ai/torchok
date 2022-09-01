@@ -107,6 +107,15 @@ class MetricsManager(nn.Module):
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             metric_with_utils.update(*args, **targeted_kwargs)
 
+    @staticmethod
+    def is_number(num: Any) -> bool:
+        if isinstance(num, np.ndarray):
+            return len(num.shape) == 0 and np.issubdtype(num.dtype, np.number)
+        elif isinstance(num, Tensor):
+            return len(num.shape) == 0
+        else:
+            return isinstance(num, numbers.Number)
+
     def on_epoch_end(self, phase: Phase) -> Dict[str, Tensor]:
         """Summarize epoch values and return log.
 
@@ -123,28 +132,23 @@ class MetricsManager(nn.Module):
         log = {}
         for metric_with_utils in self.phase2metrics[phase.name]:
             metric_value = metric_with_utils.compute()
-            # If its tensor type with wrong shape.
-            if isinstance(metric_value, Tensor) and len(metric_value.shape) != 0:
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
-                                 f'not torch tensor with shape {metric_value.shape}.')
-            # If it numpy array with wrong shape.
-            if isinstance(metric_value, np.ndarray) and len(metric_value.shape) != 0:
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
-                                 f'not numpy array with shape {metric_value.shape}.')
-            # If it numpy array with one element but wrong dtype
-            if isinstance(metric_value, np.ndarray) and len(metric_value.shape) == 0 and\
-                    np.issubdtype(metric_value.dtype, np.number):
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
-                                 f'not numpy array element with dtype {metric_value.dtype}.')
-
-            is_number = isinstance(metric_value, numbers.Number)
-            # If not numeric type.
-            if not (is_number or isinstance(metric_value, Tensor) or isinstance(metric_value, np.ndarray)):
-                raise ValueError(f'{metric_with_utils.log_name} must compute number value, '
-                                 f'not numpy array element with dtype {metric_value.dtype}.')
-
-            metric_key = f'{phase.value}/{metric_with_utils.log_name}'
-            log[metric_key] = metric_value
+            if isinstance(metric_value, dict):
+                metric_keys = list(metric_value.keys())
+                for metric_name_d in metric_keys:
+                    metric_value_d = metric_value.pop(metric_name_d)
+                    if self.is_number(metric_value_d):
+                        metric_value[f'{phase.value}/{metric_with_utils.log_name}_{metric_name_d}'] = metric_value_d
+                # If there is no numeric value
+                if len(metric_value) == 0:
+                    raise ValueError(f'Metric manager on_epoch_end method. Metric {metric_with_utils.log_name}'
+                                     f'return dict with has no numeric values.')
+                log.update(metric_value)
+            elif self.is_number(metric_value):
+                metric_key = f'{phase.value}/{metric_with_utils.log_name}'
+                log[metric_key] = metric_value
+            else:
+                raise ValueError(f'Metric manager on_epoch_end method. Metric {metric_with_utils.log_name}'
+                                 f'return no numeric value.')
 
             # Do reset
             metric_with_utils.reset()
