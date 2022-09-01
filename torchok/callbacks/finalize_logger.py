@@ -1,6 +1,9 @@
 from pytorch_lightning.callbacks import Callback
 
+from torchok.constructor import CALLBACKS
 
+
+@CALLBACKS.register_class
 class FinalizeLogger(Callback):
     """Callback to finalize logger if an error occurs"""
 

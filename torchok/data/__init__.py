@@ -1,2 +1,2 @@
-from torchok.data import datasets  # noqa: F401
-from torchok.data import transforms  # noqa: F401
+import torchok.data.datasets
+import torchok.data.transforms

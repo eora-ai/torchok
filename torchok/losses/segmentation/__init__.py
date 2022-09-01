@@ -1,5 +1,1 @@
-from torchok.losses.segmentation.dice import DiceLoss
-
-__all__ = [
-    'DiceLoss'
-]
+import torchok.losses.segmentation.dice

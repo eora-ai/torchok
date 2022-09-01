@@ -77,6 +77,7 @@ class JointLoss(Module):
         for loss_module, mapping, tag, weight in zip(self.losses, self.mappings, self.tags, self.weights):
             targeted_kwargs = self._parse_match_csv(mapping, **kwargs)
             loss = loss_module(**targeted_kwargs)
+            # TODO: condition key
             total_loss = total_loss + loss * weight
             if tag is not None:
                 tagged_loss_values[tag] = loss

@@ -6,9 +6,11 @@ import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
+from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
 
 
+@DATASETS.register_class
 class UnsupervisedContrastiveDataset(ImageDataset):
     """A dataset for unsupervised contrastive task.
 

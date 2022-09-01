@@ -1,25 +1,27 @@
 task:
-  name: ClassificationTask
+  name: TripletLearnTask
+  compute_loss_on_valid: False
   params:
-    backbone_name: semnasnet_100
+    backbone_name: resnet18
     backbone_params:
       pretrained: true
       in_channels: 3
     pooling_name: Pooling
-    head_name: ClassificationHead
+    head_name: LinearHead
     head_params:
-      num_classes: &num_classes 10
+      out_channels: &emb_size 512
+      normalize: true
     inputs:
-      - shape: [3, &height 32, &width 32]
-        dtype: &input_dtype float16
-
+      - shape: [3, &height 224, &width 224]
+        dtype: &input_dtype float32
 
 joint_loss:
   losses:
-    - name: CrossEntropyLoss
+    - name: TripletMarginLoss
       mapping:
-          input: prediction
-          target: target
+        anchor : anchor
+        positive : positive
+        negative : negative
 
 optimization:
   - optimizer: 
@@ -34,17 +36,17 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 128
-        num_workers: 8
+        batch_size: 4
+        num_workers: 4
         drop_last: true
         shuffle: true
       dataset:
-        name: CIFAR10
+        name: TRIPLET_SOP
         params:
-          input_dtype: *input_dtype
           train: true
+          input_dtype: *input_dtype
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/cifar10
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
         transform:
           - &resize
             name: Resize
@@ -58,19 +60,20 @@ data:
               std: [ 0.229, 0.224, 0.225 ]
           - &totensor
             name: ToTensorV2
+
   VALID:
     - dataloader:
-        batch_size: 128
-        num_workers: 8
+        batch_size: 64
+        num_workers: 4
         drop_last: false
         shuffle: false
       dataset:
-        name: CIFAR10
+        name: SOP
         params:
-          input_dtype: *input_dtype
           train: false
           download: true
           data_folder: *data_folder
+          input_dtype: *input_dtype
         transform:
           - *resize
           - *normalize
@@ -78,12 +81,8 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 30
-  limit_train_batches: 10
-  limit_val_batches: 10
-  log_every_n_steps: 1000
-  precision: 16
-  num_sanity_val_steps: 0
+  max_epochs: 2
+  log_every_n_steps: 10
 
 hydra:
   run:
@@ -91,22 +90,25 @@ hydra:
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: cifar10
+  experiment_name: triplet_sop
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
 checkpoint:
-  monitor: valid/F1Score
+  monitor: valid/HitAtKMeter
   save_last: true
-  mode: max
+  mode: min
+  save_top_k: 2
   export_to_onnx: true
 
 metrics:
-  - name: Accuracy
-    mapping: 
-      preds: prediction
-      target: target
-  - name: F1Score
-    mapping: 
-      preds: prediction
-      target: target
+  - name: HitAtKMeter
+    params:
+      k: 1
+      dataset_type: classification
+      normalize_vectors: True
+      search_batch_size: 256
+    mapping:
+      vectors: embeddings
+      targets: target
+    phases: [VALID]

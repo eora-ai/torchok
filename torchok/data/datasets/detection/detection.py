@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import pandas as pd
 import torch
@@ -21,7 +21,7 @@ class DetectionDataset(ImageDataset):
 
         image1.png, [[217.62, 240.54, 38.99, 57.75], [1.0, 240.24, 346.63, 186.76]], [0, 1]
         image2.png, [[102.49, 118.47, 7.9, 17.31]], [2, 1]
-        image3.png, [[253.21, 271.07, 59.59, 60.97], [257.85, 224.48, 44.13, 97.0]], [2, 0] 
+        image3.png, [[253.21, 271.07, 59.59, 60.97], [257.85, 224.48, 44.13, 97.0]], [2, 0]
     """
     def __init__(self,
                  data_folder: str,
@@ -44,7 +44,7 @@ class DetectionDataset(ImageDataset):
         Args:
             data_folder: Directory with all the images.
             annotation_path: Path to the pkl or csv file with image paths, bboxes and labels.
-                Path to images must be under column `image_path`, bboxes must be under `bbox` column and bbox labels 
+                Path to images must be under column `image_path`, bboxes must be under `bbox` column and bbox labels
                 must be under `label` column.
                 User can change column names, if the input_column, bbox_column or target_column is given.
             transform: Transform to be applied on a sample. This should have the
@@ -83,7 +83,7 @@ class DetectionDataset(ImageDataset):
             test_mode=test_mode
         )
         self.data_folder = Path(data_folder)
-        
+
         self.input_column = input_column
         self.target_column = target_column
         self.target_dtype = target_dtype
