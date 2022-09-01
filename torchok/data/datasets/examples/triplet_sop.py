@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union, Optional, Dict
 
-import pandas as pd
 import torch
+import pandas as pd
+from torch import Tensor
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from torchvision.datasets.utils import download_and_extract_archive
@@ -12,7 +13,7 @@ from torchok.constructor import DATASETS
 
 
 @DATASETS.register_class
-class SOP(ImageDataset):
+class TRIPLET_SOP(ImageDataset):
     """A class represent Stanford Online Products - SOP dataset.
 
     Additionally, we collected Stanford Online Products dataset: 120k images of 23k classes of online products
@@ -24,8 +25,8 @@ class SOP(ImageDataset):
     url = 'https://torchok-hub.s3.eu-west-1.amazonaws.com/Stanford_Online_Products.tar.gz'
     tgz_md5 = 'b96128cf2b75493708511ff5c400eefe'
 
-    train_txt = 'Ebay_train.txt'
-    test_txt = 'Ebay_test.txt'
+    train_csv = 'sop_triplet_train.csv'
+    test_csv = 'sop_triplet_test.csv'
 
     def __init__(self,
                  train: bool,
@@ -33,17 +34,17 @@ class SOP(ImageDataset):
                  data_folder: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
+                 anchor_column: str = 'anchor',
+                 positive_column: str = 'positive',
+                 negative_column: str = 'negative',
                  input_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False):
-        """Init SOP.
+        """Init TRIPLET SOP.
 
-        Have 120,053 images with 22,634 classes in the dataset in total.
-        Train have 59551 images with 11318 classes.
-        Test have 60502 images with 11316 classes.
+        Dataset have 11319 image pair(anchor, positive, negative).
 
         Args:
-            train: If True, train dataset will be used, else - test dataset.
             download: If True, data will be downloaded and save to data_folder.
             data_folder: Directory with all the images.
             transform: Transform to be applied on a sample. This should have the
@@ -57,6 +58,9 @@ class SOP(ImageDataset):
         super().__init__(transform, augment, input_dtype, grayscale, test_mode)
         self.data_folder = Path(data_folder)
         self.path = self.data_folder / self.base_folder
+        self.anchor_column = anchor_column
+        self.positive_column = positive_column
+        self.negative_column = negative_column
         self.train = train
 
         if download:
@@ -65,11 +69,39 @@ class SOP(ImageDataset):
         if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        txt = self.train_txt if self.train else self.test_txt
-        self.csv = pd.read_csv(self.path / txt, sep=' ')
+        if self.train:
+            self.csv = pd.read_csv(self.path / self.train_csv)
+        else:
+            self.csv = pd.read_csv(self.path / self.test_csv)
 
-        self.target_column = 'class_id'
-        self.path_column = 'path'
+    def __getitem__(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            output: dict, where
+            output['anchor'] - Anchor.
+            output['positive'] - Positive.
+            output['negative'] - Negative.
+            sample['index'] - Index.
+        """
+        output = {'anchor': self._image_preparation(idx, self.anchor_column),
+                  'positive': self._image_preparation(idx, self.positive_column),
+                  'negative': self._image_preparation(idx, self.negative_column),
+                  'index': idx}
+
+        return output
+
+    def _image_preparation(self, idx: int, column_name: str, apply_transform: bool = True) -> Dict[str, Tensor]:
+        record = self.csv.iloc[idx]
+        image = self._read_image(self.path / record[column_name])
+        sample = {"image": image}
+        sample = self._apply_transform(self.augment, sample)
+
+        if apply_transform:
+            sample = self._apply_transform(self.transform, sample)
+            image = sample['image'].type(torch.__dict__[self.input_dtype])
+
+        return image
 
     def get_raw(self, idx: int) -> dict:
         """Get item sample.
@@ -80,36 +112,12 @@ class SOP(ImageDataset):
             sample['target'] - Target class or labels.
             sample['index'] - Index.
         """
-        record = self.csv.iloc[idx]
-        image = self._read_image(self.path / record[self.path_column])
-        sample = {"image": image, 'index': idx}
+        output = {'anchor': self._image_preparation(idx, self.anchor_column, apply_transform=False),
+                  'positive': self._image_preparation(idx, self.positive_column, apply_transform=False),
+                  'negative': self._image_preparation(idx, self.negative_column, apply_transform=False),
+                  'index': idx}
 
-        if not self.test_mode:
-            if self.train:
-                # The labels start with 1 for train
-                sample['target'] = record[self.target_column] - 1
-            else:
-                # The labels start with 11319 for train
-                sample['target'] = record[self.target_column] - 11319
-
-        sample = self._apply_transform(self.augment, sample)
-
-        return sample
-
-    def __getitem__(self, idx: int) -> dict:
-        """Get item sample.
-
-        Returns:
-            sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
-            sample['target'] - Target class or labels.
-            sample['index'] - Index.
-        """
-        sample = self.get_raw(idx)
-        sample = self._apply_transform(self.transform, sample)
-        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
-
-        return sample
+        return output
 
     def __len__(self) -> int:
         """Dataset length."""
@@ -120,5 +128,5 @@ class SOP(ImageDataset):
         if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.data_folder.as_posix(),
+            download_and_extract_archive(self.url, self.url.as_posix(), remove_finished=True,
                                          filename=self.filename, md5=self.tgz_md5)

@@ -7,9 +7,11 @@ import pandas as pd
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
+from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
 
 
+@DATASETS.register_class
 class RetrievalDataset(ImageDataset):
     """Dataset for image retrieval validation.
 

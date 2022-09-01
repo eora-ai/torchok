@@ -297,7 +297,7 @@ class IndexBasedMeter(Metric, ABC):
                 query_row_idxs.append(query_idx)
                 relevant_idxs.append(relevant)
 
-        relevant_idxs = np.array(relevant_idxs)
+        relevant_idxs = np.array(relevant_idxs, dtype=object)
         query_row_idxs = np.array(query_row_idxs)
         gallery_idxs = np.arange(len(targets))
         # all query vectors is in relevant, so create array with True elements

@@ -8,7 +8,10 @@ from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.trainer import Trainer
 from pytorch_lightning.utilities.types import _METRIC
 
+from torchok.constructor import CALLBACKS
 
+
+@CALLBACKS.register_class
 class ModelCheckpointWithOnnx(ModelCheckpoint):
     """A class checkpointing ckpt and onnx format."""
     CKPT_EXTENSION = '.ckpt'

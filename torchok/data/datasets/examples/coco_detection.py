@@ -20,7 +20,7 @@ class COCODetection(DetectionDataset):
     (the latter is also known as instance segmentation).
 
     COCO dataset has 90 categories where 0 - background label. Train set contains 118287 images, validation set - 5000.
-    
+
     This Dataset loads about 20 minutes and occupies 20 Gb of memory.
     """
     base_folder = 'COCO'
@@ -132,7 +132,7 @@ class COCODetection(DetectionDataset):
         image_paths = []
         bboxes = []
         labels = []
-        coco=COCO(json_path)
+        coco = COCO(json_path)
         ids = coco.getImgIds()
         for image_id in ids:
             # add image_path

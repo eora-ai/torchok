@@ -21,3 +21,4 @@ ignore = H306, H101, H301, H405
 # D105: Missing docstring in magic method
 per-file-ignores =
     tests/*:D101,D102,D105
+    __init__.py:F401

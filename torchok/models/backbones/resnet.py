@@ -14,7 +14,7 @@ from timm.models.layers import BlurPool2d, get_attn, GroupNorm
 from timm.models.resnet import BasicBlock, Bottleneck, create_aa, make_blocks
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones.base_backbone import BaseBackbone
+from torchok.models.backbones import BaseBackbone
 
 
 def _cfg(url='', **kwargs):
