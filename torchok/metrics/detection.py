@@ -52,6 +52,7 @@ class MeanAveragePrecisionX(MeanAveragePrecision):
         for i in range(len(preds)):
             bboxes_with_scores = preds[i].pop('bboxes')
             bboxes, scores = torch.split(bboxes_with_scores, [4, 1], -1)
+            scores = scores.squeeze(-1)
             preds[i]['boxes'] = bboxes
             preds[i]['scores'] = scores
             preds[i]['labels'] = preds[i].pop('label')
