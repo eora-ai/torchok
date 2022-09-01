@@ -1,1 +1,1 @@
-import torchok.data.datasets.classification.classification  # noqa: F401
+import torchok.data.datasets.classification.classification

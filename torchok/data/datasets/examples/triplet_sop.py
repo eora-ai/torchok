@@ -128,5 +128,5 @@ class TRIPLET_SOP(ImageDataset):
         if self.path.is_dir():
             print('Files already downloaded and verified')
         else:
-            download_and_extract_archive(self.url, self.data_path.as_posix(), remove_finished=True,
-                                         filename=self.train_data_filename, md5=self.train_data_hash)
+            download_and_extract_archive(self.url, self.url.as_posix(), remove_finished=True,
+                                         filename=self.filename, md5=self.tgz_md5)
