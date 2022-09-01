@@ -1,5 +1,5 @@
 import warnings
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 import torch
@@ -10,7 +10,6 @@ from mmcv.runner import force_fp32
 from mmdet.core import (build_assigner, build_bbox_coder,
                         build_prior_generator, build_sampler, images_to_levels,
                         multi_apply, multiclass_nms)
-from mmdet.models.builder import build_loss
 from mmdet.models.dense_heads.base_dense_head import BaseDenseHead
 from mmdet.models.dense_heads.dense_test_mixins import BBoxTestMixin
 from mmdet.models.dense_heads.yolo_head import YOLOV3Head
@@ -28,11 +27,11 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
     """YOLOV3Head Paper link: https://arxiv.org/abs/1804.02767.
 
     Args:
-        in_channels: Number of input channels per scale.
-        num_classes: The number of object classes (w/o background).
-        out_channels: The number of output channels per scale
+        num_classes (int): The number of object classes (w/o background)
+        in_channels (List[int]): Number of input channels per scale.
+        out_channels (List[int]): The number of output channels per scale
             before the final 1x1 layer. Default: (1024, 512, 256).
-        anchor_generator: Config dict for anchor generator
+        anchor_generator (dict): Config dict for anchor generator
         bbox_coder (dict): Config of bounding box coder.
         featmap_strides (List[int]): The stride of each scale.
             Should be in descending order. Default: (32, 16, 8).
@@ -53,29 +52,21 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
     """
 
     def __init__(self,
-                 in_channels: List[int],
-                 num_classes: int,
-                 out_channels: Tuple[int] = (1024, 512, 256),
-                 anchor_generator: dict = None,
+                 num_classes,
+                 in_channels,
+                 out_channels=(1024, 512, 256),
+                 anchor_generator=dict(
+                     type='YOLOAnchorGenerator',
+                     base_sizes=[[(116, 90), (156, 198), (373, 326)],
+                                 [(30, 61), (62, 45), (59, 119)],
+                                 [(10, 13), (16, 30), (33, 23)]],
+                     strides=[32, 16, 8]),
                  bbox_coder=dict(type='YOLOBBoxCoder'),
                  featmap_strides=[32, 16, 8],
                  one_hot_smoother=0.,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
                  act_cfg=dict(type='LeakyReLU', negative_slope=0.1),
-                 loss_cls=dict(
-                     type='CrossEntropyLoss',
-                     use_sigmoid=True,
-                     loss_weight=1.0),
-                 loss_conf=dict(
-                     type='CrossEntropyLoss',
-                     use_sigmoid=True,
-                     loss_weight=1.0),
-                 loss_xy=dict(
-                     type='CrossEntropyLoss',
-                     use_sigmoid=True,
-                     loss_weight=1.0),
-                 loss_wh=dict(type='MSELoss', loss_weight=1.0),
                  train_cfg=None,
                  test_cfg=None,
                  init_cfg=dict(
@@ -83,13 +74,6 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
                      override=dict(name='convs_pred'))):
         super(YOLOV3Head, self).__init__(init_cfg)
         # Check params
-        if anchor_generator is None:
-            anchor_generator = dict(
-                type='YOLOAnchorGenerator',
-                base_sizes=[[(116, 90), (156, 198), (373, 326)],
-                            [(30, 61), (62, 45), (59, 119)],
-                            [(10, 13), (16, 30), (33, 23)]],
-                strides=[32, 16, 8])
         assert (len(in_channels) == len(out_channels) == len(featmap_strides))
 
         self.num_classes = num_classes
@@ -116,11 +100,6 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         self.bbox_coder = build_bbox_coder(bbox_coder)
 
         self.prior_generator = build_prior_generator(anchor_generator)
-
-        self.loss_cls = build_loss(loss_cls)
-        self.loss_conf = build_loss(loss_conf)
-        self.loss_xy = build_loss(loss_xy)
-        self.loss_wh = build_loss(loss_wh)
 
         self.num_base_priors = self.prior_generator.num_base_priors[0]
         assert len(
@@ -185,8 +164,7 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             bias = conv_pred.bias.reshape(self.num_base_priors, -1)
             # init objectness with prior of 8 objects per feature map
             # refer to https://github.com/ultralytics/yolov3
-            nn.init.constant_(bias.data[:, 4],
-                              bias_init_with_prob(8 / (608 / stride) ** 2))
+            nn.init.constant_(bias.data[:, 4], bias_init_with_prob(8 / (608 / stride) ** 2))
             nn.init.constant_(bias.data[:, 5:], bias_init_with_prob(0.01))
 
     def forward(self, feats):
@@ -242,8 +220,7 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         """
         assert len(pred_maps) == self.num_levels
         cfg = self.test_cfg if cfg is None else cfg
-        scale_factors = np.array(
-            [img_meta['scale_factor'] for img_meta in img_metas])
+        scale_factors = np.array([img_meta['scale_factor'] for img_meta in img_metas])
 
         num_imgs = len(img_metas)
         featmap_sizes = [pred_map.shape[-2:] for pred_map in pred_maps]
@@ -253,12 +230,10 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         flatten_preds = []
         flatten_strides = []
         for pred, stride in zip(pred_maps, self.featmap_strides):
-            pred = pred.permute(0, 2, 3, 1).reshape(num_imgs, -1,
-                                                    self.num_attrib)
+            pred = pred.permute(0, 2, 3, 1).reshape(num_imgs, -1, self.num_attrib)
             pred[..., :2].sigmoid_()
             flatten_preds.append(pred)
-            flatten_strides.append(
-                pred.new_tensor(stride).expand(pred.size(1)))
+            flatten_strides.append(pred.new_tensor(stride).expand(pred.size(1)))
 
         flatten_preds = torch.cat(flatten_preds, dim=1)
         flatten_bbox_preds = flatten_preds[..., :4]
@@ -274,11 +249,9 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             return torch.zeros((0, 5)), torch.zeros((0,))
 
         if rescale:
-            flatten_bboxes /= flatten_bboxes.new_tensor(
-                scale_factors).unsqueeze(1)
+            flatten_bboxes /= flatten_bboxes.new_tensor(scale_factors).unsqueeze(1)
 
-        padding = flatten_bboxes.new_zeros(num_imgs, flatten_bboxes.shape[1],
-                                           1)
+        padding = flatten_bboxes.new_zeros(num_imgs, flatten_bboxes.shape[1], 1)
         flatten_cls_scores = torch.cat([flatten_cls_scores, padding], dim=-1)
 
         det_results = []
@@ -329,22 +302,16 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         num_imgs = len(img_metas)
         device = pred_maps[0][0].device
 
-        featmap_sizes = [
-            pred_maps[i].shape[-2:] for i in range(self.num_levels)
-        ]
-        mlvl_anchors = self.prior_generator.grid_priors(
-            featmap_sizes, device=device)
+        featmap_sizes = [pred_maps[i].shape[-2:] for i in range(self.num_levels)]
+        mlvl_anchors = self.prior_generator.grid_priors(featmap_sizes, device=device)
         anchor_list = [mlvl_anchors for _ in range(num_imgs)]
 
         responsible_flag_list = []
         for img_id in range(len(img_metas)):
-            responsible_flag_list.append(
-                self.prior_generator.responsible_flags(featmap_sizes,
-                                                       gt_bboxes[img_id],
-                                                       device))
+            responsible_flags = self.prior_generator.responsible_flags(featmap_sizes, gt_bboxes[img_id], device)
+            responsible_flag_list.append(responsible_flags)
 
-        target_maps_list, neg_maps_list = self.get_targets(
-            anchor_list, responsible_flag_list, gt_bboxes, gt_labels)
+        target_maps_list, neg_maps_list = self.get_targets(anchor_list, responsible_flag_list, gt_bboxes, gt_labels)
 
         losses_cls, losses_conf, losses_xy, losses_wh = multi_apply(
             self.loss_single, pred_maps, target_maps_list, neg_maps_list)
@@ -353,7 +320,8 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             loss_cls=losses_cls,
             loss_conf=losses_conf,
             loss_xy=losses_xy,
-            loss_wh=losses_wh)
+            loss_wh=losses_wh
+        )
 
     def loss_single(self, pred_map, target_map, neg_map):
         """Compute loss of a single image from a batch.
@@ -372,33 +340,31 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         """
 
         num_imgs = len(pred_map)
-        pred_map = pred_map.permute(0, 2, 3,
-                                    1).reshape(num_imgs, -1, self.num_attrib)
+        pred_map = pred_map.permute(0, 2, 3, 1).reshape(num_imgs, -1, self.num_attrib)
         neg_mask = neg_map.float()
         pos_mask = target_map[..., 4]
         pos_and_neg_mask = neg_mask + pos_mask
-        pos_mask = pos_mask.unsqueeze(dim=-1)
+
         if torch.max(pos_and_neg_mask) > 1.:
             warnings.warn('There is overlap between pos and neg sample.')
             pos_and_neg_mask = pos_and_neg_mask.clamp(min=0., max=1.)
 
-        pred_xy = pred_map[..., :2]
-        pred_wh = pred_map[..., 2:4]
-        pred_conf = pred_map[..., 4]
-        pred_label = pred_map[..., 5:]
+        prep_result = dict(
+            pred_xy=pred_map[..., :2],
+            pred_wh=pred_map[..., 2:4],
+            pred_conf=pred_map[..., 4],
+            pred_label=pred_map[..., 5:],
 
-        target_xy = target_map[..., :2]
-        target_wh = target_map[..., 2:4]
-        target_conf = target_map[..., 4]
-        target_label = target_map[..., 5:]
+            target_xy=target_map[..., :2],
+            target_wh=target_map[..., 2:4],
+            target_conf=target_map[..., 4],
+            target_label=target_map[..., 5:],
 
-        loss_cls = self.loss_cls(pred_label, target_label, weight=pos_mask)
-        loss_conf = self.loss_conf(
-            pred_conf, target_conf, weight=pos_and_neg_mask)
-        loss_xy = self.loss_xy(pred_xy, target_xy, weight=pos_mask)
-        loss_wh = self.loss_wh(pred_wh, target_wh, weight=pos_mask)
+            pos_mask=pos_mask.unsqueeze(dim=-1),
+            pos_and_neg_mask=pos_and_neg_mask
+        )
 
-        return loss_cls, loss_conf, loss_xy, loss_wh
+        return prep_result
 
     def get_targets(self, anchor_list, responsible_flag_list, gt_bboxes_list,
                     gt_labels_list):
@@ -436,8 +402,7 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
 
         return target_maps_list, neg_maps_list
 
-    def _get_targets_single(self, anchors, responsible_flags, gt_bboxes,
-                            gt_labels):
+    def _get_targets_single(self, anchors, responsible_flags, gt_bboxes, gt_labels):
         """Generate matching bounding box prior and converted GT.
 
         Args:
@@ -458,42 +423,34 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
 
         anchor_strides = []
         for i in range(len(anchors)):
-            anchor_strides.append(
-                torch.tensor(self.featmap_strides[i],
-                             device=gt_bboxes.device).repeat(len(anchors[i])))
+            tensor = torch.tensor(self.featmap_strides[i], device=gt_bboxes.device)
+            anchor_strides.append(tensor.repeat(len(anchors[i])))
         concat_anchors = torch.cat(anchors)
         concat_responsible_flags = torch.cat(responsible_flags)
 
         anchor_strides = torch.cat(anchor_strides)
-        assert len(anchor_strides) == len(concat_anchors) == \
-               len(concat_responsible_flags)
-        assign_result = self.assigner.assign(concat_anchors,
-                                             concat_responsible_flags,
-                                             gt_bboxes)
-        sampling_result = self.sampler.sample(assign_result, concat_anchors,
-                                              gt_bboxes)
+        assert len(anchor_strides) == len(concat_anchors) == len(concat_responsible_flags)
+        assign_res = self.assigner.assign(concat_anchors, concat_responsible_flags, gt_bboxes)
+        sampling_res = self.sampler.sample(assign_res, concat_anchors, gt_bboxes)
 
-        target_map = concat_anchors.new_zeros(
-            concat_anchors.size(0), self.num_attrib)
+        target_map = concat_anchors.new_zeros(concat_anchors.size(0), self.num_attrib)
 
-        target_map[sampling_result.pos_inds, :4] = self.bbox_coder.encode(
-            sampling_result.pos_bboxes, sampling_result.pos_gt_bboxes,
-            anchor_strides[sampling_result.pos_inds])
+        target_map[sampling_res.pos_inds, :4] = self.bbox_coder.encode(
+            sampling_res.pos_bboxes,
+            sampling_res.pos_gt_bboxes,
+            anchor_strides[sampling_res.pos_inds]
+        )
 
-        target_map[sampling_result.pos_inds, 4] = 1
+        target_map[sampling_res.pos_inds, 4] = 1
 
-        gt_labels_one_hot = F.one_hot(
-            gt_labels, num_classes=self.num_classes).float()
+        gt_labels_one_hot = F.one_hot(gt_labels, num_classes=self.num_classes).float()
         if self.one_hot_smoother != 0:  # label smooth
-            gt_labels_one_hot = gt_labels_one_hot * (
-                    1 - self.one_hot_smoother
-            ) + self.one_hot_smoother / self.num_classes
-        target_map[sampling_result.pos_inds, 5:] = gt_labels_one_hot[
-            sampling_result.pos_assigned_gt_inds]
+            smoother = self.one_hot_smoother
+            gt_labels_one_hot = gt_labels_one_hot * (1 - smoother) + smoother / self.num_classes
+        target_map[sampling_res.pos_inds, 5:] = gt_labels_one_hot[sampling_res.pos_assigned_gt_inds]
 
-        neg_map = concat_anchors.new_zeros(
-            concat_anchors.size(0), dtype=torch.uint8)
-        neg_map[sampling_result.neg_inds] = 1
+        neg_map = concat_anchors.new_zeros(concat_anchors.size(0), dtype=torch.uint8)
+        neg_map[sampling_res.neg_inds] = 1
 
         return target_map, neg_map
 

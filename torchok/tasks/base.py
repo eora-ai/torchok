@@ -40,7 +40,7 @@ class BaseTask(LightningModule, ABC):
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
-        """Abstract forward method for validation an test."""
+        """Abstract forward method for validation and test."""
         pass
 
     @abstractmethod
