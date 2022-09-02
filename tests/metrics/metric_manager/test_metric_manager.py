@@ -145,7 +145,7 @@ class MetricManagerTest(unittest.TestCase):
         case = TestCase(
             test_name='dict_output',
             names=['MockDictMetric'],
-            prefixes=[None], mappings = [mappings],
+            prefixes=[None], mappings=[mappings],
             data_generator=data_generator,
             expected={'train/MockDictMetric_target_shape': 10, 'train/MockDictMetric_embedding_size': 512})
 

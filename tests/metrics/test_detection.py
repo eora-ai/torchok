@@ -3,9 +3,7 @@ import unittest
 import torch
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
-from torchok import METRICS
 from torchok.metrics.detection import MeanAveragePrecisionX
-
 
 
 class DetectionMetricTest(unittest.TestCase):
