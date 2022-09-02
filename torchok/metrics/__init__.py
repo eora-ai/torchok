@@ -28,6 +28,8 @@ from torchmetrics.regression import (  # noqa: E402
     WeightedMeanAbsolutePercentageError,
 )
 
+from torchmetrics.detection.mean_ap import MeanAveragePrecision
+
 from torchok.constructor import METRICS
 from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
 import torchok.metrics.representation
@@ -79,3 +81,5 @@ METRICS.register_class(SpearmanCorrCoef)
 METRICS.register_class(SymmetricMeanAbsolutePercentageError)
 METRICS.register_class(TweedieDevianceScore)
 METRICS.register_class(WeightedMeanAbsolutePercentageError)
+
+METRICS.register_class(MeanAveragePrecision)

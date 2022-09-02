@@ -24,6 +24,22 @@ class MockSumMetric(Metric):
 
 
 @METRICS.register_class
+class MockDictMetric(Metric):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def update(self, predict: torch.Tensor, target: torch.Tensor):
+        return
+
+    def compute(self):
+        output_dict = {
+            'target_shape': torch.tensor(10),
+            'embedding_size': torch.tensor(512)
+        }
+        return output_dict
+
+
+@METRICS.register_class
 class MockConstantMetric(Metric):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -60,7 +76,7 @@ def run_metric_manager(names: List[str], prefixes: List[str],
 
     metric_manager = MetricsManager(metric_params)
     for i in range(len(data_generator)):
-        metric_manager(Phase.TRAIN, **data_generator[i])
+        metric_manager.update(Phase.TRAIN, **data_generator[i])
 
     return metric_manager.on_epoch_end(Phase.TRAIN)
 
@@ -111,6 +127,27 @@ class MetricManagerTest(unittest.TestCase):
             prefixes=['moc_sum', None], mappings=[mappings, mappings],
             data_generator=data_generator,
             expected={'train/moc_sum_MockSumMetric': 5, 'train/MockConstantMetric': 0})
+
+        print(f'case name = {case.test_name}')
+        actual = run_metric_manager(
+            names=case.names, prefixes=case.prefixes,
+            mappings=case.mappings, data_generator=data_generator
+        )
+        self.assertDictEqual(
+            case.expected,
+            actual,
+            "failed test {} expected {}, actual {}".format(
+                case.test_name, case.expected, actual
+            ),
+        )
+
+    def test_metrics_manager_when_output_is_dict(self):
+        case = TestCase(
+            test_name='dict_output',
+            names=['MockDictMetric'],
+            prefixes=[None], mappings=[mappings],
+            data_generator=data_generator,
+            expected={'train/MockDictMetric_target_shape': 10, 'train/MockDictMetric_embedding_size': 512})
 
         print(f'case name = {case.test_name}')
         actual = run_metric_manager(
