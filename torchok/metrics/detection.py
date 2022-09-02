@@ -15,10 +15,10 @@ class MeanAveragePrecisionX(MeanAveragePrecision):
         Args:
             preds: A list consisting of dictionaries each containing the key-values
                 (each dictionary corresponds to a single image):
-                - ``bboxes``: ``torch.FloatTensor`` of shape ``[num_boxes, 5]`` containing ``num_boxes`` detection boxes
+                - ``boxes``: ``torch.FloatTensor`` of shape ``[num_boxes, 5]`` containing ``num_boxes`` detection boxes
                   of the format specified in the constructor. By default, this method expects
                   ``[xmin, ymin, xmax, ymax, score]`` in absolute image coordinates.
-                - ``label``: ``torch.IntTensor`` of shape ``[num_boxes]`` containing 0-indexed detection classes
+                - ``labels``: ``torch.IntTensor`` of shape ``[num_boxes]`` containing 0-indexed detection classes
                   for the boxes.
                 - ``masks``: ``torch.bool`` of shape ``[num_boxes, image_height, image_width]`` containing boolean
                   masks. Only required when `iou_type="segm"`.
@@ -50,15 +50,10 @@ class MeanAveragePrecisionX(MeanAveragePrecision):
                 If any score is not type float and of length 1
         """
         for i in range(len(preds)):
-            bboxes_with_scores = preds[i].pop('bboxes')
+            bboxes_with_scores = preds[i].pop('boxes')
             bboxes, scores = torch.split(bboxes_with_scores, [4, 1], -1)
             scores = scores.squeeze(-1)
             preds[i]['boxes'] = bboxes
             preds[i]['scores'] = scores
-            preds[i]['labels'] = preds[i].pop('label')
-
-        for i in range(len(target)):
-            target[i]['boxes'] = target[i].pop('bboxes')
-            target[i]['labels'] = target[i].pop('label')
 
         super().update(preds, target)
