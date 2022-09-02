@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, Union
+from typing import Dict, Union, List, Any
 
 import torch
 import torch.nn as nn
@@ -47,7 +47,7 @@ class SingleStageDetectionTask(BaseTask):
         x = self.head(x)
         return x
 
-    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
+    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, Any]:
         """Forward with ground truth labels."""
         input_data = batch.get('image')
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
@@ -82,7 +82,7 @@ class SingleStageDetectionTask(BaseTask):
         output_dict.update(batch_tagged_loss_values)
         return output_dict
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, List]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         batch_total_loss = []
@@ -93,7 +93,8 @@ class SingleStageDetectionTask(BaseTask):
             for tag, loss in tagged_loss_values.items():
                 batch_tagged_loss_values[tag] += loss
 
-        output['pred_bboxes'] = self.head.get_bboxes(output['pred_maps'])
+        output['targets'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['preds'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.VALID, **output)
         output_dict = {'loss': sum(batch_total_loss)}
         output_dict.update(batch_tagged_loss_values)
@@ -102,11 +103,11 @@ class SingleStageDetectionTask(BaseTask):
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        output['pred_bboxes'] = self.head.get_bboxes(output['pred_maps'])
+        output['preds'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.TEST, **output)
 
     def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
-        output['pred_bboxes'] = self.head.get_bboxes(output['pred_maps'])
+        output['preds'] = self.head.get_bboxes(output['pred_maps'])
         return output
