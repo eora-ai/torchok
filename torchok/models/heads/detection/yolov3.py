@@ -10,7 +10,7 @@ from mmcv.runner import force_fp32
 from mmdet.core import (build_assigner, build_bbox_coder,
                         build_prior_generator, build_sampler, images_to_levels,
                         multi_apply, multiclass_nms)
-from mmdet.models.dense_heads.base_dense_head import BaseDenseHead
+from .base import BaseDenseHead
 from mmdet.models.dense_heads.dense_test_mixins import BBoxTestMixin
 from mmdet.models.dense_heads.yolo_head import YOLOV3Head
 from torch import Tensor
@@ -22,7 +22,7 @@ from torchok.constructor import HEADS
 # from typing import Tuple, Union
 
 
-@HEADS.register_module
+@HEADS.register_class
 class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
     """YOLOV3Head Paper link: https://arxiv.org/abs/1804.02767.
 
@@ -42,10 +42,6 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             Default: dict(type='BN', requires_grad=True)
         act_cfg (dict): Config dict for activation layer.
             Default: dict(type='LeakyReLU', negative_slope=0.1).
-        loss_cls (dict): Config of classification loss.
-        loss_conf (dict): Config of confidence loss.
-        loss_xy (dict): Config of xy coordinate loss.
-        loss_wh (dict): Config of wh coordinate loss.
         train_cfg (dict): Training config of YOLOV3 head. Default: None.
         test_cfg (dict): Testing config of YOLOV3 head. Default: None.
         init_cfg (dict or list[dict], optional): Initialization config dict.
@@ -80,12 +76,12 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.featmap_strides = featmap_strides
-        self.train_cfg = train_cfg
-        self.test_cfg = test_cfg
+        self.train_cfg = dict(train_cfg)
+        self.test_cfg = dict(test_cfg)
         if self.train_cfg:
-            self.assigner = build_assigner(self.train_cfg.assigner)
+            self.assigner = build_assigner(dict(self.train_cfg['assigner']))
             if hasattr(self.train_cfg, 'sampler'):
-                sampler_cfg = self.train_cfg.sampler
+                sampler_cfg = dict(self.train_cfg['sampler'])
             else:
                 sampler_cfg = dict(type='PseudoSampler')
             self.sampler = build_sampler(sampler_cfg, context=self)
@@ -97,13 +93,12 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         self.norm_cfg = norm_cfg
         self.act_cfg = act_cfg
 
-        self.bbox_coder = build_bbox_coder(bbox_coder)
+        self.bbox_coder = build_bbox_coder(dict(bbox_coder))
 
-        self.prior_generator = build_prior_generator(anchor_generator)
+        self.prior_generator = build_prior_generator(dict(anchor_generator))
 
         self.num_base_priors = self.prior_generator.num_base_priors[0]
-        assert len(
-            self.prior_generator.num_base_priors) == len(featmap_strides)
+        assert len(self.prior_generator.num_base_priors) == len(featmap_strides)
         self._init_layers()
 
     @property
@@ -187,26 +182,15 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             pred_map = self.convs_pred[i](x)
             pred_maps.append(pred_map)
 
-        return tuple(pred_maps),
+        return tuple(pred_maps)
 
     @force_fp32(apply_to=('pred_maps',))
-    def get_bboxes(self,
-                   pred_maps,
-                   img_metas,
-                   cfg=None,
-                   rescale=False,
-                   with_nms=True):
+    def get_bboxes(self, pred_maps, with_nms=True):
         """Transform network output for a batch into bbox predictions. It has
         been accelerated since PR #5991.
 
         Args:
             pred_maps (list[Tensor]): Raw predictions for a batch of images.
-            img_metas (list[dict]): Meta information of each image, e.g.,
-                image size, scaling factor, etc.
-            cfg (mmcv.Config | None): Test / postprocessing configuration,
-                if None, test_cfg would be used. Default: None.
-            rescale (bool): If True, return boxes in original image space.
-                Default: False.
             with_nms (bool): If True, do nms before return boxes.
                 Default: True.
 
@@ -218,11 +202,9 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
                 each element represents the class label of the corresponding
                 box.
         """
-        assert len(pred_maps) == self.num_levels
-        cfg = self.test_cfg if cfg is None else cfg
-        scale_factors = np.array([img_meta['scale_factor'] for img_meta in img_metas])
+        cfg = self.test_cfg
 
-        num_imgs = len(img_metas)
+        num_imgs = len(pred_maps[0])
         featmap_sizes = [pred_map.shape[-2:] for pred_map in pred_maps]
 
         mlvl_anchors = self.prior_generator.grid_priors(
@@ -248,9 +230,6 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         if with_nms and (flatten_objectness.size(0) == 0):
             return torch.zeros((0, 5)), torch.zeros((0,))
 
-        if rescale:
-            flatten_bboxes /= flatten_bboxes.new_tensor(scale_factors).unsqueeze(1)
-
         padding = flatten_bboxes.new_zeros(num_imgs, flatten_bboxes.shape[1], 1)
         flatten_cls_scores = torch.cat([flatten_cls_scores, padding], dim=-1)
 
@@ -269,20 +248,14 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             det_bboxes, det_labels = multiclass_nms(
                 bboxes,
                 scores,
-                cfg.score_thr,
-                cfg.nms,
-                cfg.max_per_img,
+                cfg['score_thr'],
+                dict(cfg['nms']),
+                cfg['max_per_img'],
                 score_factors=objectness)
             det_results.append(tuple([det_bboxes, det_labels]))
         return det_results
 
-    @force_fp32(apply_to=('pred_maps',))
-    def loss(self,
-             pred_maps,
-             gt_bboxes,
-             gt_labels,
-             img_metas,
-             gt_bboxes_ignore=None):
+    def prepare_loss(self, pred_maps, gt_bboxes, gt_labels):
         """Compute loss of the head.
 
         Args:
@@ -291,39 +264,32 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
             gt_bboxes (list[Tensor]): Ground truth bboxes for each image with
                 shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
             gt_labels (list[Tensor]): class indices corresponding to each box
-            img_metas (list[dict]): Meta information of each image, e.g.,
-                image size, scaling factor, etc.
-            gt_bboxes_ignore (None | list[Tensor]): specify which bounding
-                boxes can be ignored when computing the loss.
+
 
         Returns:
             dict[str, Tensor]: A dictionary of loss components.
         """
-        num_imgs = len(img_metas)
-        device = pred_maps[0][0].device
+        num_imgs = len(gt_bboxes)
+        device = pred_maps[0].device
 
         featmap_sizes = [pred_maps[i].shape[-2:] for i in range(self.num_levels)]
         mlvl_anchors = self.prior_generator.grid_priors(featmap_sizes, device=device)
         anchor_list = [mlvl_anchors for _ in range(num_imgs)]
 
         responsible_flag_list = []
-        for img_id in range(len(img_metas)):
+        for img_id in range(num_imgs):
             responsible_flags = self.prior_generator.responsible_flags(featmap_sizes, gt_bboxes[img_id], device)
             responsible_flag_list.append(responsible_flags)
 
         target_maps_list, neg_maps_list = self.get_targets(anchor_list, responsible_flag_list, gt_bboxes, gt_labels)
 
-        losses_cls, losses_conf, losses_xy, losses_wh = multi_apply(
-            self.loss_single, pred_maps, target_maps_list, neg_maps_list)
+        result = []
+        for args in zip(pred_maps, target_maps_list, neg_maps_list):
+            result.append(self.prepare_loss_single(*args))
 
-        return dict(
-            loss_cls=losses_cls,
-            loss_conf=losses_conf,
-            loss_xy=losses_xy,
-            loss_wh=losses_wh
-        )
+        return result
 
-    def loss_single(self, pred_map, target_map, neg_map):
+    def prepare_loss_single(self, pred_map, target_map, neg_map):
         """Compute loss of a single image from a batch.
 
         Args:
@@ -486,11 +452,9 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
         featmap_sizes = [
             pred_maps_list[i].shape[-2:] for i in range(self.num_levels)
         ]
-        mlvl_anchors = self.prior_generator.grid_priors(
-            featmap_sizes, device=device)
+        mlvl_anchors = self.prior_generator.grid_priors(featmap_sizes, device=device)
         # convert to tensor to keep tracing
-        nms_pre_tensor = torch.tensor(
-            cfg.get('nms_pre', -1), device=device, dtype=torch.long)
+        nms_pre_tensor = torch.tensor(cfg.get('nms_pre', -1), device=device, dtype=torch.long)
 
         multi_lvl_bboxes = []
         multi_lvl_cls_scores = []

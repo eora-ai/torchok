@@ -5,12 +5,14 @@ task:
     backbone_params:
       pretrained: true
       in_channels: 3
-    pooling_name: YOLOV3Neck
+    num_scales: 3
+    neck_name: YOLOV3Neck
+    neck_params:
+      out_channels: [192, 96, 48]
     head_name: YOLOV3Head
     head_params:
-      in_channels: [512, 256, 128],
-      out_channels: [1024, 512, 256],
-      num_classes: &num_classes 80
+      out_channels: [192, 96, 48]
+      num_classes: &num_classes 91
       anchor_generator:
         type: YOLOAnchorGenerator
         base_sizes: [[[116, 90], [156, 198], [373, 326]],
@@ -20,10 +22,25 @@ task:
       bbox_coder:
         type: YOLOBBoxCoder
       featmap_strides: [32, 16, 8]
+      train_cfg:
+        assigner:
+          type: GridAssigner
+          pos_iou_thr: 0.5
+          neg_iou_thr: 0.5
+          min_pos_iou: 0
+      test_cfg:
+        nms_pre: 1000
+        min_bbox_size: 0
+        score_thr: 0.05
+        conf_thr: 0.005
+        nms:
+          type: nms
+          iou_threshold: 0.45
+        max_per_img: 100
 
     inputs:
       - shape: [3, &height 416, &width 416]
-        dtype: &input_dtype bfloat16
+        dtype: &input_dtype float32
 
 joint_loss:
   losses:
@@ -61,7 +78,6 @@ joint_loss:
       tag: wh_loss
       weight: 2.0
       params:
-        use_sigmoid: True
         reduction: sum
       mapping:
           pred: pred_wh
@@ -81,7 +97,7 @@ optimization:
         max_lr: *base_lr
 #        total_steps: None
         epochs: &num_epochs 273
-        steps_per_epoch: 930
+        steps_per_epoch: 7393
         pct_start: 0.1
         anneal_strategy: 'cos'
         cycle_momentum: True
@@ -96,7 +112,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 64
+        batch_size: 16
         num_workers: 4
         drop_last: true
         shuffle: true
@@ -115,10 +131,6 @@ data:
             params:
               p: 0.7
               transforms:
-                - name: ElasticTransform
-                  params:
-                    border_mode: 1
-                - name: GridDistortion
                 - name: GaussNoise
                 - name: ColorJitter
                   params:
@@ -130,10 +142,6 @@ data:
             params:
               p: 0.7
               transforms:
-                - name: ElasticTransform
-                  params:
-                    border_mode: 1
-                - name: GridDistortion
                 - name: GaussNoise
                 - name: ColorJitter
                   params:
@@ -156,8 +164,8 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 128
-        num_workers: 8
+        batch_size: 16
+        num_workers: 4
         drop_last: false
         shuffle: false
       dataset:
@@ -179,7 +187,8 @@ trainer:
 #  limit_train_batches: 10
 #  limit_val_batches: 10
 #  log_every_n_steps: 1000
-  precision: bf16
+#  precision: bf16
+  precision: 32
   num_sanity_val_steps: 2
 
 hydra:
@@ -193,17 +202,14 @@ logger:
   name: TensorBoardLogger
 
 checkpoint:
-  monitor: valid/F1Score
+  monitor: valid/loss
   save_last: true
-  mode: max
-  export_to_onnx: true
+  mode: min
+#  export_to_onnx: true
 
-metrics:
-  - name: Accuracy
-    mapping:
-      preds: prediction
-      target: target
-  - name: F1Score
-    mapping:
-      preds: prediction
-      target: target
+#metrics:
+#  - name: Accuracy
+#    mapping:
+#      preds: prediction
+#      target: target
+

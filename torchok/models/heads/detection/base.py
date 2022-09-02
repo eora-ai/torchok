@@ -1,14 +1,15 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 import torch
 import torch.nn as nn
 from mmcv.ops import batched_nms
-from torchok.models.base import BaseModel
-
 from mmdet.core.utils import filter_scores_and_topk, select_single_mlvl
 
-class BaseDenseHead(BaseModel, metaclass=ABCMeta):
+from mmcv.runner import BaseModule
+
+
+class BaseDenseHead(BaseModule, metaclass=ABCMeta):
     """Base class for DenseHeads."""
 
     def __init__(self, init_cfg=None):
@@ -26,7 +27,6 @@ class BaseDenseHead(BaseModel, metaclass=ABCMeta):
                 if hasattr(m, 'bias') and m.bias is not None:
                     nn.init.constant_(m.bias, 0)
 
-    @abstractmethod
     def loss(self, **kwargs):
         """Compute losses of the head."""
         pass
@@ -467,10 +467,11 @@ class BaseDenseHead(BaseModel, metaclass=ABCMeta):
                 batch_inds = torch.arange(batch_size, device=bbox_pred.device).view(-1, 1).expand_as(topk_inds).long()
                 # Avoid onnx2tensorrt issue in https://github.com/NVIDIA/TensorRT/issues/1134 # noqa: E501
                 transformed_inds = bbox_pred.shape[1] * batch_inds + topk_inds
-                priors = priors.reshape(-1, priors.size(-1))[transformed_inds, :].reshape(batch_size, -1, priors.size(-1))
+                priors = priors.reshape(-1, priors.size(-1))[transformed_inds, :].reshape(batch_size, -1,
+                                                                                          priors.size(-1))
                 bbox_pred = bbox_pred.reshape(-1, 4)[transformed_inds, :].reshape(batch_size, -1, 4)
                 scores = scores.reshape(-1, self.cls_out_channels)[transformed_inds, :].reshape(
-                        batch_size, -1, self.cls_out_channels)
+                    batch_size, -1, self.cls_out_channels)
                 if with_score_factors:
                     score_factors = score_factors.reshape(-1, 1)[transformed_inds].reshape(batch_size, -1)
 
