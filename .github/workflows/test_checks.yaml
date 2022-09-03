@@ -2,7 +2,7 @@ name: Test checks
 
 on:
   push:
-    branches: [feature_test_action]
+    branches: [main]
   pull_request: 
     branches: [main]
 
