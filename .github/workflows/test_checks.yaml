@@ -1,0 +1,47 @@
+name: Test checks
+
+on:
+  push:
+    branches: [main]
+  pull_request: 
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set ENV_VARIABLES
+        env:
+          CONDA_DIR: /opt/conda
+          PATH: $CONDA_DIR/bin:$PATH
+
+      - name: Install Miniconda
+        run: |
+          mkdir -p $CONDA_DIR
+          apt-get update
+          wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+           /bin/bash /Miniconda3-latest-Linux-x86_64.sh -f -b -p $CONDA_DIR
+           rm Miniconda3-latest-Linux-x86_64.sh
+
+      - name: Install TorchOK dependencies
+        run: |
+          conda config --set remote_read_timeout_secs 100000.0
+          conda init
+          conda update -n base -c defaults conda
+          conda env create -f torchok/environment.yml
+          conda clean -yt
+          echo "conda activate torchok" >> /root/.bashrc
+          echo "cd /" >> /root/.bashrc
+      
+      - name: Run tests
+        run: |
+          python -m unittest discover -s tests/data/ -p "test_*.py"
