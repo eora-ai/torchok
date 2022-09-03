@@ -1,6 +1,5 @@
 name: torchok
 channels:
-  - pytorch
   - conda-forge
   - defaults
 dependencies:
