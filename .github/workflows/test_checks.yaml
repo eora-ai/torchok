@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
       - name: Install python ${{ matrix.python-version }}
@@ -25,4 +25,9 @@ jobs:
         shell: bash -l {0}
         run: |
           conda activate torchok
+          find `pwd`/tests/ -name 'test_*.py' \
+          -not -path "`pwd`/tests/models/*" \
+          -not -path "`pwd`/tests/constructor/*" \
+          -not -path "`pwd`/tests/metrics/*" \
+           | xargs python -m unittest 
           python -m unittest discover -s tests/data/ -p "test_*.py"
