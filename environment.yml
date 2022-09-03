@@ -24,4 +24,5 @@ dependencies:
       - opencv-python==4.6.0.*
       - ranx==0.2.8
       - timm==0.6.5
+      - pycocotools==2.0.4
 
