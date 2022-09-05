@@ -51,7 +51,7 @@ class COCODetection(DetectionDataset):
                  bbox_dtype: str = 'float32',
                  grayscale: bool = False,
                  test_mode: bool = False,
-                 min_area: float = 8.0,
+                 min_area: float = 0,
                  min_visibility: float = 0.0,
                  ):
         """Init SweetPepper.

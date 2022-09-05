@@ -184,8 +184,8 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: *num_epochs
-#  limit_train_batches: 10
-#  limit_val_batches: 10
+#  limit_train_batches: 100
+#  limit_val_batches: 100
 #  log_every_n_steps: 1000
 #  precision: bf16
   precision: 32
@@ -196,7 +196,7 @@ hydra:
     dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
 
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/coco_detection'
+  log_dir: '${oc.env:HOME}/logs/coco_detection'
   experiment_name: yolov3_efficientnet_b2
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
@@ -208,8 +208,9 @@ checkpoint:
 #  export_to_onnx: true
 
 #metrics:
-#  - name: Accuracy
+#  - name: MeanAveragePrecision
 #    mapping:
 #      preds: prediction
 #      target: target
+#    phases: [VALID]
 

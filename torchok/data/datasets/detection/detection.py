@@ -2,12 +2,15 @@ from pathlib import Path
 from typing import Optional, Union
 from collections import defaultdict
 
+import numpy as np
 import pandas as pd
 import torch
 import json
 
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.composition import BasicTransform
+from albumentations.augmentations.bbox_utils import convert_bboxes_to_albumentations, \
+    convert_bboxes_from_albumentations, filter_bboxes
 
 from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
@@ -118,15 +121,27 @@ class DetectionDataset(ImageDataset):
     def get_raw(self, idx: int) -> dict:
         record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
-        sample = {'image': self._read_image(image_path), 'index': idx}
+        image = self._read_image(image_path)
+        sample = {'image': image, 'index': idx}
 
         if not self.test_mode:
-            sample['label'] = record[self.target_column]
-            sample['bboxes'] = record[self.bbox_column]
+            labels = record[self.target_column]
+            bboxes = record[self.bbox_column]
+
+            bboxes, labels = self.filter_bboxes(bboxes, labels, image.shape[:2])
+            sample['label'] = labels
+            sample['bboxes'] = bboxes
 
         sample = self._apply_transform(self.augment, sample)
 
         return sample
+
+    def filter_bboxes(self, bboxes, labels, shape):
+        lbox = np.hstack([bboxes, np.array(labels)[..., None]])
+        alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, *shape)
+        alb_lbox_fixed = filter_bboxes(alb_lbox, *shape)
+        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, *shape))
+        return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.

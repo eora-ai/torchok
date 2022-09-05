@@ -76,7 +76,8 @@ class SingleStageDetectionTask(BaseTask):
             for tag, loss in tagged_loss_values.items():
                 batch_tagged_loss_values[tag] += loss
 
-        output['pred_bboxes'] = self.head.get_bboxes(output['pred_maps'])
+        output['target'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.TRAIN, **output)
         output_dict = {'loss': sum(batch_total_loss)}
         output_dict.update(batch_tagged_loss_values)
@@ -93,8 +94,8 @@ class SingleStageDetectionTask(BaseTask):
             for tag, loss in tagged_loss_values.items():
                 batch_tagged_loss_values[tag] += loss
 
-        output['targets'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
-        output['preds'] = self.head.get_bboxes(output['pred_maps'])
+        output['target'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.VALID, **output)
         output_dict = {'loss': sum(batch_total_loss)}
         output_dict.update(batch_tagged_loss_values)
@@ -103,11 +104,13 @@ class SingleStageDetectionTask(BaseTask):
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        output['preds'] = self.head.get_bboxes(output['pred_maps'])
+        output['target'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.TEST, **output)
 
     def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
-        output['preds'] = self.head.get_bboxes(output['pred_maps'])
+        output['target'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         return output
