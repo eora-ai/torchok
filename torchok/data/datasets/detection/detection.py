@@ -128,7 +128,8 @@ class DetectionDataset(ImageDataset):
             labels = record[self.target_column]
             bboxes = record[self.bbox_column]
 
-            bboxes, labels = self.filter_bboxes(bboxes, labels, image.shape[:2])
+            if len(bboxes):
+                bboxes, labels = self.filter_bboxes(bboxes, labels, image.shape[:2])
             sample['label'] = labels
             sample['bboxes'] = bboxes
 
