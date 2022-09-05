@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
 from torchok.constructor.load import load_checkpoint
+from torch.utils.data._utils.collate import default_collate
 
 
 class BaseTask(LightningModule, ABC):
@@ -165,32 +166,29 @@ class BaseTask(LightningModule, ABC):
 
     def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
-
-        for tag, value in output_dict.items():
-            self.log(f'train/{tag}', value, on_step=True, on_epoch=False)
-
         return output_dict
 
     def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
-
-        for tag, value in output_dict.items():
-            self.log(f'valid/{tag}', value, on_step=True, on_epoch=False)
-
         return output_dict
 
-    def training_epoch_end(self,
-                           training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def training_epoch_end(self, training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TRAIN))
+        training_step_outputs = default_collate(training_step_outputs)
+        for tag, value in training_step_outputs.items():
+            self.log(f'train/{tag}', value, on_step=False, on_epoch=True)
+        self.log('step', self.current_epoch, on_step=False, on_epoch=True)
 
-    def validation_epoch_end(self,
-                             valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def validation_epoch_end(self, valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.VALID))
+        valid_step_outputs = default_collate(valid_step_outputs)
+        for tag, value in valid_step_outputs.items():
+            self.log(f'valid/{tag}', value.mean(), on_step=False, on_epoch=True)
+        self.log('step', self.current_epoch, on_step=False, on_epoch=True)
 
-    def test_epoch_end(self,
-                       test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def test_epoch_end(self, test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TEST))
 
