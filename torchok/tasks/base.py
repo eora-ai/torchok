@@ -131,7 +131,7 @@ class BaseTask(LightningModule, ABC):
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
-        output = self.forward_with_gt(batch[0])
+        output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.losses(**output)
         self.metrics_manager.update(Phase.TRAIN, **output)
         output_dict = {'loss': total_loss}
