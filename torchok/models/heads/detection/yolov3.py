@@ -252,7 +252,7 @@ class YOLOV3Head(BaseDenseHead, BBoxTestMixin):
                 dict(cfg['nms']),
                 cfg['max_per_img'],
                 score_factors=objectness)
-            det_results.append(dict(boxes=det_bboxes, labels=det_labels))
+            det_results.append(dict(bboxes=det_bboxes, labels=det_labels))
         return det_results
 
     def prepare_loss(self, pred_maps, gt_bboxes, gt_labels):

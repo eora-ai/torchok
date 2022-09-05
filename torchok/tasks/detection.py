@@ -76,7 +76,7 @@ class SingleStageDetectionTask(BaseTask):
             for tag, loss in tagged_loss_values.items():
                 batch_tagged_loss_values[tag] += loss
 
-        output['target'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
         output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.TRAIN, **output)
         output_dict = {'loss': sum(batch_total_loss)}
@@ -94,7 +94,7 @@ class SingleStageDetectionTask(BaseTask):
             for tag, loss in tagged_loss_values.items():
                 batch_tagged_loss_values[tag] += loss
 
-        output['target'] = [dict(boxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
         output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.VALID, **output)
         output_dict = {'loss': sum(batch_total_loss)}
