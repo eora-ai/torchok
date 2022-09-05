@@ -1,7 +1,11 @@
 import torch
+import numpy as np
+
 from torch import Tensor
 from typing import List, Dict
+from torchmetrics import Metric
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
+from mmdet.core.evaluation.mean_ap import eval_map
 
 from torchok.constructor import METRICS
 
@@ -57,3 +61,51 @@ class MeanAveragePrecisionX(MeanAveragePrecision):
             preds[i]['scores'] = scores
 
         super().update(preds, target)
+
+
+@METRICS.register_class
+class MMDetectionMAP(Metric):
+    """Mean Average Precision metric for detection, which use mmdetection function.
+
+    This class compute mAP with numpy so, it convert torch tensors to numpy before compute.
+    """
+    def __init__(self, num_classes: int, iou_thr: float = 0.5, nproc: int = 4):
+        super().__init__()
+        self.num_classes = num_classes
+        self.iou_thr = iou_thr
+        self.nproc = nproc
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("map", default=torch.tensor(0.), dist_reduce_fx="sum")
+
+    def update(self, preds: List[Dict[str, Tensor]], target: List[Dict[str, Tensor]]):
+        """Update function for mAP. It compute metric for batch and save result to compute 
+
+        Args:
+            preds: Model prediction, each dict should contain `bboxes` with value Tensor (m, 5) where the 5-th value is
+                score, and `labels` with value Tensor (m).
+            target: Ground truth, each dict should contain `bboxes` with value Tensor (m, 5), and `labels` with value
+                Tensor (m).
+        """
+        mmdet_format_pred = []
+        for pred in preds:
+            curr_img_pred = []
+            curr_labels_pred = pred['labels'].detach().cpu().numpy()
+            curr_boxes_pred = pred['boxes'].detach().cpu().numpy()
+            for cls_id in range(self.num_classes):
+                label_indexes = np.where(curr_labels_pred==cls_id)[0]
+                if len(label_indexes) != 0:
+                    boxes = curr_boxes_pred[label_indexes]
+                else:
+                    boxes = np.empty((0, 5), dtype=np.float32)
+                curr_img_pred.append(boxes)
+            mmdet_format_pred.append(curr_img_pred)
+
+        for i in range(len(target)):
+            target[i]['bboxes'] = target[i]['bboxes'].detach().cpu().numpy()
+            target[i]['labels'] = target[i]['labels'].detach().cpu().numpy()
+
+        self.map += eval_map(mmdet_format_pred, target, iou_thr=self.iou_thr, nproc=self.nproc)[0]
+        self.total += 1
+
+    def compute(self):
+        return self.map.float() / self.total
