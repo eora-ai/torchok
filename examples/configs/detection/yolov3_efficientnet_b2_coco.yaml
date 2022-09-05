@@ -207,10 +207,12 @@ checkpoint:
   mode: min
 #  export_to_onnx: true
 
-#metrics:
-#  - name: MeanAveragePrecision
-#    mapping:
-#      preds: prediction
-#      target: target
-#    phases: [VALID]
+metrics:
+  - name: MMDetectionMAP
+    params:
+      num_classes: *num_classes
+    mapping:
+      preds: prediction
+      target: target
+    phases: [VALID]
 

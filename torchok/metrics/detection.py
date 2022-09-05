@@ -1,16 +1,14 @@
+# Copyright (c) OpenMMLab. All rights reserved.
+from multiprocessing import Pool
 from typing import Dict, List
 
 import numpy as np
 import torch
-from mmdet.core.evaluation.mean_ap import eval_map
+from mmdet.core.evaluation.mean_ap import average_precision, get_cls_group_ofs, get_cls_results, tpfp_default, \
+    tpfp_imagenet, tpfp_openimages
 from torch import Tensor
 from torchmetrics import Metric
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-
-# Copyright (c) OpenMMLab. All rights reserved.
-from multiprocessing import Pool
-from mmdet.core.evaluation.mean_ap import tpfp_imagenet, average_precision, get_cls_group_ofs,\
-    tpfp_openimages, tpfp_default, get_cls_results
 
 from torchok.constructor import METRICS
 
@@ -21,7 +19,6 @@ def eval_map(det_results,
              iou_thr=0.5,
              ioa_thr=None,
              dataset=None,
-             logger=None,
              tpfp_fn=None,
              nproc=4,
              use_legacy_coordinate=False,
@@ -48,8 +45,6 @@ def eval_map(det_results,
         dataset (list[str] | str | None): Dataset name or dataset classes,
             there are minor differences in metrics for different datasets, e.g.
             "voc07", "imagenet_det", etc. Default: None.
-        logger (logging.Logger | str | None): The way to print the mAP
-            summary. See `mmcv.utils.print_log()` for details. Default: None.
         tpfp_fn (callable | None): The function used to determine true/
             false positives. If None, :func:`tpfp_default` is used as default
             unless dataset is 'det' or 'vid' (:func:`tpfp_imagenet` in this
@@ -59,7 +54,7 @@ def eval_map(det_results,
             Default: 4.
         use_legacy_coordinate (bool): Whether to use coordinate system in
             mmdet v1.x. which means width, height should be
-            calculated as 'x2 - x1 + 1` and 'y2 - y1 + 1' respectively.
+            calculated as `x2 - x1 + 1` and 'y2 - y1 + 1' respectively.
             Default: False.
         use_group_of (bool): Whether to use group of when calculate TP and FP,
             which only used in OpenImages evaluation. Default: False.
@@ -75,7 +70,7 @@ def eval_map(det_results,
     num_imgs = len(det_results)
     num_scales = len(scale_ranges) if scale_ranges is not None else 1
     num_classes = len(det_results[0])  # positive class num
-    area_ranges = ([(rg[0]**2, rg[1]**2) for rg in scale_ranges]
+    area_ranges = ([(rg[0] ** 2, rg[1] ** 2) for rg in scale_ranges]
                    if scale_ranges is not None else None)
 
     # There is no need to use multi processes to process
@@ -146,7 +141,7 @@ def eval_map(det_results,
                 num_gts[0] += bbox.shape[0]
             else:
                 gt_areas = (bbox[:, 2] - bbox[:, 0] + extra_length) * (
-                    bbox[:, 3] - bbox[:, 1] + extra_length)
+                        bbox[:, 3] - bbox[:, 1] + extra_length)
                 for k, (min_area, max_area) in enumerate(area_ranges):
                     num_gts[k] += np.sum((gt_areas >= min_area)
                                          & (gt_areas < max_area))

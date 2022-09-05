@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, Union, List, Any
+from typing import Any, Dict, List, Union
 
 import torch
 import torch.nn as nn
