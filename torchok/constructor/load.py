@@ -162,7 +162,7 @@ def generate_required_state_dict(base_state_dict: Dict[str, torch.Tensor],
 
     # Get sorted by depth state dict list that must be overridden
     depth2state_dicts = sort_state_dict_by_depth(overridden_full_name2state_dict)
-    
+
     # Firstly change model state dict by base state dict
     required_state_dict.update(base_state_dict)
 
