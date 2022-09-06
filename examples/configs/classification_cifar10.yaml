@@ -1,7 +1,7 @@
 task:
   name: ClassificationTask
   params:
-    backbone_name: semnasnet_100
+    backbone_name: resnet18
     backbone_params:
       pretrained: true
       in_channels: 3
@@ -12,7 +12,6 @@ task:
     inputs:
       - shape: [3, &height 32, &width 32]
         dtype: &input_dtype float16
-
 
 joint_loss:
   losses:

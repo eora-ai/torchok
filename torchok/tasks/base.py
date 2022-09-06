@@ -119,7 +119,7 @@ class BaseTask(LightningModule, ABC):
 
     def on_train_start(self) -> None:
         if self.current_epoch == 0 and self._hparams.load_checkpoint is not None:
-            load_checkpoint(self, self._hparams.load_checkpoint)
+            load_checkpoint(self, **self._hparams.load_checkpoint)
 
     def on_test_start(self) -> None:
         if self._hparams.load_checkpoint is not None:
