@@ -17,6 +17,10 @@ load_checkpoint:
   base_ckpt_path: 's3://checkpoints/resnet18.ckpt'
   strict: false
 
+seed_params:
+  seed: 42
+  workers: true
+
 joint_loss:
   losses:
     - name: CrossEntropyLoss

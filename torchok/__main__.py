@@ -3,6 +3,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 import torchok
+from pytorch_lightning import seed_everything
 from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer
 
@@ -30,6 +31,9 @@ def entrypoint(config: DictConfig):
     schema = OmegaConf.structured(ConfigParams)
     # Merge structure with config
     config = OmegaConf.merge(schema, config)
+    # Seed everything
+    if config.seed_params is not None:
+        seed_everything(**config.seed_params)
     # Create task
     model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)

@@ -171,6 +171,11 @@ class LoggerParams:
     timestamp: Optional[str] = None
     params: Optional[Dict] = field(default_factory=dict)
 
+# Seed
+@dataclass
+class SeedParams:
+    seed: Optional[int] = None
+    workers: Optional[bool] = False
 
 # Config parameters
 @dataclass
@@ -185,4 +190,5 @@ class ConfigParams:
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     callbacks: Optional[List[CallbacksParams]] = field(default_factory=list)
     load_checkpoint: Optional[LoadCheckpointParams] = None
+    seed_params: Optional[SeedParams] = None
     resume_path: Optional[str] = None
