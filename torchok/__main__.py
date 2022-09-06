@@ -2,7 +2,7 @@ import cv2
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from torchok.constructor import TASKS
+import torchok
 from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer
 
@@ -31,7 +31,7 @@ def entrypoint(config: DictConfig):
     # Merge structure with config
     config = OmegaConf.merge(schema, config)
     # Create task
-    model = TASKS.get(config.task.name)(config)
+    model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
     if entrypoint == 'train':
         trainer.fit(model, ckpt_path=config.resume_path)
