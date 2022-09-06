@@ -16,15 +16,6 @@ task:
       - shape: [3, &height 256, &width 256]
         dtype: &input_dtype float32
 
-callbacks:
-  - name: FreezeUnfreeze
-    params:
-      epoch2module_names:
-        5: ['backbone.layers.3']
-        10: ['backbone.layers.2']
-        15: ['backbone.layers.1']
-        20: ['backbone']
-
 joint_loss:
   losses:
     - name: CrossEntropyLoss
@@ -137,23 +128,38 @@ trainer:
   precision: 32
   num_sanity_val_steps: 0
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
-
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: sop
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/HitAtKMeter
-  save_last: true
-  mode: max
-  save_top_k: 2
-  export_to_onnx: true
-  remove_head: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: FreezeUnfreeze
+    params:
+      epoch2module_names:
+        5: [ 'backbone.layers.3' ]
+        10: [ 'backbone.layers.2' ]
+        15: [ 'backbone.layers.1' ]
+        20: [ 'backbone' ]
+  - name: ModelCheckpointWithOnnx
+    params:
+      dirpath: *logs_dir
+      monitor: valid/HitAtKMeter
+      save_top_k: 2
+      save_last: true
+      mode: min
+      save_weights_only: False
+      export_to_onnx: true
+      remove_head: true
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: Accuracy

@@ -88,10 +88,6 @@ trainer:
   precision: 16
   num_sanity_val_steps: 0
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
-
 # For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
 # if it isn't define it will be gotten from MLFLOW_TRACKING_URI - environment variable
 logger:
@@ -101,11 +97,23 @@ logger:
   params:
     artifact_location: 'file://${oc.env:HOME}/.cache/torchok/logs/artifacts/'
 
-checkpoint:
-  monitor: valid/F1Score
-  save_last: true
-  mode: max
-  export_to_onnx: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/F1Score
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: Accuracy

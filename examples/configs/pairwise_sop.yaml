@@ -118,22 +118,29 @@ trainer:
   max_epochs: 30
   log_every_n_steps: 10
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
-
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: pairwise_sop
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/HitAtKMeter
-  save_last: true
-  mode: min
-  save_top_k: 2
-  export_to_onnx: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/HitAtKMeter
+      save_top_k: 2
+      save_last: true
+      mode: min
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: HitAtKMeter
