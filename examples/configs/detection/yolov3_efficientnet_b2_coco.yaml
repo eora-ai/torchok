@@ -184,16 +184,12 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: *num_epochs
-#  limit_train_batches: 100
-#  limit_val_batches: 100
+  limit_train_batches: 100
+  limit_val_batches: 100
 #  log_every_n_steps: 1000
 #  precision: bf16
   precision: 32
   num_sanity_val_steps: 2
-
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
 
 logger:
   log_dir: '${oc.env:HOME}/logs/coco_detection'
@@ -201,11 +197,23 @@ logger:
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/loss
-  save_last: true
-  mode: min
-#  export_to_onnx: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/MMDetectionMAP
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: MMDetectionMAP

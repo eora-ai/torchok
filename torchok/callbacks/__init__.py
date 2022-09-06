@@ -5,12 +5,13 @@ import torchok.callbacks.freeze_unfreeze
 from pytorch_lightning.callbacks import (
     DeviceStatsMonitor, EarlyStopping, GradientAccumulationScheduler, LearningRateMonitor, ModelPruning,
     ModelSummary, QuantizationAwareTraining, RichModelSummary, RichProgressBar, StochasticWeightAveraging,
-    Timer, TQDMProgressBar, BackboneFinetuning
+    Timer, TQDMProgressBar, BackboneFinetuning, ModelCheckpoint
 )
 
 from torchok.constructor import CALLBACKS
 
 
+CALLBACKS.register_class(ModelCheckpoint)
 CALLBACKS.register_class(DeviceStatsMonitor)
 CALLBACKS.register_class(EarlyStopping)
 CALLBACKS.register_class(GradientAccumulationScheduler)
