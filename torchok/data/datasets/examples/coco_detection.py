@@ -69,11 +69,6 @@ class COCODetection(DetectionDataset):
             bbox_dtype: Data type of the torch tensors related to the bboxes.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
-            bbox_format: Bboxes format, for albumentations transform. Supports the following formats:
-                pascal_voc - [x_min, y_min, x_max, y_max] = [98, 345, 420, 462]
-                albumentations - [x_min, y_min, x_max, y_max] = [0.1531, 0.71875, 0.65625, 0.9625]
-                coco - [x_min, y_min, width, height] = [98, 345, 322, 117]
-                yolo - [x_center, y_center, width, height] = [0.4046875, 0.8614583, 0.503125, 0.24375]
             min_area: Value in pixels  If the area of a bounding box after augmentation becomes smaller than min_area,
                 Albumentations will drop that box. So the returned list of augmented bounding boxes won't contain
                 that bounding box.
@@ -121,7 +116,8 @@ class COCODetection(DetectionDataset):
             min_visibility=min_visibility
         )
 
-    def create_annotation(self, json_path: str, image_folder: str, save_df_path: str):
+    def create_annotation(self, json_path: Union[Path, str],
+                          image_folder: Union[Path, str], save_df_path: Union[Path, str]):
         """Create train-valid csv for loaded COCO dataset.
 
         Args:

@@ -85,21 +85,29 @@ trainer:
   precision: 16
   num_sanity_val_steps: 0
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
-
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
   experiment_name: cifar10
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/F1Score
-  save_last: true
-  mode: max
-  export_to_onnx: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/F1Score
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: Accuracy
