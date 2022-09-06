@@ -64,7 +64,7 @@ class Model(LightningModule):
         loss = F.cross_entropy(predict, fake_target)
         # set fake data to output, to check metrics
         output = dict(predict=fake_predict, target=fake_target)
-        self.metric_manager(Phase.TRAIN, **output)
+        self.metric_manager.update(Phase.TRAIN, **output)
         return loss
 
     def configure_optimizers(self):

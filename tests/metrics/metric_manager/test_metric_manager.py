@@ -60,7 +60,7 @@ def run_metric_manager(names: List[str], prefixes: List[str],
 
     metric_manager = MetricsManager(metric_params)
     for i in range(len(data_generator)):
-        metric_manager(Phase.TRAIN, **data_generator[i])
+        metric_manager.update(Phase.TRAIN, **data_generator[i])
 
     return metric_manager.on_epoch_end(Phase.TRAIN)
 
