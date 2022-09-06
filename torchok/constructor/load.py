@@ -188,7 +188,7 @@ def generate_required_state_dict(base_state_dict: Dict[str, torch.Tensor],
 
 def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = None,
                     overridden_name2ckpt_path: Optional[Dict[str, str]] = None,
-                    exclude_keys: Optional[List[str]] = None):
+                    exclude_keys: Optional[List[str]] = None, strict: bool = True):
     """Load checkpoint to model.
 
     Args:
@@ -222,4 +222,4 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
     required_state_dict = generate_required_state_dict(base_state_dict, overridden_name2state_dict,
                                                        exclude_keys, model_keys, initial_state_dict)
 
-    model.load_state_dict(required_state_dict, strict=True)
+    model.load_state_dict(required_state_dict, strict=strict)

@@ -175,6 +175,15 @@ class CheckpointParams:
     remove_head: bool = False
 
 
+# Load checkpoint params
+@dataclass
+class LoadCheckpointParams:
+    base_ckpt_path: Optional[str] = None
+    overridden_name2ckpt_path: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
+    strict: bool = True
+
+
 # Logger
 @dataclass
 class LoggerParams:
@@ -198,4 +207,5 @@ class ConfigParams:
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     callbacks: Optional[List[CallbacksParams]] = field(default_factory=list)
+    load_checkpoint: Optional[LoadCheckpointParams] = None
     resume_path: Optional[str] = None

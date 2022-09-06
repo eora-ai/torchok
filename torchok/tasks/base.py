@@ -118,15 +118,12 @@ class BaseTask(LightningModule, ABC):
                 raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
     def on_train_start(self) -> None:
-        if self.current_epoch == 0:
-            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint,
-                            overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
-                            exclude_keys=self._hparams.task.exclude_keys)
+        if self.current_epoch == 0 and self._hparams.load_checkpoint is not None:
+            load_checkpoint(self, self._hparams.load_checkpoint)
 
     def on_test_start(self) -> None:
-        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint,
-                        overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
-                        exclude_keys=self._hparams.task.exclude_keys)
+        if self._hparams.load_checkpoint is not None:
+            load_checkpoint(self, **self._hparams.load_checkpoint)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
