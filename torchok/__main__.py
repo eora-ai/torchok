@@ -38,6 +38,14 @@ def entrypoint(config: DictConfig):
     model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
     if entrypoint == 'train':
+        if config.trainer.auto_lr_find:
+            # Run learning rate finder
+            lr_finder = trainer.tuner.lr_find(model)
+            suggested_lr = lr_finder.suggestion()
+            for i in range(len(config.optimization)):
+                config.optimization[i].optimizer.params.lr = suggested_lr
+            model = torchok.TASKS.get(config.task.name)(config)
+            trainer = create_trainer(config)
         trainer.fit(model, ckpt_path=config.resume_path)
     elif entrypoint == 'test':
         trainer.test(model, ckpt_path=config.resume_path)

@@ -28,6 +28,7 @@ class BaseTask(LightningModule, ABC):
         self.losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self.metrics_manager = self.__constructor.configure_metrics_manager()
         self.example_input_array = []
+
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
@@ -120,6 +121,7 @@ class BaseTask(LightningModule, ABC):
     def on_train_start(self) -> None:
         if self.current_epoch == 0 and self._hparams.load_checkpoint is not None:
             load_checkpoint(self, **self._hparams.load_checkpoint)
+        optim = self.optimizers()
 
     def on_test_start(self) -> None:
         if self._hparams.load_checkpoint is not None:
