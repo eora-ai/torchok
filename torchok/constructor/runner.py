@@ -3,8 +3,6 @@ from pathlib import Path
 
 from pytorch_lightning import Trainer
 
-from torchok.callbacks.finalize_logger import FinalizeLogger
-from torchok.callbacks.model_checkpoint_with_onnx import ModelCheckpointWithOnnx
 from torchok.constructor import CALLBACKS
 from torchok.constructor.logger import create_logger, create_outputs_path
 
@@ -28,11 +26,6 @@ def create_trainer(train_config):
                                experiment_name=logger_params.experiment_name,
                                experiment_subdir=experiment_subdir,
                                full_outputs_path=full_outputs_path)
-
-        if train_config.checkpoint is not None:
-            checkpoint_callback = ModelCheckpointWithOnnx(**train_config.checkpoint, dirpath=str(full_outputs_path))
-            finalize_logger_callback = FinalizeLogger()
-            callbacks = [checkpoint_callback, finalize_logger_callback]
 
         if os.environ.get('LOCAL_RANK') is not None:
             full_outputs_path.rmdir()

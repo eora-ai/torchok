@@ -1,15 +1,20 @@
 from pathlib import Path
 from typing import Optional, Union
+from collections import defaultdict
 
+import numpy as np
 import pandas as pd
 import torch
 import json
 
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.composition import BasicTransform
+from albumentations.augmentations.bbox_utils import convert_bboxes_to_albumentations, \
+    convert_bboxes_from_albumentations, filter_bboxes
 
 from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
+from torch.utils.data._utils.collate import default_collate
 
 
 @DATASETS.register_class
@@ -24,7 +29,7 @@ class DetectionDataset(ImageDataset):
         image3.png, [[253.21, 271.07, 59.59, 60.97], [257.85, 224.48, 44.13, 97.0]], [2, 0]
     """
     def __init__(self,
-                 data_folder: str,
+                 data_folder: Union[Path, str],
                  annotation_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
@@ -38,7 +43,7 @@ class DetectionDataset(ImageDataset):
                  test_mode: bool = False,
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
-                 min_visibility: float = 0.0,):
+                 min_visibility: float = 0.0):
         """Init DetectionDataset.
 
         Args:
@@ -101,26 +106,13 @@ class DetectionDataset(ImageDataset):
         else:
             raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
 
-        if self.augment is not None:
-            self.augment = Compose(
-                self.augment,
-                bbox_params=BboxParams(
-                    format=self.bbox_format,
-                    label_fields=['label'],
-                    min_area=min_area,
-                    min_visibility=min_visibility
-                )
-            )
+        bbox_params = BboxParams(format=self.bbox_format, label_fields=['label'],
+                                 min_area=min_area, min_visibility=min_visibility)
 
-        self.transform = Compose(
-            self.transform,
-            bbox_params=BboxParams(
-                format=self.bbox_format,
-                label_fields=['label'],
-                min_area=min_area,
-                min_visibility=min_visibility
-            )
-        )
+        if self.augment is not None:
+            self.augment = Compose(self.augment.transforms, bbox_params=bbox_params)
+
+        self.transform = Compose(self.transform.transforms, bbox_params=bbox_params)
 
     def __len__(self) -> int:
         """Dataset length."""
@@ -129,15 +121,28 @@ class DetectionDataset(ImageDataset):
     def get_raw(self, idx: int) -> dict:
         record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
-        sample = {'image': self._read_image(image_path), 'index': idx}
+        image = self._read_image(image_path)
+        sample = {'image': image, 'index': idx}
 
         if not self.test_mode:
-            sample['label'] = record[self.target_column]
-            sample['bboxes'] = record[self.bbox_column]
+            labels = record[self.target_column]
+            bboxes = record[self.bbox_column]
+
+            if len(bboxes):
+                bboxes, labels = self.filter_bboxes(bboxes, labels, image.shape[:2])
+            sample['label'] = labels
+            sample['bboxes'] = bboxes
 
         sample = self._apply_transform(self.augment, sample)
 
         return sample
+
+    def filter_bboxes(self, bboxes, labels, shape):
+        lbox = np.hstack([bboxes, np.array(labels)[..., None]])
+        alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, *shape)
+        alb_lbox_fixed = filter_bboxes(alb_lbox, *shape)
+        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, *shape))
+        return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
@@ -155,6 +160,17 @@ class DetectionDataset(ImageDataset):
 
         if not self.test_mode:
             sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype])
-            sample['bboxes'] = torch.tensor(sample['bboxes']).type(torch.__dict__[self.bbox_dtype])
+            sample['bboxes'] = torch.tensor(sample['bboxes']).type(torch.__dict__[self.bbox_dtype]).reshape(-1, 4)
 
         return sample
+
+    def collate_fn(self, batch):
+        r"""Puts each data field into a tensor with outer dimension batch size"""
+        new_batch = defaultdict(list)
+        for i, elem in enumerate(batch):
+            new_batch['bboxes'].append(elem.pop('bboxes'))
+            new_batch['label'].append(elem.pop('label'))
+
+        output = default_collate(batch)
+        output.update(new_batch)
+        return output

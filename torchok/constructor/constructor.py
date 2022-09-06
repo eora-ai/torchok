@@ -162,10 +162,12 @@ class Constructor:
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
         if phase in self.hparams.data:
-            return [
+            dataloaders = [
                 self._prepare_dataloader(phase_params.dataset, phase_params.dataloader)
                 for phase_params in self.hparams.data[phase] if phase_params is not None
             ]
+            dataloaders = dataloaders if len(dataloaders) > 1 else dataloaders[0]
+            return dataloaders
         else:
             return []
 
