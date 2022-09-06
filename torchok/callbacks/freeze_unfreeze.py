@@ -9,7 +9,7 @@ from torchok.constructor import CALLBACKS
 
 
 def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Module) -> Set[nn.Module]:
-    """Return modules by it's names.
+    """Return modules by its names.
 
     Args:
         module_names: Searched module names.

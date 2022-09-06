@@ -42,7 +42,7 @@ class DetectionDataset(ImageDataset):
                  grayscale: bool = False,
                  test_mode: bool = False,
                  bbox_format: str = 'coco',
-                 min_area: float = 8.0,
+                 min_area: float = 0.0,
                  min_visibility: float = 0.0):
         """Init DetectionDataset.
 
