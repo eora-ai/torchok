@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
 from torchok.constructor.load import load_checkpoint
-from torch.utils.data._utils.collate import default_collate
 
 
 class BaseTask(LightningModule, ABC):
