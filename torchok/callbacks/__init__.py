@@ -1,15 +1,12 @@
-import torchok.callbacks.model_checkpoint_with_onnx
+from pytorch_lightning.callbacks import (BackboneFinetuning, DeviceStatsMonitor, EarlyStopping,
+                                         GradientAccumulationScheduler, LearningRateMonitor, ModelCheckpoint,
+                                         ModelPruning, ModelSummary, QuantizationAwareTraining, RichModelSummary,
+                                         RichProgressBar, StochasticWeightAveraging, Timer, TQDMProgressBar)
+
 import torchok.callbacks.finalize_logger
 import torchok.callbacks.freeze_unfreeze
-
-from pytorch_lightning.callbacks import (
-    DeviceStatsMonitor, EarlyStopping, GradientAccumulationScheduler, LearningRateMonitor, ModelPruning,
-    ModelSummary, QuantizationAwareTraining, RichModelSummary, RichProgressBar, StochasticWeightAveraging,
-    Timer, TQDMProgressBar, BackboneFinetuning, ModelCheckpoint
-)
-
+import torchok.callbacks.model_checkpoint_with_onnx
 from torchok.constructor import CALLBACKS
-
 
 CALLBACKS.register_class(ModelCheckpoint)
 CALLBACKS.register_class(DeviceStatsMonitor)

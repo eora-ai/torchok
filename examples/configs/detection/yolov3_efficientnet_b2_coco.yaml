@@ -184,10 +184,11 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: *num_epochs
-  limit_train_batches: 100
-  limit_val_batches: 100
+#  limit_train_batches: 100
+#  limit_val_batches: 100
 #  log_every_n_steps: 1000
 #  precision: bf16
+  auto_lr_find: true
   precision: 32
   num_sanity_val_steps: 2
 
@@ -213,7 +214,7 @@ callbacks:
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 5
+      refresh_rate: 100
 
 metrics:
   - name: MMDetectionMAP
