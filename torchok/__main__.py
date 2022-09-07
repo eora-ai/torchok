@@ -6,6 +6,7 @@ import torchok
 from pytorch_lightning import seed_everything
 from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer
+from torchok.constructor.auto_lr_find import auto_lr_find
 
 # Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
 # (more info: https://github.com/pytorch/pytorch/issues/1355)
@@ -32,20 +33,13 @@ def entrypoint(config: DictConfig):
     # Merge structure with config
     config = OmegaConf.merge(schema, config)
     # Seed everything
-    if config.seed_params is not None:
-        seed_everything(**config.seed_params)
+    if config.task.seed_params is not None:
+        seed_everything(**config.task.seed_params)
     # Create task
     model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
     if entrypoint == 'train':
-        if config.trainer.auto_lr_find:
-            # Run learning rate finder
-            lr_finder = trainer.tuner.lr_find(model)
-            suggested_lr = lr_finder.suggestion()
-            for i in range(len(config.optimization)):
-                config.optimization[i].optimizer.params.lr = suggested_lr
-            model = torchok.TASKS.get(config.task.name)(config)
-            trainer = create_trainer(config)
+        model, trainer = auto_lr_find(config, model, trainer)
         trainer.fit(model, ckpt_path=config.resume_path)
     elif entrypoint == 'test':
         trainer.test(model, ckpt_path=config.resume_path)

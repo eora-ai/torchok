@@ -12,14 +12,12 @@ task:
     inputs:
       - shape: [3, &height 32, &width 32]
         dtype: &input_dtype float16
-
-load_checkpoint:
-  base_ckpt_path: 's3://checkpoints/resnet18.ckpt'
-  strict: false
-
-seed_params:
-  seed: 42
-  workers: true
+  seed_params:
+    seed: 42
+    workers: true
+  load_checkpoint:
+    base_ckpt_path: 's3://checkpoints/resnet18.ckpt'
+    strict: false
 
 joint_loss:
   losses:
