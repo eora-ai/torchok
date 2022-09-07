@@ -16,9 +16,6 @@ def find_lr(config: DictConfig, model: LightningModule, trainer: Trainer):
     Raises:
         ValueError: When `config.trainer.auto_lr_find` is True and task has more than one optimizer.
     """
-    if config.trainer.auto_lr_find is None or not config.trainer.auto_lr_find:
-        logging.warning('Can`t tune model with `auto_lr_find` = False. Turn flag to True to find learning rate.')
-
     if len(config.optimization) > 1:
         raise ValueError(f'Pytorch Lightning support only one optimizer auto learning rate find. Current optimizer'
                          f' count is {len(config.optimization)}. Set the trainer.auto_lr_find flag to False to avoid'

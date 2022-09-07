@@ -89,7 +89,6 @@ trainer:
   log_every_n_steps: 1000
   precision: 16
   num_sanity_val_steps: 0
-  auto_lr_find: True
 
 # For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
 # if it isn't define it will be gotten from MLFLOW_TRACKING_URI - environment variable

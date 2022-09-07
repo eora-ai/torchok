@@ -45,7 +45,7 @@ def entrypoint(config: DictConfig):
         trainer.test(model, ckpt_path=config.resume_path)
     elif entrypoint == 'predict':
         trainer.predict(model, ckpt_path=config.resume_path)
-    elif entrypoint == 'tune':
+    elif entrypoint == 'auto_lr_find':
         find_lr(config, model, trainer)
     else:
         raise ValueError(f'Main function error. Entrypoint with name <{entrypoint}> does not support, please use '
