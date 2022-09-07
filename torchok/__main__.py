@@ -3,7 +3,6 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 import torchok
-import logging
 from pytorch_lightning import seed_everything
 from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer

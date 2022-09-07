@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 from pytorch_lightning import Trainer, LightningModule
 from omegaconf import DictConfig
 
