@@ -8,11 +8,11 @@ task:
     num_scales: 3
     neck_name: YOLOV3Neck
     neck_params:
-      out_channels: [192, 96, 48]
+      out_channels: [192, 96, 96]
     head_name: YOLOV3Head
     head_params:
-      out_channels: [192, 96, 48]
-      num_classes: &num_classes 91
+      out_channels: [192, 96, 96]
+      num_classes: &num_classes 81
       anchor_generator:
         type: YOLOAnchorGenerator
         base_sizes: [[[116, 90], [156, 198], [373, 326]],
@@ -88,7 +88,7 @@ optimization:
   - optimizer:
       name: SGD
       params:
-        lr: &base_lr 0.001
+        lr: &base_lr 0.003
         momentum: 0.9
         weight_decay: 0.0005
     scheduler:
@@ -96,15 +96,15 @@ optimization:
       params:
         max_lr: *base_lr
 #        total_steps: None
-        epochs: &num_epochs 273
-        steps_per_epoch: 7393
-        pct_start: 0.1
+        epochs: &num_epochs 50
+        steps_per_epoch: 3697
+        pct_start: 0.05
         anneal_strategy: 'cos'
         cycle_momentum: True
         base_momentum: 0.85
         max_momentum: 0.95
-        div_factor: 25.0
-        final_div_factor: 10000.0
+        div_factor: 100.0
+        final_div_factor: 1000.0
         three_phase: false
       pl_params:
         interval: step
@@ -112,16 +112,16 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 16
-        num_workers: 4
-        drop_last: true
+        batch_size: &bs 32
+        num_workers: &n_workers 8
+        drop_last: false
         shuffle: true
       dataset:
         name: COCODetection
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/coco
+          data_folder: &data_folder ${oc.env:HOME}/data/coco
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
 
@@ -151,10 +151,14 @@ data:
                     hue: 0.1
         transform:
           - &resize
-            name: Resize
+            name: LongestMaxSize
             params:
-              height: *height
-              width: *width
+              max_size: *height
+          - &pad
+            name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
           - &normalize
             name: Normalize
             params:
@@ -164,8 +168,8 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 16
-        num_workers: 4
+        batch_size: *bs
+        num_workers: *n_workers
         drop_last: false
         shuffle: false
       dataset:
@@ -178,17 +182,17 @@ data:
           bbox_dtype: *input_dtype
         transform:
           - *resize
+          - *pad
           - *normalize
           - *totensor
 
 trainer:
   accelerator: 'gpu'
   max_epochs: *num_epochs
-#  limit_train_batches: 100
-#  limit_val_batches: 100
+#  limit_train_batches: 10
+#  limit_val_batches: 10
 #  log_every_n_steps: 1000
 #  precision: bf16
-  auto_lr_find: true
   precision: 32
   num_sanity_val_steps: 2
 
@@ -224,4 +228,11 @@ metrics:
       preds: prediction
       target: target
     phases: [VALID]
+  - name: СocoEvalMAP
+    params:
+      compute_on_step: False
+    mapping:
+      preds: prediction
+      target: target
+    phases: [ VALID ]
 
