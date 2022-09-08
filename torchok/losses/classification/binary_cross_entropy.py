@@ -10,7 +10,7 @@ from torchok.constructor import LOSSES
 
 
 @LOSSES.register_class
-class BCEWithLogitsLossX(nn.BCEWithLogitsLoss):
+class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
     """BCEWithLogitsLoss with ability to load pos_weights from json file (dict) or config (list)."""
     def __init__(self, weight: torch.Tensor = None, reduction: str = 'mean', pos_weight: Union[str, list] = None):
         """BCEWithLogitsLossX init.
