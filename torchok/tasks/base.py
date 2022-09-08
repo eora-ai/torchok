@@ -138,7 +138,8 @@ class BaseTask(LightningModule, ABC):
         output_dict.update(tagged_loss_values)
         return output_dict
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]],
+                        batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.VALID, **output)
