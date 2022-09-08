@@ -1,4 +1,5 @@
 import json
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,9 +14,10 @@ class BCEWithLogitsLossX(nn.BCEWithLogitsLoss):
     """BCEWithLogitsLoss with ability to load pos_weights from json file (dict) or config (list)."""
     def __init__(self, weight: torch.Tensor = None, reduction: str = 'mean', pos_weight: Union[str, list] = None):
         """BCEWithLogitsLossX init.
-        
+
         Args:
-            weight: A manual rescaling weight given to the loss of each batch element. If given, has to be a Tensor of size nbatch.
+            weight: A manual rescaling weight given to the loss of each batch element. If given,
+                has to be a Tensor of size nbatch.
             reduction: Specifies the reduction to apply to the output: 'none' | 'mean' | 'sum'. 'none': no reduction
                 will be applied, 'mean': the sum of the output will be divided by the number of elements in the output,
                 'sum': the output will be summed.
@@ -33,10 +35,10 @@ class BCEWithLogitsLossX(nn.BCEWithLogitsLoss):
                 pos_weight = torch.ones([num_classes])
                 for k, v in weights_dict.items():
                     pos_weight[int(k)] = v
-                print(f'using pos_weights loaded from {pos_weight_path}')
+                logging.info(f'using pos_weights loaded from {pos_weight_path}')
             elif isinstance(pos_weight, list):
                 pos_weight = torch.tensor(pos_weight, dtype=torch.float)
-                print(f'using pos_weights loaded from cfg file')
+                logging.info('using pos_weights loaded from cfg file')
         super().__init__(weight=weight, reduction=reduction, pos_weight=pos_weight)
 
     def forward(self, input, target):
