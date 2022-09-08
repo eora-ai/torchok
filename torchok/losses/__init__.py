@@ -6,6 +6,7 @@ from torch.nn import Identity
 
 import torchok.losses.segmentation
 import torchok.losses.representation
+import torchok.losses.classification
 from torchok.constructor import LOSSES
 
 LOSSES.register_class(L1Loss)
