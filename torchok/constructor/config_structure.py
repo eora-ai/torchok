@@ -96,6 +96,22 @@ class MetricParams:
     tag: Optional[str] = None
 
 
+# Seed
+@dataclass
+class SeedParams:
+    seed: Optional[int] = None
+    workers: Optional[bool] = False
+
+
+# Load checkpoint params
+@dataclass
+class LoadCheckpointParams:
+    base_ckpt_path: Optional[str] = None
+    overridden_name2ckpt_path: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
+    strict: bool = True
+
+
 # Task parameters
 @dataclass
 class TaskParams:
@@ -105,6 +121,8 @@ class TaskParams:
     base_checkpoint: Optional[str] = None
     overridden_checkpoints: Optional[Dict[str, str]] = None
     exclude_keys: Optional[List[str]] = None
+    load_checkpoint: Optional[LoadCheckpointParams] = None
+    seed_params: Optional[SeedParams] = None
 
 
 # Trainer parameters

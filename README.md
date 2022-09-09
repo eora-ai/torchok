@@ -61,6 +61,12 @@ During the training you can access the training and validation logs by starting 
 ```bash
 tensorboard --logdir ~/.cache/torchok/logs/cifar10
 ```
+### Find learning rate
+To automatically find the initial learning rate, we use Pytorch Lightning tuner which algorithm based on [Cyclical Learning Rates for Training Neural Networks](https://arxiv.org/abs/1506.01186) the article.
+```bash
+python -m torchok -cp ../examples/configs -cn classification_cifar10 +entrypoint=find_lr
+```
+
 ### Export to ONNX
 TODO
 ### Run ONNX model
