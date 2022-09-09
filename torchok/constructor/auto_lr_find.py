@@ -1,6 +1,5 @@
 import logging
 from pytorch_lightning import Trainer, LightningModule
-from omegaconf import DictConfig
 
 
 def find_lr(model: LightningModule, trainer: Trainer):
