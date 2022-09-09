@@ -93,7 +93,7 @@ class MetricParams:
     mapping: Dict[str, str]
     params: Optional[Dict] = field(default_factory=dict)
     phases: Optional[List[Phase]] = field(default_factory=lambda: [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT])
-    prefix: Optional[str] = None
+    tag: Optional[str] = None
 
 
 # Task parameters

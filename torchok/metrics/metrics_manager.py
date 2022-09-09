@@ -78,8 +78,7 @@ class MetricsManager(nn.Module):
                 continue
             metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
-            prefix = '' if metric_params.prefix is None else metric_params.prefix + '_'
-            log_name = prefix + metric_params.name
+            log_name = metric_params.name if metric_params.tag is None else metric_params.tag
             if log_name in added_log_names:
                 raise ValueError(f'Got two metrics with identical names: {log_name}. '
                                  f'Please, set differet prefixes for identical metrics in the config file.')
