@@ -1,0 +1,98 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python package
+
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+#     branches: [ "main" ]
+
+on: [push, pull_request]
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      #----------------------------------------------
+      #       check-out repo and set-up python
+      #----------------------------------------------
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.9
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip
+          restore-keys: ${{ runner.os }}-pip
+      #----------------------------------------------
+      #           install and run linters
+      #----------------------------------------------
+      - name: Install flake8
+        run: python -m pip install flake8
+      - name: Run flake8
+        run: |
+          flake8 .
+
+  build:
+    needs: linting
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.7", "3.8", "3.9"]
+
+    steps:
+    #----------------------------------------------
+    #       check-out repo and set-up python
+    #----------------------------------------------
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    #----------------------------------------------
+    #         install & configure poetry
+    #----------------------------------------------
+    - name: Install Poetry Action
+      uses: snok/install-poetry@v1.3.1
+      with:
+        # The Poetry version to install
+        version: latest # default is latest
+        # Whether Poetry should create a virtualenv or not
+        virtualenvs-create: true # optional, default is true
+        # Whether Poetry should create virtualenvs in the project directory or not
+        virtualenvs-in-project: true # optional, default is false
+        # Whether to install many packages at once or one by one. This can fix PyPI DNS resolution errors, 
+        # but also slows down the installation
+        installer-parallel: true # optional, default is true
+    #----------------------------------------------
+    #       load cached venv if cache exists
+    #----------------------------------------------
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v2
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+    #----------------------------------------------
+    # install dependencies if cache does not exist
+    #----------------------------------------------
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+    #----------------------------------------------
+    # install your root project, if required
+    #----------------------------------------------
+    - name: Install library
+      run: poetry install --no-interaction
+    # #----------------------------------------------
+    # #                run test suite
+    # #----------------------------------------------
+    # - name: Run tests
+    #   run: |
+    #     source .venv/bin/activate
+    #     python -m unittest discover -s tests/ -p "test_*.py"
