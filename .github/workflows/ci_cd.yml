@@ -1,13 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: Python package
-
-# on:
-#   push:
-#     branches: [ "main" ]
-#   pull_request:
-#     branches: [ "main" ]
+name: Full CI/CD
 
 on: [push, pull_request]
 
@@ -114,10 +105,12 @@ jobs:
     #     source .venv/bin/activate
     #     python -m unittest discover -s tests/ -p "test_*.py"
 
-  test_publishing:
+  publish:
     needs: [check_version, test]
-    # TODO: only on main
-    if: contains(needs.check_version.outputs.modified_files, 'pyproject.toml')
+    # Only run this job if new work is pushed to "main" and project version was updated
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      contains(needs.check_version.outputs.modified_files, 'pyproject.toml')
     runs-on: ubuntu-latest
     steps:
     #----------------------------------------------
@@ -166,11 +159,8 @@ jobs:
           --extra-index-url https://pypi.org/simple \
           torchok
 
-    # - name: Publish package
-    #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-    #   uses: pypa/gh-action-pypi-publish@release/v1
-    #   with:
-    #     password: ${{ secrets.PYPI_API_TOKEN }}
-
-    # - name: Install dependencies
-    #   run: poetry install --no-interaction --no-root
+    - name: Publish package to PyPI
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
