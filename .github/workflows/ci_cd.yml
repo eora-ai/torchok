@@ -37,8 +37,26 @@ jobs:
         run: |
           flake8 .
 
-  build:
+  check_version:
     needs: lint
+    runs-on: ubuntu-latest
+    outputs:
+      modified_files: ${{ steps.changed-files.outputs.modified_files }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - name: Get changed files using defaults
+      id: changed-files
+      uses: tj-actions/changed-files@v29.0.4
+    - name: List all modified files
+      run: |
+        for file in ${{ steps.changed-files.outputs.modified_files }}; do
+          echo "$file was modified"
+        done
+
+  test:
+    needs: check_version
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -69,19 +87,24 @@ jobs:
         # but also slows down the installation
         installer-parallel: true # optional, default is true
     #----------------------------------------------
-    #       load cached venv if cache exists
+    #     load cached venv if project version 
+    #        was changed and cache exists
     #----------------------------------------------
     - name: Load cached venv
+      if: ${{ !contains(needs.check_version.outputs.modified_files, 'pyproject.toml') }}
       id: cached-poetry-dependencies
       uses: actions/cache@v2
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
     #----------------------------------------------
-    # install dependencies if cache does not exist
+    # install dependencies if project version 
+    #   was changed or cache does not exist
     #----------------------------------------------
     - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      if: |
+        contains(needs.check_version.outputs.modified_files, 'pyproject.toml') ||
+        steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
       run: poetry install --no-interaction --no-root
     # #----------------------------------------------
     # #                run test suite
@@ -91,26 +114,8 @@ jobs:
     #     source .venv/bin/activate
     #     python -m unittest discover -s tests/ -p "test_*.py"
 
-  check_version:
-    needs: build
-    runs-on: ubuntu-latest
-    outputs:
-      modified_files: ${{ steps.changed-files.outputs.modified_files }}
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 2
-    - name: Get changed files using defaults
-      id: changed-files
-      uses: tj-actions/changed-files@v29.0.4
-    - name: List all modified files
-      run: |
-        for file in ${{ steps.changed-files.outputs.modified_files }}; do
-          echo "$file was modified"
-        done
-
   test_publishing:
-    needs: check_version
+    needs: [check_version, test]
     # TODO: only on main
     if: contains(needs.check_version.outputs.modified_files, 'pyproject.toml')
     runs-on: ubuntu-latest
@@ -138,27 +143,13 @@ jobs:
         # Whether to install many packages at once or one by one. This can fix PyPI DNS resolution errors, 
         # but also slows down the installation
         installer-parallel: true # optional, default is true
-
-
-    # TODO: change to non-cache install
     #----------------------------------------------
-    #       load cached venv if cache exists
+    #            install dependencies
     #----------------------------------------------
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v2
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-    #----------------------------------------------
-    # install dependencies if cache does not exist
-    #----------------------------------------------
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
-
-    - name: Build the package
-      run: poetry build
+    - name: Install dependencies & build the package
+      run: |
+        poetry install --no-interaction --no-root
+        poetry build
 
     - name: Publish to TestPyPI
       # TODO: restrict to main-only pushes
