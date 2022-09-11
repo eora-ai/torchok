@@ -12,7 +12,7 @@ name: Python package
 on: [push, pull_request]
 
 jobs:
-  linting:
+  lint:
     runs-on: ubuntu-latest
     steps:
       #----------------------------------------------
@@ -38,7 +38,7 @@ jobs:
           flake8 .
 
   build:
-    needs: linting
+    needs: lint
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -103,6 +103,11 @@ jobs:
     - name: Get changed files using defaults
       id: changed-files
       uses: tj-actions/changed-files@v29.0.4
+    - name: List all modified files
+      run: |
+        for file in ${{ steps.changed-files.outputs.modified_files }}; do
+          echo "$file was modified"
+        done
 
   test_publishing:
     needs: check_version
