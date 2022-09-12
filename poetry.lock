@@ -848,6 +848,18 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
+name = "pycocotools"
+version = "2.0.4"
+description = "Official APIs for the MS-COCO dataset"
+category = "main"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+matplotlib = ">=2.1.0"
+numpy = "*"
+
+[[package]]
 name = "pydeprecate"
 version = "0.3.2"
 description = "Deprecation tooling"
@@ -1473,7 +1485,7 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "776b7eb2ca9ec66a46aeaaf3803ecfbad1fe24250ebe40b239df5dee8622e46f"
+content-hash = "3b6a0bc3096397192e196d8d627c200e57ff7f4dc0bb0bf084ed1ca78aedbf99"
 
 [metadata.files]
 absl-py = [
@@ -2598,6 +2610,9 @@ pyautocorpus = [
     {file = "pyautocorpus-0.1.8-pp37-pypy37_pp73-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:cb649f419d512473977ea185dae2288dd5ad4b2b37b83be32a0670d9671c7a03"},
     {file = "pyautocorpus-0.1.8-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:efc5d0792727325d67f90f5e08168ad801cc2798b5bdae8249408d3673997bc7"},
     {file = "pyautocorpus-0.1.8.tar.gz", hash = "sha256:ace9bf4831f6994d74a1ff2a6226cfbc8ff5e4c62e0dce3d37721bab90b7e36f"},
+]
+pycocotools = [
+    {file = "pycocotools-2.0.4.tar.gz", hash = "sha256:2ab586aa389b9657b6d73c2b9a827a3681f8d00f36490c2e8ab05902e3fd9e93"},
 ]
 pydeprecate = [
     {file = "pyDeprecate-0.3.2-py3-none-any.whl", hash = "sha256:ed86b68ed837e6465245904a3de2f59bf9eef78ac7a2502ee280533d04802457"},
