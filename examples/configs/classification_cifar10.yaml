@@ -12,6 +12,9 @@ task:
     inputs:
       - shape: [3, &height 32, &width 32]
         dtype: &input_dtype float16
+  seed_params:
+    seed: 42
+    workers: true
 
 
 joint_loss:

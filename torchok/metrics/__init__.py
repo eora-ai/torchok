@@ -28,6 +28,7 @@ from torchmetrics.regression import (  # noqa: E402
     WeightedMeanAbsolutePercentageError,
 )
 
+
 from torchok.constructor import METRICS
 from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
 import torchok.metrics.representation

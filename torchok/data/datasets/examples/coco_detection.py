@@ -21,7 +21,7 @@ class COCODetection(DetectionDataset):
 
     COCO dataset has 81 categories where 0 - background label. Train set contains 118287 images, validation set - 5000.
 
-    This Dataset loads about 20 minutes and occupies 20 Gb of memory.
+    This Dataset occupies 20 Gb of memory.
     """
     CLASSES = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
