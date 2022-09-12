@@ -22,7 +22,7 @@ classifiers = [
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
-albumentations = "~1.2"
+albumentations = "1.2.0"
 faiss-cpu = "1.7.2"
 hydra-core = "~1.2"
 numpy = [
