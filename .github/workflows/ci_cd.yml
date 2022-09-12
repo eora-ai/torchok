@@ -33,17 +33,25 @@ jobs:
     outputs:
       modified_files: ${{ steps.changed-files.outputs.modified_files }}
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 2
-    - name: Get changed files using defaults
-      id: changed-files
-      uses: tj-actions/changed-files@v29.0.4
-    - name: List all modified files
-      run: |
-        for file in ${{ steps.changed-files.outputs.modified_files }}; do
-          echo "$file was modified"
-        done
+      #----------------------------------------------
+      #    check-out repo, track modified files
+      #   and store list of the modified files in 
+      #  modified_files output variable of the job
+      #----------------------------------------------
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v29.0.4
+        with:
+          files: |
+            pyproject.toml
+      - name: List all modified files
+        run: |
+          for file in ${{ steps.changed-files.outputs.modified_files }}; do
+            echo "$file was modified"
+          done
 
   test:
     needs: check_version
@@ -53,56 +61,56 @@ jobs:
       matrix:
         python-version: ["3.7", "3.8", "3.9"]
     steps:
-    #----------------------------------------------
-    #       check-out repo and set-up python
-    #----------------------------------------------
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    #----------------------------------------------
-    #         install & configure poetry
-    #----------------------------------------------
-    - name: Install Poetry Action
-      uses: snok/install-poetry@v1.3.1
-      with:
-        # The Poetry version to install
-        version: latest # default is latest
-        # Whether Poetry should create a virtualenv or not
-        virtualenvs-create: true # optional, default is true
-        # Whether Poetry should create virtualenvs in the project directory or not
-        virtualenvs-in-project: true # optional, default is false
-        # Whether to install many packages at once or one by one. This can fix PyPI DNS resolution errors, 
-        # but also slows down the installation
-        installer-parallel: true # optional, default is true
-    #----------------------------------------------
-    #     load cached venv if project version 
-    #        was changed and cache exists
-    #----------------------------------------------
-    - name: Load cached venv
-      if: ${{ !contains(needs.check_version.outputs.modified_files, 'pyproject.toml') }}
-      id: cached-poetry-dependencies
-      uses: actions/cache@v2
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-    #----------------------------------------------
-    # install dependencies if project version 
-    #   was changed or cache does not exist
-    #----------------------------------------------
-    - name: Install dependencies
-      if: |
-        contains(needs.check_version.outputs.modified_files, 'pyproject.toml') ||
-        steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-root
-    #----------------------------------------------
-    #                run test suite
-    #----------------------------------------------
-    - name: Run tests
-      run: |
-        source .venv/bin/activate
-        python -m unittest discover -s tests/ -p "test_*.py"
+      #----------------------------------------------
+      #       check-out repo and set-up python
+      #----------------------------------------------
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      #----------------------------------------------
+      #         install & configure poetry
+      #----------------------------------------------
+      - name: Install Poetry Action
+        uses: snok/install-poetry@v1.3.1
+        with:
+          # The Poetry version to install
+          version: latest # default is latest
+          # Whether Poetry should create a virtualenv or not
+          virtualenvs-create: true # optional, default is true
+          # Whether Poetry should create virtualenvs in the project directory or not
+          virtualenvs-in-project: true # optional, default is false
+          # Whether to install many packages at once or one by one. This can fix PyPI DNS resolution errors, 
+          # but also slows down the installation
+          installer-parallel: true # optional, default is true
+      #----------------------------------------------
+      #     load cached venv if project version 
+      #        was changed and cache exists
+      #----------------------------------------------
+      - name: Load cached venv
+        if: ${{ !contains(needs.check_version.outputs.modified_files, 'pyproject.toml') }}
+        id: cached-poetry-dependencies
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      #----------------------------------------------
+      #   install dependencies if project version 
+      #     was changed or cache does not exist
+      #----------------------------------------------
+      - name: Install dependencies
+        if: |
+          contains(needs.check_version.outputs.modified_files, 'pyproject.toml') ||
+          steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+      #----------------------------------------------
+      #                run test suite
+      #----------------------------------------------
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python -m unittest discover -s tests/ -p "test_*.py"
 
   publish:
     needs: [check_version, test]
@@ -112,54 +120,57 @@ jobs:
       contains(needs.check_version.outputs.modified_files, 'pyproject.toml')
     runs-on: ubuntu-latest
     steps:
-    #----------------------------------------------
-    #       check-out repo and set-up python
-    #----------------------------------------------
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
-      with:
-        python-version: 3.9
-    #----------------------------------------------
-    #         install & configure poetry
-    #----------------------------------------------
-    - name: Install Poetry Action
-      uses: snok/install-poetry@v1.3.1
-      with:
-        # The Poetry version to install
-        version: latest # default is latest
-        # Whether Poetry should create a virtualenv or not
-        virtualenvs-create: true # optional, default is true
-        # Whether Poetry should create virtualenvs in the project directory or not
-        virtualenvs-in-project: true # optional, default is false
-        # Whether to install many packages at once or one by one. This can fix PyPI DNS resolution errors, 
-        # but also slows down the installation
-        installer-parallel: true # optional, default is true
-    #----------------------------------------------
-    #            install dependencies
-    #----------------------------------------------
-    - name: Install dependencies & build the package
-      run: |
-        poetry install --no-interaction --no-root
-        poetry build
-
-    - name: Publish to TestPyPI
-      # TODO: restrict to main-only pushes
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        repository_url: https://test.pypi.org/legacy/
-
-    - name: Test install from TestPyPI
-      run: |
-          pip install \
-          --index-url https://test.pypi.org/simple/ \
-          --extra-index-url https://pypi.org/simple \
-          torchok
-
-    - name: Publish package to PyPI
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      #----------------------------------------------
+      #       check-out repo and set-up python
+      #----------------------------------------------
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.9
+      #----------------------------------------------
+      #         install & configure poetry
+      #----------------------------------------------
+      - name: Install Poetry Action
+        uses: snok/install-poetry@v1.3.1
+        with:
+          # The Poetry version to install
+          version: latest # default is latest
+          # Whether Poetry should create a virtualenv or not
+          virtualenvs-create: true # optional, default is true
+          # Whether Poetry should create virtualenvs in the project directory or not
+          virtualenvs-in-project: true # optional, default is false
+          # Whether to install many packages at once or one by one. This can fix PyPI DNS resolution errors, 
+          # but also slows down the installation
+          installer-parallel: true # optional, default is true
+      #----------------------------------------------
+      #            install dependencies
+      #----------------------------------------------
+      - name: Install dependencies & build the package
+        run: |
+          poetry install --no-interaction --no-root
+          poetry build
+      #----------------------------------------------
+      #   publish the package to TestPyPI and check 
+      #   whether it can be successfully downloaded
+      #----------------------------------------------
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
+      - name: Test install from TestPyPI
+        run: |
+            pip install \
+            --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple \
+            torchok
+      #----------------------------------------------
+      #         publish the package to PyPI
+      #----------------------------------------------
+      - name: Publish package to PyPI
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
