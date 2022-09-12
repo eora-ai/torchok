@@ -1,9 +1,8 @@
-from mmdet.models.necks import (BFP, ChannelMapper, CTResNetNeck, DilatedEncoder, DyHead, FPG, FPN, FPN_CARAFE, HRFPN,
+from mmdet.models.necks import (BFP, ChannelMapper, CTResNetNeck, DilatedEncoder, DyHead, FPG, FPN_CARAFE, HRFPN,
                                 NASFCOS_FPN, NASFPN, PAFPN, RFP, SSDNeck, YOLOV3Neck, YOLOXPAFPN)
 
 from torchok.constructor import DETECTION_NECKS
 
-DETECTION_NECKS.register_class(FPN)
 DETECTION_NECKS.register_class(BFP)
 DETECTION_NECKS.register_class(ChannelMapper)
 DETECTION_NECKS.register_class(HRFPN)

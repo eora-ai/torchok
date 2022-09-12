@@ -25,14 +25,13 @@ class SingleStageDetectionTask(BaseTask):
         backbone_name = self._hparams.task.params.get('backbone_name')
         backbones_params = self._hparams.task.params.get('backbone_params', dict())
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
-        self.num_scales = self._hparams.task.params.get('num_scales')
+        self.num_scales = self._hparams.task.params.get('num_scales', len(self.backbone.out_encoder_channels))
 
         # NECK
         neck_name = self._hparams.task.params.get('neck_name')
         neck_params = self._hparams.task.params.get('neck_params', dict())
         neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
-        self.neck = DETECTION_NECKS.get(neck_name)(num_scales=self.num_scales,
-                                                   in_channels=neck_in_channels, **neck_params)
+        self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
 
         # HEAD
         head_name = self._hparams.task.params.get('head_name')
@@ -53,7 +52,7 @@ class SingleStageDetectionTask(BaseTask):
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
         neck_out = self.neck(features)
         prediction = self.head(neck_out)
-        output = {'pred_maps': prediction}
+        output = self.head.format_dict(prediction)
 
         if 'bboxes' in batch:
             output['gt_bboxes'] = batch.get('bboxes')
@@ -65,40 +64,44 @@ class SingleStageDetectionTask(BaseTask):
         """Method for model representation as sequential of modules(need for checkpointing)."""
         return nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.head)
 
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
-        """Complete training loop."""
-        output = self.forward_with_gt(batch)
+    def calculate_loss(self, **output):
         batch_total_loss = []
-        batch_tagged_loss_values = defaultdict(int)
+        batch_tagged_loss_values = defaultdict(float)
         for kwargs in self.head.prepare_loss(**output):
             total_loss, tagged_loss_values = self.losses(**kwargs)
             batch_total_loss.append(total_loss)
             for tag, loss in tagged_loss_values.items():
                 batch_tagged_loss_values[tag] += loss
 
+        batch_size = len(batch_total_loss)
+        batch_total_loss = torch.stack(batch_total_loss).mean()
+        for tag, loss in batch_tagged_loss_values.items():
+            batch_tagged_loss_values[tag] = batch_tagged_loss_values[tag] / batch_size
+
+        return batch_total_loss, batch_tagged_loss_values
+
+    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+        """Complete training loop."""
+        output = self.forward_with_gt(batch)
+        total_loss, tagged_loss_values = self.calculate_loss(**output)
+
         output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
         output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.TRAIN, **output)
-        output_dict = {'loss': sum(batch_total_loss)}
-        output_dict.update(batch_tagged_loss_values)
+        output_dict = {'loss': total_loss}
+        output_dict.update(tagged_loss_values)
         return output_dict
 
     def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, List]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        batch_total_loss = []
-        batch_tagged_loss_values = defaultdict(int)
-        for kwargs in self.head.prepare_loss(**output):
-            total_loss, tagged_loss_values = self.losses(**kwargs)
-            batch_total_loss.append(total_loss)
-            for tag, loss in tagged_loss_values.items():
-                batch_tagged_loss_values[tag] += loss
+        total_loss, tagged_loss_values = self.calculate_loss(**output)
 
         output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
         output['prediction'] = self.head.get_bboxes(output['pred_maps'])
         self.metrics_manager.update(Phase.VALID, **output)
-        output_dict = {'loss': sum(batch_total_loss)}
-        output_dict.update(batch_tagged_loss_values)
+        output_dict = {'loss': total_loss}
+        output_dict.update(tagged_loss_values)
         return output_dict
 
     def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:

@@ -22,7 +22,8 @@ from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from torchok.metrics.torchmetric_060 import Metric
+# from torchok.metrics.torchmetric_060 import Metric
+from torchmetrics import Metric
 from torchok.constructor import METRICS
 
 log = logging.getLogger(__name__)
@@ -38,14 +39,14 @@ class MAPMetricResults:
     map_small: Tensor
     map_medium: Tensor
     map_large: Tensor
-    mar_1: Tensor
-    mar_10: Tensor
-    mar_100: Tensor
-    mar_small: Tensor
-    mar_medium: Tensor
-    mar_large: Tensor
-    map_per_class: Tensor
-    mar_100_per_class: Tensor
+    # mar_1: Tensor
+    # mar_10: Tensor
+    # mar_100: Tensor
+    # mar_small: Tensor
+    # mar_medium: Tensor
+    # mar_large: Tensor
+    # map_per_class: Tensor
+    # mar_100_per_class: Tensor
 
     def __getitem__(self, key: str) -> Union[Tensor, List[Tensor]]:
         return getattr(self, key)
@@ -128,7 +129,7 @@ def _input_validator(preds: List[Dict[str, torch.Tensor]], targets: List[Dict[st
 
 
 @METRICS.register_class
-class СocoEvalMAP(Metric):
+class CocoEvalMAP(Metric):
     r"""
     Computes the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)\
     <https://jonathan-hui.medium.com/map-mean-average-precision-for-object-detection-45c121a31173>`_\
@@ -238,22 +239,23 @@ class СocoEvalMAP(Metric):
                 If any score is not type float and of length 1
         """
         for i in range(len(preds)):
-            bboxes_with_scores = preds[i].pop('boxes')
-            bboxes, scores = torch.split(bboxes_with_scores, [4, 1], -1)
-            scores = scores.squeeze(-1)
-            preds[i]['boxes'] = bboxes
-            preds[i]['scores'] = scores
+            bboxes_with_scores = preds[i].pop('bboxes')
+            preds[i]['boxes'] = bboxes_with_scores[:, :4]
+            preds[i]['scores'] = bboxes_with_scores[:, 4]
+
+        for i in range(len(target)):
+            target[i]['boxes'] = target[i].pop('bboxes')
 
         _input_validator(preds, target)
 
         for item in preds:
-            self.detection_boxes.append(item["boxes"])
-            self.detection_scores.append(item["scores"])
-            self.detection_labels.append(item["labels"])
+            self.detection_boxes.append(item["boxes"].cpu())
+            self.detection_scores.append(item["scores"].cpu())
+            self.detection_labels.append(item["labels"].cpu())
 
         for item in target:
-            self.groundtruth_boxes.append(item["boxes"])
-            self.groundtruth_labels.append(item["labels"])
+            self.groundtruth_boxes.append(item["boxes"].cpu())
+            self.groundtruth_labels.append(item["labels"].cpu())
 
     def compute(self) -> dict:
         """Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` scores. All detections added in
@@ -316,14 +318,14 @@ class СocoEvalMAP(Metric):
             map_small=torch.Tensor([stats[3]]),
             map_medium=torch.Tensor([stats[4]]),
             map_large=torch.Tensor([stats[5]]),
-            mar_1=torch.Tensor([stats[6]]),
-            mar_10=torch.Tensor([stats[7]]),
-            mar_100=torch.Tensor([stats[8]]),
-            mar_small=torch.Tensor([stats[9]]),
-            mar_medium=torch.Tensor([stats[10]]),
-            mar_large=torch.Tensor([stats[11]]),
-            map_per_class=map_per_class_values,
-            mar_100_per_class=mar_100_per_class_values,
+            # mar_1=torch.Tensor([stats[6]]),
+            # mar_10=torch.Tensor([stats[7]]),
+            # mar_100=torch.Tensor([stats[8]]),
+            # mar_small=torch.Tensor([stats[9]]),
+            # mar_medium=torch.Tensor([stats[10]]),
+            # mar_large=torch.Tensor([stats[11]]),
+            # map_per_class=map_per_class_values,
+            # mar_100_per_class=mar_100_per_class_values,
         )
         return metrics.__dict__
 

@@ -5,99 +5,85 @@ task:
     backbone_params:
       pretrained: true
       in_channels: 3
-    num_scales: 3
-    neck_name: YOLOV3Neck
+    num_scales: 4
+    neck_name: FPN
     neck_params:
-      out_channels: [ 192, 96, 96 ]
-    head_name: YOLOV3Head
+      out_channels: 256
+      start_level: 1
+      add_extra_convs: on_output
+      num_outs: 5
+      relu_before_extra_convs: true
+    head_name: FCOSHead
     head_params:
-      out_channels: [ 192, 96, 96 ]
       num_classes: &num_classes 81
-      anchor_generator:
-        type: YOLOAnchorGenerator
-        base_sizes: [[[116, 90], [156, 198], [373, 326]],
-                        [[30, 61], [62, 45], [59, 119]],
-                        [[10, 13], [16, 30], [33, 23]]]
-        strides: [32, 16, 8]
-      bbox_coder:
-        type: YOLOBBoxCoder
-      featmap_strides: [ 32, 16, 8 ]
+      strides: [8, 16, 32, 64, 128]
+      feat_channels: 256
+      stacked_convs: 4
       train_cfg:
         assigner:
-          type: GridAssigner
+          type: MaxIoUAssigner
           pos_iou_thr: 0.5
-          neg_iou_thr: 0.5
+          neg_iou_thr: 0.4
           min_pos_iou: 0
+          ignore_iof_thr: -1
       test_cfg:
         nms_pre: 1000
         min_bbox_size: 0
         score_thr: 0.05
-        conf_thr: 0.005
         nms:
           type: nms
-          iou_threshold: 0.45
+          iou_threshold: 0.5
         max_per_img: 100
 
     inputs:
-      - shape: [3, &height 320, &width 320]
-        dtype: &input_dtype float16
+      - shape: [3, &height 400, &width 666]
+        dtype: &input_dtype float32
 
 joint_loss:
   losses:
-    - name: MMCrossEntropyLoss
-      tag: classification_loss
+    - name: MMFocalLoss
+      tag: loss_cls
       weight: 1.0
       params:
         use_sigmoid: True
-        reduction: sum
+        gamma: 2.0
+        alpha: 0.25
       mapping:
-        cls_score: pred_label
-        label: target_label
-        weight: pos_mask
+        cls_score: flatten_cls_scores
+        label: flatten_labels
+        avg_factor: num_pos
+    - name: MMIoULoss
+      tag: loss_bbox
+      weight: 1.0
+      mapping:
+        pred: pos_decoded_bbox_preds
+        target: pos_decoded_target_preds
+        weight: pos_centerness_targets
+        avg_factor: centerness_denorm
     - name: MMCrossEntropyLoss
-      tag: confidence_loss
+      tag: loss_centerness
       weight: 1.0
       params:
         use_sigmoid: True
-        reduction: sum
       mapping:
-        cls_score: pred_conf
-        label: target_conf
-        weight: pos_and_neg_mask
-    - name: MMCrossEntropyLoss
-      tag: xy_loss
-      weight: 2.0
-      params:
-        use_sigmoid: True
-        reduction: sum
-      mapping:
-        cls_score: pred_xy
-        label: target_xy
-        weight: pos_mask
-    - name: MMMSELoss
-      tag: wh_loss
-      weight: 2.0
-      params:
-        reduction: sum
-      mapping:
-        pred: pred_wh
-        target: target_wh
-        weight: pos_mask
+        cls_score: pos_centerness
+        label: pos_centerness_targets
+        avg_factor: pos_mask
 
 optimization:
   - optimizer:
       name: SGD
       params:
-        lr: &base_lr 0.003
+        lr: &base_lr 0.01
         momentum: 0.9
-        weight_decay: 0.0005
+        weight_decay: 0.0001
     scheduler:
       name: OneCycleLR
       params:
         max_lr: *base_lr
 #        total_steps: None
-        epochs: &num_epochs 50
-        steps_per_epoch: 1233
+        epochs: &num_epochs 12
+        steps_per_epoch: 9858
 #        # total_steps: None
 #        epochs: &num_epochs 100
 #        steps_per_epoch: 1849
@@ -115,7 +101,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: &bs 96
+        batch_size: &bs 12
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
@@ -192,8 +178,8 @@ trainer:
   #  limit_train_batches: 10
   #  limit_val_batches: 10
   #  log_every_n_steps: 1000
-  #  precision: bf16
-  precision: 16
+#  precision: bf16
+  precision: 32
   num_sanity_val_steps: 2
 
 logger:

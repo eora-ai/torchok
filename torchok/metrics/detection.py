@@ -48,11 +48,14 @@ class MMDetectionMAP(Metric):
 
         self.preds += mmdet_format_pred
 
-        for i in range(len(target)):
-            target[i]['bboxes'] = target[i]['bboxes'].detach().cpu().numpy()
-            target[i]['labels'] = target[i]['labels'].detach().cpu().numpy()
+        np_target = []
+        for targ in target:
+            np_target.append(dict(
+                bboxes=targ['bboxes'].detach().cpu().numpy(),
+                labels=targ['labels'].detach().cpu().numpy()
+            ))
 
-        self.targets += target
+        self.targets += np_target
 
     def compute(self):
-        return eval_map(self.preds, self.targets, iou_thr=self.iou_thr, nproc=self.nproc)[0]
+        return eval_map(self.preds, self.targets, iou_thr=self.iou_thr, nproc=self.nproc, logger='silent')[0]

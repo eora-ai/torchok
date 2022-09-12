@@ -1,1 +1,2 @@
-import torchok.models.necks.detection.mmdet_necks
+from torchok.models.necks.detection import fpn
+from torchok.models.necks.detection import mmdet_necks
