@@ -8,8 +8,7 @@ from torchok.constructor import BACKBONES
 
 
 class AbstractTestBackboneCorrectness:
-    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    device = 'cpu'
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     def create_backbone(self, backbone_name):
         return BACKBONES.get(backbone_name)(pretrained=False, in_channels=3).to(device=self.device).eval()
@@ -18,7 +17,7 @@ class AbstractTestBackboneCorrectness:
         self.input = torch.rand(2, 3, 64, 64, device=self.device)
 
     def test_load_pretrained(self, backbone_name):
-        BACKBONES.get(backbone_name)(pretrained=False).to(self.device).eval()
+        BACKBONES.get(backbone_name)(pretrained=True).to(self.device).eval()
         torch.cuda.empty_cache()
         gc.collect()
 
