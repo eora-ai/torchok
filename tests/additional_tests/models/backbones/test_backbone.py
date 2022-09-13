@@ -8,7 +8,8 @@ from torchok.constructor import BACKBONES
 
 
 class AbstractTestBackboneCorrectness:
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    device = 'cpu'
 
     def create_backbone(self, backbone_name):
         return BACKBONES.get(backbone_name)(pretrained=False, in_channels=3).to(device=self.device).eval()
@@ -178,29 +179,5 @@ class TestSwin(AbstractTestBackboneCorrectness, unittest.TestCase):
         super().test_forward_feature_output_shape(backbone_name, expected_shapes)
 
     @parameterized.expand(['swinv2_tiny_window16_256'])
-    def test_torchscript_conversion(self, backbone_name):
-        super().test_torchscript_conversion(backbone_name)
-
-
-class TestBeit(AbstractTestBackboneCorrectness, unittest.TestCase):
-    def setUp(self) -> None:
-        self.input = torch.rand(2, 3, 224, 224, device=self.device)
-
-    @parameterized.expand(['beit_base_patch16_224'])
-    def test_load_pretrained(self, backbone_name):
-        super().test_load_pretrained(backbone_name)
-
-    @parameterized.expand([['beit_base_patch16_224', (2, 768, 1, 1)]])
-    def test_forward_output_shape(self, backbone_name, expected_shape):
-        super().test_forward_output_shape(backbone_name, expected_shape)
-
-    @parameterized.expand([
-        ['beit_base_patch16_224', [(2, 3, 224, 224), (2, 768, 56, 56), (2, 768, 28, 28),
-                                   (2, 768, 14, 14), (2, 768, 7, 7)]]
-    ])
-    def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
-        super().test_forward_feature_output_shape(backbone_name, expected_shapes)
-
-    @parameterized.expand(['beit_base_patch16_224'])
     def test_torchscript_conversion(self, backbone_name):
         super().test_torchscript_conversion(backbone_name)
