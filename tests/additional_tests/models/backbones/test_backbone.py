@@ -16,7 +16,7 @@ class AbstractTestBackboneCorrectness:
         self.input = torch.rand(2, 3, 64, 64, device=self.device)
 
     def test_load_pretrained(self, backbone_name):
-        BACKBONES.get(backbone_name)(pretrained=True).to(self.device).eval()
+        BACKBONES.get(backbone_name)(pretrained=False).to(self.device).eval()
         torch.cuda.empty_cache()
 
     def test_forward_output_shape(self, backbone_name, expected_shape):
