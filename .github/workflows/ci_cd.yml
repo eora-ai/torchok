@@ -105,12 +105,12 @@ jobs:
           steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
       #----------------------------------------------
-      #                run test suite
+      #               run base tests
       #----------------------------------------------
       - name: Run tests
         run: |
           source .venv/bin/activate
-          python -m unittest discover -s tests/ -p "test_*.py"
+          python -m unittest discover -s tests/base_tests/ -p "test_*.py"
 
   publish:
     needs: [check_version, test]
@@ -150,6 +150,13 @@ jobs:
         run: |
           poetry install --no-interaction --no-root
           poetry build
+      #----------------------------------------------
+      #                run all tests
+      #----------------------------------------------
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python -m unittest discover -s tests/ -p "test_*.py"
       #----------------------------------------------
       #   publish the package to TestPyPI and check 
       #   whether it can be successfully downloaded
