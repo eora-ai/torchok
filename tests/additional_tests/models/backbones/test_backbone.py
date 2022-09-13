@@ -88,27 +88,27 @@ class TestHrnet(AbstractTestBackboneCorrectness, unittest.TestCase):
         super().test_torchscript_conversion(backbone_name)
 
 
-class TestDaViT(AbstractTestBackboneCorrectness, unittest.TestCase):
-    def setUp(self) -> None:
-        self.input = torch.rand(2, 3, 224, 224, device=self.device)
+# class TestDaViT(AbstractTestBackboneCorrectness, unittest.TestCase):
+#     def setUp(self) -> None:
+#         self.input = torch.rand(2, 3, 224, 224, device=self.device)
 
-    @parameterized.expand([['davit_t']])
-    def test_load_pretrained(self, backbone_name):
-        super().test_load_pretrained(backbone_name)
+#     @parameterized.expand([['davit_t']])
+#     def test_load_pretrained(self, backbone_name):
+#         super().test_load_pretrained(backbone_name)
 
-    @parameterized.expand([['davit_t', (2, 768, 7, 7)]])
-    def test_forward_output_shape(self, backbone_name, expected_shape):
-        super().test_forward_output_shape(backbone_name, expected_shape)
+#     @parameterized.expand([['davit_t', (2, 768, 7, 7)]])
+#     def test_forward_output_shape(self, backbone_name, expected_shape):
+#         super().test_forward_output_shape(backbone_name, expected_shape)
 
-    @parameterized.expand([
-        ['davit_t', [(2, 3, 224, 224), (2, 96, 56, 56), (2, 192, 28, 28), (2, 384, 14, 14), (2, 768, 7, 7)]]
-    ])
-    def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
-        super().test_forward_feature_output_shape(backbone_name, expected_shapes)
+#     @parameterized.expand([
+#         ['davit_t', [(2, 3, 224, 224), (2, 96, 56, 56), (2, 192, 28, 28), (2, 384, 14, 14), (2, 768, 7, 7)]]
+#     ])
+#     def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
+#         super().test_forward_feature_output_shape(backbone_name, expected_shapes)
 
-    @parameterized.expand(BACKBONES.list_models(module='davit'))
-    def test_torchscript_conversion(self, backbone_name):
-        super().test_torchscript_conversion(backbone_name)
+#     @parameterized.expand(BACKBONES.list_models(module='davit'))
+#     def test_torchscript_conversion(self, backbone_name):
+#         super().test_torchscript_conversion(backbone_name)
 
 
 class TestMobilenetv3(AbstractTestBackboneCorrectness, unittest.TestCase):
