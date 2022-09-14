@@ -1,6 +1,6 @@
-name: Full CI/CD
+name: CI
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   lint:
@@ -27,7 +27,7 @@ jobs:
       - name: Run flake8
         run: flake8 .
 
-  check_version:
+  check_dependencies:
     needs: lint
     runs-on: ubuntu-latest
     outputs:
@@ -54,7 +54,7 @@ jobs:
           done
 
   test:
-    needs: check_version
+    needs: check_dependencies
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -89,7 +89,7 @@ jobs:
       #        was changed and cache exists
       #----------------------------------------------
       - name: Load cached venv
-        if: ${{ !contains(needs.check_version.outputs.modified_files, 'pyproject.toml') }}
+        if: ${{ !contains(needs.check_dependencies.outputs.modified_files, 'pyproject.toml') }}
         id: cached-poetry-dependencies
         uses: actions/cache@v2
         with:
@@ -101,7 +101,7 @@ jobs:
       #----------------------------------------------
       - name: Install dependencies
         if: |
-          contains(needs.check_version.outputs.modified_files, 'pyproject.toml') ||
+          contains(needs.check_dependencies.outputs.modified_files, 'pyproject.toml') ||
           steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
       #----------------------------------------------
@@ -118,13 +118,10 @@ jobs:
           source .venv/bin/activate
           python -m unittest discover -s tests/ -p "test_*.py"
 
-  publish:
-    needs: [check_version, test]
+  publish_to_testpypi:
+    needs: [check_dependencies, test]
     # Only run this job if new work is pushed to "main" and project version was updated
-    if: |
-      ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'release' && github.event.action == 'published')) &&
-      contains(needs.check_version.outputs.modified_files, 'pyproject.toml') }}
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(needs.check_dependencies.outputs.modified_files, 'pyproject.toml')
     runs-on: ubuntu-latest
     steps:
       #----------------------------------------------
@@ -173,11 +170,3 @@ jobs:
             --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple \
             torchok
-      #----------------------------------------------
-      #         publish the package to PyPI
-      #----------------------------------------------
-      - name: Publish package to PyPI
-        if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
