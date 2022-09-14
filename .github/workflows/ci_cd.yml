@@ -47,7 +47,7 @@ jobs:
         with:
           files: |
             pyproject.toml
-      - name: List all modified files
+      - name: Check whether pyproject.toml was modified
         run: |
           for file in ${{ steps.changed-files.outputs.modified_files }}; do
             echo "$file was modified"
@@ -122,8 +122,9 @@ jobs:
     needs: [check_version, test]
     # Only run this job if new work is pushed to "main" and project version was updated
     if: |
-      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      contains(needs.check_version.outputs.modified_files, 'pyproject.toml')
+      ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'release' && github.event.action == 'published')) &&
+      contains(needs.check_version.outputs.modified_files, 'pyproject.toml') }}
     runs-on: ubuntu-latest
     steps:
       #----------------------------------------------
