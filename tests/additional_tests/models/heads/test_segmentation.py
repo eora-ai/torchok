@@ -33,7 +33,7 @@ class AbstractTestSegmentationPair:
     def test_torchscript_conversion(self, head_name):
         model = self.create_model(head_name)
         with torch.no_grad():
-            torch.jit.trace(model, self.input)
+            torch.jit.trace(model.forward, self.input)
         torch.cuda.empty_cache()
 
 
@@ -63,7 +63,7 @@ class TestUnet(AbstractTestSegmentationPair, unittest.TestCase):
 class TestHRNet(AbstractTestSegmentationPair, unittest.TestCase):
 
     def create_model(self, head_name):
-        backbone = BACKBONES.get('resnet18')(pretrained=False, in_channels=3)
+        backbone = BACKBONES.get('hrnet_w18_small')(pretrained=False, in_channels=3)
         backbone = BackboneWrapper(backbone)
         neck = NECKS.get('HRNetSegmentationNeck')(in_channels=backbone.out_encoder_channels)
         head = HEADS.get(head_name)(neck.out_channels, self.num_classes)
