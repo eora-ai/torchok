@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "torchok"
-version = "0.4.10-alpha.7"
+version = "0.4.10"
 description = "The toolkit for fast Deep Learning experiments in Computer Vision"
 readme = "README.md"
 authors = [
