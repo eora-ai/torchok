@@ -1,25 +1,17 @@
 import warnings
-from typing import List
+from collections import defaultdict
+from typing import List, Dict, Tuple
 
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from mmcv.cnn import (bias_init_with_prob, constant_init, ConvModule, is_norm, normal_init)
+from mmcv import ConfigDict
 from mmcv.runner import force_fp32
-from mmdet.core import (build_assigner, build_bbox_coder,
-                        build_prior_generator, build_sampler, images_to_levels,
-                        multi_apply, multiclass_nms)
-from .base import BaseDenseHead
-from mmdet.models.dense_heads.dense_test_mixins import BBoxTestMixin
+from mmdet.core import (multiclass_nms)
 from mmdet.models.dense_heads import yolo_head
+from omegaconf import OmegaConf, DictConfig
 from torch import Tensor
 
 from torchok.constructor import HEADS
-
-
-# from functools import partial
-# from typing import Tuple, Union
+from torchok.losses.base import JointLoss
 
 
 @HEADS.register_class
@@ -48,15 +40,40 @@ class YOLOV3Head(yolo_head.YOLOV3Head):
     """
 
     def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            if isinstance(v, DictConfig):
+                kwargs[k] = ConfigDict(OmegaConf.to_container(v, resolve=True))
         super(YOLOV3Head, self).__init__(**kwargs)
         self.init_weights()
+
+    def forward(self, feats):
+        """Forward features from the upstream network.
+
+        Args:
+            feats (tuple[Tensor]): Features from the upstream network, each is
+                a 4D-tensor.
+
+        Returns:
+            tuple[Tensor]: A tuple of multi-level predication map, each is a
+                4D-tensor of shape (batch_size, 5+num_classes, height, width).
+        """
+
+        assert len(feats) == self.num_levels
+        pred_maps = []
+        for i in range(self.num_levels):
+            x = feats[i]
+            x = self.convs_bridge[i](x)
+            pred_map = self.convs_pred[i](x)
+            pred_maps.append(pred_map)
+
+        return tuple(pred_maps)
 
     @staticmethod
     def format_dict(head_output):
         return dict(pred_maps=head_output)
 
     @force_fp32(apply_to=('pred_maps',))
-    def get_bboxes(self, pred_maps, with_nms=True):
+    def get_bboxes(self, pred_maps, with_nms=True, **kwargs):
         """Transform network output for a batch into bbox predictions. It has
         been accelerated since PR #5991.
 
@@ -126,41 +143,51 @@ class YOLOV3Head(yolo_head.YOLOV3Head):
             det_results.append(dict(bboxes=det_bboxes, labels=det_labels))
         return det_results
 
-    def prepare_loss(self, pred_maps, gt_bboxes, gt_labels):
+    @force_fp32(apply_to=('pred_maps',))
+    def loss(self, joint_loss: JointLoss, pred_maps: List[Tensor], gt_bboxes: List[Tensor], gt_labels: List[Tensor],
+             **kwargs) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Compute loss of the head.
 
         Args:
-            pred_maps (list[Tensor]): Prediction map for each scale level,
-                shape (N, num_anchors * num_attrib, H, W)
-            gt_bboxes (list[Tensor]): Ground truth bboxes for each image with
-                shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
-            gt_labels (list[Tensor]): class indices corresponding to each box
-
+            joint_loss: An instance of JointLoss class.
+            pred_maps: Prediction map for each scale level, shape (N, num_anchors * num_attrib, H, W).
+            gt_bboxes: Ground truth bboxes for each image with shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
+            gt_labels: class indices corresponding to each box.
 
         Returns:
-            dict[str, Tensor]: A dictionary of loss components.
+            Total loss, Dict of losses per eachA dictionary of loss components.
         """
-        num_imgs = len(gt_bboxes)
+        batch_size = len(gt_bboxes)
         device = pred_maps[0].device
 
         featmap_sizes = [pred_maps[i].shape[-2:] for i in range(self.num_levels)]
         mlvl_anchors = self.prior_generator.grid_priors(featmap_sizes, device=device)
-        anchor_list = [mlvl_anchors for _ in range(num_imgs)]
+        anchor_list = [mlvl_anchors for _ in range(batch_size)]
 
         responsible_flag_list = []
-        for img_id in range(num_imgs):
+        for img_id in range(batch_size):
             responsible_flags = self.prior_generator.responsible_flags(featmap_sizes, gt_bboxes[img_id], device)
             responsible_flag_list.append(responsible_flags)
 
         target_maps_list, neg_maps_list = self.get_targets(anchor_list, responsible_flag_list, gt_bboxes, gt_labels)
 
-        result = []
+        total_loss = []
+        tagged_loss_values = defaultdict(float)
+
         for args in zip(pred_maps, target_maps_list, neg_maps_list):
-            result.append(self.prepare_loss_single(*args))
+            single_total_loss, single_tagged_loss_values = joint_loss(**self.prep_loss(*args))
 
-        return result
+            total_loss.append(single_total_loss)
+            for tag, loss in single_tagged_loss_values.items():
+                tagged_loss_values[tag] += loss
 
-    def prepare_loss_single(self, pred_map, target_map, neg_map):
+        total_loss = torch.stack(total_loss).mean()
+        for tag, loss in tagged_loss_values.items():
+            tagged_loss_values[tag] = tagged_loss_values[tag] / batch_size
+
+        return total_loss, dict(tagged_loss_values)
+
+    def prep_loss(self, pred_map, target_map, neg_map) -> Dict[str, Tensor]:
         """Compute loss of a single image from a batch.
 
         Args:

@@ -1,12 +1,17 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+from typing import Dict, List, Tuple
 
 import torch
+from mmcv import ConfigDict
 from mmcv.runner import force_fp32
 from mmdet.core import reduce_mean
 from mmdet.models.dense_heads import fcos_head
 from mmdet.models.dense_heads.anchor_free_head import AnchorFreeHead
+from omegaconf import OmegaConf, DictConfig
+from torch import Tensor
 
 from torchok.constructor import HEADS
+from torchok.losses.base import JointLoss
 
 INF = 1e8
 
@@ -64,6 +69,9 @@ class FCOSHead(fcos_head.FCOSHead):
                  norm_on_bbox=False,
                  centerness_on_reg=False,
                  norm_cfg=dict(type='GN', num_groups=32, requires_grad=True),
+                 conv_cfg=None,
+                 train_cfg=None,
+                 test_cfg=None,
                  init_cfg=dict(
                      type='Normal',
                      layer='Conv2d',
@@ -79,8 +87,17 @@ class FCOSHead(fcos_head.FCOSHead):
         self.center_sample_radius = center_sample_radius
         self.norm_on_bbox = norm_on_bbox
         self.centerness_on_reg = centerness_on_reg
-        AnchorFreeHead.__init__(self, num_classes, in_channels,
-                                norm_cfg=norm_cfg, init_cfg=init_cfg, **kwargs)
+
+        kwargs['norm_cfg'] = norm_cfg
+        kwargs['conv_cfg'] = conv_cfg
+        kwargs['train_cfg'] = train_cfg
+        kwargs['test_cfg'] = test_cfg
+        kwargs['init_cfg'] = init_cfg
+
+        for k, v in kwargs.items():
+            if isinstance(v, DictConfig):
+                kwargs[k] = ConfigDict(OmegaConf.to_container(v, resolve=True))
+        AnchorFreeHead.__init__(self, num_classes, in_channels, **kwargs)
         self.init_weights()
 
     @staticmethod
@@ -88,24 +105,25 @@ class FCOSHead(fcos_head.FCOSHead):
         return dict(zip(['cls_scores', 'bbox_preds', 'centernesses'], head_output))
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'centernesses'))
-    def prepare_loss(self, cls_scores, bbox_preds, centernesses, gt_bboxes, gt_labels):
+    def loss(self, joint_loss: JointLoss, cls_scores: List[Tensor], bbox_preds: List[Tensor],
+             centernesses: List[Tensor], gt_bboxes: List[Tensor], gt_labels: List[Tensor],
+             **kwargs) -> Tuple[Tensor, Dict[str, Tensor]]:
         """Compute loss of the head.
 
         Args:
-            cls_scores (list[Tensor]): Box scores for each scale level,
-                each is a 4D-tensor, the channel number is
-                num_points * num_classes.
-            bbox_preds (list[Tensor]): Box energies / deltas for each scale
-                level, each is a 4D-tensor, the channel number is
-                num_points * 4.
-            centernesses (list[Tensor]): centerness for each scale level, each
+            joint_loss: An instance of JointLoss class.
+            cls_scores: Box scores for each scale level, each is a 4D-tensor,
+                the channel number is num_points * num_classes.
+            bbox_preds: Box energies / deltas for each scale level,
+                each is a 4D-tensor, the channel number is num_points * 4.
+            centernesses: centerness for each scale level, each
                 is a 4D-tensor, the channel number is num_points * 1.
-            gt_bboxes (list[Tensor]): Ground truth bboxes for each image with
+            gt_bboxes: Ground truth bboxes for each image with
                 shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
-            gt_labels (list[Tensor]): class indices corresponding to each box
+            gt_labels: class indices corresponding to each box
 
         Returns:
-            dict[str, Tensor]: A dictionary of loss components.
+            Total loss, Dict of losses per eachA dictionary of loss components.
         """
         assert len(cls_scores) == len(bbox_preds) == len(centernesses)
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
@@ -143,7 +161,6 @@ class FCOSHead(fcos_head.FCOSHead):
         pos_inds = ((flatten_labels >= 0) & (flatten_labels < bg_class_ind)).nonzero().reshape(-1)
         num_pos = torch.tensor(len(pos_inds), dtype=torch.float, device=bbox_preds[0].device)
         num_pos = max(reduce_mean(num_pos), 1.0)
-        # loss_cls = self.loss_cls(flatten_cls_scores, flatten_labels, avg_factor=num_pos)
 
         pos_bbox_preds = flatten_bbox_preds[pos_inds]
         pos_centerness = flatten_centerness[pos_inds]
@@ -156,22 +173,8 @@ class FCOSHead(fcos_head.FCOSHead):
         pos_points = flatten_points[pos_inds]
         pos_decoded_bbox_preds = self.bbox_coder.decode(pos_points, pos_bbox_preds)
         pos_decoded_target_preds = self.bbox_coder.decode(pos_points, pos_bbox_targets)
-        # loss_bbox = self.loss_bbox(
-        #     pos_decoded_bbox_preds,
-        #     pos_decoded_target_preds,
-        #     weight=pos_centerness_targets,
-        #     avg_factor=centerness_denorm)
-        # loss_centerness = self.loss_centerness(pos_centerness, pos_centerness_targets, avg_factor=num_pos)
 
-        # else:
-        #     loss_bbox = pos_bbox_preds.sum()
-        #     loss_centerness = pos_centerness.sum()
-
-        # return dict(
-        #     loss_cls=loss_cls,
-        #     loss_bbox=loss_bbox,
-        #     loss_centerness=loss_centerness)
-        return dict(
+        outputs = dict(
             flatten_cls_scores=flatten_cls_scores,
             flatten_labels=flatten_labels,
             num_pos=num_pos,
@@ -181,3 +184,35 @@ class FCOSHead(fcos_head.FCOSHead):
             centerness_denorm=centerness_denorm,
             pos_centerness=pos_centerness,
         )
+        return joint_loss(**outputs)
+
+    @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
+    def get_bboxes(self, cls_scores, bbox_preds, image_shape, **kwargs):
+        """Transform network outputs of a batch into bbox results.
+
+        Note: When score_factors is not None, the cls_scores are
+        usually multiplied by it then obtain the real score used in NMS,
+        such as CenterNess in FCOS, IoU branch in ATSS.
+
+        Args:
+            cls_scores (list[Tensor]): Classification scores for all
+                scale levels, each is a 4D-tensor, has shape
+                (batch_size, num_priors * num_classes, H, W).
+            bbox_preds (list[Tensor]): Box energies / deltas for all
+                scale levels, each is a 4D-tensor, has shape
+                (batch_size, num_priors * 4, H, W).
+            image_shape (Tuple[int, int]): size of the input image.
+
+        Returns:
+            list[list[Tensor, Tensor]]: Each item in result_list is 2-tuple.
+                The first item is an (n, 5) tensor, where the first 4 columns
+                are bounding box positions (tl_x, tl_y, br_x, br_y) and the
+                5-th column is a score between 0 and 1. The second item is a
+                (n,) tensor where each item is the predicted class label of
+                the corresponding box.
+        """
+        pseudo_meta = [dict(img_shape=image_shape, scale_factor=1) for i in range(len(cls_scores[0]))]
+        result = super().get_bboxes(cls_scores=cls_scores, bbox_preds=bbox_preds,
+                                    img_metas=pseudo_meta, **kwargs)
+        result = [dict(bboxes=bboxes, labels=labels) for bboxes, labels in result]
+        return result

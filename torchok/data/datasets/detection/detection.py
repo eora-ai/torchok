@@ -1,20 +1,19 @@
+import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Union
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 import torch
-import json
-
-from albumentations import BaseCompose, Compose, BboxParams
+from albumentations import BaseCompose, BboxParams, Compose
+from albumentations.augmentations.bbox_utils import convert_bboxes_from_albumentations, \
+    convert_bboxes_to_albumentations, filter_bboxes
 from albumentations.core.composition import BasicTransform
-from albumentations.augmentations.bbox_utils import convert_bboxes_to_albumentations, \
-    convert_bboxes_from_albumentations, filter_bboxes
+from torch.utils.data._utils.collate import default_collate
 
 from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
-from torch.utils.data._utils.collate import default_collate
 
 
 @DATASETS.register_class
@@ -28,6 +27,7 @@ class DetectionDataset(ImageDataset):
         image2.png, [[102.49, 118.47, 7.9, 17.31]], [2, 1]
         image3.png, [[253.21, 271.07, 59.59, 60.97], [257.85, 224.48, 44.13, 97.0]], [2, 0]
     """
+
     def __init__(self,
                  data_folder: Union[Path, str],
                  annotation_path: str,
@@ -159,8 +159,9 @@ class DetectionDataset(ImageDataset):
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         if not self.test_mode:
-            sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype])
+            sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype]) - 1
             sample['bboxes'] = torch.tensor(sample['bboxes']).type(torch.__dict__[self.bbox_dtype]).reshape(-1, 4)
+            sample['bboxes'][:, 2:4] += sample['bboxes'][:, :2]
 
         return sample
 
@@ -174,3 +175,5 @@ class DetectionDataset(ImageDataset):
         output = default_collate(batch)
         output.update(new_batch)
         return output
+
+

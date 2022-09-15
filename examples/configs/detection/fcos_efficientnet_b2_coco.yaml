@@ -49,8 +49,8 @@ joint_loss:
         gamma: 2.0
         alpha: 0.25
       mapping:
-        cls_score: flatten_cls_scores
-        label: flatten_labels
+        pred: flatten_cls_scores
+        target: flatten_labels
         avg_factor: num_pos
     - name: MMIoULoss
       tag: loss_bbox
@@ -68,7 +68,7 @@ joint_loss:
       mapping:
         cls_score: pos_centerness
         label: pos_centerness_targets
-        avg_factor: pos_mask
+        avg_factor: num_pos
 
 optimization:
   - optimizer:
@@ -184,7 +184,7 @@ trainer:
 
 logger:
   log_dir: '${oc.env:HOME}/logs/coco_detection'
-  experiment_name: yolov3_efficientnet_b2_x320_fp16
+  experiment_name: fcos_efficientnet_b2_x400_666
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 

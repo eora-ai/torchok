@@ -5,10 +5,11 @@ task:
     backbone_params:
       pretrained: true
       in_channels: 3
-    num_scales: 3
+    num_scales: &num_scales 3
     neck_name: YOLOV3Neck
     neck_params:
       out_channels: [ 192, 96, 96 ]
+      num_scales: *num_scales
     head_name: YOLOV3Head
     head_params:
       out_channels: [ 192, 96, 96 ]
