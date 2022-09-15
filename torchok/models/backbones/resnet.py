@@ -11,7 +11,7 @@ import torch.nn as nn
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import BlurPool2d, get_attn, GroupNorm
-from timm.models.resnet import BasicBlock, Bottleneck, create_aa, make_blocks
+from timm.models.resnet import BasicBlock, Bottleneck, create_aa, drop_blocks, downsample_avg, downsample_conv
 
 from torchok.constructor import BACKBONES
 from torchok.models.backbones import BaseBackbone
@@ -304,6 +304,51 @@ default_cfgs = {
         input_size=(3, 320, 320), pool_size=(10, 10), crop_pct=1.0, test_input_size=(3, 416, 416),
         interpolation='bicubic', first_conv='conv1.0'),
 }
+
+
+def make_blocks(
+        block_fn, channels, block_repeats, inplanes, reduce_first=1, output_stride=32,
+        down_kernel_size=1, avg_down=False, drop_block_rate=0., drop_path_rate=0., **kwargs):
+    no_downsample_stages = kwargs.pop("no_downsample_stages", [0])
+    stages = []
+    feature_info = []
+    net_num_blocks = sum(block_repeats)
+    net_block_idx = 0
+    net_stride = 4
+    dilation = prev_dilation = 1
+    for stage_idx, (planes, num_blocks, db) in enumerate(zip(channels, block_repeats, drop_blocks(drop_block_rate))):
+        stage_name = f'layer{stage_idx + 1}'  # never liked this name, but weight compat requires it
+        stride = 1 if stage_idx in no_downsample_stages else 2
+        if net_stride >= output_stride:
+            dilation *= stride
+            stride = 1
+        else:
+            net_stride *= stride
+
+        downsample = None
+        if stride != 1 or inplanes != planes * block_fn.expansion:
+            down_kwargs = dict(
+                in_channels=inplanes, out_channels=planes * block_fn.expansion, kernel_size=down_kernel_size,
+                stride=stride, dilation=dilation, first_dilation=prev_dilation, norm_layer=kwargs.get('norm_layer'))
+            downsample = downsample_avg(**down_kwargs) if avg_down else downsample_conv(**down_kwargs)
+
+        block_kwargs = dict(reduce_first=reduce_first, dilation=dilation, drop_block=db, **kwargs)
+        blocks = []
+        for block_idx in range(num_blocks):
+            downsample = downsample if block_idx == 0 else None
+            stride = stride if block_idx == 0 else 1
+            block_dpr = drop_path_rate * net_block_idx / (net_num_blocks - 1)  # stochastic depth linear decay rule
+            blocks.append(block_fn(
+                inplanes, planes, stride, downsample, first_dilation=prev_dilation,
+                drop_path=DropPath(block_dpr) if block_dpr > 0. else None, **block_kwargs))
+            prev_dilation = dilation
+            inplanes = planes * block_fn.expansion
+            net_block_idx += 1
+
+        stages.append((stage_name, nn.Sequential(*blocks)))
+        feature_info.append(dict(num_chs=inplanes, reduction=net_stride, module=stage_name))
+
+    return stages, feature_info
 
 
 class ResNet(BaseBackbone):
