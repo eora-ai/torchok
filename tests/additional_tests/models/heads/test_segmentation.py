@@ -33,7 +33,7 @@ class AbstractTestSegmentationPair:
     def test_torchscript_conversion(self, head_name):
         model = self.create_model(head_name)
         with torch.no_grad():
-            torch.jit.trace(model, self.input)
+            torch.jit.trace(model.forward, self.input)
         torch.cuda.empty_cache()
 
 

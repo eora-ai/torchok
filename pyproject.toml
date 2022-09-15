@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "torchok"
-version = "0.4.10-alpha.0"
+version = "0.4.11"
 description = "The toolkit for fast Deep Learning experiments in Computer Vision"
 readme = "README.md"
 authors = [
@@ -22,7 +22,7 @@ classifiers = [
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
-albumentations = "~1.2"
+albumentations = "1.2.0"
 faiss-cpu = "1.7.2"
 hydra-core = "~1.2"
 numpy = [
@@ -45,6 +45,7 @@ torch = ">=1.9,<=1.12"
 torchvision = ">=0.10,<=0.13"
 torchmetrics = "~0.9"
 timm = "~0.6"
+pycocotools = "^2.0.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

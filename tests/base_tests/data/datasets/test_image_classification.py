@@ -16,7 +16,7 @@ class TestImageDataset:
 
     def setUp(self) -> None:
         self.dataset_kwargs = dict(
-            data_folder='tests/data/datasets/data',
+            data_folder='tests/base_tests/data/datasets/data',
             transform=Compose([Resize(224, 224), ToTensorV2()], p=1.0),
         )
         self.augment = Compose([HorizontalFlip(p=0.5), VerticalFlip(p=0.5)])
@@ -63,7 +63,7 @@ class TestClassificationDataset(TestImageDataset, unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.dataset_kwargs['data_folder'] = 'tests/data/datasets/data'
+        self.dataset_kwargs['data_folder'] = 'tests/base_tests/data/datasets/data'
         self.dataset_kwargs['csv_path'] = 'multiclass_test.csv'
         self.ds_len = 7
         self.output_format = ['image', 'target', 'index']

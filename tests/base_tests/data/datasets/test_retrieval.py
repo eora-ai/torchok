@@ -3,7 +3,7 @@ from pathlib import Path
 
 import torch
 
-from tests.data.datasets.test_image_classification import TestImageDataset
+from tests.base_tests.data.datasets.test_image_classification import TestImageDataset
 from torchok.data.datasets.representation.validation import RetrievalDataset
 
 
@@ -12,7 +12,7 @@ class TestRetrievalDataset(TestImageDataset, unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        root = Path('tests/data/datasets/retrieval_data')
+        root = Path('tests/base_tests/data/datasets/retrieval_data')
         self.dataset_kwargs['data_folder'] = root
         self.dataset_kwargs['matches_csv_path'] = 'toilets_match.csv'
         self.dataset_kwargs['img_list_csv_path'] = 'toilets_paths.csv'
