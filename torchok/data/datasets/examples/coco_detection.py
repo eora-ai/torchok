@@ -19,10 +19,34 @@ class COCODetection(DetectionDataset):
     COCO features two object detection tasks: using either bounding box output or object segmentation output
     (the latter is also known as instance segmentation).
 
-    COCO dataset has 90 categories where 0 - background label. Train set contains 118287 images, validation set - 5000.
+    COCO dataset has 81 categories where 0 - background label. Train set contains 118287 images, validation set - 5000.
 
-    This Dataset loads about 20 minutes and occupies 20 Gb of memory.
+    This Dataset occupies 20 Gb of memory.
     """
+    CLASSES = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+               'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+               'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+               'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+               'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+               'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+               'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+               'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+               'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+               'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+               'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+               'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
+               'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
+               'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+
+    label_mapping = {
+        1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11, 13: 12, 14: 13, 15: 14, 16: 15,
+        17: 16, 18: 17, 19: 18, 20: 19, 21: 20, 22: 21, 23: 22, 24: 23, 25: 24, 27: 25, 28: 26, 31: 27, 32: 28,
+        33: 29, 34: 30, 35: 31, 36: 32, 37: 33, 38: 34, 39: 35, 40: 36, 41: 37, 42: 38, 43: 39, 44: 40, 46: 41,
+        47: 42, 48: 43, 49: 44, 50: 45, 51: 46, 52: 47, 53: 48, 54: 49, 55: 50, 56: 51, 57: 52, 58: 53, 59: 54,
+        60: 55, 61: 56, 62: 57, 63: 58, 64: 59, 65: 60, 67: 61, 70: 62, 72: 63, 73: 64, 74: 65, 75: 66, 76: 67,
+        77: 68, 78: 69, 79: 70, 80: 71, 81: 72, 82: 73, 84: 74, 85: 75, 86: 76, 87: 77, 88: 78, 89: 79, 90: 80
+    }
+
     base_folder = 'COCO'
 
     train_data_filename = 'train2017.zip'
@@ -141,7 +165,7 @@ class COCODetection(DetectionDataset):
             anns = coco.loadAnns(annIds)
             for ann in anns:
                 curr_bboxes.append(ann['bbox'])
-                curr_labels.append(ann['category_id'])
+                curr_labels.append(self.label_mapping[ann['category_id']])
             bboxes.append(curr_bboxes)
             labels.append(curr_labels)
 

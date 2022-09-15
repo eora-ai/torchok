@@ -3,8 +3,10 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 import torchok
+from pytorch_lightning import seed_everything
 from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer
+from torchok.constructor.auto_lr_find import find_lr
 
 # Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
 # (more info: https://github.com/pytorch/pytorch/issues/1355)
@@ -30,6 +32,9 @@ def entrypoint(config: DictConfig):
     schema = OmegaConf.structured(ConfigParams)
     # Merge structure with config
     config = OmegaConf.merge(schema, config)
+    # Seed everything
+    if config.task.seed_params is not None:
+        seed_everything(**config.task.seed_params)
     # Create task
     model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
@@ -39,6 +44,8 @@ def entrypoint(config: DictConfig):
         trainer.test(model, ckpt_path=config.resume_path)
     elif entrypoint == 'predict':
         trainer.predict(model, ckpt_path=config.resume_path)
+    elif entrypoint == 'find_lr':
+        find_lr(model, trainer)
     else:
         raise ValueError(f'Main function error. Entrypoint with name <{entrypoint}> does not support, please use '
                          f'the following entrypoints - [train, test, predict].')

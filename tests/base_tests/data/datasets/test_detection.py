@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from tests.data.datasets.test_image_classification import TestImageDataset
+from tests.base_tests.data.datasets.test_image_classification import TestImageDataset
 from torchok.data.datasets.detection.detection import DetectionDataset
 
 
@@ -12,7 +12,7 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        root = Path('tests/data/datasets/detection')
+        root = Path('tests/base_tests/data/datasets/detection')
         self.dataset_kwargs['data_folder'] = root
         self.dataset_kwargs['annotation_path'] = 'coco_valid.pkl'
         self.ds_len = 5

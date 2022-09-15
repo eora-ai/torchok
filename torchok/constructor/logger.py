@@ -76,7 +76,7 @@ class MLFlowLoggerX(MLFlowLogger):
 
         upload_file_paths = chain(self._save_dir.glob('*.ckpt'), self._save_dir.glob('*.onnx'))
         for file_path in upload_file_paths:
-            self.experiment.log_artifact(self._run_id, file_path)
+            self.experiment.log_artifact(self._run_id, file_path.as_posix())
 
         if self.experiment.get_run(self._run_id):
             self.experiment.set_terminated(self._run_id, status)

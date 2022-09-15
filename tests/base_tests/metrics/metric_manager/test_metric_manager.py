@@ -24,6 +24,22 @@ class MockSumMetric(Metric):
 
 
 @METRICS.register_class
+class MockDictMetric(Metric):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def update(self, predict: torch.Tensor, target: torch.Tensor):
+        return
+
+    def compute(self):
+        output_dict = {
+            'target_shape': torch.tensor(10),
+            'embedding_size': torch.tensor(512)
+        }
+        return output_dict
+
+
+@METRICS.register_class
 class MockConstantMetric(Metric):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -48,14 +64,14 @@ class MockRaiseMetric(Metric):
         return torch.tensor([1, 2])
 
 
-def run_metric_manager(names: List[str], prefixes: List[str],
+def run_metric_manager(names: List[str], tags: List[str],
                        mappings: List[Dict], data_generator: FakeDataGenerator):
-    if len(names) != len(prefixes) or len(prefixes) != len(mappings):
+    if len(names) != len(tags) or len(tags) != len(mappings):
         raise ValueError('Not correct Test! Input params not same length.')
 
     metric_params = []
     for i in range(len(names)):
-        params = MetricParams(name=names[i], mapping=mappings[i], prefix=prefixes[i], phases=[Phase.TRAIN])
+        params = MetricParams(name=names[i], mapping=mappings[i], tag=tags[i], phases=[Phase.TRAIN])
         metric_params.append(params)
 
     metric_manager = MetricsManager(metric_params)
@@ -66,11 +82,11 @@ def run_metric_manager(names: List[str], prefixes: List[str],
 
 
 class TestCase:
-    def __init__(self, test_name: str, names: List[str], prefixes: List[str],
+    def __init__(self, test_name: str, names: List[str], tags: List[str],
                  mappings: List[Dict], data_generator, expected):
         self.test_name = test_name
         self.names = names
-        self.prefixes = prefixes
+        self.tags = tags
         self.mappings = mappings
         self.data_generator = data_generator
         self.expected = expected
@@ -88,12 +104,12 @@ class MetricManagerTest(unittest.TestCase):
     def test_metrics_manager_when_one_metric_is_defined_sum_metric(self):
         case = TestCase(
             test_name='one_sum_metric', names=['MockSumMetric'],
-            prefixes=['moc_sum'], mappings=[mappings], data_generator=data_generator,
-            expected={'train/moc_sum_MockSumMetric': 5})
+            tags=[None], mappings=[mappings], data_generator=data_generator,
+            expected={'train/MockSumMetric': 5})
 
         print(f'case name = {case.test_name}')
         actual = run_metric_manager(
-            names=case.names, prefixes=case.prefixes,
+            names=case.names, tags=case.tags,
             mappings=case.mappings, data_generator=data_generator
         )
         self.assertDictEqual(
@@ -108,13 +124,34 @@ class MetricManagerTest(unittest.TestCase):
         case = TestCase(
             test_name='two_metrics',
             names=['MockSumMetric', 'MockConstantMetric'],
-            prefixes=['moc_sum', None], mappings=[mappings, mappings],
+            tags=['moc_sum', None], mappings=[mappings, mappings],
             data_generator=data_generator,
-            expected={'train/moc_sum_MockSumMetric': 5, 'train/MockConstantMetric': 0})
+            expected={'train/moc_sum': 5, 'train/MockConstantMetric': 0})
 
         print(f'case name = {case.test_name}')
         actual = run_metric_manager(
-            names=case.names, prefixes=case.prefixes,
+            names=case.names, tags=case.tags,
+            mappings=case.mappings, data_generator=data_generator
+        )
+        self.assertDictEqual(
+            case.expected,
+            actual,
+            "failed test {} expected {}, actual {}".format(
+                case.test_name, case.expected, actual
+            ),
+        )
+
+    def test_metrics_manager_when_output_is_dict(self):
+        case = TestCase(
+            test_name='dict_output',
+            names=['MockDictMetric'],
+            tags=[None], mappings=[mappings],
+            data_generator=data_generator,
+            expected={'train/MockDictMetric_target_shape': 10, 'train/MockDictMetric_embedding_size': 512})
+
+        print(f'case name = {case.test_name}')
+        actual = run_metric_manager(
+            names=case.names, tags=case.tags,
             mappings=case.mappings, data_generator=data_generator
         )
         self.assertDictEqual(
@@ -132,7 +169,7 @@ class MetricManagerRaiseTest(unittest.TestCase):
             TestCase(
                 test_name='raise_test',
                 names=['MockRaiseMetric'],
-                prefixes=[None], mappings=[mappings],
+                tags=[None], mappings=[mappings],
                 data_generator=data_generator,
                 expected={'train/MocRaiseMetric': 5}
             ),
@@ -140,7 +177,7 @@ class MetricManagerRaiseTest(unittest.TestCase):
         for case in testcases:
             with self.assertRaises(Exception):
                 _ = run_metric_manager(
-                    names=case.names, prefixes=case.prefixes,
+                    names=case.names, tags=case.tags,
                     mappings=case.mappings, data_generator=data_generator
                 )
 
