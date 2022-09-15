@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg
-from timm.models.layers import BlurPool2d, get_attn, GroupNorm
+from timm.models.layers import BlurPool2d, DropPath, get_attn, GroupNorm
 from timm.models.resnet import BasicBlock, Bottleneck, create_aa, drop_blocks, downsample_avg, downsample_conv
 
 from torchok.constructor import BACKBONES
