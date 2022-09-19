@@ -25,4 +25,7 @@ dependencies:
       - opencv-python==4.6.0.*
       - ranx==0.2.8
       - timm==0.6.5
-      - pycocotools==2.0.4
+      - openmim==0.3.1
+      - mmdet==2.25.1
+  - mim:
+    - mmcv-full==1.6.1
