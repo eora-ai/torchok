@@ -42,7 +42,8 @@ class SingleStageDetectionTask(BaseTask):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone.forward_features(x)[-self.num_scales:]
-        x = self.neck(x)
+        with torch.cuda.amp.autocast(dtype=torch.float32):
+            x = self.neck(x)
         x = self.bbox_head(x)
         return x
 
@@ -50,7 +51,8 @@ class SingleStageDetectionTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch.get('image')
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
-        neck_out = self.neck(features)
+        with torch.cuda.amp.autocast(dtype=torch.float32):
+            neck_out = self.neck(features)
         prediction = self.bbox_head(neck_out)
         output = self.bbox_head.format_dict(prediction)
         output['image_shape'] = input_data.shape[-2:]

@@ -81,7 +81,7 @@ class MetricsManager(nn.Module):
             log_name = metric_params.name if metric_params.tag is None else metric_params.tag
             if log_name in added_log_names:
                 raise ValueError(f'Got two metrics with identical names: {log_name}. '
-                                 f'Please, set differet prefixes for identical metrics in the config file.')
+                                 f'Please, set different prefixes for identical metrics in the config file.')
             else:
                 added_log_names.append(log_name)
 
@@ -146,7 +146,7 @@ class MetricsManager(nn.Module):
                 metric_key = f'{phase.value}/{metric_with_utils.log_name}'
                 log[metric_key] = metric_value
             else:
-                raise ValueError(f'Metric manager on_epoch_end method. Metric {metric_with_utils.log_name}'
+                raise ValueError(f'Metric manager on_epoch_end method. Metric {metric_with_utils.log_name} '
                                  f'return no numeric value.')
 
             # Do reset

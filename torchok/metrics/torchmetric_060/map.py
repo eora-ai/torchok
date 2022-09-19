@@ -249,13 +249,13 @@ class CocoEvalMAP(Metric):
         _input_validator(preds, target)
 
         for item in preds:
-            self.detection_boxes.append(item["boxes"].cpu())
-            self.detection_scores.append(item["scores"].cpu())
-            self.detection_labels.append(item["labels"].cpu())
+            self.detection_boxes.append(item["boxes"].cpu().float())
+            self.detection_scores.append(item["scores"].cpu().float())
+            self.detection_labels.append(item["labels"].cpu().float())
 
         for item in target:
-            self.groundtruth_boxes.append(item["boxes"].cpu())
-            self.groundtruth_labels.append(item["labels"].cpu())
+            self.groundtruth_boxes.append(item["boxes"].cpu().float())
+            self.groundtruth_labels.append(item["labels"].cpu().float())
 
     def compute(self) -> dict:
         """Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` scores. All detections added in

@@ -1,7 +1,7 @@
 task:
   name: SingleStageDetectionTask
   params:
-    backbone_name: tf_efficientnet_b2_ns
+    backbone_name: resnet50
     backbone_params:
       pretrained: true
       in_channels: 3
@@ -15,7 +15,7 @@ task:
       relu_before_extra_convs: true
     head_name: FCOSHead
     head_params:
-      num_classes: &num_classes 81
+      num_classes: &num_classes 80
       strides: [8, 16, 32, 64, 128]
       feat_channels: 256
       stacked_convs: 4
@@ -36,8 +36,8 @@ task:
         max_per_img: 100
 
     inputs:
-      - shape: [3, &height 400, &width 666]
-        dtype: &input_dtype float32
+      - shape: [3, &height 800, &width 1333]
+        dtype: &input_dtype bfloat16
 
 joint_loss:
   losses:
@@ -87,7 +87,7 @@ optimization:
 #        # total_steps: None
 #        epochs: &num_epochs 100
 #        steps_per_epoch: 1849
-        pct_start: 0.05
+        pct_start: 0.1
         anneal_strategy: 'cos'
         cycle_momentum: True
         base_momentum: 0.85
@@ -116,14 +116,14 @@ data:
 
         augment:
           - name: HorizontalFlip
-#          - name: Blur
-#            params:
-#              p: 0.4
-#          - name: RandomResizedCrop
-#            params:
-#              height: *height
-#              width: *width
-#              p: 0.5
+          - name: Blur
+            params:
+              p: 0.4
+          - name: RandomResizedCrop
+            params:
+              height: *height
+              width: *width
+              p: 0.5
           - name: OneOf
             params:
               p: 0.7
@@ -137,24 +137,23 @@ data:
                     hue: 0.1
         transform:
           - &resize
-            name: LongestMaxSize
+            name: FitResize
             params:
-              max_size: *height
-          - &pad
-            name: PadIfNeeded
+              max_height: *height
+              max_width: *width
+          - name: PadIfNeeded
             params:
               min_height: *height
               min_width: *width
+              border_mode: 0
+              value: 128
           - &normalize
             name: Normalize
-            params:
-              mean: [ 0.5, 0.5, 0.5 ]
-              std: [ 0.25, 0.25, 0.25 ]
           - &totensor
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: *bs
+        batch_size: 1
         num_workers: *n_workers
         drop_last: false
         shuffle: false
@@ -168,23 +167,28 @@ data:
           bbox_dtype: *input_dtype
         transform:
           - *resize
-          - *pad
+          - name: PadIfNeeded
+            params:
+              min_height: null
+              min_width: null
+              border_mode: 0
+              pad_height_divisor: 32
+              pad_width_divisor: 32
+              value: 128
           - *normalize
           - *totensor
 
 trainer:
   accelerator: 'gpu'
   max_epochs: *num_epochs
-  #  limit_train_batches: 10
-  #  limit_val_batches: 10
-  #  log_every_n_steps: 1000
-#  precision: bf16
-  precision: 32
+#  limit_train_batches: 10
+#  limit_val_batches: 10
+  precision: bf16
   num_sanity_val_steps: 2
 
 logger:
   log_dir: '${oc.env:HOME}/logs/coco_detection'
-  experiment_name: fcos_efficientnet_b2_x400_666
+  experiment_name: fcos_resnet50_x800_1333
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
@@ -196,7 +200,7 @@ callbacks:
   - name: ModelCheckpoint
     params:
       dirpath: *logs_dir
-      monitor: valid/MMDetectionMAP
+      monitor: valid/MMDetMAP_50
       save_top_k: 1
       save_last: true
       mode: max
@@ -204,21 +208,32 @@ callbacks:
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 1
+      refresh_rate: 100
 
 metrics:
   - name: MMDetectionMAP
+    tag: MMDetMAP_50
     params:
+      iou_thr: 0.5
       num_classes: *num_classes
     mapping:
       preds: prediction
       target: target
-    phases: [ VALID ]
-  - name: CocoEvalMAP
+    phases: [VALID, TEST]
+  - name: MMDetectionMAP
+    tag: MMDetMAP_75
     params:
-      compute_on_step: False
+      iou_thr: 0.75
+      num_classes: *num_classes
     mapping:
       preds: prediction
       target: target
-    phases: [ VALID ]
+    phases: [ VALID, TEST ]
+#  - name: CocoEvalMAP
+#    params:
+#      compute_on_step: False
+#    mapping:
+#      preds: prediction
+#      target: target
+#    phases: [VALID, TEST]
 

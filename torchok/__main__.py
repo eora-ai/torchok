@@ -38,18 +38,17 @@ def entrypoint(config: DictConfig):
     # Create task
     model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
-    trainer.test(model, ckpt_path=config.resume_path)
-    # if mode == 'train':
-    #     trainer.fit(model, ckpt_path=config.resume_path)
-    # elif mode == 'test':
-    #     trainer.test(model, ckpt_path=config.resume_path)
-    # elif mode == 'predict':
-    #     trainer.predict(model, ckpt_path=config.resume_path)
-    # elif mode == 'find_lr':
-    #     find_lr(model, trainer)
-    # else:
-    #     raise ValueError(f'Main function error. Entrypoint with name <{mode}> does not support, please use '
-    #                      f'the following entrypoints - [train, test, predict].')
+    if mode == 'train':
+        trainer.fit(model, ckpt_path=config.resume_path)
+    elif mode == 'test':
+        trainer.test(model, ckpt_path=config.resume_path)
+    elif mode == 'predict':
+        trainer.predict(model, ckpt_path=config.resume_path)
+    elif mode == 'find_lr':
+        find_lr(model, trainer)
+    else:
+        raise ValueError(f'Main function error. Entrypoint with name <{mode}> does not support, please use '
+                         f'the following entrypoints - [train, test, predict].')
 
 
 if __name__ == '__main__':
