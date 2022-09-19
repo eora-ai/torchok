@@ -20,10 +20,9 @@ import torch
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from torch import Tensor
+from torchmetrics import Metric
 from torchvision.ops import box_convert
 
-# from torchok.metrics.torchmetric_060 import Metric
-from torchmetrics import Metric
 from torchok.constructor import METRICS
 
 log = logging.getLogger(__name__)
@@ -39,6 +38,7 @@ class MAPMetricResults:
     map_small: Tensor
     map_medium: Tensor
     map_large: Tensor
+
     # mar_1: Tensor
     # mar_10: Tensor
     # mar_100: Tensor

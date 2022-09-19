@@ -175,5 +175,3 @@ class DetectionDataset(ImageDataset):
         output = default_collate(batch)
         output.update(new_batch)
         return output
-
-
