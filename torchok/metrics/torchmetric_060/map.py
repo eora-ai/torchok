@@ -38,15 +38,14 @@ class MAPMetricResults:
     map_small: Tensor
     map_medium: Tensor
     map_large: Tensor
-
-    # mar_1: Tensor
-    # mar_10: Tensor
-    # mar_100: Tensor
-    # mar_small: Tensor
-    # mar_medium: Tensor
-    # mar_large: Tensor
-    # map_per_class: Tensor
-    # mar_100_per_class: Tensor
+    mar_1: Tensor
+    mar_10: Tensor
+    mar_100: Tensor
+    mar_small: Tensor
+    mar_medium: Tensor
+    mar_large: Tensor
+    map_per_class: Tensor
+    mar_100_per_class: Tensor
 
     def __getitem__(self, key: str) -> Union[Tensor, List[Tensor]]:
         return getattr(self, key)
@@ -149,8 +148,8 @@ class CocoEvalMAP(Metric):
         version 1.7.0 of torch or newer). Please install with ``pip install torchvision`` or
         ``pip install torchmetrics[detection]``.
     .. note::
-        As the pycocotools library cannot deal with tensors directly, all results have to be transfered
-        to the CPU, this might have an performance impact on your training.
+        As the pycocotools library cannot deal with tensors directly, all results have to be transferred
+        to the CPU, this might have a performance impact on your training.
     Args:
         class_metrics:
             Option to enable per-class metrics for mAP and mAR_100. Has a performance impact. default: False
@@ -165,6 +164,22 @@ class CocoEvalMAP(Metric):
         dist_sync_fn:
             Callback that performs the allgather operation on the metric state. When ``None``, DDP
             will be used to perform the allgather
+        displayed_metrics:
+            List of metrics that will be returned. May contain the following values:
+                - map: ``torch.Tensor``
+                - map_50: ``torch.Tensor``
+                - map_75: ``torch.Tensor``
+                - map_small: ``torch.Tensor``
+                - map_medium: ``torch.Tensor``
+                - map_large: ``torch.Tensor``
+                - mar_1: ``torch.Tensor``
+                - mar_10: ``torch.Tensor``
+                - mar_100: ``torch.Tensor``
+                - mar_small: ``torch.Tensor``
+                - mar_medium: ``torch.Tensor``
+                - mar_large: ``torch.Tensor``
+                - map_per_class: ``torch.Tensor`` (-1 if class metrics are disabled)
+                - mar_100_per_class: ``torch.Tensor`` (-1 if class metrics are disabled)
     Raises:
         ImportError:
             If ``pycocotools`` is not installed
@@ -181,6 +196,7 @@ class CocoEvalMAP(Metric):
             dist_sync_on_step: bool = False,
             process_group: Optional[Any] = None,
             dist_sync_fn: Callable = None,
+            displayed_metrics: Optional[List[str]] = None
     ) -> None:  # type: ignore
         super().__init__(
             compute_on_step=compute_on_step,
@@ -192,6 +208,7 @@ class CocoEvalMAP(Metric):
         if not isinstance(class_metrics, bool):
             raise ValueError("Expected argument `class_metrics` to be a boolean")
         self.class_metrics = class_metrics
+        self.displayed_metrics = displayed_metrics
 
         self.add_state("detection_boxes", default=[], dist_reduce_fx=None)
         self.add_state("detection_scores", default=[], dist_reduce_fx=None)
@@ -318,16 +335,17 @@ class CocoEvalMAP(Metric):
             map_small=torch.Tensor([stats[3]]),
             map_medium=torch.Tensor([stats[4]]),
             map_large=torch.Tensor([stats[5]]),
-            # mar_1=torch.Tensor([stats[6]]),
-            # mar_10=torch.Tensor([stats[7]]),
-            # mar_100=torch.Tensor([stats[8]]),
-            # mar_small=torch.Tensor([stats[9]]),
-            # mar_medium=torch.Tensor([stats[10]]),
-            # mar_large=torch.Tensor([stats[11]]),
-            # map_per_class=map_per_class_values,
-            # mar_100_per_class=mar_100_per_class_values,
+            mar_1=torch.Tensor([stats[6]]),
+            mar_10=torch.Tensor([stats[7]]),
+            mar_100=torch.Tensor([stats[8]]),
+            mar_small=torch.Tensor([stats[9]]),
+            mar_medium=torch.Tensor([stats[10]]),
+            mar_large=torch.Tensor([stats[11]]),
+            map_per_class=map_per_class_values,
+            mar_100_per_class=mar_100_per_class_values,
         )
-        return metrics.__dict__
+
+        return {v: metrics.__dict__[v] for v in self.displayed_metrics}
 
     def _get_coco_format(
             self, boxes: List[torch.Tensor], labels: List[torch.Tensor], scores: Optional[List[torch.Tensor]] = None
