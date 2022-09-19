@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
 from torchok.constructor.load import load_checkpoint
-from torch.utils.data._utils.collate import default_collate
 
 
 class BaseTask(LightningModule, ABC):
