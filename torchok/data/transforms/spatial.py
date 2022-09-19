@@ -1,7 +1,5 @@
-import random
-from typing import Dict, Sequence, Tuple, Union, Any
-
 from fractions import Fraction as Fr
+from typing import Dict, Sequence, Tuple
 
 import cv2
 import numpy as np
@@ -76,7 +74,3 @@ class FitResize(DualTransform):
 
     def get_transform_init_args_names(self) -> Tuple[str, ...]:
         return "max_height", "max_width", "interpolation"
-
-
-
-
