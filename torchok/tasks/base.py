@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
-from torch.utils.data import DataLoader
 from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor

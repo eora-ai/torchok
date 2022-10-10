@@ -203,9 +203,7 @@ class Constructor:
 
         # special rules for norm layers and depth-wise conv layers
         is_norm = isinstance(module, (_BatchNorm, _InstanceNorm, GroupNorm, LayerNorm))
-        is_dwconv = (
-                isinstance(module, torch.nn.Conv2d)
-                and module.in_channels == module.groups)
+        is_dwconv = (isinstance(module, torch.nn.Conv2d) and module.in_channels == module.groups)
 
         for name, param in module.named_parameters(recurse=False):
             param_group = {'params': [param]}
@@ -230,8 +228,7 @@ class Constructor:
                 if name == 'bias' and not (is_norm or is_dcn_module):
                     param_group['lr'] = base_lr * bias_lr_mult
 
-                if (prefix.find('conv_offset') != -1 and is_dcn_module
-                        and isinstance(module, torch.nn.Conv2d)):
+                if (prefix.find('conv_offset') != -1 and is_dcn_module and isinstance(module, torch.nn.Conv2d)):
                     # deal with both dcn_offset's bias & weight
                     param_group['lr'] = base_lr * dcn_offset_lr_mult
 

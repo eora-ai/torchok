@@ -1,8 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Union
-from mmcv.image import io
-
-
 
 import cv2
 import numpy as np
