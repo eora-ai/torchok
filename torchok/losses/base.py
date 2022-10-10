@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 
+import torch
 from torch import Tensor
 from torch.nn import Module, ModuleList
 

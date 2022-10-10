@@ -23,6 +23,7 @@ class CallbacksParams:
 class OptmizerParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
+    paramwise_cfg: Optional[Dict] = field(default_factory=dict)
 
 
 @dataclass

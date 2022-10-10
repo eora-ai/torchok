@@ -6,6 +6,7 @@ import torch.nn as nn
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
 from torch.utils.data import DataLoader
+from torch.optim import Optimizer
 
 from torchok.constructor.config_structure import Phase
 from torchok.constructor.constructor import Constructor
@@ -49,20 +50,9 @@ class BaseTask(LightningModule, ABC):
         """Abstract forward method for training(with ground truth labels)."""
         pass
 
-    def train_modules(self) -> Iterator[nn.Module]:
-        """Create a list of 1st-level modules that need to be optimized. The method is used to apply an optimizer
-        for the returned modules.
-
-        By default, it would be self.children().
-
-        Returns: List of modules that need to be optimized.
-        """
-        return self.children()
-
-    def configure_optimizers(self) -> Tuple[List, List]:
+    def configure_optimizers(self) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
         """Configure optimizers."""
-        modules = self.train_modules()
-        opt_sched_list = self.__constructor.configure_optimizers(modules)
+        opt_sched_list = self.__constructor.configure_optimizers(list(self.children()))
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:

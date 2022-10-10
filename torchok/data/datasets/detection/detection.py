@@ -36,10 +36,11 @@ class DetectionDataset(ImageDataset):
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
                  bbox_column: str = 'bbox',
-                 bbox_dtype: str = 'float32',
+                 bbox_dtype: str = 'long',
                  target_column: str = 'label',
                  target_dtype: str = 'long',
                  grayscale: bool = False,
+                 channel_order: str = 'rgb',
                  test_mode: bool = False,
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
@@ -62,6 +63,7 @@ class DetectionDataset(ImageDataset):
             bbox_dtype: Data type of the torch tensors related to the bboxes.
             target_column: Column name containing bboxes labels.
             target_dtype: Data type of the torch tensors related to the bboxes labels.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
             bbox_format: Bboxes format, for albumentations transform. Supports the following formats:
@@ -85,7 +87,8 @@ class DetectionDataset(ImageDataset):
             augment=augment,
             input_dtype=input_dtype,
             grayscale=grayscale,
-            test_mode=test_mode
+            test_mode=test_mode,
+            channel_order=channel_order
         )
         self.data_folder = Path(data_folder)
 

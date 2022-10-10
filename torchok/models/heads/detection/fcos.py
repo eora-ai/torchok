@@ -98,6 +98,7 @@ class FCOSHead(fcos_head.FCOSHead):
             if isinstance(v, DictConfig):
                 kwargs[k] = ConfigDict(OmegaConf.to_container(v, resolve=True))
         AnchorFreeHead.__init__(self, num_classes, in_channels, **kwargs)
+
         self.init_weights()
 
     @staticmethod
@@ -174,17 +175,16 @@ class FCOSHead(fcos_head.FCOSHead):
         pos_decoded_bbox_preds = self.bbox_coder.decode(pos_points, pos_bbox_preds)
         pos_decoded_target_preds = self.bbox_coder.decode(pos_points, pos_bbox_targets)
 
-        outputs = dict(
-            flatten_cls_scores=flatten_cls_scores,
+        return joint_loss(
+            flatten_cls_scores=flatten_cls_scores.float(),
             flatten_labels=flatten_labels,
             num_pos=num_pos,
-            pos_decoded_bbox_preds=pos_decoded_bbox_preds,
-            pos_decoded_target_preds=pos_decoded_target_preds,
-            pos_centerness_targets=pos_centerness_targets,
+            pos_decoded_bbox_preds=pos_decoded_bbox_preds.float(),
+            pos_decoded_target_preds=pos_decoded_target_preds.float(),
+            pos_centerness_targets=pos_centerness_targets.float(),
             centerness_denorm=centerness_denorm,
-            pos_centerness=pos_centerness,
+            pos_centerness=pos_centerness.float()
         )
-        return joint_loss(**outputs)
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
     def get_bboxes(self, cls_scores, bbox_preds, image_shape, **kwargs):

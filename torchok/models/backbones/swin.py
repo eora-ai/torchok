@@ -9,7 +9,7 @@ and from https://github.com/rwightman/pytorch-image-models/blob/master/timm/mode
 Licensed under Apache License 2.0 [see LICENSE for details]
 """
 
-from typing import List
+from typing import List, Mapping, Any
 
 import torch
 import torch.nn as nn
@@ -251,6 +251,13 @@ class SwinTransformerV2(BaseBackbone):
             x, _ = layer(x)
         x = self._normalize_with_bhwc_reshape(x, -1)
         return x
+
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        state_dict = dict(state_dict)
+        for k in list(state_dict.keys()):
+            if "attn_mask" in k:
+                state_dict.pop(k)
+        return super(SwinTransformerV2, self).load_state_dict(state_dict, strict)
 
 
 def _create_swin_transformer_v2(variant, pretrained=False, **kwargs):

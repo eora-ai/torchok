@@ -208,6 +208,13 @@ class CocoEvalMAP(Metric):
         if not isinstance(class_metrics, bool):
             raise ValueError("Expected argument `class_metrics` to be a boolean")
         self.class_metrics = class_metrics
+        if displayed_metrics is None:
+            displayed_metrics = {
+                "map", "map_50", "map_75", "map_small",
+                "map_medium", "map_large", "mar_1", "mar_10",
+                "mar_100", "mar_small", "mar_medium", "mar_large",
+                "map_per_class", "mar_100_per_class"
+            }
         self.displayed_metrics = displayed_metrics
 
         self.add_state("detection_boxes", default=[], dist_reduce_fx=None)
@@ -268,11 +275,11 @@ class CocoEvalMAP(Metric):
         for item in preds:
             self.detection_boxes.append(item["boxes"].cpu().float())
             self.detection_scores.append(item["scores"].cpu().float())
-            self.detection_labels.append(item["labels"].cpu().float())
+            self.detection_labels.append(item["labels"].cpu().long())
 
         for item in target:
-            self.groundtruth_boxes.append(item["boxes"].cpu().float())
-            self.groundtruth_labels.append(item["labels"].cpu().float())
+            self.groundtruth_boxes.append(item["boxes"].cpu())
+            self.groundtruth_labels.append(item["labels"].cpu())
 
     def compute(self) -> dict:
         """Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` scores. All detections added in
