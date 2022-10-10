@@ -34,6 +34,7 @@ class SOP(ImageDataset):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
+                 channel_order: str = 'rgb',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init SOP.
@@ -51,10 +52,18 @@ class SOP(ImageDataset):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
-        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            channel_order=channel_order,
+            grayscale=grayscale,
+            test_mode=test_mode
+        )
         self.data_folder = Path(data_folder)
         self.path = self.data_folder / self.base_folder
         self.train = train

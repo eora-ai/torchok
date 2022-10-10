@@ -64,7 +64,14 @@ class CIFAR10(ImageDataset):
         Raises:
             RuntimeError: if dataset or metadata file not found or corrupted.
         """
-        super().__init__(transform, augment, input_dtype, channel_order, grayscale, test_mode)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            channel_order=channel_order,
+            grayscale=grayscale,
+            test_mode=test_mode
+        )
         self.data_folder = Path(data_folder)
         self.train = train
 
