@@ -148,7 +148,6 @@ class Constructor:
         if isinstance(modules, (tuple, list)):
             modules = ModuleList(modules)
 
-        # parameters: List[Union[Dict, Parameter]] = list(modules.parameters())
         if not paramwise_cfg:
             parameters: List[Union[Dict, Parameter]] = list(modules.parameters())
         else:
