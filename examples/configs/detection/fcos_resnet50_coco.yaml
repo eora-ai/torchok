@@ -231,7 +231,7 @@ metrics:
   - name: CocoEvalMAP
     tag: CEMAP
     params:
-      compute_on_step: False
+      compute_on_step: false
       displayed_metrics: ["map", "map_50", "map_75", "map_small", "map_medium", "map_large"]
     mapping:
       preds: prediction

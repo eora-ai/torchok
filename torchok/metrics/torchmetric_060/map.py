@@ -223,6 +223,14 @@ class CocoEvalMAP(Metric):
         self.add_state("groundtruth_boxes", default=[], dist_reduce_fx=None)
         self.add_state("groundtruth_labels", default=[], dist_reduce_fx=None)
 
+    def reset(self) -> None:
+        super(CocoEvalMAP, self).reset()
+        self.add_state("detection_boxes", default=[], dist_reduce_fx=None)
+        self.add_state("detection_scores", default=[], dist_reduce_fx=None)
+        self.add_state("detection_labels", default=[], dist_reduce_fx=None)
+        self.add_state("groundtruth_boxes", default=[], dist_reduce_fx=None)
+        self.add_state("groundtruth_labels", default=[], dist_reduce_fx=None)
+
     def update(self, preds: List[Dict[str, Tensor]], target: List[Dict[str, Tensor]]) -> None:  # type: ignore
         """Add detections and ground truth to the metric.
         Args:
@@ -273,13 +281,13 @@ class CocoEvalMAP(Metric):
         _input_validator(preds, target)
 
         for item in preds:
-            self.detection_boxes.append(item["boxes"].cpu().float())
-            self.detection_scores.append(item["scores"].cpu().float())
-            self.detection_labels.append(item["labels"].cpu().long())
+            self.detection_boxes.append(item["boxes"].cpu().detach().float())
+            self.detection_scores.append(item["scores"].cpu().detach().float())
+            self.detection_labels.append(item["labels"].cpu().detach().long())
 
         for item in target:
-            self.groundtruth_boxes.append(item["boxes"].cpu())
-            self.groundtruth_labels.append(item["labels"].cpu())
+            self.groundtruth_boxes.append(item["boxes"].cpu().detach())
+            self.groundtruth_labels.append(item["labels"].cpu().detach())
 
     def compute(self) -> dict:
         """Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` scores. All detections added in
