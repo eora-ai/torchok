@@ -40,6 +40,7 @@ class ImageClassificationDataset(ImageDataset):
                  input_dtype: str = 'float32',
                  target_column: str = 'label',
                  target_dtype: str = 'long',
+                 channel_order: str = 'rgb',
                  grayscale: bool = False,
                  test_mode: bool = False,
                  multilabel: bool = False,
@@ -60,6 +61,7 @@ class ImageClassificationDataset(ImageDataset):
             input_dtype: Data type of the torch tensors related to the image.
             target_column: column name containing image label.
             target_dtype: Data type of the torch tensors related to the target.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
             multilabel: If True, targets are being converted to multihot vector for multilabel task.
@@ -69,7 +71,14 @@ class ImageClassificationDataset(ImageDataset):
 
         .. _albumentations: https://albumentations.ai/docs/
         """
-        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            channel_order=channel_order,
+            grayscale=grayscale,
+            test_mode=test_mode
+        )
 
         if num_classes is None and multilabel:
             raise ValueError('``num_classes`` must be specified when ``multilabel`` is `True`')
