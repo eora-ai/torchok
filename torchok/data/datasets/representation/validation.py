@@ -67,6 +67,7 @@ class RetrievalDataset(ImageDataset):
                  img_list_map_column: dict = None,
                  matches_map_column: dict = None,
                  gallery_map_column: dict = None,
+                 channel_order: str = 'rgb',
                  grayscale: bool = False):
         """Init RetrievalDataset class.
 
@@ -90,12 +91,19 @@ class RetrievalDataset(ImageDataset):
                 default value: {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
             gallery_map_column: Gallery mapping column names. Key - TorchOk column name, Value - csv column name.
                 default value: {'gallery_path': 'image_path', 'gallery_id': 'id'}
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
 
         Raises:
             ValueError: if gallery_folder True, but gallery_list_csv_path is None
         """
-        super().__init__(transform, augment, input_dtype, grayscale)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            channel_order=channel_order,
+            grayscale=grayscale
+        )
         self.data_folder = Path(data_folder)
         self.matches_map_column = matches_map_column or {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
         self.img_list_map_column = img_list_map_column or {'image_path': 'image_path', 'img_id': 'id'}

@@ -15,6 +15,7 @@ class ImageDataset(Dataset, ABC):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
+                 channel_order: str = 'rgb',
                  grayscale: bool = False,
                  test_mode: bool = False):
         """Init ImageDataset.
@@ -25,6 +26,7 @@ class ImageDataset(Dataset, ABC):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
         """
@@ -33,6 +35,7 @@ class ImageDataset(Dataset, ABC):
         self.augment = augment
         self.input_dtype = input_dtype
         self.grayscale = grayscale
+        self.channel_order = channel_order
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Is transformations based on API of albumentations library.
@@ -56,9 +59,10 @@ class ImageDataset(Dataset, ABC):
 
         if image is None:
             raise ValueError(f'{image_path} image does not exist')
+
         if self.grayscale:
             image = image[..., None]
-        else:
+        elif self.channel_order == 'rgb':
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         return image

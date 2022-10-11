@@ -1,20 +1,19 @@
+import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Union
-from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 import torch
-import json
-
 from albumentations import BaseCompose, Compose, BboxParams
-from albumentations.core.composition import BasicTransform
 from albumentations.augmentations.bbox_utils import convert_bboxes_to_albumentations, \
     convert_bboxes_from_albumentations, filter_bboxes
+from albumentations.core.composition import BasicTransform
+from torch.utils.data._utils.collate import default_collate
 
 from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
-from torch.utils.data._utils.collate import default_collate
 
 
 @DATASETS.register_class
@@ -28,6 +27,7 @@ class DetectionDataset(ImageDataset):
         image2.png, [[102.49, 118.47, 7.9, 17.31]], [2, 1]
         image3.png, [[253.21, 271.07, 59.59, 60.97], [257.85, 224.48, 44.13, 97.0]], [2, 0]
     """
+
     def __init__(self,
                  data_folder: Union[Path, str],
                  annotation_path: str,
@@ -40,6 +40,7 @@ class DetectionDataset(ImageDataset):
                  target_column: str = 'label',
                  target_dtype: str = 'long',
                  grayscale: bool = False,
+                 channel_order: str = 'rgb',
                  test_mode: bool = False,
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
@@ -62,6 +63,7 @@ class DetectionDataset(ImageDataset):
             bbox_dtype: Data type of the torch tensors related to the bboxes.
             target_column: Column name containing bboxes labels.
             target_dtype: Data type of the torch tensors related to the bboxes labels.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
             bbox_format: Bboxes format, for albumentations transform. Supports the following formats:
@@ -85,7 +87,8 @@ class DetectionDataset(ImageDataset):
             augment=augment,
             input_dtype=input_dtype,
             grayscale=grayscale,
-            test_mode=test_mode
+            test_mode=test_mode,
+            channel_order=channel_order
         )
         self.data_folder = Path(data_folder)
 

@@ -73,6 +73,7 @@ class COCODetection(DetectionDataset):
                  input_dtype: str = 'float32',
                  target_dtype: str = 'long',
                  bbox_dtype: str = 'float32',
+                 channel_order: str = 'rgb',
                  grayscale: bool = False,
                  test_mode: bool = False,
                  min_area: float = 0.0,
@@ -91,6 +92,7 @@ class COCODetection(DetectionDataset):
             input_dtype: Data type of the torch tensors related to the image.
             target_dtype: Data type of the torch tensors related to the bboxes labels.
             bbox_dtype: Data type of the torch tensors related to the bboxes.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
             test_mode: If True, only image without labels will be returned.
             min_area: Value in pixels  If the area of a bounding box after augmentation becomes smaller than min_area,
@@ -134,6 +136,7 @@ class COCODetection(DetectionDataset):
             input_dtype=input_dtype,
             target_dtype=target_dtype,
             bbox_dtype=bbox_dtype,
+            channel_order=channel_order,
             grayscale=grayscale,
             test_mode=test_mode,
             min_area=min_area,
