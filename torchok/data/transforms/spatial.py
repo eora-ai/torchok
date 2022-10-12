@@ -11,21 +11,7 @@ from torchok.constructor import TRANSFORMS
 
 @TRANSFORMS.register_class
 class FitResize(DualTransform):
-    """Rescale an image so that maximum side is equal to max_size, keeping the aspect ratio of the initial image.
-
-    Args:
-        max_height (int): maximum size of the image height after the transformation.
-        max_width (int): maximum size of the image width after the transformation.
-        interpolation (OpenCV flag): interpolation method. Default: cv2.INTER_LINEAR.
-        p (float): probability of applying the transform. Default: 1.
-
-    Targets:
-        image, mask, bboxes, keypoints
-
-    Image types:
-        uint8, float32
-    """
-
+    """Rescale an image so that it fits in given rectangle, keeping the aspect ratio of the initial image. """
     def __init__(
             self,
             max_height: int = 1024,
@@ -34,6 +20,16 @@ class FitResize(DualTransform):
             always_apply: bool = False,
             p: float = 1,
     ):
+        """Initialize FitResize augmentation/
+        Accepted targets: image, mask, bboxes, keypoints.
+        Accepted image types: uint8, float32.
+
+        Args:
+            max_height: maximum size of the image height after the transformation.
+            max_width: maximum size of the image width after the transformation.
+            interpolation: interpolation method. Default: cv2.INTER_LINEAR.
+            p: probability of applying the transform.
+        """
         super(FitResize, self).__init__(always_apply, p)
         self.interpolation = interpolation
         self.max_height = max_height

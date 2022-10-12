@@ -2,12 +2,13 @@ from typing import Any, Dict, List, Optional, Union
 
 import albumentations as A
 import torch
-from mmcv.utils import _BatchNorm, _InstanceNorm
 from mmcv.utils.ext_loader import check_ops_exist
 from omegaconf import DictConfig, ListConfig
 from torch import nn
 from torch.nn import GroupNorm, LayerNorm, Parameter
 from torch.nn import Module, ModuleList
+from torch.nn.modules.batchnorm import _BatchNorm
+from torch.nn.modules.instancenorm import _InstanceNorm
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
@@ -148,7 +149,6 @@ class Constructor:
         if isinstance(modules, (tuple, list)):
             modules = ModuleList(modules)
 
-        # parameters: List[Union[Dict, Parameter]] = list(modules.parameters())
         if not paramwise_cfg:
             parameters: List[Union[Dict, Parameter]] = list(modules.parameters())
         else:
@@ -228,7 +228,7 @@ class Constructor:
                 if name == 'bias' and not (is_norm or is_dcn_module):
                     param_group['lr'] = base_lr * bias_lr_mult
 
-                if (prefix.find('conv_offset') != -1 and is_dcn_module and isinstance(module, torch.nn.Conv2d)):
+                if prefix.find('conv_offset') != -1 and is_dcn_module and isinstance(module, torch.nn.Conv2d):
                     # deal with both dcn_offset's bias & weight
                     param_group['lr'] = base_lr * dcn_offset_lr_mult
 
@@ -242,7 +242,6 @@ class Constructor:
                         param_group['weight_decay'] = base_wd * dwconv_decay_mult
                     # bias lr and decay
                     elif name == 'bias' and not is_dcn_module:
-                        # TODO: current bias_decay_mult will have affect on DCN
                         param_group['weight_decay'] = base_wd * bias_decay_mult
             parameters.append(param_group)
 

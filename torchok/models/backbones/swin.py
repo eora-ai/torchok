@@ -101,6 +101,7 @@ class SwinTransformerV2(BaseBackbone):
             ape: If True, add absolute position embedding to the patch embedding.
             patch_norm: If True, add normalization after patch embedding.
             pretrained_window_sizes: Pretrained window sizes of each layer.
+            load_attn_mask: If False drop `attn_mask` in layers when load pretrained weights.
     """
 
     def __init__(
@@ -109,7 +110,7 @@ class SwinTransformerV2(BaseBackbone):
             window_size: int = 7, mlp_ratio: float = 4., qkv_bias: bool = True,
             drop_rate: float = 0., attn_drop_rate: float = 0., drop_path_rate: float = 0.1,
             norm_layer: nn.Module = nn.LayerNorm, ape: bool = False, patch_norm: bool = True,
-            pretrained_window_sizes: List[int] = (0, 0, 0, 0)):
+            pretrained_window_sizes: List[int] = (0, 0, 0, 0), load_attn_mask: bool = True):
         super().__init__(in_channels=in_channels)
         self.img_size = img_size
         self.num_layers = len(depths)
@@ -119,6 +120,7 @@ class SwinTransformerV2(BaseBackbone):
         self.encoder_channels = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
         self._out_channels = self.encoder_channels[-1]
         self._out_encoder_channels = self.encoder_channels
+        self.load_attn_mask = load_attn_mask
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -253,10 +255,11 @@ class SwinTransformerV2(BaseBackbone):
         return x
 
     def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
-        state_dict = dict(state_dict)
-        for k in list(state_dict.keys()):
-            if "attn_mask" in k:
-                state_dict.pop(k)
+        if not self.load_attn_mask:
+            state_dict = dict(state_dict)
+            for k in list(state_dict.keys()):
+                if "attn_mask" in k:
+                    state_dict.pop(k)
         return super(SwinTransformerV2, self).load_state_dict(state_dict, strict)
 
 

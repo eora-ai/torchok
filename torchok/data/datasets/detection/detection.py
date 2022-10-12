@@ -6,9 +6,9 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 import torch
-from albumentations import BaseCompose, BboxParams, Compose
-from albumentations.augmentations.bbox_utils import convert_bboxes_from_albumentations, \
-    convert_bboxes_to_albumentations, filter_bboxes
+from albumentations import BaseCompose, Compose, BboxParams
+from albumentations.augmentations.bbox_utils import convert_bboxes_to_albumentations, \
+    convert_bboxes_from_albumentations, filter_bboxes
 from albumentations.core.composition import BasicTransform
 from torch.utils.data._utils.collate import default_collate
 
@@ -36,7 +36,7 @@ class DetectionDataset(ImageDataset):
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
                  bbox_column: str = 'bbox',
-                 bbox_dtype: str = 'long',
+                 bbox_dtype: str = 'float32',
                  target_column: str = 'label',
                  target_dtype: str = 'long',
                  grayscale: bool = False,
@@ -162,9 +162,8 @@ class DetectionDataset(ImageDataset):
         sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         if not self.test_mode:
-            sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype]) - 1
+            sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype])
             sample['bboxes'] = torch.tensor(sample['bboxes']).type(torch.__dict__[self.bbox_dtype]).reshape(-1, 4)
-            sample['bboxes'][:, 2:4] += sample['bboxes'][:, :2]
 
         return sample
 
