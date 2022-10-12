@@ -46,11 +46,7 @@ task:
         max_per_img: 100
     inputs:
       - shape: [3, &height 800, &width 1344]
-#        dtype: &input_dtype bfloat16
         dtype: &input_dtype float32
-#  load_checkpoint:
-#    base_ckpt_path: "checkpoints/model_init.pth"
-#    strict: false
 
 joint_loss:
   normalize_weights: false
@@ -99,7 +95,6 @@ optimization:
       params:
         milestones: [11]
 
-
 data:
   TRAIN:
     - dataloader:
@@ -118,11 +113,6 @@ data:
           channel_order: 'bgr'
         augment:
           - name: HorizontalFlip
-#          - name: RandomResizedCrop
-#            params:
-#              height: *height
-#              width: *width
-#              p: 0.5
         transform:
           - &resize
             name: FitResize
@@ -174,16 +164,9 @@ data:
 
 trainer:
   accelerator: 'gpu'
-#  max_epochs: *num_epochs
   max_epochs: 15
-#  limit_train_batches: 10
-#  limit_val_batches: 10
-#  gradient_clip_val: 35
-#  gradient_clip_algorithm: norm
-#  precision: bf16
   precision: 32
   num_sanity_val_steps: 2
-#  accumulate_grad_batches: 8
 
 logger:
   log_dir: '${oc.env:HOME}/logs/coco_detection'
