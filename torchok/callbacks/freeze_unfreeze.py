@@ -56,7 +56,7 @@ class FreezeUnfreeze(BaseFinetuning):
     @staticmethod
     def freeze_module(module: Module, is_train: bool = False) -> None:
         """Freeze or unfreeze module depending on the parameter is_train.
-        
+
         Args:
             module: A given module
             is_train: Whether to unfreeze the module.
