@@ -123,7 +123,7 @@ data:
           - *totensor
 
 trainer:
-  gpus: [0]
+  accelerator: 'gpu'
   max_epochs: 30
   precision: 32
   num_sanity_val_steps: 0

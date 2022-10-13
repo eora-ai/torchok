@@ -1,7 +1,9 @@
 import logging
-from typing import Dict, Iterable, List, Set, Union
+from typing import Dict, Iterable, List, Set, Union, Optional
 
 import torch.nn as nn
+from torch.nn import Module
+from torch.nn.modules.batchnorm import _BatchNorm
 from pytorch_lightning.callbacks import BaseFinetuning
 from torch.optim.optimizer import Optimizer
 
@@ -38,16 +40,89 @@ def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Mod
 class FreezeUnfreeze(BaseFinetuning):
     """Callback to freeze modules and incremental unfreeze this modules during training."""
 
-    def __init__(self, epoch2module_names: Dict[int, List[str]]):
+    def __init__(self, epoch2module_names: Dict[int, List[str]], freeze_bn: bool = True):
         """Init FreezeUnfreeze.
 
         Args:
             epoch2module_names: Incremental unfreeze dictionary. Keys - unfreeze epoch,
                 values - module names to unfreeze. By default, all the modules named in this dictionary
                 will be frozen before training.
+            freeze_bn: If freeze batch norm layers.
         """
         super().__init__()
         self.epoch2module_names = epoch2module_names
+        self.freeze_bn = freeze_bn
+
+    @staticmethod
+    def freeze_module(module: Module, is_train: bool = False) -> None:
+        """Freeze or unfreeze module depending on the parameter is_train.
+
+        Args:
+            module: A given module
+            is_train: Whether to unfreeze the module.
+        """
+        if isinstance(module, _BatchNorm):
+            module.track_running_stats = is_train
+        # recursion could yield duplicate parameters for parent modules w/ parameters so disabling it
+        for param in module.parameters(recurse=False):
+            param.requires_grad = is_train
+
+    @staticmethod
+    def make_trainable(modules: Union[Module, Iterable[Union[Module, Iterable]]]) -> None:
+        """Unfreezes the parameters of the provided modules.
+
+        Args:
+            modules: A given module or an iterable of modules
+        """
+        modules = BaseFinetuning.flatten_modules(modules)
+        for module in modules:
+            FreezeUnfreeze.freeze_module(module, is_train=True)
+
+    @staticmethod
+    def freeze(modules: Union[Module, Iterable[Union[Module, Iterable]]], train_bn: bool = True) -> None:
+        """Freezes the parameters of the provided modules.
+
+        Args:
+            modules: A given module or an iterable of modules
+            train_bn: If True, leave the BatchNorm layers in training mode
+
+        Returns:
+            None
+        """
+        modules = BaseFinetuning.flatten_modules(modules)
+        for mod in modules:
+            if isinstance(mod, _BatchNorm) and train_bn:
+                FreezeUnfreeze.make_trainable(mod)
+            else:
+                FreezeUnfreeze.freeze_module(mod, is_train=False)
+
+    @staticmethod
+    def unfreeze_and_add_param_group(
+        modules: Union[Module, Iterable[Union[Module, Iterable]]],
+        optimizer: Optimizer,
+        lr: Optional[float] = None,
+        initial_denom_lr: float = 10.0,
+        train_bn: bool = True,
+    ) -> None:
+        """Unfreezes a module and adds its parameters to an optimizer.
+
+        Args:
+            modules: A module or iterable of modules to unfreeze.
+                Their parameters will be added to an optimizer as a new param group.
+            optimizer: The provided optimizer will receive new parameters and will add them to
+                `add_param_group`
+            lr: Learning rate for the new param group.
+            initial_denom_lr: If no lr is provided, the learning from the first param group will be used
+                and divided by `initial_denom_lr`.
+            train_bn: Whether to train the BatchNormalization layers.
+        """
+        FreezeUnfreeze.make_trainable(modules)
+        params_lr = optimizer.param_groups[0]["lr"] if lr is None else float(lr)
+        denom_lr = initial_denom_lr if lr is None else 1.0
+        params = FreezeUnfreeze.filter_params(modules, train_bn=train_bn, requires_grad=True)
+        params = FreezeUnfreeze.filter_on_optimizer(optimizer, params)
+        if params:
+            optimizer.add_param_group({"params": params, "lr": params_lr / denom_lr})
 
     def freeze_before_training(self, pl_module: nn.Module):
         """Freeze modules before training.
@@ -64,9 +139,12 @@ class FreezeUnfreeze(BaseFinetuning):
 
         # Get modules by module names
         freeze_modules = get_modules_by_names(freeze_module_names, pl_module)
+
+        train_bn = not self.freeze_bn
+
         # Freeze every module
         for freeze_module in freeze_modules:
-            self.freeze(freeze_module)
+            self.freeze(freeze_module, train_bn=train_bn)
 
     def finetune_function(self, pl_module: nn.Module, current_epoch: int, optimizer: Optimizer, optimizer_idx: int):
         """Unfreeze modules from self.epoch2module_names dictionary.
