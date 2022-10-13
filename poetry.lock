@@ -605,7 +605,7 @@ setuptools_scm = ">=4,<7"
 
 [[package]]
 name = "mmcv-full"
-version = "1.6.1"
+version = "1.6.2"
 description = "OpenMMLab Computer Vision Foundation"
 category = "main"
 optional = false
@@ -622,10 +622,10 @@ regex = {version = "*", markers = "sys_platform == \"win32\""}
 yapf = "*"
 
 [package.extras]
-all = ["pytest-runner", "ninja", "addict", "numpy", "packaging", "pillow", "pyyaml", "yapf", "coverage", "lmdb", "protobuf (>=3.19.0,<3.20.0)", "pytest", "pyturbojpeg", "scipy", "tifffile", "onnx (==1.7.0)", "onnxoptimizer", "onnxruntime (>=1.8.0)", "regex"]
+all = ["pytest-runner", "ninja", "addict", "numpy", "packaging", "pillow", "pyyaml", "yapf", "coverage", "lmdb", "onnx", "onnxruntime (>=1.8.0)", "protobuf (>=3.19.0,<3.20.0)", "pytest", "pyturbojpeg", "scipy", "tifffile", "onnxoptimizer", "regex"]
 build = ["pytest-runner"]
 optional = ["ninja"]
-tests = ["coverage", "lmdb", "protobuf (>=3.19.0,<3.20.0)", "pytest", "pyturbojpeg", "scipy", "tifffile", "onnx (==1.7.0)", "onnxoptimizer", "onnxruntime (>=1.8.0)"]
+tests = ["coverage", "lmdb", "onnx", "onnxruntime (>=1.8.0)", "protobuf (>=3.19.0,<3.20.0)", "pytest", "pyturbojpeg", "scipy", "tifffile", "onnxoptimizer"]
 
 [[package]]
 name = "mmdet"
@@ -1619,7 +1619,7 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "8360f29434421afc97cb954b0898d1d30a7e062657692dc38aa7ece86db6eb3b"
+content-hash = "6acf68c6c61ede7e0e9edd91ae70c8dbe5ca010dc5f4dd4db1a53de1f35dadf5"
 
 [metadata.files]
 absl-py = [
@@ -2317,7 +2317,7 @@ matplotlib = [
     {file = "matplotlib-3.5.3.tar.gz", hash = "sha256:339cac48b80ddbc8bfd05daae0a3a73414651a8596904c2a881cfd1edb65f26c"},
 ]
 mmcv-full = [
-    {file = "mmcv-full-1.6.1.tar.gz", hash = "sha256:3452d247e0e9fe41b6b30c775feac26f18bc6976112f87bc25e2b9ec817df678"},
+    {file = "mmcv-full-1.6.2.tar.gz", hash = "sha256:198d8fdf3d062c4bf812f650f509540a0c8bc7f0e6031d1d15376ce4fcf6a12e"},
 ]
 mmdet = [
     {file = "mmdet-2.25.1-py3-none-any.whl", hash = "sha256:212ae84e35d04518bf72efa458f83bb6bdf0c6a3465cc1b5f2be5afb0269565e"},
