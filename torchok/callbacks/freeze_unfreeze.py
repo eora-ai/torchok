@@ -54,6 +54,20 @@ class FreezeUnfreeze(BaseFinetuning):
         self.freeze_bn = freeze_bn
 
     @staticmethod
+    def freeze_module(module: Module, is_train: bool = False) -> None:
+        """Freeze or unfreeze module depending on the parameter is_train.
+        
+        Args:
+            module: A given module
+            is_train: Whether to unfreeze the module.
+        """
+        if isinstance(module, _BatchNorm):
+            module.track_running_stats = is_train
+        # recursion could yield duplicate parameters for parent modules w/ parameters so disabling it
+        for param in module.parameters(recurse=False):
+            param.requires_grad = is_train
+
+    @staticmethod
     def make_trainable(modules: Union[Module, Iterable[Union[Module, Iterable]]]) -> None:
         """Unfreezes the parameters of the provided modules.
 
@@ -62,19 +76,7 @@ class FreezeUnfreeze(BaseFinetuning):
         """
         modules = BaseFinetuning.flatten_modules(modules)
         for module in modules:
-            if isinstance(module, _BatchNorm):
-                module.track_running_stats = True
-            # recursion could yield duplicate parameters for parent modules w/ parameters so disabling it
-            for param in module.parameters(recurse=False):
-                param.requires_grad = True
-
-    @staticmethod
-    def freeze_module(module: Module):
-        if isinstance(module, _BatchNorm):
-            module.track_running_stats = False
-        # recursion could yield duplicate parameters for parent modules w/ parameters so disabling it
-        for param in module.parameters(recurse=False):
-            param.requires_grad = False
+            FreezeUnfreeze.freeze_module(module, is_train=True)
 
     @staticmethod
     def freeze(modules: Union[Module, Iterable[Union[Module, Iterable]]], train_bn: bool = True) -> None:
@@ -92,7 +94,7 @@ class FreezeUnfreeze(BaseFinetuning):
             if isinstance(mod, _BatchNorm) and train_bn:
                 FreezeUnfreeze.make_trainable(mod)
             else:
-                FreezeUnfreeze.freeze_module(mod)
+                FreezeUnfreeze.freeze_module(mod, is_train=False)
 
     @staticmethod
     def unfreeze_and_add_param_group(
