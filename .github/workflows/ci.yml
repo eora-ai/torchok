@@ -105,6 +105,11 @@ jobs:
           steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
       #----------------------------------------------
+      #   install mmcv-full compatible with environment
+      #----------------------------------------------
+      - name: Install mmcv-full
+        run: mim install mmcv-full
+      #----------------------------------------------
       #   run base or all tests depending on event
       #----------------------------------------------
       - name: Run base tests
