@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Optional, Union
 
 import albumentations as A
 import torch
-from mmcv.utils.ext_loader import check_ops_exist
 from omegaconf import DictConfig, ListConfig
 from torch import nn
 from torch.nn import GroupNorm, LayerNorm, Parameter
@@ -245,12 +244,7 @@ class Constructor:
                         param_group['weight_decay'] = base_wd * bias_decay_mult
             parameters.append(param_group)
 
-        if check_ops_exist():
-            from mmcv.ops import DeformConv2d, ModulatedDeformConv2d
-            is_dcn_module = isinstance(module,
-                                       (DeformConv2d, ModulatedDeformConv2d))
-        else:
-            is_dcn_module = False
+        is_dcn_module = False
         for child_name, child_mod in module.named_children():
             child_prefix = f'{prefix}.{child_name}' if prefix else child_name
             Constructor.add_params(parameters, child_mod, optimizer_cfg, paramwise_cfg,

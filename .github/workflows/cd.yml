@@ -152,11 +152,6 @@ jobs:
           poetry install --no-interaction --no-root
           poetry build
       #----------------------------------------------
-      #   install mmcv-full compatible with environment
-      #----------------------------------------------
-      - name: Install mmcv-full
-        run: mim install mmcv-full
-      #----------------------------------------------
       #         publish the package to PyPI
       #----------------------------------------------
       - name: Publish package to PyPI
