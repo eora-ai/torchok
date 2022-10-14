@@ -629,8 +629,61 @@ tests = ["PyTurboJPEG", "coverage", "lmdb", "onnx", "onnxoptimizer", "onnxruntim
 
 [package.source]
 type = "url"
-url = "https://download.openmmlab.com/mmcv/dist/cpu/torch1.12.0/mmcv_full-1.6.2-cp39-cp39-manylinux1_x86_64.whl"
+url = "https://download.openmmlab.com/mmcv/dist/cpu/torch1.12.0/mmcv_full-1.6.2-cp37-cp37m-manylinux1_x86_64.whl"
+[[package]]
+name = "mmcv-full"
+version = "1.6.2"
+description = "OpenMMLab Computer Vision Foundation"
+category = "main"
+optional = false
+python-versions = "*"
 
+[package.dependencies]
+addict = "*"
+numpy = "*"
+opencv-python = ">=3"
+packaging = "*"
+Pillow = "*"
+pyyaml = "*"
+regex = {version = "*", markers = "sys_platform == \"win32\""}
+yapf = "*"
+
+[package.extras]
+all = ["Pillow", "PyTurboJPEG", "addict", "coverage", "lmdb", "ninja", "numpy", "onnx", "onnxoptimizer", "onnxruntime (>=1.8.0)", "packaging", "protobuf (>=3.19.0,<3.20.0)", "pytest", "pytest-runner", "pyyaml", "regex", "scipy", "tifffile", "yapf"]
+build = ["pytest-runner"]
+optional = ["ninja"]
+tests = ["PyTurboJPEG", "coverage", "lmdb", "onnx", "onnxoptimizer", "onnxruntime (>=1.8.0)", "protobuf (>=3.19.0,<3.20.0)", "pytest", "scipy", "tifffile"]
+
+[package.source]
+type = "url"
+url = "https://download.openmmlab.com/mmcv/dist/cpu/torch1.12.0/mmcv_full-1.6.2-cp38-cp38-manylinux1_x86_64.whl"
+[[package]]
+name = "mmcv-full"
+version = "1.6.2"
+description = "OpenMMLab Computer Vision Foundation"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+addict = "*"
+numpy = "*"
+opencv-python = ">=3"
+packaging = "*"
+Pillow = "*"
+pyyaml = "*"
+regex = {version = "*", markers = "sys_platform == \"win32\""}
+yapf = "*"
+
+[package.extras]
+all = ["Pillow", "PyTurboJPEG", "addict", "coverage", "lmdb", "ninja", "numpy", "onnx", "onnxoptimizer", "onnxruntime (>=1.8.0)", "packaging", "protobuf (>=3.19.0,<3.20.0)", "pytest", "pytest-runner", "pyyaml", "regex", "scipy", "tifffile", "yapf"]
+build = ["pytest-runner"]
+optional = ["ninja"]
+tests = ["PyTurboJPEG", "coverage", "lmdb", "onnx", "onnxoptimizer", "onnxruntime (>=1.8.0)", "protobuf (>=3.19.0,<3.20.0)", "pytest", "scipy", "tifffile"]
+
+[package.source]
+type = "url"
+url = "https://download.openmmlab.com/mmcv/dist/cpu/torch1.12.0/mmcv_full-1.6.2-cp39-cp39-manylinux1_x86_64.whl"
 [[package]]
 name = "mmdet"
 version = "2.25.1"
@@ -920,9 +973,9 @@ python-versions = ">=3.8"
 [package.dependencies]
 numpy = [
     {version = ">=1.20.0", markers = "platform_machine == \"arm64\" and python_version < \"3.10\""},
-    {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
     {version = ">=1.18.5", markers = "platform_machine != \"aarch64\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
     {version = ">=1.19.2", markers = "platform_machine == \"aarch64\" and python_version < \"3.10\""},
+    {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
 ]
 python-dateutil = ">=2.8.1"
 pytz = ">=2020.1"
@@ -1675,7 +1728,7 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "320260e94525c57f6d32181de19eb1f59ebe7fc7e17972c678e1c8ab873f4824"
+content-hash = "fe3bab53c120ad5c1c0559ff34ea56e46566909d3aaa5210d46eff73ae0fafb3"
 
 [metadata.files]
 absl-py = [
