@@ -628,8 +628,8 @@ optional = ["ninja"]
 tests = ["PyTurboJPEG", "coverage", "lmdb", "onnx", "onnxoptimizer", "onnxruntime (>=1.8.0)", "protobuf (>=3.19.0,<3.20.0)", "pytest", "scipy", "tifffile"]
 
 [package.source]
-type = "file"
-url = "../mmcv_wheels/mmcv_full-1.6.2-cp39-cp39-manylinux1_x86_64.whl"
+type = "url"
+url = "https://download.openmmlab.com/mmcv/dist/cpu/torch1.12.0/mmcv_full-1.6.2-cp39-cp39-manylinux1_x86_64.whl"
 
 [[package]]
 name = "mmdet"
@@ -1675,7 +1675,7 @@ python-versions = ">=3.6"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.11"
-content-hash = "67ca80beadfc770b5728f895b6f948a722717f419ed52b435df0115d68308df0"
+content-hash = "320260e94525c57f6d32181de19eb1f59ebe7fc7e17972c678e1c8ab873f4824"
 
 [metadata.files]
 absl-py = [
@@ -2372,9 +2372,7 @@ matplotlib = [
     {file = "matplotlib-3.5.3-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:d2484b350bf3d32cae43f85dcfc89b3ed7bd2bcd781ef351f93eb6fb2cc483f9"},
     {file = "matplotlib-3.5.3.tar.gz", hash = "sha256:339cac48b80ddbc8bfd05daae0a3a73414651a8596904c2a881cfd1edb65f26c"},
 ]
-mmcv-full = [
-    {file = "mmcv_full-1.6.2-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:d24670b453522e1a6808a65769782843b3f24029bc064acdae882e4daefafa3e"},
-]
+mmcv-full = []
 mmdet = [
     {file = "mmdet-2.25.1-py3-none-any.whl", hash = "sha256:212ae84e35d04518bf72efa458f83bb6bdf0c6a3465cc1b5f2be5afb0269565e"},
     {file = "mmdet-2.25.1.tar.gz", hash = "sha256:97c37c324a16c11d285a986b558c9f1221a8f72ecf1bf5439ddee10bae09d556"},
