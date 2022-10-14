@@ -41,13 +41,13 @@ pillow = "~9.1"
 python = ">=3.7,<3.11"
 pytorch-lightning = "~1.7"
 ranx = "~0.2"
-torch = ">=1.9,<=1.11"
-torchvision = ">=0.10,<=0.12"
+torch = ">=1.9,<=1.12"
+torchvision = ">=0.10,<=0.13"
 torchmetrics = "~0.9"
 timm = "~0.6"
 openmim = "0.3.1"
 mmdet = "2.25.1"
-mmcv = "^1.6.2"
+mmcv-full = {path = "../mmcv_wheels/mmcv_full-1.6.2-cp39-cp39-manylinux1_x86_64.whl"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
