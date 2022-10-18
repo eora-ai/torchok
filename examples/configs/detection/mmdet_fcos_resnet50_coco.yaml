@@ -1,13 +1,20 @@
 task:
   name: SingleStageDetectionTask
   params:
-    backbone_name: swsl_resnet50
+    backbone_name: MMResNet
     backbone_params:
-      pretrained: true
-      in_channels: 3
-      norm_eval: true
-      bn_requires_grad: false
-      frozen_stages: 1
+        depth: 50
+        num_stages: 4
+        out_indices: [0, 1, 2, 3]
+        frozen_stages: 1
+        norm_cfg:
+          type: 'BN'
+          requires_grad: false
+        norm_eval: true
+        style: 'caffe'
+        init_cfg:
+          type: Pretrained
+          checkpoint: https://download.openmmlab.com/pretrain/third_party/resnet50_caffe-788b5fa3.pth
     num_scales: 4
     neck_name: FPN
     neck_params:
@@ -86,7 +93,7 @@ optimization:
     scheduler:
       name: MultiStepLR
       params:
-        milestones: [20]
+        milestones: [23]
 
 data:
   TRAIN:
@@ -103,7 +110,7 @@ data:
           data_folder: &data_folder ${oc.env:HOME}/data/coco
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
-          channel_order: 'rgb'
+          channel_order: 'bgr'
         augment:
           - name: HorizontalFlip
         transform:
@@ -114,10 +121,10 @@ data:
               max_width: *width
           - &normalize
             name: Normalize
-#            params:
-#              mean: [102.9801, 115.9465, 122.7717]
-#              std: [1.0, 1.0, 1.0]
-#              max_pixel_value: 1.0
+            params:
+              mean: [102.9801, 115.9465, 122.7717]
+              std: [1.0, 1.0, 1.0]
+              max_pixel_value: 1.0
           - &pad
             name: PadIfNeeded
             params:
@@ -141,7 +148,7 @@ data:
           data_folder: *data_folder
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
-          channel_order: 'rgb'
+          channel_order: 'bgr'
         transform:
           - *resize
           - *normalize
@@ -157,13 +164,13 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 21
+  max_epochs: 24
   precision: 32
   num_sanity_val_steps: 2
 
 logger:
   log_dir: '${oc.env:HOME}/logs/coco_detection'
-  experiment_name: fcos_swsl_resnet50_x800_1344
+  experiment_name: fcos_resnet50_x800_1344
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
@@ -183,7 +190,7 @@ callbacks:
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 1
+      refresh_rate: 200
 
 metrics:
   - name: MMDetectionMAP
@@ -213,5 +220,3 @@ metrics:
       preds: prediction
       target: target
     phases: [VALID, TEST]
-
-resume_path: "/home/ubuntu/workdir/logs/coco_detection/fcos_swsl_resnet50_x800_1344/2022-10-14/19-04-09/last.ckpt"
