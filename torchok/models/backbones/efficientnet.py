@@ -301,17 +301,6 @@ default_cfgs = {
         mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
         input_size=(3, 300, 300), pool_size=(10, 10), crop_pct=0.904),
 
-    'tf_efficientnet_cc_b0_4e': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_cc_b0_4e-4362b6b2.pth', # noqa
-        mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
-    'tf_efficientnet_cc_b0_8e': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_cc_b0_8e-66184a25.pth', # noqa
-        mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
-    'tf_efficientnet_cc_b1_8e': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_cc_b1_8e-f7c79ae1.pth', # noqa
-        mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD,
-        input_size=(3, 240, 240), pool_size=(8, 8), crop_pct=0.882),
-
     'tf_efficientnet_lite0': _cfg(
         url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_lite0-0aa007d2.pth', # noqa
         mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
