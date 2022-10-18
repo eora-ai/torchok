@@ -115,7 +115,7 @@ default_cfgs = {
 
     #  ResNeXt models - Weakly Supervised Pretraining on Instagram Hashtags
     #  from https://github.com/facebookresearch/WSL-Images
-    #  Please note the CC-BY-NC 4.0 license on theses weights, non-commercial use only.
+    #  Please note the CC-BY-NC 4.0 license on these weights, non-commercial use only.
     'ig_resnext101_32x8d': _cfg(url='https://download.pytorch.org/models/ig_resnext101_32x8-c38310e5.pth'),
     'ig_resnext101_32x16d': _cfg(url='https://download.pytorch.org/models/ig_resnext101_32x16-c6f796b0.pth'),
     'ig_resnext101_32x32d': _cfg(url='https://download.pytorch.org/models/ig_resnext101_32x32-e4b90b00.pth'),
@@ -137,7 +137,7 @@ default_cfgs = {
         url='https://dl.fbaipublicfiles.com/semiweaksupervision/model_files/semi_supervised_resnext101_32x16-15fffa57.pth'), # noqa
 
     #  Semi-Weakly Supervised ResNe*t models from https://github.com/facebookresearch/semi-supervised-ImageNet1K-models
-    #  Please note the CC-BY-NC 4.0 license on theses weights, non-commercial use only.
+    #  Please note the CC-BY-NC 4.0 license on these weights, non-commercial use only.
     'swsl_resnet18': _cfg(
         url='https://dl.fbaipublicfiles.com/semiweaksupervision/model_files/semi_weakly_supervised_resnet18-118f1556.pth'), # noqa
     'swsl_resnet50': _cfg(
@@ -364,8 +364,12 @@ class ResNet(BaseBackbone):
             self, block, layers, in_channels=3, output_stride=32, cardinality=1, base_width=64, stem_width=64,
             stem_type='', replace_stem_pool=False, block_reduce_first=1, down_kernel_size=1, avg_down=False,
             act_layer=nn.ReLU, norm_layer=nn.BatchNorm2d, aa_layer=None, drop_path_rate=0., drop_block_rate=0.,
-            zero_init_last=True, block_args=None):
+            zero_init_last=True, block_args=None, bn_requires_grad=True, norm_eval=False, frozen_stages=0):
         super(ResNet, self).__init__(in_channels=in_channels)
+        self.bn_requires_grad = bn_requires_grad
+        self.norm_eval = norm_eval
+        self.frozen_stages = frozen_stages
+
         block_args = block_args or dict()
         if output_stride not in (8, 16, 32):
             raise ValueError('`output_stride` must be in (8, 16, 32)')
@@ -425,6 +429,20 @@ class ResNet(BaseBackbone):
 
         self.create_hooks()
         self.init_weights(zero_init_last=zero_init_last)
+
+    def _freeze_stages(self):
+        super()._freeze_stages()
+        if self.frozen_stages >= 0:
+            self.bn1.eval()
+            for m in [self.conv1, self.bn1]:
+                for param in m.parameters():
+                    param.requires_grad = False
+
+        for i in range(1, self.frozen_stages + 1):
+            m = getattr(self, f'layer{i}')
+            m.eval()
+            for param in m.parameters():
+                param.requires_grad = False
 
     @torch.jit.ignore
     def init_weights(self, zero_init_last=True):

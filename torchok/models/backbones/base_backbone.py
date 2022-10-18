@@ -4,8 +4,20 @@ from typing import List, Tuple
 from timm.models.features import FeatureHooks
 from torch import Tensor
 from torch.nn import Module
+from torch.nn.modules.batchnorm import _BatchNorm
 
 from torchok.models.base import BaseModel
+
+
+def set_batchnorm_eval(m):
+    """
+    Credits to Filip Radenovic (https://github.com/filipradenovic/cnnimageretrieval-pytorch)
+    """
+
+    classname = m.__class__.__name__
+    if classname.find('BatchNorm') != -1:
+        m.eval()
+        m.track_running_stats = False
 
 
 class BaseBackbone(BaseModel, ABC):
@@ -27,7 +39,7 @@ class BaseBackbone(BaseModel, ABC):
         """Forward method for getting backbone feature maps.
            They are mainly used for segmentation and detection tasks.
         """
-        last_features = self(x) # noqa
+        last_features = self(x)  # noqa
         backbone_features = self.feature_hooks.get_output(x.device)
         backbone_features = list(backbone_features.values())
         return [x] + backbone_features
@@ -38,6 +50,20 @@ class BaseBackbone(BaseModel, ABC):
         if self._out_encoder_channels is None:
             raise ValueError('TorchOk Backbones must have self._out_feature_channels attribute.')
         return tuple(self._out_encoder_channels)
+
+    def _freeze_stages(self):
+        if self.bn_requires_grad:
+            for m in self.modules():
+                if isinstance(m, _BatchNorm):
+                    for p in m.parameters():
+                        p.requires_grad = False
+
+    def train(self, mode=True):
+        """Convert the model into training mode while keep normalization layer frozen."""
+        super().train(mode)
+        self._freeze_stages()
+        if mode and self.norm_eval:
+            self.apply(set_batchnorm_eval)
 
 
 class BackboneWrapper(Module):
