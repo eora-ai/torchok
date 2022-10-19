@@ -5,9 +5,6 @@ task:
     backbone_params:
       pretrained: true
       in_channels: 3
-      norm_eval: true
-      bn_requires_grad: false
-      frozen_stages: 1
     num_scales: 4
     neck_name: FPN
     neck_params:
@@ -114,10 +111,6 @@ data:
               max_width: *width
           - &normalize
             name: Normalize
-#            params:
-#              mean: [102.9801, 115.9465, 122.7717]
-#              std: [1.0, 1.0, 1.0]
-#              max_pixel_value: 1.0
           - &pad
             name: PadIfNeeded
             params:
@@ -213,5 +206,3 @@ metrics:
       preds: prediction
       target: target
     phases: [VALID, TEST]
-
-resume_path: "/home/ubuntu/workdir/logs/coco_detection/fcos_swsl_resnet50_x800_1344/2022-10-14/19-04-09/last.ckpt"
