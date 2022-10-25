@@ -22,8 +22,6 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         self.onnx_params = onnx_params if onnx_params is not None else {}
         self.export_to_onnx = export_to_onnx
         self.remove_head = remove_head
-        print('EXPORT TO ONNX')
-        print(self.export_to_onnx)
 
     def _update_best_and_save(
         self, current: Tensor, trainer: Trainer, monitor_candidates: Dict[str, Tensor]
