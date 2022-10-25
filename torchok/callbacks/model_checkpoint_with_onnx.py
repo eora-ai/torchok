@@ -1,12 +1,12 @@
-import os
 from copy import deepcopy
-from typing import Dict, Optional
+from typing import Dict
 from weakref import proxy
 
 import torch
+from torch import Tensor
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+from pytorch_lightning.utilities.rank_zero import rank_zero_info
 from pytorch_lightning.trainer import Trainer
-from pytorch_lightning.utilities.types import _METRIC
 
 from torchok.constructor import CALLBACKS
 
@@ -14,7 +14,6 @@ from torchok.constructor import CALLBACKS
 @CALLBACKS.register_class
 class ModelCheckpointWithOnnx(ModelCheckpoint):
     """A class checkpointing ckpt and onnx format."""
-    CKPT_EXTENSION = '.ckpt'
     ONNX_EXTENSION = '.onnx'
 
     def __init__(self, *args, export_to_onnx=False, onnx_params=None, remove_head=False, **kwargs):
@@ -23,25 +22,60 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         self.onnx_params = onnx_params if onnx_params is not None else {}
         self.export_to_onnx = export_to_onnx
         self.remove_head = remove_head
+        print('EXPORT TO ONNX')
+        print(self.export_to_onnx)
 
-    def format_checkpoint_name(self, metrics: Dict[str, _METRIC], filename: Optional[str] = None,
-                               ver: Optional[int] = None) -> str:
-        """Override format_checkpoint_name."""
-        filename = filename or self.filename
-        filename = self._format_checkpoint_name(filename, metrics, auto_insert_metric_name=self.auto_insert_metric_name)
+    def _update_best_and_save(
+        self, current: Tensor, trainer: Trainer, monitor_candidates: Dict[str, Tensor]
+    ) -> None:
+        k = len(self.best_k_models) + 1 if self.save_top_k == -1 else self.save_top_k
 
-        if ver is not None:
-            filename = self.CHECKPOINT_JOIN_CHAR.join((filename, f"v{ver}"))
+        del_filepath = None
+        if len(self.best_k_models) == k and k > 0:
+            del_filepath = self.kth_best_model_path
+            self.best_k_models.pop(del_filepath)
 
-        return os.path.join(self.dirpath, filename) if self.dirpath else filename
+        # do not save nan, replace with +/- inf
+        if isinstance(current, Tensor) and torch.isnan(current):
+            current = torch.tensor(float("inf" if self.mode == "min" else "-inf"), device=current.device)
+
+        filepath = self._get_metric_interpolated_filepath_name(monitor_candidates, trainer, del_filepath)
+
+        # save the current score
+        self.current_score = current
+        self.best_k_models[filepath] = current
+
+        if len(self.best_k_models) == k:
+            # monitor dict has reached k elements
+            _op = max if self.mode == "min" else min
+            self.kth_best_model_path = _op(self.best_k_models, key=self.best_k_models.get)  # type: ignore[arg-type]
+            self.kth_value = self.best_k_models[self.kth_best_model_path]
+
+        _op = min if self.mode == "min" else max
+        self.best_model_path = _op(self.best_k_models, key=self.best_k_models.get)  # type: ignore[arg-type]
+        self.best_model_score = self.best_k_models[self.best_model_path]
+
+        if self.verbose:
+            epoch = monitor_candidates["epoch"]
+            step = monitor_candidates["step"]
+            rank_zero_info(
+                f"Epoch {epoch:d}, global step {step:d}: {self.monitor!r} reached {current:0.5f}"
+                f" (best {self.best_model_score:0.5f}), saving model to {filepath!r} as top {k}"
+            )
+        self._save_checkpoint(trainer, filepath)
+
+        if del_filepath is not None and filepath != del_filepath:
+            trainer.strategy.remove_checkpoint(del_filepath)
+            if self.export_to_onnx:
+                onnx_del_path = del_filepath.replace(self.FILE_EXTENSION, self.ONNX_EXTENSION)
+                trainer.strategy.remove_checkpoint(onnx_del_path)
 
     def _save_checkpoint(self, trainer: Trainer, filepath: str) -> None:
         """Override _save_checkpoint."""
-        trainer.save_checkpoint(filepath + self.CKPT_EXTENSION, self.save_weights_only)
+        trainer.save_checkpoint(filepath, self.save_weights_only)
         self._last_global_step_saved = trainer.global_step
-
         if trainer.is_global_zero:
-            if self.export_to_onnx and not trainer.training:
+            if self.export_to_onnx:
                 # DDP mode use some wrappers, and we go down to BaseModel.
                 model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
                 input_tensors = [getattr(model, name) for name in model.input_tensor_names]
@@ -49,7 +83,8 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
                 if self.remove_head:
                     model = model[:-1]
                 model = deepcopy(model)
-                torch.onnx.export(model, tuple(input_tensors), filepath + self.ONNX_EXTENSION, **self.onnx_params)
+                onnx_file_path = filepath.replace(self.FILE_EXTENSION, self.ONNX_EXTENSION)
+                torch.onnx.export(model, tuple(input_tensors), onnx_file_path, **self.onnx_params)
 
             for logger in trainer.loggers:
                 logger.after_save_checkpoint(proxy(self))
