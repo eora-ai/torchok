@@ -1,4 +1,3 @@
-import abc
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
@@ -28,7 +27,7 @@ class BaseBackbone(BaseModel, ABC):
         """Forward method for getting backbone feature maps.
            They are mainly used for segmentation and detection tasks.
         """
-        last_features = self(x) # noqa
+        last_features = self(x)  # noqa
         backbone_features = self.feature_hooks.get_output(x.device)
         backbone_features = list(backbone_features.values())
         return [x] + backbone_features
