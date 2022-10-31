@@ -1,71 +1,82 @@
-import logging
-from typing import Dict, Iterable, List, Set, Union, Optional
+import inspect
+from typing import Dict, Iterable, List, Union, Optional, Any
 
 import torch.nn as nn
+from pytorch_lightning.callbacks import BaseFinetuning
 from torch.nn import Module
 from torch.nn.modules.batchnorm import _BatchNorm
-from pytorch_lightning.callbacks import BaseFinetuning
 from torch.optim.optimizer import Optimizer
 
 from torchok.constructor import CALLBACKS
 
-
-def get_modules_by_names(module_names: Union[str, Iterable[str]], module: nn.Module) -> Set[nn.Module]:
+nn.Dropout
+def get_modules(module_dict: Dict[str, Any], module: nn.Module) -> List[nn.Module]:
     """Return modules by its names.
 
     Args:
-        module_names: Searched module names.
+        module_dict: dict with information about searched modules.
         module: The module in which it is searched.
 
     Returns:
-        found_modules: All found modules.
+        found_modules: List of all found modules.
     """
-    if isinstance(module_names, str):
-        module_names = [module_names]
-    module_names = set(module_names)
-    found_modules = set()
-    found_module_names = set()
-    for module_name, curr_module in module.named_modules():
-        if module_name in module_names:
-            found_modules.add(curr_module)
-            found_module_names.add(module_name)
+    module_name = module_dict['module_name']
+    target_module = module
+    if module_name != '':  # empty `module_name` stands for the whole model
+        for block_name in module_name.split('.'):
+            children = dict(target_module.named_children())
+            target_module = children.get(block_name, None)
+            if target_module is None:
+                raise ValueError(f"Module `{module_name}` is not found")
+    if 'stages' in module_dict:
+        if not hasattr(target_module, 'get_stages'):
+            raise ValueError(f"You specified `stages` in `{module_name}` "
+                             f"but this module does not have `get_stages` method")
+        target_module = target_module.get_stages(module_dict['stages'])
 
-    not_found_modules = module_names - found_module_names
-    if len(not_found_modules) != 0:
-        logging.warning(f'get_modules_by_names function can`t find modules with names {not_found_modules}')
-    return found_modules
+    if 'module_class' in module_dict:
+        module_class = module_dict['module_class']
+        filtered_modules = nn.ModuleList()
+        for mod in target_module.modules():
+            if module_class in inspect.getmro(type(mod)):
+                filtered_modules.append(mod)
+        if len(filtered_modules) == 0:
+            raise ValueError(f"Module `{module_name}` does not have submodules of `{module_class}` type.")
+        target_module = filtered_modules
+
+    return target_module
 
 
 @CALLBACKS.register_class
 class FreezeUnfreeze(BaseFinetuning):
-    """Callback to freeze modules and incremental unfreeze this modules during training."""
+    """Callback to freeze modules and incremental unfreeze these modules during training."""
 
-    def __init__(self, epoch2module_names: Dict[int, List[str]], freeze_bn: bool = True):
+    def __init__(self, freeze_modules: List[Dict[str, Any]], top_down_freeze_order: bool = True):
         """Init FreezeUnfreeze.
 
         Args:
-            epoch2module_names: Incremental unfreeze dictionary. Keys - unfreeze epoch,
-                values - module names to unfreeze. By default, all the modules named in this dictionary
-                will be frozen before training.
-            freeze_bn: If freeze batch norm layers.
+            freeze_modules: List with dictionaries of models to be free-unfreeze.
+            Possible keys of dictionaries are:
+                `module_name` (int): module name relative to the task on which freeze will be applied.
+                    For example `backbone.layer1`. Empty string in the `module_name` stands for the whole model.
+                `epoch` (int, optional): number of epochs when module to be frozen.
+                    If not specified then module will be frozen forever.
+                `stages` (int, optional): if specified with module_name that has ``get_stage(int)`` attribute,
+                    apply freeze only on modules returned from ``get_stage(int)``. Usually used with
+                    a backbone: stage 0 refers to stem layer, stage `i` refers to `i-1` model layer block and all
+                    preceding blocks. If not specified, all blocks will be frozen.
+                `module_class` (str, optional): if specified apply freeze only on the modules of the same type or
+                    successors of specified type.
+                `bn_requires_grad` (bool, optional): if specified batch norms' gradients will be set up separately
+                    from other blocks. If not specified processed as the other modules.
+                `bn_eval` (bool, optional): if specified batch norms train mode will be set up separately
+                    from other blocks. If not specified processed as the other modules.
+            top_down_freeze_order: If true freeze policy will be applied firstly on top modules, e.g. `aa` > `aa.bb`.
+                In this case freeze policy `aa.bb` will overwrite freeze policy in `aa` related to `aa.bb`.
+                Otherwise, freeze policy for bottom layers will be applied first.
         """
         super().__init__()
-        self.epoch2module_names = epoch2module_names
-        self.freeze_bn = freeze_bn
-
-    @staticmethod
-    def freeze_module(module: Module, is_train: bool = False) -> None:
-        """Freeze or unfreeze module depending on the parameter is_train.
-
-        Args:
-            module: A given module
-            is_train: Whether to unfreeze the module.
-        """
-        if isinstance(module, _BatchNorm):
-            module.track_running_stats = is_train
-        # recursion could yield duplicate parameters for parent modules w/ parameters so disabling it
-        for param in module.parameters(recurse=False):
-            param.requires_grad = is_train
+        self.freeze_modules = sorted(freeze_modules, key=lambda x: x['module_name'], reverse=not top_down_freeze_order)
 
     @staticmethod
     def make_trainable(modules: Union[Module, Iterable[Union[Module, Iterable]]]) -> None:
@@ -76,33 +87,43 @@ class FreezeUnfreeze(BaseFinetuning):
         """
         modules = BaseFinetuning.flatten_modules(modules)
         for module in modules:
-            FreezeUnfreeze.freeze_module(module, is_train=True)
+            if isinstance(module, _BatchNorm):
+                module.track_running_stats = True
+            # recursion could yield duplicate parameters for parent modules w/ parameters so disabling it
+            for param in module.parameters(recurse=False):
+                param.requires_grad = True
 
     @staticmethod
-    def freeze(modules: Union[Module, Iterable[Union[Module, Iterable]]], train_bn: bool = True) -> None:
+    def freeze(modules: Union[Module, Iterable[Union[Module, Iterable]]], module_dict: Dict[str, Any]) -> None:
         """Freezes the parameters of the provided modules.
 
         Args:
             modules: A given module or an iterable of modules
-            train_bn: If True, leave the BatchNorm layers in training mode
+            module_dict: If True, leave the BatchNorm layers in training mode
 
         Returns:
             None
         """
         modules = BaseFinetuning.flatten_modules(modules)
         for mod in modules:
-            if isinstance(mod, _BatchNorm) and train_bn:
-                FreezeUnfreeze.make_trainable(mod)
-            else:
-                FreezeUnfreeze.freeze_module(mod, is_train=False)
+            for param in mod.parameters(recurse=False):
+                param.requires_grad = False
+
+            if isinstance(mod, _BatchNorm):
+                if "bn_requires_grad" in module_dict:
+                    for param in mod.parameters(recurse=False):
+                        param.requires_grad = module_dict['bn_requires_grad']
+
+                if "bn_eval" in module_dict:
+                    mod.track_running_stats = module_dict['bn_eval']
 
     @staticmethod
     def unfreeze_and_add_param_group(
-        modules: Union[Module, Iterable[Union[Module, Iterable]]],
-        optimizer: Optimizer,
-        lr: Optional[float] = None,
-        initial_denom_lr: float = 10.0,
-        train_bn: bool = True,
+            modules: Union[Module, Iterable[Union[Module, Iterable]]],
+            optimizer: Optimizer,
+            lr: Optional[float] = None,
+            initial_denom_lr: float = 10.0,
+            train_bn: bool = True,
     ) -> None:
         """Unfreezes a module and adds its parameters to an optimizer.
 
@@ -133,18 +154,9 @@ class FreezeUnfreeze(BaseFinetuning):
             pl_module: Module which contain unfreeze modules.
         """
         # Get all module names from self.epoch2module_names
-        freeze_module_names = []
-        for module_names in self.epoch2module_names.values():
-            freeze_module_names += module_names
-
-        # Get modules by module names
-        freeze_modules = get_modules_by_names(freeze_module_names, pl_module)
-
-        train_bn = not self.freeze_bn
-
-        # Freeze every module
-        for freeze_module in freeze_modules:
-            self.freeze(freeze_module, train_bn=train_bn)
+        for module_dict in self.freeze_modules:
+            freeze_module = get_modules(module_dict, pl_module)
+            self.freeze(freeze_module, module_dict)
 
     def finetune_function(self, pl_module: nn.Module, current_epoch: int, optimizer: Optimizer, optimizer_idx: int):
         """Unfreeze modules from self.epoch2module_names dictionary.
@@ -155,13 +167,20 @@ class FreezeUnfreeze(BaseFinetuning):
             optimizer: Optimizer.
             optimizer_idx: Optimizer index.
         """
-        if current_epoch in self.epoch2module_names:
-            # Get modules to unfreeze
-            unfreeze_modules = get_modules_by_names(self.epoch2module_names[current_epoch], pl_module)
-            # Unfreeze every module
-            for unfreeze_module in unfreeze_modules:
-                self.unfreeze_and_add_param_group(
-                    modules=unfreeze_module,
-                    optimizer=optimizer,
-                    train_bn=True,
-                )
+        for module_dict in self.freeze_modules:
+            if module_dict.get('epoch', None) == current_epoch:
+                # Get modules to unfreeze
+                unfreeze_modules = get_modules(module_dict, pl_module)
+                # Unfreeze every module
+                for unfreeze_module in unfreeze_modules:
+                    self.unfreeze_and_add_param_group(
+                        modules=unfreeze_module,
+                        optimizer=optimizer,
+                        train_bn=True,
+                    )
+
+        # Freeze blocks with overlapping policies that have later unfreeze epoch
+        for module_dict in self.freeze_modules:
+            if 'epoch' in module_dict and module_dict['epoch'] > current_epoch:
+                freeze_module = get_modules(module_dict, pl_module)
+                self.freeze(freeze_module, module_dict)

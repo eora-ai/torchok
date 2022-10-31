@@ -1,4 +1,5 @@
-from abc import ABC
+import abc
+from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 from timm.models.features import FeatureHooks
@@ -38,6 +39,17 @@ class BaseBackbone(BaseModel, ABC):
         if self._out_encoder_channels is None:
             raise ValueError('TorchOk Backbones must have self._out_feature_channels attribute.')
         return tuple(self._out_encoder_channels)
+
+    @abstractmethod
+    def get_stages(self, stage: int) -> Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        pass
 
 
 class BackboneWrapper(Module):

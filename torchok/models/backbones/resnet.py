@@ -450,6 +450,18 @@ class ResNet(BaseBackbone):
         x = self.layer4(x)
         return x
 
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        output = [self.conv1, self.bn1, self.act1, self.maxpool]
+        layers = [self.layer1, self.layer2, self.layer3, self.layer4]
+        return nn.ModuleList(output + layers[:stage])
+
 
 def _create_resnet(variant, pretrained=False, **kwargs):
     return build_model_with_cfg(ResNet, variant, pretrained, pretrained_strict=False,
