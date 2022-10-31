@@ -38,7 +38,8 @@ def get_modules(module_dict: Dict[str, Any], module: nn.Module) -> List[nn.Modul
         module_class = module_dict['module_class']
         filtered_modules = nn.ModuleList()
         for mod in target_module.modules():
-            if module_class in inspect.getmro(type(mod)):
+            parents = [i.__name__ for i in inspect.getmro(type(mod))]
+            if module_class in parents:
                 filtered_modules.append(mod)
         if len(filtered_modules) == 0:
             raise ValueError(f"Module `{module_name}` does not have submodules of `{module_class}` type.")
