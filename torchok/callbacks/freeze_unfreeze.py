@@ -9,7 +9,7 @@ from torch.optim.optimizer import Optimizer
 
 from torchok.constructor import CALLBACKS
 
-nn.Dropout
+
 def get_modules(module_dict: Dict[str, Any], module: nn.Module) -> List[nn.Module]:
     """Return modules by its names.
 
