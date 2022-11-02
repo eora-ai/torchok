@@ -63,7 +63,7 @@ class RetrievalDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  gallery_folder: Optional[str] = '',
                  gallery_list_csv_path: Optional[str] = None,
-                 use_scores: bool = False,
+                 use_scores: bool = True,
                  use_labels: bool = False,
                  input_dtype: str = 'float32',
                  img_list_map_column: dict = None,
@@ -184,7 +184,7 @@ class RetrievalDataset(ImageDataset):
             if img_id not in self.imgid2index:
                 self.imgid2index[img_id] = index
 
-        self.scores, self.is_query = self._get_targets()
+        self.scores, self.is_query, self.targets = self._get_targets()
 
     def get_raw(self, idx: int) -> dict:
         """Get item sample.
@@ -199,15 +199,13 @@ class RetrievalDataset(ImageDataset):
         if idx < self.n_queries + self.n_relevant:
             img_id = self.index2imgid[idx]
             image_path = self.data_folder / self.imgid2path[img_id]
-            label = self.index2label[idx]
         else:
             img_id = self.gallery_index2imgid[idx]
             image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
-            label = -1
 
         image = self._read_image(image_path)
         sample = {'image': image, 'index': idx, 'is_query': self.is_query[idx],
-                  'scores': self.scores[idx], 'target': label}
+                  'scores': self.scores[idx], 'target': self.targets[idx]}
         return self._apply_transform(self.augment, sample)
 
     def __getitem__(self, index: int) -> dict:
@@ -236,7 +234,7 @@ class RetrievalDataset(ImageDataset):
 
         for index in range(len(self.matches)):
             row_relevants, row_scores = [], []
-            if pd.isna(self.matches.iloc[index]):
+            if pd.isna(self.matches.iloc[index][self.matches_map_column['relevant']]):
                 relevant_arr.append(list())
                 relevance_scores.append(list())
                 continue
@@ -290,6 +288,7 @@ class RetrievalDataset(ImageDataset):
         """
         scores = torch.zeros((len(self), self.n_queries), dtype=torch.float32)
         is_query = torch.full((len(self),), -1, dtype=torch.int32)
+        targets = torch.full((len(self),), -1, dtype=torch.long)
 
         for index in range(self.n_queries):
             relevant_img_idxs = self.relevant_arr[index]
@@ -298,8 +297,9 @@ class RetrievalDataset(ImageDataset):
             for rel_index, score in zip(relevant_indices, relevance_scores):
                 scores[rel_index][index] = score
             is_query[index] = index
+            targets[index] = self.index2label[index]
 
-        return scores, is_query
+        return scores, is_query, targets
 
     def __len__(self) -> int:
         """Length of Retrieval dataset."""
