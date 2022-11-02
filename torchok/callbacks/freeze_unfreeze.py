@@ -58,7 +58,7 @@ class FreezeUnfreeze(BaseFinetuning):
         Args:
             freeze_modules: List with dictionaries of models to be free-unfreeze.
             Possible keys of dictionaries are:
-                `module_name` (int): module name relative to the task on which freeze will be applied.
+                `module_name` (str): module name relative to the task on which freeze will be applied.
                     For example `backbone.layer1`. Empty string in the `module_name` stands for the whole model.
                 `epoch` (int, optional): number of epochs when module to be frozen.
                     If not specified then module will be frozen forever.
