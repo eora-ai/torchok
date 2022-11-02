@@ -72,10 +72,9 @@ class Model(LightningModule):
                 # classification
                 metric.update(vectors=batch['vectors'], targets=batch['targets'])
             else:
-                
                 # representation
-                metric.update(vectors=batch['vectors'], scores=batch['scores'], targets=batch['targets'],
-                              query_idxs=batch['queries_idxs'])
+                metric.update(vectors=batch['vectors'], scores=batch['scores'],
+                              targets=batch['targets'], query_idxs=batch['queries_idxs'])
         return loss
 
     def configure_optimizers(self):
