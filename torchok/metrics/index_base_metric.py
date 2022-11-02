@@ -11,8 +11,6 @@ import torch
 from torchmetrics import Metric
 from sklearn.preprocessing import normalize
 
-from torchok.constructor import METRICS
-
 
 class DatasetType(Enum):
     CLASSIFICATION = 'classification'
@@ -72,7 +70,7 @@ class IndexBasedMeter(Metric, ABC):
             normalize_vectors: If true vectors will be normalized, otherwise no.
             target_averaging: If true compute metric averaging by the targets.
             k_as_target_len: If true will be search with different top k, where these different k is the length of each
-                uniq target vectors. If true parameter k will be not use. 
+                uniq target vectors. If true parameter k will be not use.
 
         Raises:
             ValueError: If metric or dataset is not correct write.
@@ -165,7 +163,8 @@ class IndexBasedMeter(Metric, ABC):
             # if classification dataset
             targets = torch.cat(self.targets).numpy()
             # prepare data
-            relevant_idxs, faiss_vector_idxs, query_row_idxs, query_as_relevant = self.prepare_classification_data(targets)
+            relevant_idxs, faiss_vector_idxs,\
+                query_row_idxs, query_as_relevant = self.prepare_classification_data(targets)
             # mock scores and query column indexes because it belongs to representation data
             scores = None
             query_column_idxs = None
@@ -218,7 +217,7 @@ class IndexBasedMeter(Metric, ABC):
                                      scores: np.ndarray, k: int) -> List:
         """Process obtained data after faiss search for metric function. Output of this function will be use like
         *args for self.metric_func and will be call in self.compute() method
-        
+
         Args:
             closest_scores: Faiss found closest scores.
             closest_idxs: Faiss found closest reference indexes.
@@ -286,7 +285,7 @@ class IndexBasedMeter(Metric, ABC):
 
         # found query row indexes which are in relevant, i.e. belong to queries and relevants simultaneously
         query_as_relevant = np.any(scores[query_row_idxs, :] > 0, axis=-1)
-    
+
         faiss_vector_idxs = np.arange(len(scores))
         # remove query indexes which is not relevant for another query from faiss_vector_idxs
         clear_query_idxs = query_row_idxs[~query_as_relevant]
@@ -363,7 +362,7 @@ class IndexBasedMeter(Metric, ABC):
         faiss_output_delete_firs = np.delete(faiss_output[query_as_relevant], 0, axis=1)
 
         # and delete last element where query is not in faiss index i.e batch_query_as_relevant==False,
-            # because we use k + 1 for search
+        # because we use k + 1 for search
         faiss_output_delete_last = np.delete(faiss_output[~query_as_relevant], -1, axis=1)
 
         q_count, k = faiss_output.shape

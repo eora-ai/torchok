@@ -138,7 +138,8 @@ class RetrievalDataset(ImageDataset):
             image_list_dtype[self.img_list_map_column['label']] = int
 
         self.matches = pd.read_csv(self.data_folder / matches_csv_path, usecols=matches_usecols, dtype=matches_dtype)
-        self.img_paths = pd.read_csv(self.data_folder / img_list_csv_path, usecols=image_list_usecols, dtype=image_list_dtype)
+        self.img_paths = pd.read_csv(self.data_folder / img_list_csv_path,
+                                     usecols=image_list_usecols, dtype=image_list_dtype)
 
         self.n_relevant, self.n_queries, self.index2imgid, self.index2label,\
             self.relevant_arr, self.relevance_scores = self._parse_match_csv()
@@ -239,7 +240,7 @@ class RetrievalDataset(ImageDataset):
                 relevant_arr.append(list())
                 relevance_scores.append(list())
                 continue
-            
+
             rel_img_idxs = list(map(int, self.matches.iloc[index]['relevant'].split()))
 
             if self.use_scores:

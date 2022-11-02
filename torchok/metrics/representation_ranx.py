@@ -1,9 +1,8 @@
 import numpy as np
 from ranx.metrics import average_precision, hit_rate, ndcg, precision, recall
-from sklearn.preprocessing import normalize
-from typing import Callable, Generator, List, Optional, Tuple, Union
+from typing import Callable, List, Optional
 
-from torchok.metrics.index_base_metric import DatasetType, IndexBasedMeter
+from torchok.metrics.index_base_metric import IndexBasedMeter
 from torchok.constructor import METRICS
 
 
@@ -33,8 +32,8 @@ class RanxBasedMeter(IndexBasedMeter):
         # the index of relevant will be also float and after that inside ranx it may be fail to compare
         # relevant int index with our relevant float index.
         searched_closest_idxs = map(lambda idx:
-                            np.stack((closest_idxs[idx], [1] * len(closest_idxs[idx])), axis=1),
-                            np.arange(len(closest_idxs)))
+                                    np.stack((closest_idxs[idx], [1] * len(closest_idxs[idx])), axis=1),
+                                    np.arange(len(closest_idxs)))
 
         if query_col_idxs is None:
             search_relevants_idxs = map(lambda r: np.stack((r, np.ones_like(r)), axis=1), relevants_idxs)
@@ -47,7 +46,7 @@ class RanxBasedMeter(IndexBasedMeter):
 
         search_relevants_idxs = list(search_relevants_idxs)
         searched_closest_idxs = list(searched_closest_idxs)
-        return [search_relevants_idxs, searched_closest_idxs, k-1]
+        return [search_relevants_idxs, searched_closest_idxs, k - 1]
 
 
 @METRICS.register_class
