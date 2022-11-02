@@ -9,16 +9,18 @@ from torch.utils.data import DataLoader, Dataset
 from .data import VECTORS, TARGETS, SCORES, SCORES_QUERY_AS_RELEVANT, QUERIES_IDX
 
 
-MAX_K = 6
+MAX_K = 5
 BATCH_SIZE = 1
 EPOCH = 1
 
 
 class RepresentationData(Dataset):
-    def __init__(self, vectors: Tensor = VECTORS, scores: Tensor = SCORES, queries_idxs: Tensor = QUERIES_IDX):
+    def __init__(self, vectors: Tensor = VECTORS, scores: Tensor = SCORES,
+                 queries_idxs: Tensor = QUERIES_IDX, targets: Tensor = TARGETS):
         self.vectors = vectors
         self.scores = scores
         self.queries_idxs = queries_idxs
+        self.targets = targets
 
     def __len__(self):
         return len(self.vectors)
@@ -27,7 +29,8 @@ class RepresentationData(Dataset):
         output = {
             'vectors': self.vectors[item],
             'scores': self.scores[item],
-            'queries_idxs': self.queries_idxs[item]
+            'queries_idxs': self.queries_idxs[item],
+            'targets': self.targets[item]
         }
         return output
 
@@ -69,8 +72,9 @@ class Model(LightningModule):
                 # classification
                 metric.update(vectors=batch['vectors'], targets=batch['targets'])
             else:
+                
                 # representation
-                metric.update(vectors=batch['vectors'], scores=batch['scores'],
+                metric.update(vectors=batch['vectors'], scores=batch['scores'], targets=batch['targets'],
                               query_idxs=batch['queries_idxs'])
         return loss
 

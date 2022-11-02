@@ -32,7 +32,7 @@ class RanxBasedMeter(IndexBasedMeter):
         # already sorted our examples by faiss. So if we change score = 1 to distance with type float
         # the index of relevant will be also float and after that inside ranx it may be fail to compare
         # relevant int index with our relevant float index.
-        closest_idxs = map(lambda idx:
+        searched_closest_idxs = map(lambda idx:
                             np.stack((closest_idxs[idx], [1] * len(closest_idxs[idx])), axis=1),
                             np.arange(len(closest_idxs)))
 
@@ -46,8 +46,8 @@ class RanxBasedMeter(IndexBasedMeter):
                                         zip(relevants_idxs, query_col_idxs))
 
         search_relevants_idxs = list(search_relevants_idxs)
-        closest_idxs = list(closest_idxs)
-        return list(search_relevants_idxs, closest_idxs, k-1)
+        searched_closest_idxs = list(searched_closest_idxs)
+        return [search_relevants_idxs, searched_closest_idxs, k-1]
 
 
 @METRICS.register_class

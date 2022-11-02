@@ -187,25 +187,30 @@ class IndexBasedMeter(Metric, ABC):
             uniq_targets = np.unique(targets)
             target_indexes_split = np.array([np.where(targets == uniq_targets[i])[0] for i in range(len(uniq_targets))])
         else:
-            target_indexes_split = np.arange([np.arange(len(targets))])
+            target_indexes_split = np.array([np.arange(len(targets))])
 
         # compute metric
-        metric = 0
+        metric = []
         for target_indexes in target_indexes_split:
-            
             curr_target_metric = 0
+            query_target_idxs = np.isin(query_row_idxs, target_indexes)
             k = len(target_indexes) if self.k_as_target_len else self.search_k
+            curr_query_col_idxs = None if query_column_idxs is None else query_column_idxs[query_target_idxs]
+            curr_relevant_idxs = relevant_idxs[query_target_idxs]
+            curr_query_row_idxs = query_row_idxs[query_target_idxs]
+            currquery_as_relevant = query_as_relevant[query_target_idxs]
             # create relevant, closest generator
-            generator = self.query_generator(index, vectors, relevant_idxs[target_indexes],
-                                            query_row_idxs[target_indexes], faiss_vector_idxs,
-                                            query_as_relevant[target_indexes], k,
-                                            scores, query_column_idxs[target_indexes])
+            generator = self.query_generator(index, vectors, curr_relevant_idxs,
+                                             curr_query_row_idxs, faiss_vector_idxs,
+                                             currquery_as_relevant, k,
+                                             scores, curr_query_col_idxs)
             for batch_size, args in generator:
-                metric += batch_size * self.metric_func(**args).mean()
+                curr_target_metric += batch_size * self.metric_func(*args).mean()
 
-            curr_target_metric /= len(query_row_idxs[target_indexes])
-            metric += curr_target_metric
-        metric /= len(target_indexes_split)
+            curr_target_metric /= len(curr_query_row_idxs)
+            metric.append(curr_target_metric)
+
+        metric = np.mean(metric)
         return metric
 
     def process_data_for_metric_func(self, closest_scores: np.ndarray, closest_idxs: np.ndarray,
@@ -278,11 +283,10 @@ class IndexBasedMeter(Metric, ABC):
         # array of row indexes in scores matrix, also this index belong to vector storage, need to get query vector in
         # search study
         query_row_idxs = np.where(is_query)[0]
-        # check if query is relevant for another
-        all_relevant_idxs = np.where(np.any(scores[query_row_idxs, :] > 0, axis=-1))[0]
-        # found query row indexes which are in relevant, i.e. belong to queries and relevants simultaneously
-        query_as_relevant = np.in1d(query_row_idxs, all_relevant_idxs)
 
+        # found query row indexes which are in relevant, i.e. belong to queries and relevants simultaneously
+        query_as_relevant = np.any(scores[query_row_idxs, :] > 0, axis=-1)
+    
         faiss_vector_idxs = np.arange(len(scores))
         # remove query indexes which is not relevant for another query from faiss_vector_idxs
         clear_query_idxs = query_row_idxs[~query_as_relevant]
@@ -343,7 +347,7 @@ class IndexBasedMeter(Metric, ABC):
         query_as_relevant = np.full((len(gallery_idxs),), fill_value=True, dtype=np.bool)
         return relevant_idxs, gallery_idxs, query_row_idxs, query_as_relevant
 
-    def cleare_faiss_output(faiss_output: np.ndarray, query_as_relevant: np.ndarray) -> np.ndarray:
+    def cleare_faiss_output(self, faiss_output: np.ndarray, query_as_relevant: np.ndarray) -> np.ndarray:
         """Remove first element from faiss output array if query in index, and remove last element because
         this class search k + 1 element.
 
@@ -422,8 +426,10 @@ class IndexBasedMeter(Metric, ABC):
             # queries_idxs - indexes of vectors (global indexes), so queries vectors can be obtained
             # like vectors[queries_idxs[batch_idxs]]
             batch_closest_scores, local_closest_idxs = index.search(vectors[batch_query_row_idxs], k=k)
+
             # get global indexes
             batch_closest_idxs = faiss_vector_idxs[local_closest_idxs]
+
             # remove first element from faiss output if query in faiss index and remove last element
             # because k + 1 element searched
             batch_closest_scores = self.cleare_faiss_output(batch_closest_scores, batch_query_as_relevant)
