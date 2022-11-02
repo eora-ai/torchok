@@ -17,7 +17,6 @@ task:
     workers: true
 
 
-
 joint_loss:
   losses:
     - name: CrossEntropyLoss
