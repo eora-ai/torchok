@@ -52,7 +52,7 @@ class TestRetrievalDataset(TestImageDataset, unittest.TestCase):
 
     def test_target_tensor(self):
         ds = self.create_dataset()
-        true_target = torch.tensor([ 0,  0,  0, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+        true_target = torch.tensor([0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1])
         self.assertTrue(torch.equal(ds.targets, true_target))
 
     def test_target_tensor_when_gallery_false(self):
