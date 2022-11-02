@@ -1,7 +1,10 @@
+import torch
+import numpy as np
+
 from torchmetrics import (RetrievalFallOut, RetrievalHitRate, RetrievalMAP, RetrievalMRR, RetrievalNormalizedDCG,
                           RetrievalPrecision, RetrievalPrecisionRecallCurve, RetrievalRPrecision, RetrievalRecall)
 from sklearn.preprocessing import normalize
-from typing import Callable, Generator, List, Optional, Tuple, Union
+from typing import Callable, Generator, List, Optional, Tuple, Union, Any, Dict
 
 from torchok.metrics.index_base_metric import DatasetType, IndexBasedMeter
 from torchok.constructor import METRICS
@@ -28,7 +31,7 @@ class TorchMetricBaseMetr(IndexBasedMeter):
                  **kwargs):
         metric_func = metric_class(**metric_params)
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
-                         metric_func=metric_func, k=k, search_batch_size=search_batch_size, metric_func=metric_func,
+                         metric_func=metric_func, k=k, search_batch_size=search_batch_size,
                          normalize_vectors=normalize_vectors, target_averaging=target_averaging,
                          k_as_target_len=k_as_target_len, **kwargs)
 

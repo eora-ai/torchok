@@ -424,15 +424,11 @@ class IndexBasedMeter(Metric, ABC):
             batch_closest_scores, local_closest_idxs = index.search(vectors[batch_query_row_idxs], k=k)
             # get global indexes
             batch_closest_idxs = faiss_vector_idxs[local_closest_idxs]
-
             # remove first element from faiss output if query in faiss index and remove last element
             # because k + 1 element searched
             batch_closest_scores = self.cleare_faiss_output(batch_closest_scores, batch_query_as_relevant)
             batch_closest_idxs = self.cleare_faiss_output(batch_closest_idxs, batch_query_as_relevant)
 
-            # preds = torch.tensor(closest_scores)
-            # target =[np.isin(batch_closest_idxs[i], batch_relevants_idxs[i]) for i in range(len(batch_closest_idxs))]
-            # indexes = torch.tensor([target.shape[1]*[i] for i in range(len(target))], dtype=torch.long)
             metric_input_list = self.process_data_for_metric_func(closest_scores=batch_closest_scores,
                                                                   closest_idxs=batch_closest_idxs,
                                                                   relevants_idxs=batch_relevants_idxs,

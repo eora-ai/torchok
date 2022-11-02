@@ -1,3 +1,4 @@
+import numpy as np
 from ranx.metrics import average_precision, hit_rate, ndcg, precision, recall
 from sklearn.preprocessing import normalize
 from typing import Callable, Generator, List, Optional, Tuple, Union
@@ -58,7 +59,7 @@ class HitAtKMeter(RanxBasedMeter):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=hit_rate, k=k, search_batch_size=search_batch_size,
                          normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len**kwargs)
+                         k_as_target_len=k_as_target_len, **kwargs)
 
 
 @METRICS.register_class
@@ -70,7 +71,7 @@ class PrecisionAtKMeter(RanxBasedMeter):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=precision, k=k, search_batch_size=search_batch_size,
                          normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len**kwargs)
+                         k_as_target_len=k_as_target_len, **kwargs)
 
 
 @METRICS.register_class
@@ -82,7 +83,7 @@ class RecallAtKMeter(RanxBasedMeter):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=recall, k=k, search_batch_size=search_batch_size,
                          normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len**kwargs)
+                         k_as_target_len=k_as_target_len, **kwargs)
 
 
 @METRICS.register_class
@@ -94,7 +95,7 @@ class MeanAveragePrecisionAtKMeter(RanxBasedMeter):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=average_precision, k=k, search_batch_size=search_batch_size,
                          normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len**kwargs)
+                         k_as_target_len=k_as_target_len, **kwargs)
 
 
 @METRICS.register_class
@@ -106,4 +107,4 @@ class NDCGAtKMeter(RanxBasedMeter):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=ndcg, k=k, search_batch_size=search_batch_size,
                          normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len**kwargs)
+                         k_as_target_len=k_as_target_len, **kwargs)
