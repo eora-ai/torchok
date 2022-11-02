@@ -31,7 +31,9 @@ from torchmetrics.regression import (  # noqa: E402
 
 from torchok.constructor import METRICS
 from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
-import torchok.metrics.representation
+import torchok.metrics.index_base_metric
+import torchok.metrics.representation_ranx
+import torchok.metrics.representation_torchmetrics
 
 METRICS.register_class(AUC)
 METRICS.register_class(AUROC)

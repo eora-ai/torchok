@@ -61,8 +61,10 @@ class RetrievalDataset(ImageDataset):
                  img_list_csv_path: str,
                  transform: Union[BasicTransform, BaseCompose],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 gallery_folder: Optional[str] = None,
+                 gallery_folder: Optional[str] = '',
                  gallery_list_csv_path: Optional[str] = None,
+                 use_scores: bool = False,
+                 use_labels: bool = False,
                  input_dtype: str = 'float32',
                  img_list_map_column: dict = None,
                  matches_map_column: dict = None,
@@ -84,6 +86,8 @@ class RetrievalDataset(ImageDataset):
                             When the gallery not specified all the remaining queries and relevant
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
+            use_scores: If use scores from match csv, overwise score will be 1 for every pair.
+            use_labels: If use label from image list csv, overwise label will be 0 for every image.
             input_dtype: Data type of the torch tensors related to the image.
             img_list_map_column: Image mapping column names. Key - TorchOk column name, Value - csv column name.
                 default value: {'image_path': 'image_path', 'img_id': 'id'}
@@ -105,25 +109,38 @@ class RetrievalDataset(ImageDataset):
             grayscale=grayscale
         )
         self.data_folder = Path(data_folder)
-        self.matches_map_column = matches_map_column or {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
-        self.img_list_map_column = img_list_map_column or {'image_path': 'image_path', 'img_id': 'id'}
-        self.gallery_map_column = gallery_map_column or {'gallery_path': 'image_path', 'gallery_id': 'id'}
+        self.use_scores = use_scores
+        self.use_labels = use_labels
 
-        self.matches = pd.read_csv(self.data_folder / matches_csv_path,
-                                   usecols=[self.matches_map_column['query'],
-                                            self.matches_map_column['relevant'],
-                                            self.matches_map_column['scores']],
-                                   dtype={self.matches_map_column['query']: int,
-                                          self.matches_map_column['relevant']: str,
-                                          self.matches_map_column['scores']: str})
+        default_matches_map_column = {'query': 'query', 'relevant': 'relevant'}
+        if self.use_scores:
+            default_matches_map_column['scores'] = 'scores'
 
-        self.img_paths = pd.read_csv(self.data_folder / img_list_csv_path,
-                                     usecols=[self.img_list_map_column['img_id'],
-                                              self.img_list_map_column['image_path']],
-                                     dtype={self.img_list_map_column['img_id']: int,
-                                            self.img_list_map_column['image_path']: str})
+        default_img_list_map_column = {'image_path': 'image_path', 'img_id': 'id'}
+        if self.use_labels:
+            default_img_list_map_column['label'] = 'label'
 
-        self.n_relevant, self.n_queries, self.index2imgid,\
+        default_gallery_map_column = {'gallery_path': 'image_path', 'gallery_id': 'id'}
+        self.gallery_map_column = gallery_map_column or default_gallery_map_column
+
+        self.matches_map_column = matches_map_column or default_matches_map_column
+        matches_usecols = [self.matches_map_column['query'], self.matches_map_column['relevant']]
+        matches_dtype = {self.matches_map_column['query']: int, self.matches_map_column['relevant']: str}
+        if self.use_scores:
+            matches_usecols.append(self.matches_map_column['scores'])
+            matches_dtype[self.matches_map_column['scores']] = str
+
+        self.img_list_map_column = img_list_map_column or default_img_list_map_column
+        image_list_usecols = [self.img_list_map_column['img_id'], self.img_list_map_column['image_path']]
+        image_list_dtype = {self.img_list_map_column['img_id']: int, self.img_list_map_column['image_path']: str}
+        if self.use_labels:
+            image_list_usecols.append(self.img_list_map_column['label'])
+            image_list_dtype[self.img_list_map_column['label']] = int
+
+        self.matches = pd.read_csv(self.data_folder / matches_csv_path, usecols=matches_usecols, dtype=matches_dtype)
+        self.img_paths = pd.read_csv(self.data_folder / img_list_csv_path, usecols=image_list_usecols, dtype=image_list_dtype)
+
+        self.n_relevant, self.n_queries, self.index2imgid, self.index2label,\
             self.relevant_arr, self.relevance_scores = self._parse_match_csv()
 
         self.imgid2path = dict(zip(self.img_paths[self.img_list_map_column['img_id']],
@@ -136,7 +153,7 @@ class RetrievalDataset(ImageDataset):
         self.imgid2path = {img_id: self.imgid2path[img_id] for img_id in self.index2imgid.values()}
         self.data_len = self.n_queries + self.n_relevant
 
-        if gallery_folder is not None:
+        if gallery_list_csv_path is not None:
             self.gallery_folder = Path(gallery_folder)
             self.gallery_list_csv_path = gallery_list_csv_path
             if self.gallery_list_csv_path is None:
@@ -181,12 +198,15 @@ class RetrievalDataset(ImageDataset):
         if idx < self.n_queries + self.n_relevant:
             img_id = self.index2imgid[idx]
             image_path = self.data_folder / self.imgid2path[img_id]
+            label = self.index2label[idx]
         else:
             img_id = self.gallery_index2imgid[idx]
             image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
+            label = -1
 
         image = self._read_image(image_path)
-        sample = {'image': image, 'index': idx, 'is_query': self.is_query[idx], 'scores': self.scores[idx]}
+        sample = {'image': image, 'index': idx, 'is_query': self.is_query[idx],
+                  'scores': self.scores[idx], 'target': label}
         return self._apply_transform(self.augment, sample)
 
     def __getitem__(self, index: int) -> dict:
@@ -215,8 +235,17 @@ class RetrievalDataset(ImageDataset):
 
         for index in range(len(self.matches)):
             row_relevants, row_scores = [], []
+            if pd.isna(self.matches.iloc[index]):
+                relevant_arr.append(list())
+                relevance_scores.append(list())
+                continue
+            
             rel_img_idxs = list(map(int, self.matches.iloc[index]['relevant'].split()))
-            rel_img_scores = list(map(float, self.matches.iloc[index]['scores'].split()))
+
+            if self.use_scores:
+                rel_img_scores = list(map(float, self.matches.iloc[index]['scores'].split()))
+            else:
+                rel_img_scores = [1] * len(rel_img_idxs)
 
             if len(rel_img_idxs) != len(rel_img_scores):
                 raise ValueError(f'Relevant objects list must match relevance scores list in size.'
@@ -233,7 +262,19 @@ class RetrievalDataset(ImageDataset):
 
             relevant_arr.append(row_relevants)
             relevance_scores.append(row_scores)
-        return n_relevant, n_queries, index2imgid, relevant_arr, relevance_scores
+
+        all_image_ids = self.img_paths.loc[:, 'id'].tolist()
+        for img_id in all_image_ids:
+            if img_id not in index2imgid.values():
+                index2imgid[n_queries + n_relevant] = img_id
+                n_relevant += 1
+
+        index2label = dict()
+        for index, img_id in index2imgid.items():
+            label = 0 if not self.use_labels else self.img_paths.loc[self.img_paths.id == img_id].iloc[0]['label']
+            index2label[index] = label
+
+        return n_relevant, n_queries, index2imgid, index2label, relevant_arr, relevance_scores
 
     def _get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor]:
         """Maping item scores to queues.
