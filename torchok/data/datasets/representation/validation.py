@@ -63,6 +63,7 @@ class RetrievalDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  gallery_folder: Optional[str] = '',
                  gallery_list_csv_path: Optional[str] = None,
+                 use_query_without_relevants: bool = False,
                  input_dtype: str = 'float32',
                  channel_order: str = 'rgb',
                  grayscale: bool = False):
@@ -81,6 +82,7 @@ class RetrievalDataset(ImageDataset):
                             When the gallery not specified all the remaining queries and relevant
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
+            use_query_without_relevants: If use query without relevants.
             input_dtype: Data type of the torch tensors related to the image.
             channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
@@ -96,7 +98,7 @@ class RetrievalDataset(ImageDataset):
             grayscale=grayscale
         )
         self.data_folder = Path(data_folder)
-
+        self.use_query_without_relevants = use_query_without_relevants
         matches_dtype = {'query': int, 'relevant': str, 'scores': str}
         img_paths_dtype = {'img_id': int, 'image_path': str, 'label': int}
 
@@ -202,9 +204,14 @@ class RetrievalDataset(ImageDataset):
             row_relevants, row_scores = [], []
             # if no relevants add empty list to relevants
             if pd.isna(self.matches.iloc[index]['relevant']):
-                relevant_arr.append(list())
-                relevance_scores.append(list())
-                continue
+                if self.use_query_without_relevants:
+                    relevant_arr.append(list())
+                    relevance_scores.append(list())
+                    continue
+                else:
+                    raise ValueError('Match csv has query without relevant elements. Check your csv or set '
+                                     'parameter use_query_without_relevants=True to set relevants as empty '
+                                     'for these queries.')
 
             rel_img_idxs = list(map(int, self.matches.iloc[index]['relevant'].split()))
 
