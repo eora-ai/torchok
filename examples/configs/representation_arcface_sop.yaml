@@ -127,7 +127,6 @@ trainer:
   max_epochs: 30
   precision: 32
   num_sanity_val_steps: 0
-  limit_train_batches: 10
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
