@@ -122,7 +122,7 @@ callbacks:
           - module_name: backbone
             module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
             bn_requires_grad: false
-            bn_eval: false
+            bn_track_running_stats: false
 #        All dropouts in the network will be disabled forever during the training
 #          - module_name: ""
 #            module_class: Dropout

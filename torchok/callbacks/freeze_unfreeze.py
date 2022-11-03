@@ -70,7 +70,7 @@ class FreezeUnfreeze(BaseFinetuning):
                     successors of specified type.
                 `bn_requires_grad` (bool, optional): if specified batch norms' gradients will be set up separately
                     from other blocks. If not specified processed as the other modules.
-                `bn_eval` (bool, optional): if specified batch norms train mode will be set up separately
+                `bn_track_running_stats` (bool, optional): if specified batch norms train mode will be set up separately
                     from other blocks. If not specified processed as the other modules.
             top_down_freeze_order: If true freeze policy will be applied firstly on top modules, e.g. `aa` > `aa.bb`.
                 In this case freeze policy `aa.bb` will overwrite freeze policy in `aa` related to `aa.bb`.
@@ -115,8 +115,8 @@ class FreezeUnfreeze(BaseFinetuning):
                     for param in mod.parameters(recurse=False):
                         param.requires_grad = module_dict['bn_requires_grad']
 
-                if "bn_eval" in module_dict:
-                    mod.track_running_stats = module_dict['bn_eval']
+                if "bn_track_running_stats" in module_dict:
+                    mod.track_running_stats = module_dict['bn_track_running_stats']
 
     @staticmethod
     def unfreeze_and_add_param_group(
@@ -169,7 +169,7 @@ class FreezeUnfreeze(BaseFinetuning):
             optimizer_idx: Optimizer index.
         """
         for module_dict in self.freeze_modules:
-            if module_dict.get('epoch', None) == current_epoch:
+            if ('epoch' in module_dict) and (module_dict['epoch'] <= current_epoch):
                 # Get modules to unfreeze
                 unfreeze_modules = get_modules(module_dict, pl_module)
                 # Unfreeze every module
@@ -182,6 +182,6 @@ class FreezeUnfreeze(BaseFinetuning):
 
         # Freeze blocks with overlapping policies that have later unfreeze epoch
         for module_dict in self.freeze_modules:
-            if 'epoch' in module_dict and module_dict['epoch'] > current_epoch:
+            if ('epoch' not in module_dict) or ('epoch' in module_dict and module_dict['epoch'] > current_epoch):
                 freeze_module = get_modules(module_dict, pl_module)
                 self.freeze(freeze_module, module_dict)
