@@ -151,5 +151,5 @@ metrics:
       search_batch_size: 256
     mapping:
       vectors: emb1
-      targets: target
+      group_labels: target
     phases: [VALID]
