@@ -154,3 +154,14 @@ class TestRepresentationMetrics(unittest.TestCase):
         answer = TORCHMETRICS_REPRESENTATION_ANSWERS['average_precision']
         for k in range(1, MAX_K + 1):
             np.testing.assert_almost_equal(answer[k], metrics[k])
+
+    def test_torchmetrics_average_precision_when_dataset_is_representation_and_target_averaging(self):
+        metric_class = RetrievalMAPMeter
+        metric_params = {
+            'dataset_type': 'representation',
+            'group_averaging': True
+        }
+        metrics = run_model(metric_class, metric_params)
+        answer = TORCHMETRICS_REPRESENTATION_ANSWERS['average_precision_target_averaging']
+        for k in range(1, MAX_K + 1):
+            np.testing.assert_almost_equal(answer[k], metrics[k])

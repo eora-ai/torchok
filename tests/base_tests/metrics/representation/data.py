@@ -42,6 +42,9 @@ VECTORS = torch.tensor([
 # Create labels for Classification Dataset
 TARGETS = torch.tensor([0, 0, 1, 2, 1, 2, 2, 2, 1])
 
+# Create labels for groups calculationg
+GROUP_LABELS = torch.tensor([0, 0, 0, 1, 1, 1, 1, 0, 1])
+
 # Need create queries_idxs and scores for Representation Dataset
 QUERIES_IDX = torch.tensor([0, -1, 1, 2, -1, -1, -1, -1, -1])
 
@@ -262,6 +265,14 @@ TORCHMETRICS_REPRESENTATION_ANSWERS = {
         4: 0.5555556,
         5: 0.5111111,
         6: 0.5111111
+    },
+    'average_precision_target_averaging': {
+        1: 0.5,
+        2: 0.5,
+        3: 0.6666667,
+        4: 0.6666667,
+        5: 0.59999996,
+        6: 0.59999996
     }
 }
 

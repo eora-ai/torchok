@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Dict, List
 
 import torch
 import pandas as pd
@@ -64,7 +64,7 @@ class RetrievalDataset(ImageDataset):
                  gallery_folder: Optional[str] = '',
                  gallery_list_csv_path: Optional[str] = None,
                  use_scores: bool = True,
-                 use_labels: bool = False,
+                 use_group_labels: bool = False,
                  input_dtype: str = 'float32',
                  img_list_map_column: dict = None,
                  matches_map_column: dict = None,
@@ -87,7 +87,7 @@ class RetrievalDataset(ImageDataset):
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
             use_scores: If use scores from match csv, overwise score will be 1 for every pair.
-            use_labels: If use label from image list csv, overwise label will be 0 for every image.
+            use_group_labels: If use label from image list csv, overwise label will be 0 for every image.
             input_dtype: Data type of the torch tensors related to the image.
             img_list_map_column: Image mapping column names. Key - TorchOk column name, Value - csv column name.
                 default value: {'image_path': 'image_path', 'img_id': 'id'}
@@ -110,14 +110,14 @@ class RetrievalDataset(ImageDataset):
         )
         self.data_folder = Path(data_folder)
         self.use_scores = use_scores
-        self.use_labels = use_labels
+        self.use_group_labels = use_group_labels
 
         default_matches_map_column = {'query': 'query', 'relevant': 'relevant'}
         if self.use_scores:
             default_matches_map_column['scores'] = 'scores'
 
         default_img_list_map_column = {'image_path': 'image_path', 'img_id': 'id'}
-        if self.use_labels:
+        if self.use_group_labels:
             default_img_list_map_column['label'] = 'label'
 
         default_gallery_map_column = {'gallery_path': 'image_path', 'gallery_id': 'id'}
@@ -133,7 +133,7 @@ class RetrievalDataset(ImageDataset):
         self.img_list_map_column = img_list_map_column or default_img_list_map_column
         image_list_usecols = [self.img_list_map_column['img_id'], self.img_list_map_column['image_path']]
         image_list_dtype = {self.img_list_map_column['img_id']: int, self.img_list_map_column['image_path']: str}
-        if self.use_labels:
+        if self.use_group_labels:
             image_list_usecols.append(self.img_list_map_column['label'])
             image_list_dtype[self.img_list_map_column['label']] = int
 
@@ -184,7 +184,7 @@ class RetrievalDataset(ImageDataset):
             if img_id not in self.imgid2index:
                 self.imgid2index[img_id] = index
 
-        self.scores, self.is_query, self.targets = self._get_targets()
+        self.scores, self.query_idxs, self.group_labels = self._get_targets()
 
     def get_raw(self, idx: int) -> dict:
         """Get item sample.
@@ -193,8 +193,9 @@ class RetrievalDataset(ImageDataset):
             sample: dict, where
             sample['image'] - np.array, representing image after augmentations, dtype=input_dtype.
             sample['index'] - Index.
-            sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
+            sample['query_idxs'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
             sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
+            sample['group_labels'] - Int tensor, with image classification label.
         """
         if idx < self.n_queries + self.n_relevant:
             img_id = self.index2imgid[idx]
@@ -204,8 +205,8 @@ class RetrievalDataset(ImageDataset):
             image_path = self.gallery_folder / self.gallery_imgid2path[img_id]
 
         image = self._read_image(image_path)
-        sample = {'image': image, 'index': idx, 'is_query': self.is_query[idx],
-                  'scores': self.scores[idx], 'target': self.targets[idx]}
+        sample = {'image': image, 'index': idx, 'query_idxs': self.query_idxs[idx],
+                  'scores': self.scores[idx], 'group_labels': self.group_labels[idx]}
         return self._apply_transform(self.augment, sample)
 
     def __getitem__(self, index: int) -> dict:
@@ -215,8 +216,9 @@ class RetrievalDataset(ImageDataset):
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['index'] - Index.
-            sample['is_query'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
+            sample['query_idxs'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
             sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
+            sample['group_labels'] - Int tensor, with image classification label.
         """
         sample = self.get_raw(index)
         sample = self._apply_transform(self.transform, sample)
@@ -242,7 +244,7 @@ class RetrievalDataset(ImageDataset):
             rel_img_idxs = list(map(int, self.matches.iloc[index]['relevant'].split()))
 
             if self.use_scores:
-                rel_img_scores = list(map(float, self.matches.iloc[index]['scores'].split()))
+                rel_img_scores = list(map(float, self.matches.iloc[index][self.matches_map_column['scores']].split()))
             else:
                 rel_img_scores = [1] * len(rel_img_idxs)
 
@@ -270,25 +272,26 @@ class RetrievalDataset(ImageDataset):
 
         index2label = dict()
         for index, img_id in index2imgid.items():
-            label = 0 if not self.use_labels else self.img_paths.loc[self.img_paths.id == img_id].iloc[0]['label']
+            label = 0 if not self.use_group_labels else self.img_paths.loc[self.img_paths.id == img_id].iloc[0]['label']
             index2label[index] = label
 
         return n_relevant, n_queries, index2imgid, index2label, relevant_arr, relevance_scores
 
-    def _get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor]:
+    def _get_targets(self) -> Tuple[torch.FloatTensor, torch.IntTensor, torch.IntTensor]:
         """Maping item scores to queues.
 
         Returns:
-            Two target tensor: scores and is_query.
+            Three target tensor: scores, query_idxs and group_labels.
             Scores is tensor with shape: (len(self), n_queries).
-            Is_query is tensor with shape: (len(self)).
+            Query_idxs is tensor with shape: (len(self)).
+            group_labels is thensor with shape: (len(self))
 
         Raises:
             ValueError: If relevant objects list doesn't match with relevance scores list in size.
         """
         scores = torch.zeros((len(self), self.n_queries), dtype=torch.float32)
-        is_query = torch.full((len(self),), -1, dtype=torch.int32)
-        targets = torch.full((len(self),), -1, dtype=torch.long)
+        query_idxs = torch.full((len(self),), -1, dtype=torch.int32)
+        group_labels = torch.full((len(self),), -1, dtype=torch.long)
 
         for index in range(self.n_queries):
             relevant_img_idxs = self.relevant_arr[index]
@@ -296,10 +299,12 @@ class RetrievalDataset(ImageDataset):
             relevant_indices = [self.imgid2index[img_id] for img_id in relevant_img_idxs]
             for rel_index, score in zip(relevant_indices, relevance_scores):
                 scores[rel_index][index] = score
-            is_query[index] = index
-            targets[index] = self.index2label[index]
+            query_idxs[index] = index
 
-        return scores, is_query, targets
+        for index, label in self.index2label.items():
+            group_labels[index] = label
+
+        return scores, query_idxs, group_labels
 
     def __len__(self) -> int:
         """Length of Retrieval dataset."""

@@ -48,12 +48,21 @@ class TestRetrievalDataset(TestImageDataset, unittest.TestCase):
 
     def test_output_format(self):
         ds = self.create_dataset()
-        self.assertListEqual(list(ds[0].keys()), ['image', 'index', 'is_query', 'scores', 'target'])
+        self.assertListEqual(list(ds[0].keys()), ['image', 'index', 'query_idxs', 'scores', 'group_labels'])
 
-    def test_target_tensor(self):
+    def test_group_label_tensor(self):
+        self.dataset_kwargs['use_group_labels'] = True
         ds = self.create_dataset()
-        true_target = torch.tensor([0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1])
-        self.assertTrue(torch.equal(ds.targets, true_target))
+        true_target = torch.tensor([0, 0, 1, 1, 0, 1, 2, 0, 2, 2, 1, 3])
+        self.assertTrue(torch.equal(ds.group_labels, true_target))
+
+    def test_group_label_tensor_when_use_gallery_true(self):
+        self.dataset_kwargs['use_group_labels'] = True
+        self.dataset_kwargs['gallery_folder'] = self.gallery_folder
+        self.dataset_kwargs['gallery_list_csv_path'] = self.gallery_list_csv_path
+        ds = self.create_dataset()
+        true_target = torch.tensor([0, 0, 1, 1, 0, 1, 2, 0, 2, 2, 1, 3, -1, -1, -1, -1, -1, -1, -1, -1])
+        self.assertTrue(torch.equal(ds.group_labels, true_target))
 
     def test_target_tensor_when_gallery_false(self):
         ds = self.create_dataset()

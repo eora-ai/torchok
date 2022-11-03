@@ -6,7 +6,7 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 
-from .data import VECTORS, TARGETS, SCORES, SCORES_QUERY_AS_RELEVANT, QUERIES_IDX
+from .data import VECTORS, TARGETS, SCORES, SCORES_QUERY_AS_RELEVANT, QUERIES_IDX, GROUP_LABELS
 
 
 MAX_K = 6
@@ -16,11 +16,11 @@ EPOCH = 1
 
 class RepresentationData(Dataset):
     def __init__(self, vectors: Tensor = VECTORS, scores: Tensor = SCORES,
-                 queries_idxs: Tensor = QUERIES_IDX, targets: Tensor = TARGETS):
+                 queries_idxs: Tensor = QUERIES_IDX, group_labels: Tensor = GROUP_LABELS):
         self.vectors = vectors
         self.scores = scores
         self.queries_idxs = queries_idxs
-        self.targets = targets
+        self.group_labels = group_labels
 
     def __len__(self):
         return len(self.vectors)
@@ -30,7 +30,7 @@ class RepresentationData(Dataset):
             'vectors': self.vectors[item],
             'scores': self.scores[item],
             'queries_idxs': self.queries_idxs[item],
-            'targets': self.targets[item]
+            'group_labels': self.group_labels[item]
         }
         return output
 
@@ -70,11 +70,11 @@ class Model(LightningModule):
         for metric in self.metrics:
             if self.dataset == 'classification':
                 # classification
-                metric.update(vectors=batch['vectors'], targets=batch['targets'])
+                metric.update(vectors=batch['vectors'], group_labels=batch['targets'])
             else:
                 # representation
                 metric.update(vectors=batch['vectors'], scores=batch['scores'],
-                              targets=batch['targets'], query_idxs=batch['queries_idxs'])
+                              group_labels=batch['group_labels'], query_idxs=batch['queries_idxs'])
         return loss
 
     def configure_optimizers(self):

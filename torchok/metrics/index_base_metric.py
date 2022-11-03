@@ -46,7 +46,7 @@ class IndexBasedMeter(Metric, ABC):
 
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
                  metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None,
-                 normalize_vectors: bool = False, target_averaging: bool = False, k_as_target_len: bool = False,
+                 normalize_vectors: bool = False, group_averaging: bool = False, k_as_target_len: bool = False,
                  **kwargs):
         """Initialize IndexBasedMeter.
 
@@ -68,7 +68,7 @@ class IndexBasedMeter(Metric, ABC):
             k: Number of top closest indexes to get.
             search_batch_size: The size for one FAISS search request.
             normalize_vectors: If true vectors will be normalized, otherwise no.
-            target_averaging: If true compute metric averaging by the targets.
+            group_averaging: If true compute metric averaging by the targets.
             k_as_target_len: If true will be search with different top k, where these different k is the length of each
                 uniq target vectors. If true parameter k will be not use.
 
@@ -82,7 +82,7 @@ class IndexBasedMeter(Metric, ABC):
         self.metric_distance = distance_enum_mapping[metric_distance]
         self.metric_func = metric_func
         self.normalize_vectors = normalize_vectors
-        self.target_averaging = target_averaging
+        self.group_averaging = group_averaging
         self.k_as_target_len = k_as_target_len
         # set search_batch_size as num CPUs if search_batch_size is None
         self.search_batch_size = torch.get_num_threads() if search_batch_size is None else search_batch_size
@@ -98,20 +98,20 @@ class IndexBasedMeter(Metric, ABC):
         self.add_state('vectors', default=[], dist_reduce_fx=None)
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
-            self.add_state('targets', default=[], dist_reduce_fx=None)
+            self.add_state('group_labels', default=[], dist_reduce_fx=None)
         else:
             # if representation dataset
             self.add_state('query_idxs', default=[], dist_reduce_fx=None)
             self.add_state('scores', default=[], dist_reduce_fx=None)
-            self.add_state('targets', default=[], dist_reduce_fx=None)
+            self.add_state('group_labels', default=[], dist_reduce_fx=None)
 
-    def update(self, vectors: torch.Tensor, targets: Optional[torch.Tensor] = None,
+    def update(self, vectors: torch.Tensor, group_labels: Optional[torch.Tensor] = None,
                query_idxs: Optional[torch.Tensor] = None, scores: Optional[torch.Tensor] = None):
         """Append tensors in storage.
 
         Args:
             vectors: Often it would be embeddings, size (batch_size, embedding_size).
-            targets: The labels for every vector in classification mode, size (batch_size).
+            group_labels: The labels for every vector in classification mode, size (batch_size).
             query_idxs: Integer tensor where values >= 0 represent indices of queries with corresponding
                 vectors in vectors tensor and value -1 indicates that the corresponding vector isn't a query.
             scores: The score tensor, see representation dataset for more information,
@@ -124,10 +124,10 @@ class IndexBasedMeter(Metric, ABC):
         vectors = vectors.detach().cpu()
         self.vectors.append(vectors)
         if self.dataset_type == DatasetType.CLASSIFICATION:
-            if targets is None:
-                raise ValueError("In classification dataset target must be not None.")
-            targets = targets.detach().cpu()
-            self.targets.append(targets)
+            if group_labels is None:
+                raise ValueError("In classification dataset group_labels must be not None.")
+            group_labels = group_labels.detach().cpu()
+            self.group_labels.append(group_labels)
         else:
             if query_idxs is None:
                 raise ValueError("In representation dataset query_numbers must be not None.")
@@ -140,8 +140,8 @@ class IndexBasedMeter(Metric, ABC):
             scores = scores.detach().cpu()
             self.scores.append(scores)
 
-            targets = targets.detach().cpu()
-            self.targets.append(targets)
+            group_labels = group_labels.detach().cpu()
+            self.group_labels.append(group_labels)
 
     def compute(self) -> float:
         """Compute metric value.
@@ -161,10 +161,10 @@ class IndexBasedMeter(Metric, ABC):
 
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
-            targets = torch.cat(self.targets).numpy()
+            group_labels = torch.cat(self.group_labels).numpy()
             # prepare data
             relevant_idxs, faiss_vector_idxs,\
-                query_row_idxs, query_as_relevant = self.prepare_classification_data(targets)
+                query_row_idxs, query_as_relevant = self.prepare_classification_data(group_labels)
             # mock scores and query column indexes because it belongs to representation data
             scores = None
             query_column_idxs = None
@@ -172,7 +172,7 @@ class IndexBasedMeter(Metric, ABC):
             # if representation dataset
             scores = torch.cat(self.scores).numpy()
             query_idxs = torch.cat(self.query_idxs).numpy()
-            targets = torch.cat(self.targets).numpy()
+            group_labels = torch.cat(self.group_labels).numpy()
             # prepare data
             relevant_idxs, faiss_vector_idxs, query_column_idxs,\
                 query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
@@ -181,19 +181,20 @@ class IndexBasedMeter(Metric, ABC):
         vectors = vectors.astype(np.float32)
         index = self.build_index(vectors[faiss_vector_idxs])
 
-        # split query by targets if metric compute target averaging
-        if self.target_averaging:
-            uniq_targets = np.unique(targets)
-            target_indexes_split = np.array([np.where(targets == uniq_targets[i])[0] for i in range(len(uniq_targets))])
+        # split query by group_label if metric compute target averaging
+        if self.group_averaging:
+            uniq_group_labels = np.unique(group_labels)
+            group_indexes_split = np.array([np.where(group_labels == uniq_group_labels[i])[0]
+                                            for i in range(len(uniq_group_labels))])
         else:
-            target_indexes_split = np.array([np.arange(len(targets))])
+            group_indexes_split = np.array([np.arange(len(group_labels))])
 
         # compute metric
         metric = []
-        for target_indexes in target_indexes_split:
+        for group_indexes in group_indexes_split:
             curr_target_metric = 0
-            query_target_idxs = np.isin(query_row_idxs, target_indexes)
-            k = len(target_indexes) if self.k_as_target_len else self.search_k
+            query_target_idxs = np.isin(query_row_idxs, group_indexes)
+            k = len(group_indexes) if self.k_as_target_len else self.search_k
             curr_query_col_idxs = None if query_column_idxs is None else query_column_idxs[query_target_idxs]
             curr_relevant_idxs = relevant_idxs[query_target_idxs]
             curr_query_row_idxs = query_row_idxs[query_target_idxs]
