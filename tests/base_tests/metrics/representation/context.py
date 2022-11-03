@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from .data import VECTORS, TARGETS, SCORES, SCORES_QUERY_AS_RELEVANT, QUERIES_IDX
 
 
-MAX_K = 5
+MAX_K = 6
 BATCH_SIZE = 1
 EPOCH = 1
 

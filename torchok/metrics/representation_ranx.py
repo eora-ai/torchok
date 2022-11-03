@@ -46,6 +46,7 @@ class RanxBasedMeter(IndexBasedMeter):
 
         search_relevants_idxs = list(search_relevants_idxs)
         searched_closest_idxs = list(searched_closest_idxs)
+
         return [search_relevants_idxs, searched_closest_idxs, k - 1]
 
 
