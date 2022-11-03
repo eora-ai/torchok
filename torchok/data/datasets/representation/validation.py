@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple, Union, Dict, List
+from typing import Optional, Tuple, Union
 
 import torch
 import pandas as pd
@@ -63,12 +63,7 @@ class RetrievalDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  gallery_folder: Optional[str] = '',
                  gallery_list_csv_path: Optional[str] = None,
-                 use_scores: bool = True,
-                 use_group_labels: bool = False,
                  input_dtype: str = 'float32',
-                 img_list_map_column: dict = None,
-                 matches_map_column: dict = None,
-                 gallery_map_column: dict = None,
                  channel_order: str = 'rgb',
                  grayscale: bool = False):
         """Init RetrievalDataset class.
@@ -86,15 +81,7 @@ class RetrievalDataset(ImageDataset):
                             When the gallery not specified all the remaining queries and relevant
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
-            use_scores: If use scores from match csv, overwise score will be 1 for every pair.
-            use_group_labels: If use label from image list csv, overwise label will be 0 for every image.
             input_dtype: Data type of the torch tensors related to the image.
-            img_list_map_column: Image mapping column names. Key - TorchOk column name, Value - csv column name.
-                default value: {'image_path': 'image_path', 'img_id': 'id'}
-            matches_map_column: Matches mapping column names. Key - TorchOk column name, Value - csv column name.
-                default value: {'query': 'query', 'relevant': 'relevant', 'scores': 'scores'}
-            gallery_map_column: Gallery mapping column names. Key - TorchOk column name, Value - csv column name.
-                default value: {'gallery_path': 'image_path', 'gallery_id': 'id'}
             channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
 
@@ -109,43 +96,22 @@ class RetrievalDataset(ImageDataset):
             grayscale=grayscale
         )
         self.data_folder = Path(data_folder)
-        self.use_scores = use_scores
-        self.use_group_labels = use_group_labels
 
-        default_matches_map_column = {'query': 'query', 'relevant': 'relevant'}
-        if self.use_scores:
-            default_matches_map_column['scores'] = 'scores'
+        matches_dtype = {'query': int, 'relevant': str, 'scores': str}
+        img_paths_dtype = {'img_id': int, 'image_path': str, 'label': int}
 
-        default_img_list_map_column = {'image_path': 'image_path', 'img_id': 'id'}
-        if self.use_group_labels:
-            default_img_list_map_column['label'] = 'label'
-
-        default_gallery_map_column = {'gallery_path': 'image_path', 'gallery_id': 'id'}
-        self.gallery_map_column = gallery_map_column or default_gallery_map_column
-
-        self.matches_map_column = matches_map_column or default_matches_map_column
-        matches_usecols = [self.matches_map_column['query'], self.matches_map_column['relevant']]
-        matches_dtype = {self.matches_map_column['query']: int, self.matches_map_column['relevant']: str}
-        if self.use_scores:
-            matches_usecols.append(self.matches_map_column['scores'])
-            matches_dtype[self.matches_map_column['scores']] = str
-
-        self.img_list_map_column = img_list_map_column or default_img_list_map_column
-        image_list_usecols = [self.img_list_map_column['img_id'], self.img_list_map_column['image_path']]
-        image_list_dtype = {self.img_list_map_column['img_id']: int, self.img_list_map_column['image_path']: str}
-        if self.use_group_labels:
-            image_list_usecols.append(self.img_list_map_column['label'])
-            image_list_dtype[self.img_list_map_column['label']] = int
-
-        self.matches = pd.read_csv(self.data_folder / matches_csv_path, usecols=matches_usecols, dtype=matches_dtype)
+        self.matches = pd.read_csv(self.data_folder / matches_csv_path, dtype=matches_dtype)
         self.img_paths = pd.read_csv(self.data_folder / img_list_csv_path,
-                                     usecols=image_list_usecols, dtype=image_list_dtype)
+                                     dtype=img_paths_dtype)
+
+        self.use_scores = 'scores' in self.matches.columns
+        self.use_group_labels = 'label' in self.img_paths.columns
 
         self.n_relevant, self.n_queries, self.index2imgid, self.index2label,\
             self.relevant_arr, self.relevance_scores = self._parse_match_csv()
 
-        self.imgid2path = dict(zip(self.img_paths[self.img_list_map_column['img_id']],
-                                   self.img_paths[self.img_list_map_column['image_path']]))
+        self.imgid2path = dict(zip(self.img_paths['id'],
+                                   self.img_paths['image_path']))
 
         if len(self.imgid2path) != len(self.img_paths):
             raise ValueError('Image csv have the same id for different image paths')
@@ -160,13 +126,11 @@ class RetrievalDataset(ImageDataset):
             if self.gallery_list_csv_path is None:
                 raise ValueError('Argument `gallery_list_csv_path` is None, please send path to gallery_list_csv_path')
 
+            gallery_paths_dtype = {'id': int, 'image_path': str}
             self.gallery_paths = pd.read_csv(self.gallery_folder / self.gallery_list_csv_path,
-                                             usecols=[self.gallery_map_column['gallery_id'],
-                                                      self.gallery_map_column['gallery_path']],
-                                             dtype={self.gallery_map_column['gallery_id']: int,
-                                                    self.gallery_map_column['gallery_path']: str})
-            self.gallery_imgid2path = dict(zip(self.gallery_paths[self.gallery_map_column['gallery_id']],
-                                               self.gallery_paths[self.gallery_map_column['gallery_path']]))
+                                             dtype=gallery_paths_dtype)
+            self.gallery_imgid2path = dict(zip(self.gallery_paths['id'],
+                                               self.gallery_paths['image_path']))
 
             if len(self.gallery_imgid2path) != len(self.gallery_paths):
                 raise ValueError('Gallery csv have the same id for different image paths')
@@ -236,7 +200,8 @@ class RetrievalDataset(ImageDataset):
 
         for index in range(len(self.matches)):
             row_relevants, row_scores = [], []
-            if pd.isna(self.matches.iloc[index][self.matches_map_column['relevant']]):
+            # if no relevants add empty list to relevants
+            if pd.isna(self.matches.iloc[index]['relevant']):
                 relevant_arr.append(list())
                 relevance_scores.append(list())
                 continue
@@ -244,7 +209,7 @@ class RetrievalDataset(ImageDataset):
             rel_img_idxs = list(map(int, self.matches.iloc[index]['relevant'].split()))
 
             if self.use_scores:
-                rel_img_scores = list(map(float, self.matches.iloc[index][self.matches_map_column['scores']].split()))
+                rel_img_scores = list(map(float, self.matches.iloc[index]['scores'].split()))
             else:
                 rel_img_scores = [1] * len(rel_img_idxs)
 
