@@ -262,6 +262,17 @@ class SwinTransformerV2(BaseBackbone):
                     state_dict.pop(k)
         return super(SwinTransformerV2, self).load_state_dict(state_dict, strict)
 
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        output = [self.patch_embed, self.pos_drop]
+        return nn.ModuleList(output + list(self.layers[:stage]))
+
 
 def _create_swin_transformer_v2(variant, pretrained=False, **kwargs):
     kwargs_filter = ('num_classes', 'global_pool', 'in_chans')

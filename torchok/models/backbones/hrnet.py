@@ -234,6 +234,23 @@ class HighResolutionNet(BaseBackbone):
         """
         return [x] + self.forward(x)
 
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        output = [self.conv1, self.bn1, self.act1, self.conv2, self.bn2, self.act2]
+        layers = [[self.layer1],
+                  [self.transition1, self.stage2],
+                  [self.transition2, self.stage3],
+                  [self.transition3, self.stage4]]
+        for i in range(stage):
+            output += layers[i]
+        return nn.ModuleList(output)
+
 
 def _create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
     """Create HighResolutionNet base model.

@@ -5,6 +5,7 @@ Licensed under MIT License [see LICENSE for details]
 """
 import itertools
 from typing import List, Optional, Tuple
+import logging
 
 import torch
 import torch.nn as nn
@@ -519,6 +520,17 @@ class DaViT(BaseBackbone):
         out = x_out.view(-1, H, W, self.embed_dims[last_stage]).permute(0, 3, 1, 2).contiguous()
 
         return out
+
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        logging.warning("DaViT does not support `get_stages`. Return the whole model")
+        return self
 
 
 def _create_davit(variant: str, pretrained: bool = False, **kwargs):
