@@ -173,6 +173,15 @@ callbacks:
       save_last: true
       mode: max
       save_weights_only: False
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+        - module_name: backbone
+          stage: 1
+        - module_name: backbone
+          module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+          bn_requires_grad: false
+          bn_track_running_stats: false
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
