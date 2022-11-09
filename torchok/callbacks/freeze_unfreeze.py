@@ -172,13 +172,11 @@ class FreezeUnfreeze(BaseFinetuning):
             if ('epoch' in module_dict) and (module_dict['epoch'] <= current_epoch):
                 # Get modules to unfreeze
                 unfreeze_modules = get_modules(module_dict, pl_module)
-                # Unfreeze every module
-                for unfreeze_module in unfreeze_modules:
-                    self.unfreeze_and_add_param_group(
-                        modules=unfreeze_module,
-                        optimizer=optimizer,
-                        train_bn=True,
-                    )
+                self.unfreeze_and_add_param_group(
+                    modules=unfreeze_modules,
+                    optimizer=optimizer,
+                    train_bn=True,
+                )
 
         # Freeze blocks with overlapping policies that have later unfreeze epoch
         for module_dict in self.freeze_modules:
