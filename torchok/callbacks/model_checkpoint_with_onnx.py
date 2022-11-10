@@ -16,11 +16,10 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
     """A class checkpointing ckpt and onnx format."""
     ONNX_EXTENSION = '.onnx'
 
-    def __init__(self, *args, export_to_onnx=False, onnx_params=None, remove_head=False, **kwargs):
+    def __init__(self, *args, onnx_params=None, remove_head=False, **kwargs):
         """Init ModelCheckpointWithOnnx."""
         super().__init__(*args, **kwargs)
         self.onnx_params = onnx_params if onnx_params is not None else {}
-        self.export_to_onnx = export_to_onnx
         self.remove_head = remove_head
 
     def _update_best_and_save(
@@ -63,26 +62,22 @@ class ModelCheckpointWithOnnx(ModelCheckpoint):
         self._save_checkpoint(trainer, filepath)
 
         if del_filepath is not None and filepath != del_filepath:
-            trainer.strategy.remove_checkpoint(del_filepath)
-            if self.export_to_onnx:
-                onnx_del_path = del_filepath.replace(self.FILE_EXTENSION, self.ONNX_EXTENSION)
-                trainer.strategy.remove_checkpoint(onnx_del_path)
+            onnx_del_path = del_filepath.replace(self.FILE_EXTENSION, self.ONNX_EXTENSION)
+            trainer.strategy.remove_checkpoint(onnx_del_path)
 
     def _save_checkpoint(self, trainer: Trainer, filepath: str) -> None:
         """Override _save_checkpoint."""
-        trainer.save_checkpoint(filepath, self.save_weights_only)
         self._last_global_step_saved = trainer.global_step
         if trainer.is_global_zero:
-            if self.export_to_onnx:
-                # DDP mode use some wrappers, and we go down to BaseModel.
-                model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
-                input_tensors = [getattr(model, name) for name in model.input_tensor_names]
-                model = model.as_module()
-                if self.remove_head:
-                    model = model[:-1]
-                model = deepcopy(model)
-                onnx_file_path = filepath.replace(self.FILE_EXTENSION, self.ONNX_EXTENSION)
-                torch.onnx.export(model, tuple(input_tensors), onnx_file_path, **self.onnx_params)
+            # DDP mode use some wrappers, and we go down to BaseModel.
+            model = trainer.model.module.module if trainer.num_devices > 1 else trainer.model
+            input_tensors = [getattr(model, name) for name in model.input_tensor_names]
+            model = model.as_module()
+            if self.remove_head:
+                model = model[:-1]
+            model = deepcopy(model)
+            onnx_file_path = filepath.replace(self.FILE_EXTENSION, self.ONNX_EXTENSION)
+            torch.onnx.export(model, tuple(input_tensors), onnx_file_path, **self.onnx_params)
 
             for logger in trainer.loggers:
                 logger.after_save_checkpoint(proxy(self))
