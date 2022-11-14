@@ -12,12 +12,12 @@ from torchok.constructor import CALLBACKS
 
 
 @CALLBACKS.register_class
-class ModelCheckpointWithOnnx(ModelCheckpoint):
-    """A class checkpointing ckpt and onnx format."""
+class CheckpointONNX(ModelCheckpoint):
+    """A class checkpointing onnx format."""
     ONNX_EXTENSION = '.onnx'
 
     def __init__(self, *args, onnx_params=None, remove_head=False, **kwargs):
-        """Init ModelCheckpointWithOnnx."""
+        """Init CheckpointONNX."""
         super().__init__(*args, **kwargs)
         self.onnx_params = onnx_params if onnx_params is not None else {}
         self.remove_head = remove_head

@@ -5,7 +5,7 @@ from pytorch_lightning.callbacks import (BackboneFinetuning, DeviceStatsMonitor,
 
 import torchok.callbacks.finalize_logger
 import torchok.callbacks.freeze_unfreeze
-import torchok.callbacks.model_checkpoint_with_onnx
+import torchok.callbacks.checkpoint_onnx
 from torchok.constructor import CALLBACKS
 
 CALLBACKS.register_class(BackboneFinetuning)
