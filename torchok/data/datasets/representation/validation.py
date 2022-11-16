@@ -82,13 +82,13 @@ class RetrievalDataset(ImageDataset):
                             When the gallery not specified all the remaining queries and relevant
                             will be considered as negative samples to a given query-relevant set.
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
-            use_query_without_relevants: If use query without relevants.
+            use_query_without_relevants: If True, use query without relevants.
             input_dtype: Data type of the torch tensors related to the image.
             channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: If True, image will be read as grayscale otherwise as RGB.
 
         Raises:
-            ValueError: if gallery_folder True, but gallery_list_csv_path is None
+            ValueError: if gallery_folder `True`, but `gallery_list_csv_path` is `None`.
         """
         super().__init__(
             transform=transform,
@@ -116,7 +116,7 @@ class RetrievalDataset(ImageDataset):
                                    self.img_paths['image_path']))
 
         if len(self.imgid2path) != len(self.img_paths):
-            raise ValueError('Image csv have the same id for different image paths')
+            raise ValueError('Image csv have the same id for different image paths.')
 
         self.data_len = self.n_queries + self.n_not_query
 
@@ -124,7 +124,7 @@ class RetrievalDataset(ImageDataset):
             self.gallery_folder = Path(gallery_folder)
             self.gallery_list_csv_path = gallery_list_csv_path
             if self.gallery_list_csv_path is None:
-                raise ValueError('Argument `gallery_list_csv_path` is None, please send path to gallery_list_csv_path')
+                raise ValueError('Argument `gallery_list_csv_path` is None, please send path to gallery_list_csv_path.')
 
             gallery_paths_dtype = {'id': int, 'image_path': str}
             self.gallery_paths = pd.read_csv(self.gallery_folder / self.gallery_list_csv_path,
@@ -133,7 +133,7 @@ class RetrievalDataset(ImageDataset):
                                                self.gallery_paths['image_path']))
 
             if len(self.gallery_imgid2path) != len(self.gallery_paths):
-                raise ValueError('Gallery csv have the same id for different image paths')
+                raise ValueError('Gallery csv have the same id for different image paths.')
 
             self.n_gallery = 0
             self.gallery_index2imgid = {}
@@ -149,12 +149,12 @@ class RetrievalDataset(ImageDataset):
         """Get item sample.
 
         Returns:
-            sample: dict, where
-            sample['image'] - np.array, representing image after augmentations, dtype=input_dtype.
-            sample['index'] - Index.
-            sample['query_idxs'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
-            sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
-            sample['group_labels'] - Int tensor, with image classification label.
+            dict with fields:
+                `image` - np.array, representing image after augmentations, dtype=input_dtype.
+                `index` - Index from DataFrame.
+                `query_idxs` - Int tensor, if item is query: return index of this query in target matrix, else -1.
+                `scores` - Float tensor shape (1, len(n_query)), relevant scores of current item.
+                `group_labels` - Int tensor with image classification label.
         """
         if idx < self.n_queries + self.n_not_query:
             img_id = self.index2imgid[idx]
@@ -172,12 +172,12 @@ class RetrievalDataset(ImageDataset):
         """Get item sample.
 
         Returns:
-            sample: dict, where
-            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
-            sample['index'] - Index.
-            sample['query_idxs'] - Int tensor, if item is query: return index of this query in target matrix, else -1.
-            sample['scores'] - Float tensor shape (1, len(n_query)), relevant scores of current item.
-            sample['group_labels'] - Int tensor, with image classification label.
+            dict with fields:
+                `image` - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
+                `index` - Index from DataFrame.
+                `query_idxs` - Int tensor, if item is query: return index of this query in target matrix, else -1.
+                `scores` - Float tensor shape (1, len(n_query)), relevant scores of current item.
+                `group_labels` - Int tensor with image classification label.
         """
         sample = self.get_raw(index)
         sample = self._apply_transform(self.transform, sample)
@@ -188,14 +188,14 @@ class RetrievalDataset(ImageDataset):
     def _parse_match_csv(self) -> Tuple[int, int, dict, dict, dict, list, list]:
         """Parse input csvs into needed data.
 
-        Retruns:
-            n_not_query: Number of images in self.img_paths which is not query
-            n_queries: Number of images in self.img_paths which is query
-            index2imgid: Index to image id dict, where image id is id from self.img_paths
-            imgid2index: Image id to index, where image id is id from self.img_paths (same as index2imgid)
-            index2label: Index to label dict (index same for the index2imgid and imgid2index)
-            relevant_arr: Array of relevant image id for each queries
-            relevance_scores: Array of relevant scores for each queries
+        Returns:
+            n_not_query: Number of images in self.img_paths which is not query.
+            n_queries: Number of images in self.img_paths which is query.
+            index2imgid: Index to image id dict, where image id is id from self.img_paths.
+            imgid2index: Image id to index, where image id is id from self.img_paths (same as index2imgid).
+            index2label: Index to label dict (index same for the index2imgid and imgid2index).
+            relevant_arr: Array of relevant image id for each query.
+            relevance_scores: Array of relevant scores for each query.
         """
         query_arr = self.matches.loc[:, 'query'].tolist()
         index2imgid = dict(enumerate(query_arr))
@@ -262,7 +262,7 @@ class RetrievalDataset(ImageDataset):
             Three target tensor: scores, query_idxs and group_labels.
             Scores is tensor with shape: (len(self), n_queries).
             Query_idxs is tensor with shape: (len(self)).
-            group_labels is tensor with shape: (len(self))
+            group_labels is tensor with shape: (len(self)).
 
         Raises:
             ValueError: If relevant objects list doesn't match with relevance scores list in size.
