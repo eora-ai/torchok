@@ -7,9 +7,8 @@ import faiss
 import numpy as np
 import pandas as pd
 import torch
-
-from torchmetrics import Metric
 from sklearn.preprocessing import normalize
+from torchmetrics import Metric
 
 
 class DatasetType(Enum):
@@ -89,8 +88,8 @@ class IndexBasedMeter(Metric, ABC):
 
         # set k as 1 if k is None
         k = 1 if k is None else k
-        # as queries vectors can be relevant for another query vectors, so we should search k + 1 and delete first
-        # and remove the first found vector because it would be query
+        # as queries vectors can be relevant to other query vectors, so we should search k + 1 and delete first
+        # and remove the first found vector because it would be a query
         self.search_k = k + 1
         # but in metric compute study, k must not change
         self.metric_compute_k = k
@@ -163,8 +162,8 @@ class IndexBasedMeter(Metric, ABC):
             # if classification dataset
             group_labels = torch.cat(self.group_labels).numpy()
             # prepare data
-            relevant_idxs, faiss_vector_idxs,\
-                query_row_idxs, query_as_relevant = self.prepare_classification_data(group_labels)
+            relevant_idxs, faiss_vector_idxs, \
+            query_row_idxs, query_as_relevant = self.prepare_classification_data(group_labels)
             # mock scores and query column indexes because it belongs to representation data
             scores = None
             query_column_idxs = None
@@ -174,8 +173,8 @@ class IndexBasedMeter(Metric, ABC):
             query_idxs = torch.cat(self.query_idxs).numpy()
             group_labels = torch.cat(self.group_labels).numpy()
             # prepare data
-            relevant_idxs, faiss_vector_idxs, query_column_idxs,\
-                query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
+            relevant_idxs, faiss_vector_idxs, query_column_idxs, \
+            query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
 
         # build index
         vectors = vectors.astype(np.float32)
@@ -198,11 +197,11 @@ class IndexBasedMeter(Metric, ABC):
             curr_query_col_idxs = None if query_column_idxs is None else query_column_idxs[query_target_idxs]
             curr_relevant_idxs = relevant_idxs[query_target_idxs]
             curr_query_row_idxs = query_row_idxs[query_target_idxs]
-            currquery_as_relevant = query_as_relevant[query_target_idxs]
+            curr_query_as_relevant = query_as_relevant[query_target_idxs]
             # create relevant, closest generator
             generator = self.query_generator(index, vectors, curr_relevant_idxs,
                                              curr_query_row_idxs, faiss_vector_idxs,
-                                             currquery_as_relevant, k,
+                                             curr_query_as_relevant, k,
                                              scores, curr_query_col_idxs)
             for batch_size, args in generator:
                 curr_target_metric += batch_size * self.metric_func(*args).mean()
@@ -210,7 +209,7 @@ class IndexBasedMeter(Metric, ABC):
             curr_target_metric /= len(curr_query_row_idxs)
             metric.append(curr_target_metric)
 
-        metric = np.mean(metric)
+        metric = float(np.mean(metric))
         return metric
 
     def process_data_for_metric_func(self, closest_scores: np.ndarray, closest_idxs: np.ndarray,
@@ -220,8 +219,8 @@ class IndexBasedMeter(Metric, ABC):
         *args for self.metric_func and will be call in self.compute() method
 
         Args:
-            closest_scores: Faiss found closest scores.
-            closest_idxs: Faiss found closest reference indexes.
+            closest_scores: Faiss found the closest scores.
+            closest_idxs: Faiss found the closest reference indexes.
             relevants_idxs: Relevant indexes.
             query_col_idxs: Queries column indexes in scores matrix.
             scores: Scores matrix.
@@ -265,7 +264,7 @@ class IndexBasedMeter(Metric, ABC):
 
         Returns:
             relevant_idxs: Array of relevant indexes in gallery data, for every query.
-            faiss_vector_idxs: Array of indexes in vectors storage wich would be in faiss index.
+            faiss_vector_idxs: Array of indexes in vectors storage which would be in faiss index.
             query_column_idxs: Array of queries column indexes in scores matrix. It means query order number in origin
                 dataset, because after shuffle dataset the query order may be change we need to store it to reproduce
                 for every query vector it's relevant.
@@ -347,22 +346,22 @@ class IndexBasedMeter(Metric, ABC):
         query_as_relevant = np.full((len(gallery_idxs),), fill_value=True, dtype=np.bool)
         return relevant_idxs, gallery_idxs, query_row_idxs, query_as_relevant
 
-    def cleare_faiss_output(self, faiss_output: np.ndarray, query_as_relevant: np.ndarray) -> np.ndarray:
+    def clear_faiss_output(self, faiss_output: np.ndarray, query_as_relevant: np.ndarray) -> np.ndarray:
         """Remove first element from faiss output array if query in index, and remove last element because
         this class search k + 1 element.
 
         Args:
-            faiss_output: Faiss output array which must be handle.
+            faiss_output: Faiss output array which must be handled.
             query_as_relevant: Boolean array of indexes which indicates if query is in relevant set,
-                i.e belong to queries and gallery simultaneously.
+                i.e. belong to queries and gallery simultaneously.
 
         Returns:
-            faiss_output: Handeled faiss output.
+            faiss_output: Handled faiss output.
         """
-        # need delete first elements where query in faiss index i.e batch_query_as_relevant==True
+        # need delete first elements where query in faiss index i.e. batch_query_as_relevant==True
         faiss_output_delete_firs = np.delete(faiss_output[query_as_relevant], 0, axis=1)
 
-        # and delete last element where query is not in faiss index i.e batch_query_as_relevant==False,
+        # and delete last element where query is not in faiss index i.e. batch_query_as_relevant==False,
         # because we use k + 1 for search
         faiss_output_delete_last = np.delete(faiss_output[~query_as_relevant], -1, axis=1)
 
@@ -432,8 +431,8 @@ class IndexBasedMeter(Metric, ABC):
 
             # remove first element from faiss output if query in faiss index and remove last element
             # because k + 1 element searched
-            batch_closest_scores = self.cleare_faiss_output(batch_closest_scores, batch_query_as_relevant)
-            batch_closest_idxs = self.cleare_faiss_output(batch_closest_idxs, batch_query_as_relevant)
+            batch_closest_scores = self.clear_faiss_output(batch_closest_scores, batch_query_as_relevant)
+            batch_closest_idxs = self.clear_faiss_output(batch_closest_idxs, batch_query_as_relevant)
 
             metric_input_list = self.process_data_for_metric_func(closest_scores=batch_closest_scores,
                                                                   closest_idxs=batch_closest_idxs,
@@ -459,8 +458,8 @@ class IndexBasedMeter(Metric, ABC):
             index = index_class(d)
         else:
             nlist = 4 * math.ceil(n ** 0.5)
-            quantiser = index_class(d)
-            index = faiss.IndexIVFFlat(quantiser, d, nlist, self.metric_distance.value)
+            quantizer = index_class(d)
+            index = faiss.IndexIVFFlat(quantizer, d, nlist, self.metric_distance.value)
             index.train(vectors)
 
         index.add(vectors)
