@@ -1,0 +1,210 @@
+task:
+  name: SingleStageDetectionTask
+  params:
+    backbone_name: swsl_resnet50
+    backbone_params:
+      pretrained: true
+      in_channels: 3
+    num_scales: 4
+    neck_name: FPN
+    neck_params:
+      out_channels: 256
+      start_level: 1
+      add_extra_convs: on_output
+      num_outs: 5
+      relu_before_extra_convs: true
+    head_name: FCOSHead
+    head_params:
+      num_classes: &num_classes 80
+      strides: [8, 16, 32, 64, 128]
+      feat_channels: 256
+      stacked_convs: 4
+      train_cfg:
+        assigner:
+          type: MaxIoUAssigner
+          pos_iou_thr: 0.5
+          neg_iou_thr: 0.4
+          min_pos_iou: 0
+          ignore_iof_thr: -1
+      test_cfg:
+        nms_pre: 1000
+        min_bbox_size: 0
+        score_thr: 0.05
+        nms:
+          type: nms
+          iou_threshold: 0.5
+        max_per_img: 100
+    inputs:
+      - shape: [3, &height 800, &width 1344]
+        dtype: &input_dtype float32
+
+joint_loss:
+  normalize_weights: false
+  losses:
+    - name: MMFocalLoss
+      tag: loss_cls
+      weight: 1.0
+      params:
+        use_sigmoid: True
+        gamma: 2.0
+        alpha: 0.25
+      mapping:
+        pred: flatten_cls_scores
+        target: flatten_labels
+        avg_factor: num_pos
+    - name: MMIoULoss
+      tag: loss_bbox
+      weight: 1.0
+      mapping:
+        pred: pos_decoded_bbox_preds
+        target: pos_decoded_target_preds
+        weight: pos_centerness_targets
+        avg_factor: centerness_denorm
+    - name: MMCrossEntropyLoss
+      tag: loss_centerness
+      weight: 1.0
+      params:
+        use_sigmoid: True
+      mapping:
+        cls_score: pos_centerness
+        label: pos_centerness_targets
+        avg_factor: num_pos
+
+optimization:
+  - optimizer:
+      name: SGD
+      params:
+        lr: &base_lr 0.001
+        momentum: 0.9
+        weight_decay: 0.0001
+      paramwise_cfg:
+        bias_lr_mult: 2.0
+        bias_decay_mult: 0.0
+    scheduler:
+      name: MultiStepLR
+      params:
+        milestones: [20]
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: &bs 8
+        num_workers: &n_workers 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: COCODetection
+        params:
+          train: true
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/data/coco
+          input_dtype: *input_dtype
+          bbox_dtype: *input_dtype
+          channel_order: 'rgb'
+        augment:
+          - name: HorizontalFlip
+        transform:
+          - &resize
+            name: FitResize
+            params:
+              max_height: *height
+              max_width: *width
+          - &normalize
+            name: Normalize
+          - &pad
+            name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+              border_mode: 0
+              value: 0
+          - &totensor
+            name: ToTensorV2
+  VALID:
+    - dataloader:
+        batch_size: 8
+        num_workers: *n_workers
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: COCODetection
+        params:
+          train: false
+          download: true
+          data_folder: *data_folder
+          input_dtype: *input_dtype
+          bbox_dtype: *input_dtype
+          channel_order: 'rgb'
+        transform:
+          - *resize
+          - *normalize
+          - *pad
+          - *totensor
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 21
+  precision: 32
+  num_sanity_val_steps: 2
+
+logger:
+  log_dir: '${oc.env:HOME}/logs/coco_detection'
+  experiment_name: fcos_swsl_resnet50_x800_1344
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  name: TensorBoardLogger
+
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/MMDetMAP_50
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+        - module_name: backbone
+          stage: 1
+        - module_name: backbone
+          module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+          bn_requires_grad: false
+          bn_track_running_stats: false
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 1
+
+metrics:
+  - name: MMDetectionMAP
+    tag: MMDetMAP_50
+    params:
+      iou_thr: 0.5
+      num_classes: *num_classes
+    mapping:
+      preds: prediction
+      target: target
+    phases: [VALID, TEST]
+  - name: MMDetectionMAP
+    tag: MMDetMAP_75
+    params:
+      iou_thr: 0.75
+      num_classes: *num_classes
+    mapping:
+      preds: prediction
+      target: target
+    phases: [ VALID, TEST ]
+  - name: CocoEvalMAP
+    tag: CEMAP
+    params:
+      compute_on_step: false
+      displayed_metrics: ["map", "map_50", "map_75", "map_small", "map_medium", "map_large"]
+    mapping:
+      preds: prediction
+      target: target
+    phases: [VALID, TEST]

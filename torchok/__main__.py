@@ -22,12 +22,12 @@ def entrypoint(config: DictConfig):
 
     # Resolve -> change evn variable to values for example ${oc.env:USER} -> 'root'
     OmegaConf.resolve(config)
-    # Get entrypoint name - default is train
-    entrypoint = config.get('entrypoint', 'train')
-    # Remove entrypoint key, because it isn't in ConfigParams
-    if 'entrypoint' in config:
+    # Get mode name - default is train
+    mode = config.get('mode', 'train')
+    # Remove mode key, because it isn't in ConfigParams
+    if 'mode' in config:
         config = dict(config)
-        config.pop('entrypoint')
+        config.pop('mode')
     # Register structure
     schema = OmegaConf.structured(ConfigParams)
     # Merge structure with config
@@ -38,16 +38,16 @@ def entrypoint(config: DictConfig):
     # Create task
     model = torchok.TASKS.get(config.task.name)(config)
     trainer = create_trainer(config)
-    if entrypoint == 'train':
+    if mode == 'train':
         trainer.fit(model, ckpt_path=config.resume_path)
-    elif entrypoint == 'test':
+    elif mode == 'test':
         trainer.test(model, ckpt_path=config.resume_path)
-    elif entrypoint == 'predict':
+    elif mode == 'predict':
         trainer.predict(model, ckpt_path=config.resume_path)
-    elif entrypoint == 'find_lr':
+    elif mode == 'find_lr':
         find_lr(model, trainer)
     else:
-        raise ValueError(f'Main function error. Entrypoint with name <{entrypoint}> does not support, please use '
+        raise ValueError(f'Main function error. Entrypoint with name <{mode}> does not support, please use '
                          f'the following entrypoints - [train, test, predict].')
 
 

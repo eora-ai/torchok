@@ -76,7 +76,7 @@ class COCODetection(DetectionDataset):
                  channel_order: str = 'rgb',
                  grayscale: bool = False,
                  test_mode: bool = False,
-                 min_area: float = 0.0,
+                 min_area: float = 0,
                  min_visibility: float = 0.0,
                  ):
         """Init SweetPepper.

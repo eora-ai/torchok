@@ -2,12 +2,12 @@ from typing import Any, Dict, List, Optional, Union
 
 import albumentations as A
 import torch
-from torch.nn.modules.batchnorm import _BatchNorm
-from torch.nn.modules.instancenorm import _InstanceNorm
 from omegaconf import DictConfig, ListConfig
 from torch import nn
 from torch.nn import GroupNorm, LayerNorm, Parameter
 from torch.nn import Module, ModuleList
+from torch.nn.modules.batchnorm import _BatchNorm
+from torch.nn.modules.instancenorm import _InstanceNorm
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 

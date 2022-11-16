@@ -34,6 +34,8 @@ from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
 import torchok.metrics.index_base_metric
 import torchok.metrics.representation_ranx
 import torchok.metrics.representation_torchmetrics
+import torchok.metrics.detection
+import torchok.metrics.torchmetric_060
 
 METRICS.register_class(AUC)
 METRICS.register_class(AUROC)

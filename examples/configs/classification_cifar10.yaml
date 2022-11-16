@@ -1,7 +1,7 @@
 task:
   name: ClassificationTask
   params:
-    backbone_name: semnasnet_100
+    backbone_name: resnet18
     backbone_params:
       pretrained: true
       in_channels: 3
@@ -107,6 +107,25 @@ callbacks:
       save_last: true
       mode: max
       save_weights_only: False
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+#        The whole backbone will be frozen during the first 2 epochs.
+          - module_name: backbone
+            epoch: 2
+#        Stem and the first layer of the backbone will be frozen forever during the training.
+          - module_name: backbone
+            stage: 1
+#        Only the modules of type `_BatchNorm` that attached to the backbone will be frozen
+#         with the specific policy: requires_grad of all batch norms will be set to false but
+#         these modules will track
+          - module_name: backbone
+            module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+            bn_requires_grad: false
+            bn_track_running_stats: false
+#        All dropouts in the network will be disabled forever during the training
+#          - module_name: ""
+#            module_class: Dropout
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:

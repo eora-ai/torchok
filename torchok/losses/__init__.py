@@ -4,6 +4,7 @@ from torch.nn import (BCELoss, BCEWithLogitsLoss, CosineEmbeddingLoss, CrossEntr
                       PoissonNLLLoss, SmoothL1Loss, SoftMarginLoss, TripletMarginLoss, TripletMarginWithDistanceLoss)
 from torch.nn import Identity
 
+import torchok.losses.detection
 import torchok.losses.segmentation
 import torchok.losses.representation
 import torchok.losses.classification

@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 from timm.models.features import FeatureHooks
@@ -27,7 +27,7 @@ class BaseBackbone(BaseModel, ABC):
         """Forward method for getting backbone feature maps.
            They are mainly used for segmentation and detection tasks.
         """
-        last_features = self(x) # noqa
+        last_features = self(x)  # noqa
         backbone_features = self.feature_hooks.get_output(x.device)
         backbone_features = list(backbone_features.values())
         return [x] + backbone_features
@@ -38,6 +38,17 @@ class BaseBackbone(BaseModel, ABC):
         if self._out_encoder_channels is None:
             raise ValueError('TorchOk Backbones must have self._out_feature_channels attribute.')
         return tuple(self._out_encoder_channels)
+
+    @abstractmethod
+    def get_stages(self, stage: int) -> Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        pass
 
 
 class BackboneWrapper(Module):
