@@ -301,17 +301,6 @@ default_cfgs = {
         mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
         input_size=(3, 300, 300), pool_size=(10, 10), crop_pct=0.904),
 
-    'tf_efficientnet_cc_b0_4e': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_cc_b0_4e-4362b6b2.pth', # noqa
-        mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
-    'tf_efficientnet_cc_b0_8e': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_cc_b0_8e-66184a25.pth', # noqa
-        mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD),
-    'tf_efficientnet_cc_b1_8e': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_cc_b1_8e-f7c79ae1.pth', # noqa
-        mean=IMAGENET_INCEPTION_MEAN, std=IMAGENET_INCEPTION_STD,
-        input_size=(3, 240, 240), pool_size=(8, 8), crop_pct=0.882),
-
     'tf_efficientnet_lite0': _cfg(
         url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-weights/tf_efficientnet_lite0-0aa007d2.pth', # noqa
         mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
@@ -490,6 +479,18 @@ class EfficientNet(BaseBackbone):
         x = self.conv_head(x)
         x = self.bn2(x)
         return x
+
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        output = [self.conv_stem, self.bn1]
+        layers = list(self.blocks) + [nn.ModuleList([self.conv_head, self.bn2])]
+        return nn.ModuleList(output + layers[: stage])
 
 
 def _create_effnet(variant, pretrained=False, **kwargs):

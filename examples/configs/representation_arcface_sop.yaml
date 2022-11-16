@@ -141,11 +141,23 @@ hydra:
 callbacks:
   - name: FreezeUnfreeze
     params:
-      epoch2module_names:
-        5: [ 'backbone.layers.3' ]
-        10: [ 'backbone.layers.2' ]
-        15: [ 'backbone.layers.1' ]
-        20: [ 'backbone' ]
+      freeze_modules:
+#        The whole backbone will be frozen during the first 2 epochs.
+        - module_name: backbone
+          epoch: 2
+#        Stem and the first layer of the backbone will be frozen forever during the training.
+        - module_name: backbone
+          stage: 1
+#        Only the modules of type `_BatchNorm` that attached to the backbone will be frozen
+#         with the specific policy: requires_grad of all batch norms will be set to false but
+#         these modules will track
+        - module_name: backbone
+          module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+          bn_requires_grad: false
+          bn_track_running_stats: false
+#        All dropouts in the network will be disabled forever during the training
+        - module_name: ""
+          module_class: Dropout
   - name: ModelCheckpointWithOnnx
     params:
       dirpath: *logs_dir

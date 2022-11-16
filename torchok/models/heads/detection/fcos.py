@@ -49,8 +49,11 @@ class FCOSHead(fcos_head.FCOSHead):
         loss_cls (dict): Config of classification loss.
         loss_bbox (dict): Config of localization loss.
         loss_centerness (dict): Config of centerness loss.
+        conv_cfg (dict): Config dict for convolution layer. Default: None.
         norm_cfg (dict): dictionary to construct and config norm layer.
             Default: norm_cfg=dict(type='GN', num_groups=32, requires_grad=True).
+        train_cfg (dict): Training config of anchor head.
+        test_cfg (dict): Testing config of anchor head.
         init_cfg (dict or list[dict], optional): Initialization config dict.
 
     Example:
@@ -170,7 +173,6 @@ class FCOSHead(fcos_head.FCOSHead):
         # centerness weighted iou loss
         centerness_denorm = max(reduce_mean(pos_centerness_targets.sum().detach()), 1e-6)
 
-        # if len(pos_inds) > 0:
         pos_points = flatten_points[pos_inds]
         pos_decoded_bbox_preds = self.bbox_coder.decode(pos_points, pos_bbox_preds)
         pos_decoded_target_preds = self.bbox_coder.decode(pos_points, pos_bbox_targets)
