@@ -107,16 +107,13 @@ class FreezeUnfreeze(BaseFinetuning):
         """
         modules = BaseFinetuning.flatten_modules(modules)
         for mod in modules:
-            for param in mod.parameters(recurse=False):
-                param.requires_grad = False
-
             if isinstance(mod, _BatchNorm):
-                if "bn_requires_grad" in module_dict:
-                    for param in mod.parameters(recurse=False):
-                        param.requires_grad = module_dict['bn_requires_grad']
-
-                if "bn_track_running_stats" in module_dict:
-                    mod.track_running_stats = module_dict['bn_track_running_stats']
+                for param in mod.parameters(recurse=False):
+                    param.requires_grad = module_dict.get("bn_requires_grad", False)
+                mod.track_running_stats = module_dict.get("bn_track_running_stats", False)
+            else:
+                for param in mod.parameters(recurse=False):
+                    param.requires_grad = False
 
     @staticmethod
     def unfreeze_and_add_param_group(

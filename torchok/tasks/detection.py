@@ -102,5 +102,6 @@ class SingleStageDetectionTask(BaseTask):
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
         output['prediction'] = self.bbox_head.get_bboxes(**output)
-        output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
+        if 'gt_bboxes' in output:
+            output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
         return output
