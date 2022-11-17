@@ -1,20 +1,20 @@
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, MutableMapping
 
 from pytorch_lightning.loggers.base import LightningLoggerBase
 from pytorch_lightning.loggers.csv_logs import CSVLogger
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.loggers.mlflow import rank_zero_only
+from pytorch_lightning.utilities import rank_zero_warn
 from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.utilities.logger import _convert_params
 
 from argparse import Namespace
-from pathlib import Path
-from typing import Any, Dict, List, Mapping, MutableMapping, Tuple, Union
 from omegaconf.listconfig import ListConfig
+
 
 def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = None) -> Path:
     """Create directory for saving checkpoints and logging metrics.
@@ -40,7 +40,9 @@ def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = Non
     return full_outputs_path
 
 
-def _flatten_dict(params: MutableMapping[Any, Any], delimiter: str = "/", parent_key: str = "") -> Dict[str, Any]:
+def _flatten_dict(
+    params: MutableMapping[Any, Any], delimiter: str = "/", parent_key: str = ""
+) -> Dict[str, Any]:
     """Flatten hierarchical dict, e.g. ``{'a': {'b': 'c'}} -> {'a/b': 'c'}``.
     Args:
         params: Dictionary containing the hyperparameters
@@ -56,19 +58,23 @@ def _flatten_dict(params: MutableMapping[Any, Any], delimiter: str = "/", parent
         {'5/a': 123}
     """
     result: Dict[str, Any] = {}
-    key_value_pairs = params.items() if isinstance(params, MutableMapping) else enumerate(params)
+    key_value_pairs = (
+        params.items() if isinstance(params, MutableMapping) else enumerate(params)
+    )
     for k, v in key_value_pairs:
         new_key = parent_key + delimiter + str(k) if parent_key else str(k)
         if isinstance(v, Namespace):
             v = vars(v)
-        elif isinstance(v, MutableMapping) or (isinstance(v, ListConfig)
-                                               and len(v)
-                                               and isinstance(v[0], MutableMapping)):
-            result = {**result, **_flatten_dict(v, parent_key=new_key, delimiter=delimiter)}
+        elif isinstance(v, MutableMapping) or (
+            isinstance(v, ListConfig) and len(v) and isinstance(v[0], MutableMapping)
+        ):
+            result = {
+                **result,
+                **_flatten_dict(v, parent_key=new_key, delimiter=delimiter),
+            }
         else:
             result[new_key] = v
     return result
-
 
 
 class MLFlowLoggerX(MLFlowLogger):
