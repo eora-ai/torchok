@@ -395,6 +395,7 @@ class IndexBasedMeter(Metric, ABC):
             index: Faiss database built index.
             vectors: All embedding vectors, it contains gallery and queries vectors.
             relevants_idxs: Array of relevant indexes for every query, index belong vectors storage.
+            faiss_vector_idxs: Array of indexes in vectors storage which is in faiss index.
             query_row_idxs: Array of query indexes in vectors storage.
             gallery_idxs: Array of gallery indexes in vectors storage.
             query_as_relevant: Boolean array of indexes which indicates if query is in relevant set,
