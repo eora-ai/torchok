@@ -37,15 +37,15 @@ class RetrievalDataset(ImageDataset):
     img_list.csv maps the id's of query and relevant elements to image paths
 
     .. csv-table:: Image csv example
-        :header: id, image_path
+        :header: id, image_path, label
 
-        1194917,data/img_1.jpg
-        601566,data/img_2.jpg
-        554492,data/img_3.jpg
-        224125,data/img_4.jpg
-        2001716519,data/img_5.jpg
-        1257924,data/img_6.jpg
-        456490,data/img_7.jpg
+        1194917,data/img_1.jpg,0
+        601566,data/img_2.jpg,0
+        554492,data/img_3.jpg,0
+        224125,data/img_4.jpg,1
+        2001716519,data/img_5.jpg,1
+        1257924,data/img_6.jpg,1
+        456490,data/img_7.jpg,2
 
     .. csv-table:: Gallery Image csv example
         :header: id, image_paths
