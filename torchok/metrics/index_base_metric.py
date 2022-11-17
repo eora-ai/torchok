@@ -163,7 +163,7 @@ class IndexBasedMeter(Metric, ABC):
             group_labels = torch.cat(self.group_labels).numpy()
             # prepare data
             relevant_idxs, faiss_vector_idxs, \
-            query_row_idxs, query_as_relevant = self.prepare_classification_data(group_labels)
+                query_row_idxs, query_as_relevant = self.prepare_classification_data(group_labels)
             # mock scores and query column indexes because it belongs to representation data
             scores = None
             query_column_idxs = None
@@ -174,7 +174,7 @@ class IndexBasedMeter(Metric, ABC):
             group_labels = torch.cat(self.group_labels).numpy()
             # prepare data
             relevant_idxs, faiss_vector_idxs, query_column_idxs, \
-            query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
+                query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
 
         # build index
         vectors = vectors.astype(np.float32)
@@ -183,10 +183,9 @@ class IndexBasedMeter(Metric, ABC):
         # split query by group_label if metric compute target averaging
         if self.group_averaging:
             uniq_group_labels = np.unique(group_labels)
-            group_indexes_split = np.array([np.where(group_labels == uniq_group_labels[i])[0]
-                                            for i in range(len(uniq_group_labels))])
+            group_indexes_split = np.array([np.where(group_labels == label)[0] for label in uniq_group_labels])
         else:
-            group_indexes_split = np.array([np.arange(len(group_labels))])
+            group_indexes_split = np.arange(len(group_labels))[None]
 
         # compute metric
         metric = []
@@ -376,7 +375,7 @@ class IndexBasedMeter(Metric, ABC):
                         vectors: np.ndarray, relevants_idxs: np.ndarray,
                         query_row_idxs: np.ndarray, faiss_vector_idxs: np.ndarray, query_as_relevant: np.ndarray,
                         k: int, scores: Optional[np.ndarray] = None, query_col_idxs: Optional[np.ndarray] = None
-                        ) -> Generator[Tuple[List[np.ndarray], List[np.ndarray]], None, None]:
+                        ) -> Generator[Tuple[int, List], None, None]:
         """Create relevants and closest arrays, by faiss index search.
 
         Output in relevant array, contain its index in gallery data and score for current query.
@@ -406,10 +405,10 @@ class IndexBasedMeter(Metric, ABC):
                 gallery simultaneously.
 
         Returns:
-            Generator which contain relevant and closest Tuple values.
+            Generator which contain current batch value and self.process_data_for_metric_func output.
 
-            Relevant include relevant indexes and scores, size (search_batch_size, , 2).
-            Closest include retrieved indexes and scores, size (search_batch_size, , 2).
+            batch value - current batch value.
+            metric_input_list - self.process_data_for_metric_func output.
         """
         for i in range(0, len(query_row_idxs), self.search_batch_size):
             batch_idxs = np.arange(i, min(i + self.search_batch_size, len(query_row_idxs)))
