@@ -2,7 +2,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from pytorch_lightning.loggers.base import LightningLoggerBase
+from pytorch_lightning.loggers.logger import Logger
 from pytorch_lightning.loggers.csv_logs import CSVLogger
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.loggers.mlflow import rank_zero_only
@@ -84,7 +84,7 @@ class MLFlowLoggerX(MLFlowLogger):
 
 def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
                   experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
-                  full_outputs_path: Union[str, Path]) -> LightningLoggerBase:
+                  full_outputs_path: Union[str, Path]) -> Logger:
     """Create logger.
 
     Args:
