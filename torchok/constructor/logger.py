@@ -52,10 +52,8 @@ def _flatten_dict(
     Examples:
         >>> _flatten_dict({'a': {'b': 'c'}})
         {'a/b': 'c'}
-        >>> _flatten_dict({'a': {'b': 123}})
-        {'a/b': 123}
-        >>> _flatten_dict({5: {'a': 123}})
-        {'5/a': 123}
+        >>> _flatten_dict({'a': [{'b': 123}, {'b': 'c'}]})
+        {'a/0/b': 123, 'a/1/b': 'c'}
     """
     result: Dict[str, Any] = {}
     key_value_pairs = (
