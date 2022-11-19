@@ -36,7 +36,7 @@ task:
         max_per_img: 100
     inputs:
       - shape: [3, &height 800, &width 1344]
-        dtype: &input_dtype float32
+        dtype: &input_dtype bfloat16
 
 joint_loss:
   normalize_weights: false
@@ -97,7 +97,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/data/coco
+          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
           channel_order: 'rgb'
@@ -122,7 +122,7 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 8
+        batch_size: *bs
         num_workers: *n_workers
         drop_last: false
         shuffle: false
@@ -144,11 +144,11 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 21
-  precision: 32
+  precision: bf16
   num_sanity_val_steps: 2
 
 logger:
-  log_dir: '${oc.env:HOME}/logs/coco_detection'
+  log_dir: '${oc.env:HOME}/coco_detection/logs'
   experiment_name: fcos_swsl_resnet50_x800_1344
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
@@ -170,7 +170,7 @@ callbacks:
     params:
       freeze_modules:
         - module_name: backbone
-          stage: 1
+          stages: 1
         - module_name: backbone
           module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
           bn_requires_grad: false
@@ -178,7 +178,7 @@ callbacks:
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 1
+      refresh_rate: 200
 
 metrics:
   - name: MMDetectionMAP
