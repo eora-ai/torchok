@@ -17,12 +17,12 @@ __all__ = [
 class RanxBasedMeter(IndexBasedMeter):
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
                  metric_func: Callable, k: Optional[int] = None, search_batch_size: Optional[int] = None,
-                 normalize_vectors: bool = False, target_averaging: bool = False, k_as_target_len: bool = False,
-                 **kwargs):
+                 normalize_vectors: bool = False, group_averaging: bool = False, k_as_target_len: bool = False,
+                 use_batching_search: bool = True, **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=metric_func, k=k, search_batch_size=search_batch_size,
-                         normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len, **kwargs)
+                         normalize_vectors=normalize_vectors, group_averaging=group_averaging,
+                         k_as_target_len=k_as_target_len, use_batching_search=use_batching_search, **kwargs)
 
     def process_data_for_metric_func(self, closest_scores: np.ndarray, closest_idxs: np.ndarray,
                                      relevants_idxs: np.ndarray, query_col_idxs: np.ndarray,
@@ -55,11 +55,12 @@ class HitAtKMeter(RanxBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True,
                  metric_distance: str = 'IP', k: Optional[int] = None,
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False,
-                 target_averaging: bool = False, k_as_target_len: bool = False, **kwargs):
+                 group_averaging: bool = False, k_as_target_len: bool = False, use_batching_search: bool = True,
+                 **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=hit_rate, k=k, search_batch_size=search_batch_size,
-                         normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len, **kwargs)
+                         normalize_vectors=normalize_vectors, group_averaging=group_averaging,
+                         k_as_target_len=k_as_target_len, use_batching_search=use_batching_search, **kwargs)
 
 
 @METRICS.register_class
@@ -67,11 +68,12 @@ class PrecisionAtKMeter(RanxBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True,
                  metric_distance: str = 'IP', k: Optional[int] = None,
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False,
-                 target_averaging: bool = False, k_as_target_len: bool = False, **kwargs):
+                 group_averaging: bool = False, k_as_target_len: bool = False, use_batching_search: bool = True,
+                 **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=precision, k=k, search_batch_size=search_batch_size,
-                         normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len, **kwargs)
+                         normalize_vectors=normalize_vectors, group_averaging=group_averaging,
+                         k_as_target_len=k_as_target_len, use_batching_search=use_batching_search, **kwargs)
 
 
 @METRICS.register_class
@@ -79,11 +81,12 @@ class RecallAtKMeter(RanxBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True,
                  metric_distance: str = 'IP', k: Optional[int] = None,
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False,
-                 target_averaging: bool = False, k_as_target_len: bool = False, **kwargs):
+                 group_averaging: bool = False, k_as_target_len: bool = False, use_batching_search: bool = True,
+                 **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=recall, k=k, search_batch_size=search_batch_size,
-                         normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len, **kwargs)
+                         normalize_vectors=normalize_vectors, group_averaging=group_averaging,
+                         k_as_target_len=k_as_target_len, use_batching_search=use_batching_search, **kwargs)
 
 
 @METRICS.register_class
@@ -91,11 +94,12 @@ class MeanAveragePrecisionAtKMeter(RanxBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True,
                  metric_distance: str = 'IP', k: Optional[int] = None,
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False,
-                 target_averaging: bool = False, k_as_target_len: bool = False, **kwargs):
+                 group_averaging: bool = False, k_as_target_len: bool = False, use_batching_search: bool = True,
+                 **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=average_precision, k=k, search_batch_size=search_batch_size,
-                         normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len, **kwargs)
+                         normalize_vectors=normalize_vectors, group_averaging=group_averaging,
+                         k_as_target_len=k_as_target_len, use_batching_search=use_batching_search, **kwargs)
 
 
 @METRICS.register_class
@@ -103,8 +107,9 @@ class NDCGAtKMeter(RanxBasedMeter):
     def __init__(self, dataset_type: str, exact_index: bool = True,
                  metric_distance: str = 'IP', k: Optional[int] = None,
                  search_batch_size: Optional[int] = None, normalize_vectors: bool = False,
-                 target_averaging: bool = False, k_as_target_len: bool = False, **kwargs):
+                 group_averaging: bool = False, k_as_target_len: bool = False, use_batching_search: bool = True,
+                 **kwargs):
         super().__init__(exact_index=exact_index, dataset_type=dataset_type, metric_distance=metric_distance,
                          metric_func=ndcg, k=k, search_batch_size=search_batch_size,
-                         normalize_vectors=normalize_vectors, target_averaging=target_averaging,
-                         k_as_target_len=k_as_target_len, **kwargs)
+                         normalize_vectors=normalize_vectors, group_averaging=group_averaging,
+                         k_as_target_len=k_as_target_len, use_batching_search=use_batching_search, **kwargs)
