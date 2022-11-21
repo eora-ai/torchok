@@ -202,9 +202,12 @@ class IndexBasedMeter(Metric, ABC):
             curr_query_row_idxs = query_row_idxs[query_target_idxs]
             curr_query_as_relevant = query_as_relevant[query_target_idxs]
 
-            k = len(group_indexes) if self.k_as_target_len else self.search_k
-            # k = k + 1 - (~curr_query_as_relevant).sum()
-            k = k + 1 - len(np.where(~curr_query_as_relevant)[0])
+            if self.k_as_target_len:
+                # + 1 because query can be in index
+                # and - count of queries wich not in index
+                k = len(group_indexes) + 1 - len(np.where(~curr_query_as_relevant)[0])
+            else:
+                k = self.search_k
 
             # create relevant, closest generator
             generator = self.query_generator(index, vectors, curr_relevant_idxs,
