@@ -14,5 +14,5 @@ from torchok.constructor import (BACKBONES, DATASETS, HEADS, LOSSES, METRICS, NE
 
 has_mmcv = importlib.util.find_spec("mmcv")
 if has_mmcv is None:
-    warnings.warn("MMCV is not installed therefore blocks based on MMDet code won't. "
+    warnings.warn("MMCV is not installed therefore blocks based on MMDet code won't be added in the registry. "
                   "Install it with openmim and command `mim install mmcv-full`.")

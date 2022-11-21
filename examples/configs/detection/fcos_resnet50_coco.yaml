@@ -35,8 +35,8 @@ task:
           iou_threshold: 0.5
         max_per_img: 100
     inputs:
-      - shape: [3, &height 800, &width 1344]
-        dtype: &input_dtype bfloat16
+      - shape: [3, &height 400, &width 672]
+        dtype: &input_dtype float32
 
 joint_loss:
   normalize_weights: false
@@ -88,7 +88,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: &bs 8
+        batch_size: &bs 16
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
@@ -122,7 +122,7 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: *bs
+        batch_size: 1
         num_workers: *n_workers
         drop_last: false
         shuffle: false
@@ -138,13 +138,20 @@ data:
         transform:
           - *resize
           - *normalize
-          - *pad
+          - name: PadIfNeeded
+            params:
+              min_height: null
+              min_width: null
+              border_mode: 0
+              pad_height_divisor: 32
+              pad_width_divisor: 32
+              value: 0
           - *totensor
 
 trainer:
   accelerator: 'gpu'
   max_epochs: 21
-  precision: bf16
+  precision: 32
   num_sanity_val_steps: 2
 
 logger:
