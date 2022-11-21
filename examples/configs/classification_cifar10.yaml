@@ -115,7 +115,7 @@ callbacks:
             epoch: 2
 #        Stem and the first layer of the backbone will be frozen forever during the training.
           - module_name: backbone
-            stage: 1
+            stages: 1
 #        Only the modules of type `_BatchNorm` that attached to the backbone will be frozen
 #         with the specific policy: requires_grad of all batch norms will be set to false but
 #         these modules will track

@@ -35,7 +35,7 @@ task:
           iou_threshold: 0.5
         max_per_img: 100
     inputs:
-      - shape: [3, &height 800, &width 1344]
+      - shape: [3, &height 400, &width 672]
         dtype: &input_dtype float32
 
 joint_loss:
@@ -88,7 +88,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: &bs 8
+        batch_size: &bs 16
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
@@ -97,7 +97,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/data/coco
+          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
           channel_order: 'rgb'
@@ -122,7 +122,7 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 8
+        batch_size: 1
         num_workers: *n_workers
         drop_last: false
         shuffle: false
@@ -138,7 +138,14 @@ data:
         transform:
           - *resize
           - *normalize
-          - *pad
+          - name: PadIfNeeded
+            params:
+              min_height: null
+              min_width: null
+              border_mode: 0
+              pad_height_divisor: 32
+              pad_width_divisor: 32
+              value: 0
           - *totensor
 
 trainer:
@@ -148,7 +155,7 @@ trainer:
   num_sanity_val_steps: 2
 
 logger:
-  log_dir: '${oc.env:HOME}/logs/coco_detection'
+  log_dir: '${oc.env:HOME}/coco_detection/logs'
   experiment_name: fcos_swsl_resnet50_x800_1344
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
@@ -170,7 +177,7 @@ callbacks:
     params:
       freeze_modules:
         - module_name: backbone
-          stage: 1
+          stages: 1
         - module_name: backbone
           module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
           bn_requires_grad: false
@@ -178,7 +185,7 @@ callbacks:
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 1
+      refresh_rate: 200
 
 metrics:
   - name: MMDetectionMAP
