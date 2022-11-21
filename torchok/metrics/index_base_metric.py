@@ -388,12 +388,11 @@ class IndexBasedMeter(Metric, ABC):
                         query_row_idxs: np.ndarray, faiss_vector_idxs: np.ndarray, query_as_relevant: np.ndarray,
                         k: int, scores: Optional[np.ndarray] = None, query_col_idxs: Optional[np.ndarray] = None
                         ) -> Generator[Tuple[int, List], None, None]:
-        """Create relevants and closest arrays, by faiss index search.
+        """Create inputs *args for metric function, by faiss index search.
 
-        Output in relevant array, contain its index in gallery data and score for current query.
-        Output in the closest array, contain its index in gallery data and distance = 1 for current query.
-
-        This function use self.search_batch_size to define how many vectors to send per one faiss search request.
+        This function use self.search_batch_size to define how many vectors to send per one faiss search request in 
+        case when self.use_batch_searching = True. 
+        If self.use_batch_searching is False will do one faiss search request.
 
         Need to know, that query_row_idxs, query_col_idxs and query_as_relevant - have the same size, and for i-th
         query element the following information is available:
