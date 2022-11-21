@@ -24,10 +24,10 @@ class BaseTask(LightningModule, ABC):
         """
         super().__init__()
         self.save_hyperparameters(hparams)
-        self.__constructor = Constructor(hparams)
+        self._constructor = Constructor(hparams)
         self.input_tensor_names = []
-        self.losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
-        self.metrics_manager = self.__constructor.configure_metrics_manager()
+        self.losses = self._constructor.configure_losses() if hparams.get('joint_loss') is not None else None
+        self.metrics_manager = self._constructor.configure_metrics_manager()
         self.example_input_array = []
 
         # `inputs` key in yaml used for model checkpointing.
@@ -52,7 +52,7 @@ class BaseTask(LightningModule, ABC):
 
     def configure_optimizers(self) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
         """Configure optimizers."""
-        opt_sched_list = self.__constructor.configure_optimizers(list(self.children()))
+        opt_sched_list = self._constructor.configure_optimizers(list(self.children()))
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
@@ -62,7 +62,7 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        data_loader = self.__constructor.create_dataloaders(Phase.TRAIN)
+        data_loader = self._constructor.create_dataloaders(Phase.TRAIN)
         return data_loader
 
     def val_dataloader(self) -> Optional[List[DataLoader]]:
@@ -74,7 +74,7 @@ class BaseTask(LightningModule, ABC):
 
         self.__check_drop_last_params(data_params, Phase.VALID.value)
 
-        data_loader = self.__constructor.create_dataloaders(Phase.VALID)
+        data_loader = self._constructor.create_dataloaders(Phase.VALID)
         return data_loader
 
     def test_dataloader(self) -> Optional[List[DataLoader]]:
@@ -86,7 +86,7 @@ class BaseTask(LightningModule, ABC):
 
         self.__check_drop_last_params(data_params, Phase.TEST.value)
 
-        data_loader = self.__constructor.create_dataloaders(Phase.TEST)
+        data_loader = self._constructor.create_dataloaders(Phase.TEST)
         return data_loader
 
     def predict_dataloader(self) -> Optional[List[DataLoader]]:
@@ -98,7 +98,7 @@ class BaseTask(LightningModule, ABC):
 
         self.__check_drop_last_params(data_params, Phase.PREDICT.value)
 
-        data_loader = self.__constructor.create_dataloaders(Phase.PREDICT)
+        data_loader = self._constructor.create_dataloaders(Phase.PREDICT)
         return data_loader
 
     def __check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
