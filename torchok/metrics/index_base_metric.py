@@ -390,8 +390,8 @@ class IndexBasedMeter(Metric, ABC):
                         ) -> Generator[Tuple[int, List], None, None]:
         """Create inputs *args for metric function, by faiss index search.
 
-        This function use self.search_batch_size to define how many vectors to send per one faiss search request in 
-        case when self.use_batch_searching = True. 
+        This function use self.search_batch_size to define how many vectors to send per one faiss search request in
+        case when self.use_batch_searching = True.
         If self.use_batch_searching is False will do one faiss search request.
 
         Need to know, that query_row_idxs, query_col_idxs and query_as_relevant - have the same size, and for i-th
