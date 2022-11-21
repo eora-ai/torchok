@@ -16,6 +16,8 @@ from albumentations.pytorch.transforms import ToTensorV2
 from albumentations.core.composition import Compose, OneOf
 
 from torchok.constructor import TRANSFORMS
+from torchok.data.transforms import spatial
+from torchok.data.transforms import pixelwise
 
 
 TRANSFORMS.register_class(Compose)

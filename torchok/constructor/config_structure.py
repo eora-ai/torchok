@@ -23,6 +23,7 @@ class CallbacksParams:
 class OptmizerParams:
     name: str
     params: Optional[Dict] = field(default_factory=dict)
+    paramwise_cfg: Optional[Dict] = field(default_factory=dict)
 
 
 @dataclass
@@ -93,7 +94,23 @@ class MetricParams:
     mapping: Dict[str, str]
     params: Optional[Dict] = field(default_factory=dict)
     phases: Optional[List[Phase]] = field(default_factory=lambda: [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT])
-    prefix: Optional[str] = None
+    tag: Optional[str] = None
+
+
+# Seed
+@dataclass
+class SeedParams:
+    seed: Optional[int] = None
+    workers: Optional[bool] = False
+
+
+# Load checkpoint params
+@dataclass
+class LoadCheckpointParams:
+    base_ckpt_path: Optional[str] = None
+    overridden_name2ckpt_path: Optional[Dict[str, str]] = None
+    exclude_keys: Optional[List[str]] = None
+    strict: bool = True
 
 
 # Task parameters
@@ -105,6 +122,8 @@ class TaskParams:
     base_checkpoint: Optional[str] = None
     overridden_checkpoints: Optional[Dict[str, str]] = None
     exclude_keys: Optional[List[str]] = None
+    load_checkpoint: Optional[LoadCheckpointParams] = None
+    seed_params: Optional[SeedParams] = None
 
 
 # Trainer parameters
@@ -115,39 +134,35 @@ class TrainerParams:
     gradient_clip_val: Optional[float] = None
     gradient_clip_algorithm: Optional[str] = None
     num_nodes: int = 1
-    num_processes: Optional[int] = None  # TODO: Remove in 2.0
-    devices: Optional[List[int]] = None
-    gpus: Optional[Any] = None  # Optional[Union[List[int], str, int]]
+    devices: Optional[Any] = None  # Union[List[int], str, int]
     auto_select_gpus: bool = False
-    tpu_cores: Optional[List[int]] = None  # TODO: Remove in 2.0
-    ipus: Optional[int] = None  # TODO: Remove in 2.0
     enable_progress_bar: bool = True
-    overfit_batches: float = 0.0
-    track_grad_norm: float = -1
+    overfit_batches: Any = 0.0  # Union[int, float]
+    track_grad_norm: Any = -1  # Union[int, float, str]
     check_val_every_n_epoch: Optional[int] = 1
-    fast_dev_run: bool = False
+    fast_dev_run: Any = False  # Union[int, bool]
     accumulate_grad_batches: Optional[Any] = None  # Optional[Union[int, Dict[int, int]]]
     max_epochs: Optional[int] = None
     min_epochs: Optional[int] = None
     max_steps: int = -1
     min_steps: Optional[int] = None
-    max_time: Optional[Dict[str, int]] = None
-    limit_train_batches: Optional[float] = None
-    limit_val_batches: Optional[float] = None
-    limit_test_batches: Optional[float] = None
-    limit_predict_batches: Optional[float] = None
-    val_check_interval: Optional[float] = None
+    max_time: Optional[Any] = None  # Union[str, timedelta, Dict[str, int]]
+    limit_train_batches: Optional[Any] = None  # Optional[Union[int, float]]
+    limit_val_batches: Optional[Any] = None  # Optional[Union[int, float]]
+    limit_test_batches: Optional[Any] = None  # Optional[Union[int, float]]
+    limit_predict_batches: Optional[Any] = None  # Optional[Union[int, float]]
+    val_check_interval: Optional[Any] = None  # Optional[Union[int, float]]
     log_every_n_steps: int = 50
     accelerator: Optional[str] = None
     strategy: Optional[str] = None
     sync_batchnorm: bool = False
-    precision: Any = 32  # Optional[Union[int, str]]
+    precision: Any = 32  # Union[int, str]
     enable_model_summary: bool = True
-    weights_save_path: Optional[str] = None  # TODO: Remove in 1.8
     num_sanity_val_steps: int = 2
     resume_from_checkpoint: Optional[str] = None
     profiler: Optional[str] = None
     benchmark: Optional[bool] = None
+    deterministic: Optional[bool] = None
     reload_dataloaders_every_n_epochs: int = 0
     auto_lr_find: bool = False
     replace_sampler_ddp: bool = True
@@ -157,22 +172,6 @@ class TrainerParams:
     amp_level: Optional[str] = None
     move_metrics_to_cpu: bool = False
     multiple_trainloader_mode: str = "max_size_cycle"
-
-
-# Checkpoint parameters
-@dataclass
-class CheckpointParams:
-    filename: Optional[str] = None
-    monitor: str = 'valid/loss'
-    verbose: bool = False
-    save_last: bool = False
-    save_top_k: Optional[int] = 1
-    save_weights_only: bool = False
-    mode: str = 'min'
-    auto_insert_metric_name: bool = False
-    export_to_onnx: bool = False
-    onnx_params: Dict = field(default_factory=dict)
-    remove_head: bool = False
 
 
 # Logger
@@ -194,7 +193,6 @@ class ConfigParams:
     trainer: TrainerParams
     optimization: Optional[List[OptimizationParams]] = None
     joint_loss: Optional[JointLossParams] = None
-    checkpoint: Optional[CheckpointParams] = None
     logger: Optional[LoggerParams] = None
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     callbacks: Optional[List[CallbacksParams]] = field(default_factory=list)

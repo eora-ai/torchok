@@ -7,6 +7,9 @@
 </div>
 
 ## A day-to-day Computer Vision Engineer backpack
+
+[![Build Status](https://github.com/eora-ai/torchok/actions/workflows/flake8_checks.yaml/badge.svg?branch=main)](https://github.com/eora-ai/torchok/actions/workflows/flake8_checks.yaml)
+
 TorchOk is based on [PyTorch](https://github.com/pytorch/pytorch) and utilizes [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning) for training pipeline routines.
 
 The toolkit consists of:
@@ -58,6 +61,12 @@ During the training you can access the training and validation logs by starting 
 ```bash
 tensorboard --logdir ~/.cache/torchok/logs/cifar10
 ```
+### Find learning rate
+To automatically find the initial learning rate, we use Pytorch Lightning tuner which algorithm based on [Cyclical Learning Rates for Training Neural Networks](https://arxiv.org/abs/1506.01186) the article.
+```bash
+python -m torchok -cp ../examples/configs -cn classification_cifar10 +entrypoint=find_lr
+```
+
 ### Export to ONNX
 TODO
 ### Run ONNX model

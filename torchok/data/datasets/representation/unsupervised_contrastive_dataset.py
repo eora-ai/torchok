@@ -6,9 +6,11 @@ import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
+from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
 
 
+@DATASETS.register_class
 class UnsupervisedContrastiveDataset(ImageDataset):
     """A dataset for unsupervised contrastive task.
 
@@ -28,6 +30,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
+                 channel_order: str = 'rgb',
                  grayscale: bool = False):
         """Init UnsupervisedContrastiveDataset.
 
@@ -41,9 +44,16 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                 This should have the interface of transforms in `albumentations` library.
             input_column: column name containing paths to the images.
             input_dtype: data type of the torch tensors related to the image.
+            channel_order: Order of channel, candidates are `bgr` and `rgb`.
             grayscale: if True image will be read as grayscale otherwise as RGB.
         """
-        super().__init__(transform, augment, input_dtype, grayscale)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            channel_order=channel_order,
+            grayscale=grayscale
+        )
         self.data_folder = Path(data_folder)
         self.csv_path = csv_path
         self.input_column = input_column

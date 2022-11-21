@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple, Union, Iterator
+from typing import Any, Dict, List, Optional, Union
 
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
+from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
 from torchok.constructor.config_structure import Phase
@@ -28,6 +29,7 @@ class BaseTask(LightningModule, ABC):
         self.losses = self.__constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self.metrics_manager = self.__constructor.configure_metrics_manager()
         self.example_input_array = []
+
         # `inputs` key in yaml used for model checkpointing.
         inputs = hparams.task.params.get('inputs')
         if inputs is not None:
@@ -40,7 +42,7 @@ class BaseTask(LightningModule, ABC):
 
     @abstractmethod
     def forward(self, *args, **kwargs) -> torch.Tensor:
-        """Abstract forward method for validation an test."""
+        """Abstract forward method for validation and test."""
         pass
 
     @abstractmethod
@@ -48,20 +50,9 @@ class BaseTask(LightningModule, ABC):
         """Abstract forward method for training(with ground truth labels)."""
         pass
 
-    def train_modules(self) -> Iterator[nn.Module]:
-        """Create a list of 1st-level modules that need to be optimized. The method is used to apply an optimizer
-        for the returned modules.
-
-        By default, it would be self.children().
-
-        Returns: List of modules that need to be optimized.
-        """
-        return self.children()
-
-    def configure_optimizers(self) -> Tuple[List, List]:
+    def configure_optimizers(self) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
         """Configure optimizers."""
-        modules = self.train_modules()
-        opt_sched_list = self.__constructor.configure_optimizers(modules)
+        opt_sched_list = self.__constructor.configure_optimizers(list(self.children()))
         return opt_sched_list
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
@@ -118,26 +109,24 @@ class BaseTask(LightningModule, ABC):
                 raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
     def on_train_start(self) -> None:
-        if self.current_epoch == 0:
-            load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint,
-                            overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
-                            exclude_keys=self._hparams.task.exclude_keys)
+        if self.current_epoch == 0 and self._hparams.task.load_checkpoint is not None:
+            load_checkpoint(self, **self._hparams.task.load_checkpoint)
 
     def on_test_start(self) -> None:
-        load_checkpoint(self, base_ckpt_path=self._hparams.task.base_checkpoint,
-                        overridden_name2ckpt_path=self._hparams.task.overridden_checkpoints,
-                        exclude_keys=self._hparams.task.exclude_keys)
+        if self._hparams.task.load_checkpoint is not None:
+            load_checkpoint(self, **self._hparams.task.load_checkpoint)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
-        output = self.forward_with_gt(batch[0])
+        output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.losses(**output)
         self.metrics_manager.update(Phase.TRAIN, **output)
         output_dict = {'loss': total_loss}
         output_dict.update(tagged_loss_values)
         return output_dict
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]],
+                        batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.VALID, **output)
@@ -158,39 +147,34 @@ class BaseTask(LightningModule, ABC):
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.TEST, **output)
 
-    def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
+    def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> torch.Tensor:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
         return output
 
     def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
-
         for tag, value in output_dict.items():
-            self.log(f'train/{tag}', value, on_step=True, on_epoch=False)
-
+            self.log(f'train/{tag}', value, on_step=False, on_epoch=True)
         return output_dict
 
     def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
-
         for tag, value in output_dict.items():
-            self.log(f'valid/{tag}', value, on_step=True, on_epoch=False)
-
+            self.log(f'valid/{tag}', value, on_step=False, on_epoch=True)
         return output_dict
 
-    def training_epoch_end(self,
-                           training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def training_epoch_end(self, training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TRAIN))
+        self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
 
-    def validation_epoch_end(self,
-                             valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def validation_epoch_end(self, valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.VALID))
+        self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
 
-    def test_epoch_end(self,
-                       test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def test_epoch_end(self, test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TEST))
 

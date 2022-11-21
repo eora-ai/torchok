@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from torchok.constructor import POOLINGS
-from torchok.models.poolings.classification import Pooling
+from torchok.models.poolings.classification.pooling import Pooling
 
 
 @POOLINGS.register_class

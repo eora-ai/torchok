@@ -20,6 +20,7 @@ Modifications by / Copyright 2021 Ross Wightman, original copyrights below
 # --------------------------------------------------------'
 import math
 from functools import partial
+import logging
 
 import torch
 import torch.nn as nn
@@ -176,7 +177,7 @@ class Beit(BaseBackbone):
         for i in range(len(features)):
             features[i] = ops[i](features[i])
 
-        return input_image, *features
+        return (input_image, *features)
 
     def forward(self, x):
         x = self.patch_embed(x)
@@ -190,6 +191,17 @@ class Beit(BaseBackbone):
             x = blk(x, shared_rel_pos_bias=rel_pos_bias)
         x = self.norm(x)[:, 0][..., None, None]
         return x
+
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        logging.warning("BEIT does not support `get_stages`. Return the whole model")
+        return self
 
 
 def _create_beit(variant, pretrained=False, **kwargs):

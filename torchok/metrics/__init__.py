@@ -1,3 +1,5 @@
+import importlib
+
 from torchmetrics.classification import (Accuracy, AUC, AUROC, AveragePrecision, BinnedAveragePrecision,
                                          BinnedPrecisionRecallCurve, BinnedRecallAtFixedPrecision, CalibrationError,
                                          CohenKappa, ConfusionMatrix, CoverageError, F1Score, FBetaScore,
@@ -28,10 +30,19 @@ from torchmetrics.regression import (  # noqa: E402
     WeightedMeanAbsolutePercentageError,
 )
 
+
 from torchok.constructor import METRICS
 from torchok.metrics.metrics_manager import MetricsManager, MetricWithUtils
-from torchok.metrics.representation import (MeanAveragePrecisionAtKMeter, NDCGAtKMeter, PrecisionAtKMeter,
-                                            RecallAtKMeter)
+
+import torchok.metrics.index_base_metric
+import torchok.metrics.representation_ranx
+import torchok.metrics.representation_torchmetrics
+import torchok.metrics.torchmetric_060
+
+
+has_mmcv = importlib.util.find_spec("mmcv")
+if has_mmcv is not None:
+    import torchok.metrics.detection
 
 METRICS.register_class(AUC)
 METRICS.register_class(AUROC)
@@ -80,12 +91,3 @@ METRICS.register_class(SpearmanCorrCoef)
 METRICS.register_class(SymmetricMeanAbsolutePercentageError)
 METRICS.register_class(TweedieDevianceScore)
 METRICS.register_class(WeightedMeanAbsolutePercentageError)
-
-__all__ = [
-    'MetricsManager',
-    'MetricWithUtils',
-    'PrecisionAtKMeter',
-    'RecallAtKMeter',
-    'MeanAveragePrecisionAtKMeter',
-    'NDCGAtKMeter',
-]

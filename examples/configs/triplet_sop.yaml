@@ -1,0 +1,121 @@
+task:
+  name: TripletLearnTask
+  compute_loss_on_valid: False
+  params:
+    backbone_name: resnet18
+    backbone_params:
+      pretrained: true
+      in_channels: 3
+    pooling_name: Pooling
+    head_name: LinearHead
+    head_params:
+      out_channels: &emb_size 512
+      normalize: true
+    inputs:
+      - shape: [3, &height 224, &width 224]
+        dtype: &input_dtype float32
+
+joint_loss:
+  losses:
+    - name: TripletMarginLoss
+      mapping:
+        anchor : anchor
+        positive : positive
+        negative : negative
+
+optimization:
+  - optimizer: 
+      name: Adam
+      params:
+        lr: 0.0001
+    scheduler:
+      name: ExponentialLR
+      params:
+        gamma: 0.97
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: 4
+        num_workers: 4
+        drop_last: true
+        shuffle: true
+      dataset:
+        name: TRIPLET_SOP
+        params:
+          train: true
+          input_dtype: *input_dtype
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
+        transform:
+          - &resize
+            name: Resize
+            params:
+              height: *height
+              width: *width
+          - &normalize
+            name: Normalize
+            params:
+              mean: [ 0.485, 0.456, 0.406 ]
+              std: [ 0.229, 0.224, 0.225 ]
+          - &totensor
+            name: ToTensorV2
+
+  VALID:
+    - dataloader:
+        batch_size: 64
+        num_workers: 4
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: SOP
+        params:
+          train: false
+          download: true
+          data_folder: *data_folder
+          input_dtype: *input_dtype
+        transform:
+          - *resize
+          - *normalize
+          - *totensor
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 2
+  log_every_n_steps: 10
+
+logger:
+  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
+  experiment_name: triplet_sop
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  name: TensorBoardLogger
+
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/HitAtKMeter
+      save_top_k: 2
+      save_last: true
+      mode: min
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
+
+metrics:
+  - name: HitAtKMeter
+    params:
+      k: 1
+      dataset_type: classification
+      normalize_vectors: True
+      search_batch_size: 256
+    mapping:
+      vectors: embeddings
+      group_labels: target
+    phases: [VALID]

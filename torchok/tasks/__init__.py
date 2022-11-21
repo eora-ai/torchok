@@ -1,12 +1,7 @@
+import torchok.tasks.classification
+import torchok.tasks.onnx
+import torchok.tasks.segmentation
+import torchok.tasks.triplet_task
+import torchok.tasks.pairwise_task
+import torchok.tasks.detection
 from torchok.tasks.base import BaseTask
-from torchok.tasks.classification import ClassificationTask
-from torchok.tasks.onnx import ONNXTask
-from torchok.tasks.segmentation import SegmentationTask
-
-
-__all__ = [
-    'BaseTask',
-    'ClassificationTask',
-    'SegmentationTask',
-    'ONNXTask',
-]

@@ -1,8 +1,1 @@
-from torchok.data.datasets.segmentation.image_segmentation import (
-    ImageSegmentationDataset
-)
-
-
-__all__ = [
-    'ImageSegmentationDataset',
-]
+import torchok.data.datasets.segmentation.image_segmentation

@@ -1,14 +1,13 @@
 from typing import Optional
 
-import torch.nn.functional as F
-from torch import nn, Tensor
+from torch import Tensor
 
 from torchok.constructor import HEADS
-from torchok.models.base import BaseModel
+from torchok.models.heads.representation.linear_head import LinearHead
 
 
 @HEADS.register_class
-class ClassificationHead(BaseModel):
+class ClassificationHead(LinearHead):
     """Classification head for basic input features."""
 
     def __init__(self, in_channels: int, num_classes: int, drop_rate: float = 0.0, bias: bool = True):
@@ -25,9 +24,7 @@ class ClassificationHead(BaseModel):
             drop_rate: dropout rate (applied before linear layer)
             bias: whether to use bias in the linear layer
         """
-        super().__init__(in_channels, out_channels=num_classes)
-        self.drop_rate = drop_rate
-        self.fc = nn.Linear(in_channels, num_classes, bias=bias)
+        super().__init__(in_channels, out_channels=num_classes, drop_rate=drop_rate, bias=bias)
 
     def forward(self, x: Tensor, target: Optional[Tensor] = None) -> Tensor:
         """Forward single input ``x``.
@@ -35,12 +32,9 @@ class ClassificationHead(BaseModel):
         Args:
             x: Input tensor.
         """
-        if self.drop_rate > 0.:
-            x = F.dropout(x, p=self.drop_rate, training=self.training)
+        x = super(ClassificationHead, self).forward(x, target)
 
-        x = self.fc(x)
-
-        if self._out_channels == 1:
+        if self.out_channels == 1:
             x = x[..., 0]
 
         return x
