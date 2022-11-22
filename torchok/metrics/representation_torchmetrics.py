@@ -42,7 +42,7 @@ class TorchMetricBaseMetr(IndexBasedMeter):
         target = torch.tensor([np.isin(closest_idxs[i], relevants_idxs[i]) for i in range(len(closest_idxs))],
                               dtype=torch.long)
         if self.use_batching_search:
-            indexes = torch.tensor([target.shape[1] * [i] for i in range(len(target))], dtype=torch.long)
+            indexes = torch.tile(torch.arange(len(target), dtype=torch.long)[:, None], (1, target.shape[1]))
         else:
             indexes = torch.zeros_like(target, dtype=torch.long)
         return [preds, target, indexes]
