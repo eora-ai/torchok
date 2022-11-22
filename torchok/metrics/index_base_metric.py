@@ -46,7 +46,7 @@ class IndexBasedMeter(Metric, ABC):
     def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
                  metric_func: Callable, k_as_target_len: bool = False, k: Optional[int] = None,
                  use_batching_search: bool = True, search_batch_size: Optional[int] = None,
-                 normalize_vectors: bool = False, group_averaging: bool = False,
+                 normalize_vectors: bool = False, group_averaging: bool = False, raise_empty_query: bool = True,
                  **kwargs):
         """Initialize IndexBasedMeter.
 
@@ -74,6 +74,7 @@ class IndexBasedMeter(Metric, ABC):
             search_batch_size: The size for one FAISS search request, defaul = num CPUs.
             normalize_vectors: If true vectors will be normalized, otherwise no.
             group_averaging: If true compute metric averaging by the targets.
+            raise_empty_query: If true raise in case when dataset has query without relevants.
 
         Raises:
             ValueError: If metric or dataset is not correct write.
@@ -88,6 +89,7 @@ class IndexBasedMeter(Metric, ABC):
         self.group_averaging = group_averaging
         self.k_as_target_len = k_as_target_len
         self.use_batching_search = use_batching_search
+        self.raise_empty_query = raise_empty_query
         # set search_batch_size as num CPUs if search_batch_size is None
         self.search_batch_size = torch.get_num_threads() if search_batch_size is None else search_batch_size
 
@@ -306,13 +308,16 @@ class IndexBasedMeter(Metric, ABC):
         for query_col_idx in query_column_idxs:
             curr_relevant_idxs = np.where(scores[:, query_col_idx] > 0.)[0]
             if len(curr_relevant_idxs) == 0:
-                raise ValueError('Representation metric. The dataset contains a query vector that does not '
-                                 'has relevants.')
-            # Need to sort relevant indexes by its scores for NDCG metric
-            current_scores = scores[curr_relevant_idxs, query_col_idx]
-            sort_indexes = np.argsort(current_scores)
-            curr_relevant_idxs = curr_relevant_idxs[sort_indexes[::-1]]
-            relevant_idxs.append(curr_relevant_idxs)
+                if self.raise_empty_query:
+                    raise ValueError('Representation metric. The dataset contains a query vector that does not '
+                                     'has relevants. Set parameter raise_empty_query to False for compute.')
+                relevant_idxs.append([])
+            else:
+                # Need to sort relevant indexes by its scores for NDCG metric
+                current_scores = scores[curr_relevant_idxs, query_col_idx]
+                sort_indexes = np.argsort(current_scores)
+                curr_relevant_idxs = curr_relevant_idxs[sort_indexes[::-1]]
+                relevant_idxs.append(curr_relevant_idxs)
 
         relevant_idxs = np.array(relevant_idxs)
         return relevant_idxs, faiss_vector_idxs, query_column_idxs, query_row_idxs, query_as_relevant
@@ -345,7 +350,7 @@ class IndexBasedMeter(Metric, ABC):
             for query_idx in group:
                 # need to drop from relevants index which equal query index
                 relevant = group.drop(query_idx).tolist()
-                if len(relevant) == 0:
+                if len(relevant) == 0 and self.raise_empty_query:
                     raise ValueError(f'Representation metric. The class {groups.index[i]} has only one element.')
                 query_row_idxs.append(query_idx)
                 relevant_idxs.append(relevant)
