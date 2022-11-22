@@ -68,10 +68,10 @@ class IndexBasedMeter(Metric, ABC):
             k_as_target_len: If true will be search with different top k, where these different k is the length of each
                 uniq target vectors. If true parameter k will be not use.
             k: Number of top closest indexes to get. If k_as_target_len is true this value will not be used.
-            use_batching_search: If true will do one request at a time for every queries and if `group_averaging`
-                parameter is true will do one request at a time for each group. Otherwise will use batch for each
-                queries request.
-            search_batch_size: The size for one FAISS search request, defaul = num CPUs.
+            use_batching_search: If true will do one request at a time for every query and if `group_averaging`
+                parameter is true will do one request at a time for each group. Otherwise, will use batch for each
+                query request.
+            search_batch_size: The size for one FAISS search request, default = num CPUs.
             normalize_vectors: If true vectors will be normalized, otherwise no.
             group_averaging: If true compute metric averaging by the targets.
             raise_empty_query: If true raise in case when dataset has query without relevants.
@@ -206,7 +206,7 @@ class IndexBasedMeter(Metric, ABC):
 
             if self.k_as_target_len:
                 # + 1 because query can be in index
-                # and - count of queries wich not in index
+                # and - count of queries which are not in index
                 k = len(group_indexes) + 1 - len(np.where(~curr_query_as_relevant)[0])
             else:
                 k = self.search_k
@@ -414,10 +414,10 @@ class IndexBasedMeter(Metric, ABC):
             query_row_idxs: Array of query indexes in vectors storage.
             faiss_vector_idxs: Array of indexes in vectors storage which is in faiss index.
             query_as_relevant: Boolean array of indexes which indicates if query is in relevant set,
-                i.e belong to queries and gallery simultaneously.
+                i.e. belong to queries and gallery simultaneously.
             k: Number of top closest indexes to get.
             scores: Array of scores.
-            query_col_idxs: Array of query row indexes which are in relevant, i.e belong to queries and
+            query_col_idxs: Array of query row indexes which are in relevant, i.e. belong to queries and
                 gallery simultaneously.
 
         Returns:

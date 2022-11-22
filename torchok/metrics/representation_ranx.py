@@ -1,10 +1,10 @@
-import numpy as np
-from ranx.metrics import average_precision, hit_rate, ndcg, precision, recall
 from typing import Callable, List, Optional
 
-from torchok.metrics.index_base_metric import IndexBasedMeter
-from torchok.constructor import METRICS
+import numpy as np
+from ranx.metrics import average_precision, hit_rate, ndcg, precision, recall
 
+from torchok.constructor import METRICS
+from torchok.metrics.index_base_metric import IndexBasedMeter
 
 __all__ = [
     'PrecisionAtKMeter',
@@ -30,7 +30,7 @@ class RanxBasedMeter(IndexBasedMeter):
                                      scores: np.ndarray, k: int) -> List:
         # NDCG score=distance is needed to sort more relevant examples, but in this part of code we had
         # already sorted our examples by faiss. So if we change score = 1 to distance with type float
-        # the index of relevant will be also float and after that inside ranx it may be fail to compare
+        # the index of relevant will be also float and after that inside ranx it may fail to compare
         # relevant int index with our relevant float index.
         searched_closest_idxs = map(lambda idx:
                                     np.stack((closest_idxs[idx], [1] * len(closest_idxs[idx])), axis=1),

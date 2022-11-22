@@ -1,13 +1,12 @@
-import torch
-import numpy as np
-
-from torchmetrics import (RetrievalFallOut, RetrievalHitRate, RetrievalMAP, RetrievalMRR, RetrievalNormalizedDCG,
-                          RetrievalPrecision, RetrievalPrecisionRecallCurve, RetrievalRPrecision, RetrievalRecall)
 from typing import List, Optional, Any, Dict
 
-from torchok.metrics.index_base_metric import IndexBasedMeter
-from torchok.constructor import METRICS
+import numpy as np
+import torch
+from torchmetrics import (RetrievalFallOut, RetrievalHitRate, RetrievalMAP, RetrievalMRR, RetrievalNormalizedDCG,
+                          RetrievalPrecision, RetrievalPrecisionRecallCurve, RetrievalRPrecision, RetrievalRecall)
 
+from torchok.constructor import METRICS
+from torchok.metrics.index_base_metric import IndexBasedMeter
 
 __all__ = [
     'RetrievalFallOutMeter',
