@@ -188,5 +188,5 @@ metrics:
       search_batch_size: 256
     mapping:
       vectors: embeddings
-      targets: target
+      group_labels: target
     phases: [VALID]

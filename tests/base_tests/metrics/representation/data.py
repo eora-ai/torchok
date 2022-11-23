@@ -42,6 +42,9 @@ VECTORS = torch.tensor([
 # Create labels for Classification Dataset
 TARGETS = torch.tensor([0, 0, 1, 2, 1, 2, 2, 2, 1])
 
+# Create labels for groups calculationg
+GROUP_LABELS = torch.tensor([0, 0, 0, 1, 1, 1, 1, 0, 1])
+
 # Need create queries_idxs and scores for Representation Dataset
 QUERIES_IDX = torch.tensor([0, -1, 1, 2, -1, -1, -1, -1, -1])
 
@@ -223,6 +226,53 @@ REPRESENTATION_ANSWERS = {
         4: 0.42421699,
         5: 0.51373735,
         6: 0.55886806
+    }
+}
+
+TORCHMETRICS_REPRESENTATION_ANSWERS = {
+    # Precision is equal for both metrics
+    # Recall also but when you use recall you need add parameter to RetrievalRecall(k=n)
+    # But Average Precision is not equal
+
+    # Example for k = 3
+    # preds = tensor([[0.9961, 0.7163, 0.6014],
+    #         [1.4293, 0.8228, 0.6418],
+    #         [0.9210, 0.7648, 0.5789]], dtype=torch.float64)
+    # target = tensor([[0, 0, 1],
+    #         [0, 0, 1],
+    #         [1, 1, 0]])
+    # indexes = tensor([[0, 0, 0],
+    #         [1, 1, 1],
+    #         [2, 2, 2]])
+    # map = RetrievalMAP()
+    # map(preds, target, indexes)
+    # (1/3 + 1/3 + 1) / 3 = 0.5555555555555555
+
+    # search_relevants_idxs = [
+    #     array([[1, 1]]),
+    #     array([[8, 4], [4, 2]]),
+    #     array([[7, 4], [6, 2],[5, 1]])
+    # ]
+    # searched_closest_idxs = [
+    #        array([[5., 1.], [6., 1.], [1., 1.]]),
+    #        array([[5., 1.], [6., 1.], [8., 1.]]),
+    #        array([[5., 1.], [6., 1.], [1., 1.]])]
+    # (1/3 + (1/3)/ 2 + 2/3) / 3 = 0.38888888888888884
+    'average_precision': {
+        1: 1 / 3,
+        2: 1 / 3,
+        3: 0.5555556,
+        4: 0.5555556,
+        5: 0.5111111,
+        6: 0.5111111
+    },
+    'average_precision_target_averaging': {
+        1: 0.5,
+        2: 0.5,
+        3: 0.6666667,
+        4: 0.6666667,
+        5: 0.59999996,
+        6: 0.59999996
     }
 }
 
