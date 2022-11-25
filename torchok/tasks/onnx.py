@@ -22,26 +22,27 @@ class ONNXTask(BaseTask):
                            'tensor(int16)': 'int16', 'tensor(int32)': 'int32',
                            'tensor(int64)': 'int64', 'tensor(uint8)': 'uint8'}
 
-    def __init__(self, hparams: DictConfig):
+    # ToDo: write documentation for the task parameters
+    def __init__(self, hparams: DictConfig, path_to_onnx: str, providers):
         """Init ONNXTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__(hparams)
-        self.infer_params = self._hparams.task.params
-        model_path = self.infer_params.path_to_onnx
+        # self.infer_params = self._hparams.task.params
+        # model_path = self.infer_params.path_to_onnx
 
-        onnx_model = onnx.load(model_path)
+        onnx_model = onnx.load(path_to_onnx)
         onnx.checker.check_model(onnx_model)
 
-        self.sess = onnxrt.InferenceSession(model_path, providers=self.infer_params.providers)
+        self.sess = onnxrt.InferenceSession(path_to_onnx, providers=providers)
         self.binding = self.sess.io_binding()
 
         self.inputs = [{'name': item.name,
                         'dtype': self.str_type2numpy_type[item.type]} for item in self.sess.get_inputs()]
 
-        input_names = [input['name'] for input in self.inputs]
+        input_names = [inp['name'] for inp in self.inputs]
         logging.info(f'ONNX model input names: {input_names}')
 
         self.keys_mapping_onnx2dataset = self._hparams.task.params.keys_mapping_onnx2dataset

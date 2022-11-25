@@ -16,7 +16,8 @@ from torchok.constructor.load import load_checkpoint
 class BaseTask(LightningModule, ABC):
     """An abstract class that represent main methods of tasks."""
 
-    def __init__(self, hparams: DictConfig):
+    # ToDo: write documentation for the task parameters
+    def __init__(self, hparams: DictConfig, inputs=None, **kwargs):
         """Init BaseTask.
 
         Args:
@@ -31,7 +32,6 @@ class BaseTask(LightningModule, ABC):
         self.example_input_array = []
 
         # `inputs` key in yaml used for model checkpointing.
-        inputs = hparams.task.params.get('inputs')
         if inputs is not None:
             for i, input_params in enumerate(inputs):
                 input_tensor_name = f"input_tensors_{i}"
@@ -72,7 +72,7 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        self.__check_drop_last_params(data_params, Phase.VALID.value)
+        self._check_drop_last_params(data_params, Phase.VALID.value)
 
         data_loader = self._constructor.create_dataloaders(Phase.VALID)
         return data_loader
@@ -84,7 +84,7 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        self.__check_drop_last_params(data_params, Phase.TEST.value)
+        self._check_drop_last_params(data_params, Phase.TEST.value)
 
         data_loader = self._constructor.create_dataloaders(Phase.TEST)
         return data_loader
@@ -96,12 +96,12 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        self.__check_drop_last_params(data_params, Phase.PREDICT.value)
+        self._check_drop_last_params(data_params, Phase.PREDICT.value)
 
         data_loader = self._constructor.create_dataloaders(Phase.PREDICT)
         return data_loader
 
-    def __check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
+    def _check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
         for data_param in data_params:
             drop_last = data_param['dataloader'].get('drop_last', False)
             if drop_last:

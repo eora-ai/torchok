@@ -14,13 +14,14 @@ class PairwiseLearnTask(ClassificationTask):
     Deep Metric Learning task for pairwise losses.
     """
 
-    def __init__(self, hparams: DictConfig):
+    # ToDo: write documentation for the task parameters
+    def __init__(self, hparams: DictConfig, **params):
         """Init PairwiseLearnTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **params)
 
     def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
         """Forward with ground truth labels."""

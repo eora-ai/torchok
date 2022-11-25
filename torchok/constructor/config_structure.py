@@ -119,11 +119,7 @@ class TaskParams:
     name: str
     compute_loss_on_valid: bool = True
     params: Optional[Dict] = field(default_factory=dict)
-    base_checkpoint: Optional[str] = None
-    overridden_checkpoints: Optional[Dict[str, str]] = None
-    exclude_keys: Optional[List[str]] = None
     load_checkpoint: Optional[LoadCheckpointParams] = None
-    seed_params: Optional[SeedParams] = None
 
 
 # Trainer parameters
@@ -187,7 +183,6 @@ class LoggerParams:
 # Config parameters
 @dataclass
 class ConfigParams:
-    # TODO add Logger params
     task: TaskParams
     data: Dict[Phase, List[DataParams]]
     trainer: TrainerParams
@@ -197,3 +192,4 @@ class ConfigParams:
     metrics: Optional[List[MetricParams]] = field(default_factory=list)
     callbacks: Optional[List[CallbacksParams]] = field(default_factory=list)
     resume_path: Optional[str] = None
+    seed_params: Optional[SeedParams] = None

@@ -12,29 +12,31 @@ from torchok.tasks.base import BaseTask
 
 @TASKS.register_class
 class SingleStageDetectionTask(BaseTask):
-    def __init__(self, hparams: DictConfig):
+
+    # ToDo: Make it looks better and write documentation
+    def __init__(self, hparams: DictConfig, **params):
         """Init SingleStageDetectionTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **params)
 
         # BACKBONE
-        backbone_name = self._hparams.task.params.get('backbone_name')
-        backbones_params = self._hparams.task.params.get('backbone_params', dict())
+        backbone_name = params.get('backbone_name')
+        backbones_params = params.get('backbone_params', dict())
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
-        self.num_scales = self._hparams.task.params.get('num_scales', len(self.backbone.out_encoder_channels))
+        self.num_scales = params.get('num_scales', len(self.backbone.out_encoder_channels))
 
         # NECK
-        neck_name = self._hparams.task.params.get('neck_name')
-        neck_params = self._hparams.task.params.get('neck_params', dict())
+        neck_name = params.get('neck_name')
+        neck_params = params.get('neck_params', dict())
         neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
         self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
 
         # HEAD
-        head_name = self._hparams.task.params.get('head_name')
-        head_params = self._hparams.task.params.get('head_params', dict())
+        head_name = params.get('head_name')
+        head_params = params.get('head_params', dict())
         head_in_channels = self.neck.out_channels
         self.bbox_head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
 

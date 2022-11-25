@@ -33,10 +33,10 @@ def entrypoint(config: DictConfig):
     # Merge structure with config
     config = OmegaConf.merge(schema, config)
     # Seed everything
-    if config.task.seed_params is not None:
-        seed_everything(**config.task.seed_params)
+    if config.seed_params is not None:
+        seed_everything(**config.seed_params)
     # Create task
-    model = torchok.TASKS.get(config.task.name)(config)
+    model = torchok.TASKS.get(config.task.name)(config, **config.task.params)
     trainer = create_trainer(config)
     if mode == 'train':
         trainer.fit(model, ckpt_path=config.resume_path)

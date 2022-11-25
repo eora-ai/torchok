@@ -11,30 +11,38 @@ from torchok.tasks.base import BaseTask
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
-    def __init__(self, hparams: DictConfig):
+    # ToDo: write documentation for the task parameters
+    def __init__(
+            self,
+            hparams: DictConfig,
+            backbone_name: str,
+            head_name: str,
+            neck_name: str,
+            backbone_params: dict = None,
+            neck_params: dict = None,
+            head_params: dict = None,
+            **kwargs
+    ):
         """Init SegmentationTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **kwargs)
 
         # BACKBONE
-        backbone_name = self._hparams.task.params.get('backbone_name')
-        backbones_params = self._hparams.task.params.get('backbone_params', dict())
+        backbones_params = backbone_params or dict()
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
 
         # NECK
-        neck_name = self._hparams.task.params.get('neck_name')
-        neck_params = self._hparams.task.params.get('neck_params', dict())
-        neck_in_channels = self.backbone.out_encoder_channels
-        self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+        neck_params = neck_params or dict()
+        neck_params['in_channels'] = self.backbone.out_encoder_channels
+        self.neck = NECKS.get(neck_name)(**neck_params)
 
         # HEAD
-        head_name = self._hparams.task.params.get('head_name')
-        head_params = self._hparams.task.params.get('head_params', dict())
-        head_in_channels = self.neck.out_channels
-        self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
+        head_params = head_params or dict()
+        head_params['in_channels'] = self.neck.out_channels
+        self.head = HEADS.get(head_name)(**head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
