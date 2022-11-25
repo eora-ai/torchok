@@ -47,6 +47,10 @@ class TorchMetricBaseMetr(IndexBasedMeter):
             indexes = torch.zeros_like(target, dtype=torch.long)
         return [preds, target, indexes]
 
+    def reset(self):
+        super().reset()
+        self.metric_func.reset()
+
 
 @METRICS.register_class
 class RetrievalFallOutMeter(TorchMetricBaseMetr):
