@@ -23,13 +23,13 @@ class ONNXTask(BaseTask):
                            'tensor(int64)': 'int64', 'tensor(uint8)': 'uint8'}
 
     # ToDo: write documentation for the task parameters
-    def __init__(self, hparams: DictConfig, path_to_onnx: str, providers):
+    def __init__(self, hparams: DictConfig, path_to_onnx: str, providers, **kwargs):
         """Init ONNXTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **kwargs)
         onnx_model = onnx.load(path_to_onnx)
         onnx.checker.check_model(onnx_model)
 

@@ -42,7 +42,7 @@ class ClassificationTask(BaseTask):
             head_params: parameters for head constructor. `in_channels` will be set automatically based on neck.
             inputs: information about input model shapes and dtypes.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **kwargs)
         # BACKBONE
         backbones_params = backbone_params or dict()
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
@@ -62,7 +62,7 @@ class ClassificationTask(BaseTask):
 
         # HEAD
         head_params = head_params or dict()
-        self.head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
+        self.head = HEADS.get(head_name)(in_channels=self.pooling.out_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
