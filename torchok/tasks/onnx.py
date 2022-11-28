@@ -30,9 +30,6 @@ class ONNXTask(BaseTask):
             hparams: Hyperparameters that set in yaml file.
         """
         super().__init__(hparams)
-        # self.infer_params = self._hparams.task.params
-        # model_path = self.infer_params.path_to_onnx
-
         onnx_model = onnx.load(path_to_onnx)
         onnx.checker.check_model(onnx_model)
 
