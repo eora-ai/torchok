@@ -22,6 +22,7 @@ class BaseTask(LightningModule, ABC):
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            inputs: information about input model shapes and dtypes.
         """
         super().__init__()
         self.save_hyperparameters(hparams)

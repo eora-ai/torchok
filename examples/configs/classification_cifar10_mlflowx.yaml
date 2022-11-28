@@ -12,9 +12,6 @@ task:
     inputs:
       - shape: [3, &height 32, &width 32]
         dtype: &input_dtype float16
-  seed_params:
-    seed: 42
-    workers: true
   load_checkpoint:
     base_ckpt_path: 's3://checkpoints/resnet18.ckpt'
     strict: false
@@ -89,6 +86,10 @@ trainer:
   log_every_n_steps: 1000
   precision: 16
   num_sanity_val_steps: 0
+
+seed_params:
+  seed: 42
+  workers: true
 
 # For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
 # if it isn't define it will be gotten from MLFLOW_TRACKING_URI - environment variable

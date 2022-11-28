@@ -13,7 +13,6 @@ from torchok.tasks.base import BaseTask
 class ClassificationTask(BaseTask):
     """A class for image classification task."""
 
-    # ToDo: write documentation for the task parameters
     def __init__(
             self,
             hparams: DictConfig,
@@ -31,6 +30,17 @@ class ClassificationTask(BaseTask):
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            backbone_name: name of the backbone architecture in the BACKBONES registry.
+            pooling_name: name of the backbone architecture in the POOLINGS registry.
+            head_name: name of the neck architecture in the HEADS registry.
+            neck_name: if present, name of the head architecture in the NECKS registry. Otherwise, model will be created
+                without neck.
+            backbone_params: parameters for backbone constructor.
+            neck_params: parameters for neck constructor. `in_channels` will be set automatically based on backbone.
+            pooling_params: parameters for neck constructor. `in_channels` will be set automatically based on neck or
+                backbone if neck is absent.
+            head_params: parameters for head constructor. `in_channels` will be set automatically based on neck.
+            inputs: information about input model shapes and dtypes.
         """
         super().__init__(hparams)
         # BACKBONE
@@ -43,19 +53,16 @@ class ClassificationTask(BaseTask):
             pooling_in_channels = self.backbone.out_channels
         else:
             neck_params = neck_params or dict()
-            neck_params['in_channels'] = self.backbone.out_encoder_channels
-            self.neck = NECKS.get(neck_name)(**neck_params)
+            self.neck = NECKS.get(neck_name)(in_channels=self.backbone.out_encoder_channels, **neck_params)
             pooling_in_channels = self.neck.out_channels
 
         # POOLING
         pooling_params = pooling_params or dict()
-        pooling_params['in_channels'] = pooling_in_channels
-        self.pooling = POOLINGS.get(pooling_name)(**pooling_params)
+        self.pooling = POOLINGS.get(pooling_name)(in_channels=pooling_in_channels, **pooling_params)
 
         # HEAD
         head_params = head_params or dict()
-        head_params['in_channels'] = self.neck.out_channels
-        self.head = HEADS.get(head_name)(**head_params)
+        self.head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""

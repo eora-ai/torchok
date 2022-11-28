@@ -12,10 +12,6 @@ task:
     inputs:
       - shape: [3, &height 32, &width 32]
         dtype: &input_dtype float16
-  seed_params:
-    seed: 42
-    workers: true
-
 
 joint_loss:
   losses:
@@ -87,6 +83,10 @@ trainer:
   log_every_n_steps: 1000
   precision: 16
   num_sanity_val_steps: 0
+
+seed_params:
+  seed: 42
+  workers: true
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
