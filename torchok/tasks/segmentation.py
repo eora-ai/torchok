@@ -11,30 +11,42 @@ from torchok.tasks.base import BaseTask
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
-    def __init__(self, hparams: DictConfig):
+    def __init__(
+            self,
+            hparams: DictConfig,
+            backbone_name: str,
+            head_name: str,
+            neck_name: str,
+            backbone_params: dict = None,
+            neck_params: dict = None,
+            head_params: dict = None,
+            **kwargs
+    ):
         """Init SegmentationTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            backbone_name: name of the backbone architecture in the BACKBONES registry.
+            neck_name: name of the head architecture in the DETECTION_NECKS registry.
+            head_name: name of the neck architecture in the HEADS registry.
+            backbone_params: parameters for backbone constructor.
+            neck_params: parameters for neck constructor. `in_channels` will be set automatically based on backbone.
+            head_params: parameters for head constructor. `in_channels` will be set automatically based on neck.
+            inputs: information about input model shapes and dtypes.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **kwargs)
 
         # BACKBONE
-        backbone_name = self._hparams.task.params.get('backbone_name')
-        backbones_params = self._hparams.task.params.get('backbone_params', dict())
+        backbones_params = backbone_params or dict()
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
 
         # NECK
-        neck_name = self._hparams.task.params.get('neck_name')
-        neck_params = self._hparams.task.params.get('neck_params', dict())
-        neck_in_channels = self.backbone.out_encoder_channels
-        self.neck = NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+        neck_params = neck_params or dict()
+        self.neck = NECKS.get(neck_name)(in_channels=self.backbone.out_encoder_channels, **neck_params)
 
         # HEAD
-        head_name = self._hparams.task.params.get('head_name')
-        head_params = self._hparams.task.params.get('head_params', dict())
-        head_in_channels = self.neck.out_channels
-        self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
+        head_params = head_params or dict()
+        self.head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""

@@ -12,31 +12,49 @@ from torchok.tasks.base import BaseTask
 
 @TASKS.register_class
 class SingleStageDetectionTask(BaseTask):
-    def __init__(self, hparams: DictConfig):
+    def __init__(
+            self,
+            hparams: DictConfig,
+            backbone_name: str,
+            head_name: str,
+            neck_name: str,
+            num_scales: int = None,
+            backbone_params: dict = None,
+            neck_params: dict = None,
+            head_params: dict = None,
+            **kwargs
+    ):
         """Init SingleStageDetectionTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            backbone_name: name of the backbone architecture in the BACKBONES registry.
+            neck_name: name of the head architecture in the DETECTION_NECKS registry.
+            head_name: name of the neck architecture in the HEADS registry.
+            num_scales: number of feature maps that will be passed from backbone to the neck
+                starting from the last one.
+                Example: for backbone output `[layer1, layer2, layer3, layer4]` and `num_scales=3`
+                neck will get `[layer2, layer3, layer4]`.
+            backbone_params: parameters for backbone constructor.
+            neck_params: parameters for neck constructor. `in_channels` will be set automatically based on backbone.
+            head_params: parameters for head constructor. `in_channels` will be set automatically based on neck.
+            inputs: information about input model shapes and dtypes.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, **kwargs)
 
         # BACKBONE
-        backbone_name = self._hparams.task.params.get('backbone_name')
-        backbones_params = self._hparams.task.params.get('backbone_params', dict())
+        backbones_params = backbone_params or dict()
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
-        self.num_scales = self._hparams.task.params.get('num_scales', len(self.backbone.out_encoder_channels))
+        self.num_scales = num_scales or len(self.backbone.out_encoder_channels)
 
         # NECK
-        neck_name = self._hparams.task.params.get('neck_name')
-        neck_params = self._hparams.task.params.get('neck_params', dict())
+        neck_params = neck_params or dict()
         neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
         self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
 
         # HEAD
-        head_name = self._hparams.task.params.get('head_name')
-        head_params = self._hparams.task.params.get('head_params', dict())
-        head_in_channels = self.neck.out_channels
-        self.bbox_head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
+        head_params = head_params or dict()
+        self.bbox_head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
