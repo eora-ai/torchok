@@ -102,7 +102,7 @@ logger:
     run_name: resnet18
     tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
     save_dir: '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
-    artifact_location: 's3://nft-experiments/mlflow'
+    artifact_location: 's3://experiments/mlflow'
 
 hydra:
   run:
