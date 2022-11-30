@@ -111,15 +111,11 @@ class MLFlowLoggerX(MLFlowLogger):
     @rank_zero_only
     def finalize(self, status: str = 'FINISHED') -> None:
         """Call finalize of pytorch lightning MlFlowLogger and logs *.ckpt and *.onnx artifacts in artifact_location."""
-        super().finalize(status)
-        status = 'FINISHED' if status == 'success' else status
-
         upload_file_paths = chain(self._save_dir.glob('*.ckpt'), self._save_dir.glob('*.onnx'))
         for file_path in upload_file_paths:
-            self.experiment.log_artifact(self._run_id, file_path.as_posix())
+            self.experiment.log_artifact(self.run_id, file_path.as_posix())
 
-        if self.experiment.get_run(self._run_id):
-            self.experiment.set_terminated(self._run_id, status)
+        super().finalize(status)
 
     @rank_zero_only
     def log_hyperparams(self, params: Union[Dict[str, Any], Namespace]) -> None:

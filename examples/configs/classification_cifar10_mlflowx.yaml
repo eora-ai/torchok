@@ -80,7 +80,7 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 1
+  max_epochs: 30
 #  limit_train_batches: 10
 #  limit_val_batches: 10
 #  log_every_n_steps: 1000
@@ -100,7 +100,7 @@ logger:
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
     run_name: resnet18
-    tracking_uri: '${oc.env:CV_MLFLOW_TRACKING_URI}'
+    tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
     save_dir: '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
     artifact_location: 's3://nft-experiments/mlflow'
 

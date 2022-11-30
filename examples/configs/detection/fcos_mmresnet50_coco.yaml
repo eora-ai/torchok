@@ -107,7 +107,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/data/coco
+          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
           channel_order: 'bgr'
@@ -136,7 +136,7 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 1
+        batch_size: *bs
         num_workers: *n_workers
         drop_last: false
         shuffle: false
@@ -152,14 +152,7 @@ data:
         transform:
           - *resize
           - *normalize
-          - name: PadIfNeeded
-            params:
-              min_height: null
-              min_width: null
-              border_mode: 0
-              pad_height_divisor: 32
-              pad_width_divisor: 32
-              value: 0
+          - *pad
           - *totensor
 
 trainer:
@@ -169,8 +162,8 @@ trainer:
   num_sanity_val_steps: 2
 
 logger:
-  log_dir: '${oc.env:HOME}/logs/coco_detection'
-  experiment_name: fcos_resnet50_x800_1344
+  log_dir: '${oc.env:HOME}/coco_detection/logs'
+  experiment_name: fcos_mmresnet50_x800_1344
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 

@@ -7,31 +7,11 @@ from mmcv import ConfigDict
 from mmcv.cnn import build_conv_layer, build_norm_layer, build_plugin_layer
 from mmcv.runner import BaseModule
 from mmdet.models.utils import ResLayer
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from torch.hub import load_state_dict_from_url
+from torch.nn.modules.batchnorm import _BatchNorm
 
 from torchok.constructor import BACKBONES
-
-
-def set_batchnorm_eval(m):
-    """
-    Credits to Filip Radenovic (https://github.com/filipradenovic/cnnimageretrieval-pytorch)
-    """
-
-    classname = m.__class__.__name__
-    if classname.find('BatchNorm') != -1:
-        # freeze running mean and std:
-        # we do training one image at a time
-        # so the statistics would not be per batch
-        # hence we choose freezing (ie using imagenet statistics)
-        m.eval()
-        m.track_running_stats = False
-        # # freeze parameters:
-        # # in fact no need to freeze scale and bias
-        # # they can be learned
-        # # that is why next two lines are commented
-        # for p in m.parameters():
-        #     p.requires_grad = False
 
 
 class BasicBlock(BaseModule):
@@ -412,8 +392,12 @@ class MMResNet(BaseModule):
                  zero_init_residual=True,
                  pretrained=None,
                  init_cfg=None):
+        cfgs = [conv_cfg, norm_cfg, init_cfg]
+        for i, cfg in enumerate(cfgs):
+            if isinstance(cfg, DictConfig):
+                cfgs[i] = ConfigDict(OmegaConf.to_container(cfg, resolve=True))
+        conv_cfg, norm_cfg, init_cfg = cfgs
 
-        init_cfg = ConfigDict(OmegaConf.to_container(init_cfg, resolve=True))
         super(MMResNet, self).__init__(init_cfg)
         self.zero_init_residual = zero_init_residual
         if depth not in self.arch_settings:
@@ -449,7 +433,6 @@ class MMResNet(BaseModule):
                             override=dict(name='norm3'))
         else:
             raise TypeError('pretrained must be a str or None')
-        norm_cfg = OmegaConf.to_container(norm_cfg, resolve=True)
 
         self.depth = depth
         if stem_channels is None:
@@ -457,7 +440,7 @@ class MMResNet(BaseModule):
         self.stem_channels = stem_channels
         self.base_channels = base_channels
         self.num_stages = num_stages
-        assert num_stages >= 1 and num_stages <= 4
+        assert 1 <= num_stages <= 4
         self.strides = strides
         self.dilations = dilations
         assert len(strides) == len(dilations) == num_stages
@@ -658,6 +641,9 @@ class MMResNet(BaseModule):
             for param in m.parameters():
                 param.requires_grad = False
 
+        for m in self.modules():
+            if isinstance(m, _BatchNorm):
+                m.track_running_stats = self.norm_eval
     def forward(self, x):
         """Forward function."""
         return self.forward_features(x)
@@ -678,18 +664,6 @@ class MMResNet(BaseModule):
             if i in self.out_indices:
                 outs.append(x)
         return tuple(outs)
-
-    def train(self, mode=True):
-        """Convert the model into training mode while keep normalization layer
-        freezed."""
-        super(MMResNet, self).train(mode)
-        self._freeze_stages()
-        if mode and self.norm_eval:
-            self.apply(set_batchnorm_eval)
-            # for m in self.modules():
-            #     # trick: eval have effect on BatchNorm only
-            #     if isinstance(m, _BatchNorm):
-            #         m.eval()
 
 
 @BACKBONES.register_class
