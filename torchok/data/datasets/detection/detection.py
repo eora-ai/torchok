@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 from albumentations import BaseCompose, Compose, BboxParams
-from albumentations.augmentations.bbox_utils import convert_bboxes_to_albumentations, \
+from albumentations.core.bbox_utils import convert_bboxes_to_albumentations, \
     convert_bboxes_from_albumentations, filter_bboxes
 from albumentations.core.composition import BasicTransform
 from torch.utils.data._utils.collate import default_collate

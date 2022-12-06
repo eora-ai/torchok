@@ -124,10 +124,16 @@ callbacks:
 
 metrics:
   - name: Accuracy
-    mapping: 
+    params:
+      task: multiclass
+      num_classes: 10
+    mapping:
       preds: prediction
       target: target
   - name: F1Score
-    mapping: 
+    params:
+      task: multiclass
+      num_classes: 10
+    mapping:
       preds: prediction
       target: target
