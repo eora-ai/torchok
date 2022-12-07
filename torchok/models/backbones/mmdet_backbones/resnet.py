@@ -644,6 +644,7 @@ class MMResNet(BaseModule):
         for m in self.modules():
             if isinstance(m, _BatchNorm):
                 m.track_running_stats = self.norm_eval
+
     def forward(self, x):
         """Forward function."""
         return self.forward_features(x)
