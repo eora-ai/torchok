@@ -35,7 +35,7 @@ task:
           iou_threshold: 0.5
         max_per_img: 100
     inputs:
-      - shape: [3, &height 400, &width 672]
+      - shape: [3, &height 800, &width 1344]
         dtype: &input_dtype float32
 
 joint_loss:
@@ -45,7 +45,7 @@ joint_loss:
       tag: loss_cls
       weight: 1.0
       params:
-        use_sigmoid: True
+        use_sigmoid: true
         gamma: 2.0
         alpha: 0.25
       mapping:
@@ -64,7 +64,7 @@ joint_loss:
       tag: loss_centerness
       weight: 1.0
       params:
-        use_sigmoid: True
+        use_sigmoid: true
       mapping:
         cls_score: pos_centerness
         label: pos_centerness_targets
@@ -83,12 +83,12 @@ optimization:
     scheduler:
       name: MultiStepLR
       params:
-        milestones: [20]
+        milestones: [22]
 
 data:
   TRAIN:
     - dataloader:
-        batch_size: &bs 16
+        batch_size: &bs 8
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
@@ -99,7 +99,7 @@ data:
           download: true
           data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
-          bbox_dtype: *input_dtype
+          bbox_dtype: float32
           channel_order: 'rgb'
         augment:
           - name: HorizontalFlip
@@ -133,7 +133,7 @@ data:
           download: true
           data_folder: *data_folder
           input_dtype: *input_dtype
-          bbox_dtype: *input_dtype
+          bbox_dtype: float32
           channel_order: 'rgb'
         transform:
           - *resize
@@ -150,15 +150,20 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 21
+  max_epochs: 24
   precision: 32
   num_sanity_val_steps: 2
 
 logger:
-  log_dir: '${oc.env:HOME}/coco_detection/logs'
-  experiment_name: fcos_swsl_resnet50_x800_1344
+  experiment_name: coco_detection
+  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
+  name: MLFlowLoggerX
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
-  name: TensorBoardLogger
+  params:
+    run_name: fcos_resnet50_x800_1344
+    tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
+    save_dir: '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
+    artifact_location: 's3://experiments/mlflow'
 
 hydra:
   run:
