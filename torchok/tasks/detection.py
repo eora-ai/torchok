@@ -68,8 +68,7 @@ class SingleStageDetectionTask(BaseTask):
         """Forward with ground truth labels."""
         input_data = batch.get('image')
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
-        with torch.cuda.amp.autocast(dtype=torch.float32):
-            neck_out = self.neck(features)
+        neck_out = self.neck(features)
         prediction = self.bbox_head(neck_out)
         output = self.bbox_head.format_dict(prediction)
         output['image_shape'] = input_data.shape[-2:]

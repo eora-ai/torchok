@@ -109,7 +109,7 @@ data:
           download: true
           data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
-          bbox_dtype: *input_dtype
+          bbox_dtype: float32
           channel_order: 'bgr'
         augment:
           - name: HorizontalFlip
@@ -147,7 +147,7 @@ data:
           download: true
           data_folder: *data_folder
           input_dtype: *input_dtype
-          bbox_dtype: *input_dtype
+          bbox_dtype: float32
           channel_order: 'bgr'
         transform:
           - *resize
@@ -181,7 +181,7 @@ logger:
 
 hydra:
   run:
-    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
 
 callbacks:
   - name: ModelCheckpoint
