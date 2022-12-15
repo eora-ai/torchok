@@ -73,9 +73,13 @@ class SingleStageDetectionTask(BaseTask):
         output = self.bbox_head.format_dict(prediction)
         output['image_shape'] = input_data.shape[-2:]
 
-        if 'bboxes' in batch:
-            output['gt_bboxes'] = batch.get('bboxes')
-            output['gt_labels'] = batch.get('label')
+        if 'bboxes' in batch.keys():
+            if 'num_bboxes' in batch.keys():
+                output['gt_bboxes'] = [bbox[:n, :4] for bbox, n in zip(batch['bboxes'], batch['num_bboxes'])]
+                output['gt_labels'] = [bbox[:n, 4].long() for bbox, n in zip(batch['bboxes'], batch['num_bboxes'])]
+            else:
+                output['gt_bboxes'] = batch.get('bboxes')[:, :, :4]
+                output['gt_labels'] = batch.get('bboxes')[:, :, 4].long()
 
         return output
 

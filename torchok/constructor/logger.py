@@ -90,6 +90,7 @@ class MLFlowLoggerX(MLFlowLogger):
         prefix: A string to put at the beginning of metric keys.
         artifact_location: The location to store run artifacts. If not provided, the server picks an appropriate
             default.
+        run_id: The run identifier of the experiment. If not provided, a new run is started.
 
     Raises:
         ImportError:
@@ -103,9 +104,10 @@ class MLFlowLoggerX(MLFlowLogger):
                  tags: Optional[Dict[str, Any]] = None,
                  save_dir: Optional[str] = './mlruns',
                  prefix: str = '',
-                 artifact_location: Optional[str] = None):
-        super().__init__(experiment_name=experiment_name, run_name=run_name, tracking_uri=tracking_uri,
-                         tags=tags, save_dir=save_dir, prefix=prefix, artifact_location=artifact_location)
+                 artifact_location: Optional[str] = None,
+                 run_id: int = None):
+        super().__init__(experiment_name=experiment_name, run_name=run_name, tracking_uri=tracking_uri, tags=tags,
+                         save_dir=save_dir, prefix=prefix, artifact_location=artifact_location, run_id=run_id)
         self._save_dir = Path(save_dir)
 
     @rank_zero_only

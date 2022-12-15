@@ -167,6 +167,7 @@ trainer:
   max_epochs: 24
   precision: 32
   num_sanity_val_steps: 2
+  reload_dataloaders_every_n_epochs: 1
 
 logger:
   experiment_name: coco_detection

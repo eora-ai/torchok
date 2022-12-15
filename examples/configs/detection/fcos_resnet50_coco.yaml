@@ -36,7 +36,7 @@ task:
         max_per_img: 100
     inputs:
       - shape: [3, &height 800, &width 1344]
-        dtype: &input_dtype float32
+        dtype: &input_dtype float16
 
 joint_loss:
   normalize_weights: false
@@ -92,6 +92,7 @@ data:
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
+        pin_memory: true
       dataset:
         name: COCODetection
         params:
@@ -122,10 +123,11 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 1
+        batch_size: *bs
         num_workers: *n_workers
         drop_last: false
         shuffle: false
+        pin_memory: true
       dataset:
         name: COCODetection
         params:
@@ -138,21 +140,17 @@ data:
         transform:
           - *resize
           - *normalize
-          - name: PadIfNeeded
-            params:
-              min_height: null
-              min_width: null
-              border_mode: 0
-              pad_height_divisor: 32
-              pad_width_divisor: 32
-              value: 0
+          - *pad
           - *totensor
 
 trainer:
   accelerator: 'gpu'
   max_epochs: 24
-  precision: 32
+  precision: 16
+  gradient_clip_val: 35
+  gradient_clip_algorithm: norm
   num_sanity_val_steps: 2
+  reload_dataloaders_every_n_epochs: 1
 
 logger:
   experiment_name: coco_detection
@@ -160,7 +158,7 @@ logger:
   name: MLFlowLoggerX
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
-    run_name: fcos_resnet50_x800_1344
+    run_name: fcos_swsl_resnet50_x800_1344_f16
     tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
     save_dir: '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
     artifact_location: 's3://experiments/mlflow'
@@ -183,10 +181,6 @@ callbacks:
       freeze_modules:
         - module_name: backbone
           stages: 1
-        - module_name: backbone
-          module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
-          bn_requires_grad: false
-          bn_track_running_stats: false
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
