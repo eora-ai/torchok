@@ -107,6 +107,8 @@ class DetectionDataset(ImageDataset):
             self.df = pd.read_pickle(self.data_folder / annotation_path)
         else:
             raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
+        self.df[self.bbox_column] = self.df[self.bbox_column].apply(np.array)
+        self.df[self.target_column] = self.df[self.target_column].apply(np.array)
 
         bbox_params = BboxParams(format=self.bbox_format, label_fields=['label'],
                                  min_area=min_area, min_visibility=min_visibility)
@@ -140,7 +142,7 @@ class DetectionDataset(ImageDataset):
         return sample
 
     def filter_bboxes(self, bboxes, labels, shape):
-        lbox = np.hstack([bboxes, np.array(labels)[..., None]])
+        lbox = np.hstack([bboxes, labels[..., None]])
         alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, *shape)
         alb_lbox_fixed = filter_bboxes(alb_lbox, *shape)
         lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, *shape))

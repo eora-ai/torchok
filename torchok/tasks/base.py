@@ -157,14 +157,12 @@ class BaseTask(LightningModule, ABC):
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
         for tag, value in output_dict.items():
             self.log(f'train/{tag}', value, on_step=False, on_epoch=True)
-        torch.cuda.empty_cache()
         return output_dict
 
     def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
         for tag, value in output_dict.items():
             self.log(f'valid/{tag}', value, on_step=False, on_epoch=True)
-        torch.cuda.empty_cache()
         return output_dict
 
     def training_epoch_end(self, training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:

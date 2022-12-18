@@ -3,6 +3,7 @@ from typing import Any, Dict, Union
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
+import pandas as pd
 
 from torchok.constructor import BACKBONES, DETECTION_NECKS, HEADS, TASKS
 from torchok.constructor.config_structure import Phase
@@ -55,6 +56,11 @@ class SingleStageDetectionTask(BaseTask):
         # HEAD
         head_params = head_params or dict()
         self.bbox_head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
+
+    def transfer_batch_to_device(self, batch: Any, device: torch.device, dataloader_idx: int) -> Any:
+        if isinstance(batch, pd.Series):
+            batch = batch.to_dict()
+        return super().transfer_batch_to_device(batch, device, dataloader_idx)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
