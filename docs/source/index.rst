@@ -7,7 +7,7 @@ It's based on `PyTorch`_ and utilizes `PyTorch Lightning`_ for training pipeline
 The toolkit consists of:
 
 * Neural Network models which are proved to be the best not only on `PapersWithCode`_ but in practice. All models are under plug&play interface that easily connects backbones, necks and heads for reuse across tasks
-* Out-of-the-box support of common Computer Vision tasks: classification, segmentation, image representation and detection coming soon
+* Out-of-the-box support of common Computer Vision tasks: classification, segmentation, image representation and detection
 * Commonly used datasets, image augmentations and transformations (from `Albumentations`_)
 * Fast implementations of retrieval metrics (with the help of `FAISS`_ and `ranx`_) and lots of other metrics from `torchmetrics`_
 * Export models to ONNX and ability to test the exported model without changing the datasets
@@ -28,16 +28,18 @@ User Guide
 **********
 
 .. toctree::
-   :maxdepth: 2
-   
-   getting_started
-   tasks
-   models
-   datasets
-   transforms_augments
-   metrics
-   onnx_export
-   yaml_config
+  :maxdepth: 2
+  
+  getting_started
+  examples
+  tasks
+  models
+  losses
+  datasets
+  transforms_augments
+  metrics
+  callbacks
+  loggers
 
 To be added soon (TODO)
 ***********************

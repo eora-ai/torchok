@@ -1,26 +1,33 @@
 Datasets
 ########
 
+.. _dataset_interface:
+
 Interface
 *********
 
-.. automodule:: src.data.datasets
+TODO: about difference between transforms and augments
+This rule 
+isn't regulated and is a recommendation for users on how to implement their custom datasets: an image after 
+augmentations can be accessed via `dataset.get_raw(idx: int)` method
+
+.. automodule:: torchok.data.datasets
 
 Classification
 **************
 
-.. automodule:: src.data.datasets.classification
+.. automodule:: torchok.data.datasets.classification
 
 Segmentation
 ************
-.. automodule:: src.data.datasets.segmentation
+.. automodule:: torchok.data.datasets.segmentation
 
 Representation
 **************
 
-.. automodule:: src.data.datasets.representation
+.. automodule:: torchok.data.datasets.representation
 
 Ready-to-go datasets
 ********************
 
-.. automodule:: src.data.datasets.examples
+.. automodule:: torchok.data.datasets.examples
