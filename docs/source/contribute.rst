@@ -2,7 +2,7 @@ How to contribute
 #################
 
 Before you get started contributing, you should prepare your environment. It's pretty easy to do since TorchOk uses 
-`Poetry <poetry>`_ - a modern Python packaging and dependency management system. Install it via 
+`Poetry`_ - a modern Python packaging and dependency management system. Install it via 
 `official instructions <https://python-poetry.org/docs/#installation>`_.
 
 Then you need to install dependencies of TorchOk. Install the latest dependencies that developers used to contribute 
@@ -44,7 +44,7 @@ your own issue:
 #. Select a template and click `Get started`
 #. Type text of the issue by following the template's guideline
 
-.. _code_changes::
+.. _code_changes:
 
 Applying code changes
 *********************
@@ -60,4 +60,14 @@ As you have your environment ready, you can make changes to the code and submit 
 #. Wait until your PR is reviewed. If something might be done better, you will be asked to perform changes
 #. After all changes are done, and PR looks good for the reviewers (at least 1 approval is needed), your PR will be merged into the `main` branch. You can see your changes in the next release of the library
 
-.. _poetry:: https://python-poetry.org/
+.. note::
+
+    If you are changing documentation, you can rebuild and view it locally:
+
+        .. code-block:: bash
+
+            cd docs
+            rm -r build & make html     # remove existing build and build new docs with Sphinx
+            python -m http.server       # recommendation: run it in a separate tab for continuous use
+
+.. _Poetry: https://python-poetry.org/

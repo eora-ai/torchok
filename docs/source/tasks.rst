@@ -21,9 +21,9 @@ Detection tasks
 Retrieval tasks
 ***************
 
-.. autoclass:: torchok.tasks.retrieval.pairwise_task.PairwiseLearnTask
+.. autoclass:: torchok.tasks.pairwise_task.PairwiseLearnTask
 
-.. autoclass:: torchok.tasks.retrieval.triplet_task.TripletLearnTask
+.. autoclass:: torchok.tasks.triplet_task.TripletLearnTask
 
 ONNX inference task
 *******************
