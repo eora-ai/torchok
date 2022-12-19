@@ -177,6 +177,7 @@ See ClassificationTask for details.
 Fine-tuning
 ===========
 You can use the following methods to fine-tune your model:
+
 #. Use `pretrained: true` for backbone. Each model in TorchOk comes with pre-trained weights - most of the backbones are trained for ImageNet classification, but some might be trained on the task-specific datasets (see :ref:`models`)
 #. Specify `load_checkpoint` parameter to load a custom checkpoint or/and override/exclude some of the modules of a task (see below for instructions). This option overrides the `pretrained: true` option
 #. Set `resume_path` to fully load your experiment, including the task, its optimizers' and schedulers' states. This option is mainly used when you want to continue training of the experiment from a task's checkpoint. This option overrides the `pretrained: true` and `load_checkpoint` options
