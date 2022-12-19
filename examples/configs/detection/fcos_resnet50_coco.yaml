@@ -84,7 +84,7 @@ optimization:
     scheduler:
       name: MultiStepLR
       params:
-        milestones: [22]
+        milestones: [16]
 
 data:
   TRAIN:
@@ -151,20 +151,19 @@ trainer:
   num_sanity_val_steps: 2
 
 logger:
+  name: MLFlowLoggerX
   experiment_name: coco_detection
   log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
-  name: MLFlowLoggerX
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
 #    run_name: fcos_swsl_resnet50_x800_1344_f16
     run_name: fcos_swsl_resnet50_x400_672_f16
     tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
-    save_dir: '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
-    artifact_location: 's3://nft-experiments/mlflow'
+    artifact_location: 's3://experiments/mlflow'
 
 hydra:
   run:
-    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
 
 callbacks:
   - name: ModelCheckpoint

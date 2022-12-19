@@ -1,19 +1,46 @@
+import os
+from argparse import Namespace
 from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, MutableMapping
 
-from pytorch_lightning.loggers.logger import Logger
+from omegaconf.listconfig import ListConfig
 from pytorch_lightning.loggers.csv_logs import CSVLogger
+from pytorch_lightning.loggers.logger import Logger
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.loggers.mlflow import rank_zero_only
-from pytorch_lightning.utilities import rank_zero_warn
 from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.utilities import rank_zero_warn
 from pytorch_lightning.utilities.logger import _convert_params
 
-from argparse import Namespace
-from omegaconf.listconfig import ListConfig
+
+def create_logger(logger_config) -> Logger:
+    if logger_config is not None:
+        if logger_config.name == 'MLFlowLoggerX':
+            run_name = logger_config.params.run_name
+        else:
+            run_name = logger_config.experiment_name
+
+        full_outputs_path = create_outputs_path(log_dir=logger_config.log_dir,
+                                                experiment_name=run_name,
+                                                timestamp=logger_config.timestamp)
+
+        experiment_path = Path(logger_config.log_dir) / run_name
+        experiment_subdir = str(full_outputs_path.relative_to(experiment_path))
+
+        logger = build_logger(logger_class_name=logger_config.name,
+                              logger_class_params=logger_config.params,
+                              outputs_path=logger_config.log_dir,
+                              experiment_name=logger_config.experiment_name,
+                              experiment_subdir=experiment_subdir,
+                              full_outputs_path=full_outputs_path)
+
+        if os.environ.get('LOCAL_RANK') is not None:
+            full_outputs_path.rmdir()
+
+        return logger
 
 
 def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = None) -> Path:
@@ -41,7 +68,7 @@ def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = Non
 
 
 def _flatten_dict(
-    params: MutableMapping[Any, Any], delimiter: str = "/", parent_key: str = ""
+        params: MutableMapping[Any, Any], delimiter: str = "/", parent_key: str = ""
 ) -> Dict[str, Any]:
     """Flatten hierarchical dict, e.g. ``{'a': {'b': 'c'}} -> {'a/b': 'c'}``.
     Args:
@@ -64,7 +91,7 @@ def _flatten_dict(
         if isinstance(v, Namespace):
             v = vars(v)
         elif isinstance(v, MutableMapping) or (
-            isinstance(v, ListConfig) and len(v) and isinstance(v[0], MutableMapping)
+                isinstance(v, ListConfig) and len(v) and isinstance(v[0], MutableMapping)
         ):
             result = {
                 **result,
@@ -133,9 +160,9 @@ class MLFlowLoggerX(MLFlowLogger):
             self.experiment.log_param(self.run_id, k, v)
 
 
-def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
-                  experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
-                  full_outputs_path: Union[str, Path]) -> Logger:
+def build_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
+                 experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
+                 full_outputs_path: Union[str, Path]) -> Logger:
     """Create logger.
 
     Args:
