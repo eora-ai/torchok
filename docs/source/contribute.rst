@@ -70,4 +70,9 @@ As you have your environment ready, you can make changes to the code and submit 
             rm -r build & make html     # remove existing build and build new docs with Sphinx
             python -m http.server       # recommendation: run it in a separate tab for continuous use
 
+.. note::
+
+    To get started with reStructuredText, use the `reStructuredText Primer`_
+
 .. _Poetry: https://python-poetry.org/
+.. _reStructuredText Primer: https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html

@@ -41,36 +41,3 @@ User Guide
   callbacks
   loggers
   contribute
-
-To be added soon (TODO)
-***********************
-Tasks
-=====
-* MOBY (unsupervised training)
-* DetectionTask
-* InstanceSegmentationTask
-
-Segmentation models
-===================
-* U-Net neck
-
-Detection models
-================
-* YOLOR neck + head
-* DETR neck + head
-
-Datasets
-========
-* ImageNet
-* Cityscapes
-
-Losses
-======
-* Pytorch Metric Learning losses
-* NT-ext (for unsupervised training)
-
-Metrics
-=======
-* Segmentation IoU
-* Segmentation Dice
-* Detection metrics

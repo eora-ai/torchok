@@ -89,35 +89,32 @@ python -m unittest discover -s tests/ -p "test_*.py"
 ```
 ## To be added soon (TODO)
 Tasks
-- MOBY (unsupervised training)
-- DetectionTask
-- InstanceSegmentationTask
-
-Backbones
-- Swin-v2
-- HRNet
-- ViT
-- EfficientNet
-- MobileNetV3
+=====
+* MOBY (unsupervised training)
+* DetectionTask
+* InstanceSegmentationTask
 
 Segmentation models
-- HRNet neck + OCR head
-- U-Net neck
+===================
+* U-Net neck
 
 Detection models
-- YOLOR neck + head
-- DETR neck + head
+================
+* YOLOR neck + head
+* DETR neck + head
 
 Datasets
-- Stanford Online Products
-- Cityscapes
-- COCO
+========
+* ImageNet
+* Cityscapes
 
 Losses
-- Pytorch Metric Learning losses
-- NT-ext (for unsupervised training)
+======
+* Pytorch Metric Learning losses
+* NT-ext (for unsupervised training)
 
 Metrics
-- Segmentation IoU
-- Segmentation Dice
-- Detection metrics
+=======
+* Segmentation IoU
+* Segmentation Dice
+* Detection metrics

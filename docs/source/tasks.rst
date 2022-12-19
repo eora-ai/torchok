@@ -3,30 +3,30 @@
 Tasks
 #####
 
-Classification tasks
-********************
+Classification
+**************
 
 .. autoclass:: torchok.tasks.classification.ClassificationTask
 
-Segmentation tasks
-******************
+Segmentation
+************
 
 .. autoclass:: torchok.tasks.segmentation.SegmentationTask
 
-Detection tasks
-***************
-
-.. autoclass:: torchok.tasks.detection.SingleStageDetectionTask
-
-Retrieval tasks
-***************
+Retrieval
+*********
 
 .. autoclass:: torchok.tasks.pairwise_task.PairwiseLearnTask
 
 .. autoclass:: torchok.tasks.triplet_task.TripletLearnTask
 
-ONNX inference task
-*******************
+Detection
+*********
+
+.. autoclass:: torchok.tasks.detection.SingleStageDetectionTask
+
+ONNX inference
+**************
 
 .. autoclass:: torchok.tasks.onnx.ONNXTask
 

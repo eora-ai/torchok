@@ -1,12 +1,26 @@
 Heads
 #####
 
-Base Heads
-**********
+Classification
+**************
 
-.. automodule:: torchok.models.heads
+.. automodule:: torchok.models.heads.classification.classification_head
 
-Classification Heads
-********************
+.. automodule:: torchok.models.heads.classification.arcface_head
 
-.. automodule:: torchok.models.heads.classification
+Segmentation
+************
+
+.. automodule:: torchok.models.heads.segmentation.base
+
+.. automodule:: torchok.models.heads.segmentation.ocr
+
+Representation
+**************
+
+.. automodule:: torchok.models.heads.representation.linear_head
+
+Detection
+*********
+
+.. automodule:: torchok.models.heads.detection.fcos
