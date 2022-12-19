@@ -40,6 +40,7 @@ User Guide
   metrics
   callbacks
   loggers
+  contribute
 
 To be added soon (TODO)
 ***********************
