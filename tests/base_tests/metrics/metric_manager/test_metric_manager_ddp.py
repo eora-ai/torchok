@@ -103,7 +103,7 @@ class DDPMetricManagerTest(unittest.TestCase):
     accuracy_mapping = dict(preds='predict', target='target')
     accuracy_params = MetricParams(
         name='Accuracy', mapping=accuracy_mapping,
-        phases=[Phase.TRAIN])
+        phases=[Phase.TRAIN], params=dict(task="multiclass", num_classes=10))
 
     accuracy_answer = {'train/Accuracy': accuracy_answer}
 
