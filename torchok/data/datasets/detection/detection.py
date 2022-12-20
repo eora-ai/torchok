@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.bbox_utils import convert_bboxes_to_albumentations, \
-    convert_bboxes_from_albumentations, filter_bboxes
+    convert_bboxes_from_albumentations, filter_bboxes as alb_filter_bboxes
 from albumentations.core.composition import BasicTransform
 from torch.utils.data._utils.collate import default_collate
 
@@ -156,7 +156,7 @@ class DetectionDataset(ImageDataset):
         """
         lbox = np.hstack([bboxes, labels[..., None]])
         alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, rows, cols)
-        alb_lbox_fixed = filter_bboxes(alb_lbox, rows, cols)
+        alb_lbox_fixed = alb_filter_bboxes(alb_lbox, rows, cols)
         lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
         return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
