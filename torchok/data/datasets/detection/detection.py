@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Union
 
@@ -170,11 +171,11 @@ class DetectionDataset(ImageDataset):
 
     def collate_fn(self, batch):
         r"""Puts each data field into a tensor with outer dimension batch size"""
-        max_size = max([len(elem['label']) for elem in batch])
+        new_batch = defaultdict(list)
         for i, elem in enumerate(batch):
-            bbox = torch.hstack([elem.pop('bboxes'), elem.pop('label')[:, None]])
-            elem['bboxes'] = torch.nn.functional.pad(bbox, (0, 0, 0, max_size - len(bbox)))
-            elem['num_bboxes'] = len(bbox)
+            new_batch['bboxes'].append(elem.pop('bboxes'))
+            new_batch['label'].append(elem.pop('label'))
 
         output = default_collate(batch)
+        output.update(new_batch)
         return output

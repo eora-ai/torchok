@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
+import pandas as pd
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
@@ -116,6 +117,11 @@ class BaseTask(LightningModule, ABC):
     def on_test_start(self) -> None:
         if self._hparams.task.load_checkpoint is not None:
             load_checkpoint(self, **self._hparams.task.load_checkpoint)
+
+    def transfer_batch_to_device(self, batch: Any, device: torch.device, dataloader_idx: int) -> Any:
+        if isinstance(batch, pd.Series):
+            batch = batch.to_dict()
+        return super().transfer_batch_to_device(batch, device, dataloader_idx)
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""

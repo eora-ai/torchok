@@ -3,7 +3,6 @@ from typing import Any, Dict, Union
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
-import pandas as pd
 
 from torchok.constructor import BACKBONES, DETECTION_NECKS, HEADS, TASKS
 from torchok.constructor.config_structure import Phase
@@ -57,11 +56,6 @@ class SingleStageDetectionTask(BaseTask):
         head_params = head_params or dict()
         self.bbox_head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
 
-    def transfer_batch_to_device(self, batch: Any, device: torch.device, dataloader_idx: int) -> Any:
-        if isinstance(batch, pd.Series):
-            batch = batch.to_dict()
-        return super().transfer_batch_to_device(batch, device, dataloader_idx)
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
         x = self.backbone.forward_features(x)[-self.num_scales:]
@@ -79,13 +73,9 @@ class SingleStageDetectionTask(BaseTask):
         output = self.bbox_head.format_dict(prediction)
         output['image_shape'] = input_data.shape[-2:]
 
-        if 'bboxes' in batch.keys():
-            if 'num_bboxes' in batch.keys():
-                output['gt_bboxes'] = [bbox[:n, :4] for bbox, n in zip(batch['bboxes'], batch['num_bboxes'])]
-                output['gt_labels'] = [bbox[:n, 4].long() for bbox, n in zip(batch['bboxes'], batch['num_bboxes'])]
-            else:
-                output['gt_bboxes'] = batch.get('bboxes')[:, :, :4]
-                output['gt_labels'] = batch.get('bboxes')[:, :, 4].long()
+        if 'bboxes' in batch:
+            output['gt_bboxes'] = batch.get('bboxes')
+            output['gt_labels'] = batch.get('label')
 
         return output
 
