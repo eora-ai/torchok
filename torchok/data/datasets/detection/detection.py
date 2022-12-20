@@ -152,7 +152,7 @@ class DetectionDataset(ImageDataset):
             cols: Image width.
 
         Returns:
-            List of bounding boxes.
+            numpy array of bounding boxes and numpy array of labels of these boxes.
         """
         lbox = np.hstack([bboxes, labels[..., None]])
         alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, rows, cols)
@@ -168,7 +168,7 @@ class DetectionDataset(ImageDataset):
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['bboxes'] - Target bboxes, dtype=bbox_dtype.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample.
         """
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)

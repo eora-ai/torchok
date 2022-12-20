@@ -98,7 +98,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
+          data_folder: &data_folder ${oc.env:DATA_DIR}/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: float32
           channel_order: 'rgb'
@@ -153,7 +153,7 @@ trainer:
 logger:
   name: MLFlowLoggerX
   experiment_name: coco_detection
-  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
+  log_dir: '${oc.env:DATA_DIR}/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
 #    run_name: fcos_swsl_resnet50_x800_1344_f16

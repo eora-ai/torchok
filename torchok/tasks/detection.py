@@ -58,11 +58,12 @@ class SingleStageDetectionTask(BaseTask):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method."""
-        x = self.backbone.forward_features(x)[-self.num_scales:]
-        with torch.cuda.amp.autocast(dtype=torch.float32):
-            x = self.neck(x)
-        x = self.bbox_head(x)
-        return x
+        features = self.backbone.forward_features(x)[-self.num_scales:]
+        features = self.neck(features)
+        features = self.bbox_head(features)
+        output = self.bbox_head.format_dict(features)
+        output = self.bbox_head.get_bboxes(**output, image_shape=x.shape[-2:])
+        return output
 
     def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, Any]:
         """Forward with ground truth labels."""

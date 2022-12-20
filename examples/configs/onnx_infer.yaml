@@ -18,7 +18,7 @@ data:
         params:
           train: false
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/cifar10
+          data_folder: &data_folder ${oc.env:DATA_DIR}/.cache/torchok/data/cifar10
         transform:
           - &resize
             name: Resize
@@ -57,7 +57,7 @@ trainer:
   max_epochs: 1
 
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
+  log_dir: '${oc.env:DATA_DIR}/.cache/torchok/logs/'
   experiment_name: cifar10
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger

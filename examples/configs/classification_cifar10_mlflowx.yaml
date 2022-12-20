@@ -46,7 +46,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/cifar10/data
+          data_folder: &data_folder ${oc.env:DATA_DIR}/cifar10/data
         transform:
           - &resize
             name: Resize
@@ -96,7 +96,7 @@ seed_params:
 logger:
   name: MLFlowLoggerX
   experiment_name: cifar10
-  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
+  log_dir: '${oc.env:DATA_DIR}/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
     run_name: resnet18

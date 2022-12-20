@@ -41,6 +41,7 @@ def create_logger(logger_config: DictConfig) -> Logger:
                               experiment_subdir=experiment_subdir,
                               full_outputs_path=full_outputs_path)
 
+        # Prevent creation of duplicate folders in case of DDP
         if os.environ.get('LOCAL_RANK') is not None:
             full_outputs_path.rmdir()
 
