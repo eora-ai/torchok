@@ -3,6 +3,7 @@ from argparse import Namespace
 from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, MutableMapping
+from omegaconf import DictConfig, OmegaConf
 
 from omegaconf.listconfig import ListConfig
 from pytorch_lightning.loggers.csv_logs import CSVLogger
@@ -16,7 +17,10 @@ from pytorch_lightning.utilities import rank_zero_warn
 from pytorch_lightning.utilities.logger import _convert_params
 
 
-def create_logger(logger_config) -> Logger:
+def create_logger(logger_config: DictConfig) -> Logger:
+    """
+    Create logger based on logger config.
+    """
     if logger_config is not None:
         if logger_config.name == 'MLFlowLoggerX':
             run_name = logger_config.params.run_name

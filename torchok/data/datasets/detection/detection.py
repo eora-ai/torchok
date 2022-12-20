@@ -134,7 +134,7 @@ class DetectionDataset(ImageDataset):
             bboxes = record[self.bbox_column]
 
             if len(bboxes):
-                bboxes, labels = self.filter_bboxes(bboxes, labels, image.shape[:2])
+                bboxes, labels = self.filter_bboxes(bboxes, labels, *image.shape[:2])
             sample['label'] = labels
             sample['bboxes'] = bboxes
 
@@ -142,11 +142,22 @@ class DetectionDataset(ImageDataset):
 
         return sample
 
-    def filter_bboxes(self, bboxes, labels, shape):
+    def filter_bboxes(self, bboxes: np.ndarray, labels: np.ndarray, rows: int, cols: int) -> [np.ndarray, np.ndarray]:
+        """Filter empty bounding boxes.
+
+        Args:
+            bboxes: List of bounding box.
+            labels: array of bbox labels
+            rows: Image height.
+            cols: Image width.
+
+        Returns:
+            List of bounding boxes.
+        """
         lbox = np.hstack([bboxes, labels[..., None]])
-        alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, *shape)
-        alb_lbox_fixed = filter_bboxes(alb_lbox, *shape)
-        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, *shape))
+        alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, rows, cols)
+        alb_lbox_fixed = filter_bboxes(alb_lbox, rows, cols)
+        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
         return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
     def __getitem__(self, idx: int) -> dict:
