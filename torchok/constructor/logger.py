@@ -3,8 +3,8 @@ from argparse import Namespace
 from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, MutableMapping
-from omegaconf import DictConfig, OmegaConf
 
+from omegaconf import DictConfig
 from omegaconf.listconfig import ListConfig
 from pytorch_lightning.loggers.csv_logs import CSVLogger
 from pytorch_lightning.loggers.logger import Logger
