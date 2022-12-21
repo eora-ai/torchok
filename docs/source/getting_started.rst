@@ -347,8 +347,9 @@ Seeding randomizers
 ===================
 
 To increase reproducibility of your experiments, you can provide seed values to internal randomizers. Usually, 
-Deep Learning Engineers configure seeds for all the randomizers. This can be achieved in TorchOk by specifying 
-`seed_params`:
+Deep Learning Engineers configure seeds for all the pseudo-random generators. This can be achieved in TorchOk by 
+specifying `seed_params` and setting `deterministic=True` to the `Trainer` according to `PyTorchLightning's 
+documentation <https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html#reproducibility>`_:
 
 .. code-block:: yaml
 
@@ -357,6 +358,11 @@ Deep Learning Engineers configure seeds for all the randomizers. This can be ach
     seed_params:
       seed: 42
       workers: true
+  
+  # ...
+  trainer:
+    # ...
+    deterministic: true
 
 This will set the specified seed value for all randomizers including PyTorch, numpy and Python. With `workers: true` 
 (default `false`) you will also initialize the seed of PyTorch's DataLoader's worker processes 

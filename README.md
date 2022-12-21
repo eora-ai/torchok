@@ -91,12 +91,7 @@ python -m unittest discover -s tests/ -p "test_*.py"
 Tasks
 =====
 * MOBY (unsupervised training)
-* DetectionTask
 * InstanceSegmentationTask
-
-Segmentation models
-===================
-* U-Net neck
 
 Detection models
 ================
@@ -112,9 +107,3 @@ Losses
 ======
 * Pytorch Metric Learning losses
 * NT-ext (for unsupervised training)
-
-Metrics
-=======
-* Segmentation IoU
-* Segmentation Dice
-* Detection metrics
