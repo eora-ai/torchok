@@ -100,7 +100,7 @@ logger:
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
     run_name: resnet18
-    tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
+    tracking_uri: '${oc.env:DB_URI}'
     artifact_location: 's3://experiments/mlflow'
 
 hydra:
