@@ -11,6 +11,8 @@ from torchok.tasks.base import BaseTask
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
+    """A class for image segmentation task."""
+
     def __init__(
             self,
             hparams: DictConfig,
@@ -49,14 +51,32 @@ class SegmentationTask(BaseTask):
         self.head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method."""
+        """Forward method.
+
+        Args:
+            x: torch.Tensor of shape [B, C, H, W]. Batch of input images
+
+        Returns:
+            torch.Tensor of shape [B, num_classes, H, W], representing logits masks per each image.
+        """
         x = self.backbone.forward_features(x)
         x = self.neck(x)
         x = self.head(x)
         return x
 
     def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
-        """Forward with ground truth labels."""
+        """Forward with ground truth labels.
+
+        Args:
+            batch: dict, where
+            batch['image'] - torch.Tensor of shape [B, C, H, W], representing input images.
+            batch['target'] - torch.Tensor of shape [B, H, W], target class or labels masks per each image.
+
+        Returns:
+            output: dict, where
+            output['prediction'] - torch.Tensor of shape [B, num_classes], representing logits masks per each image.
+            output['target'] - torch.Tensor of shape [B, H, W], target class or labels masks per each image. May absent.
+        """
         input_data = batch.get('image')
         target = batch.get('target')
         features = self.backbone.forward_features(input_data)
@@ -70,5 +90,5 @@ class SegmentationTask(BaseTask):
         return output
 
     def as_module(self) -> nn.Sequential:
-        """Method for model representation as sequential of modules(need for checkpointing)."""
+        """Method for model representation as sequential of modules (required for checkpointing)."""
         return nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.head)

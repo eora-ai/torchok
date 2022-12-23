@@ -1,7 +1,7 @@
 """TorchOK Unet.
 
 Adapted from:
-    https://github.com/qubvel/segmentation_models.pytorch/tree/master/segmentation_models_pytorch/decoders/unet
+https://github.com/qubvel/segmentation_models.pytorch/tree/master/segmentation_models_pytorch/decoders/unet
 Licensed under MIT license [see LICENSE for details]
 """
 from typing import List, Optional
