@@ -28,6 +28,11 @@ class ONNXTask(BaseTask):
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            path_to_onnx: path to ONNX model file.
+            providers: Optional sequence of providers in order of decreasing
+                precedence. Values can either be provider names or tuples of
+                (provider name, options dict). If not provided, then all available
+                providers are used with the default precedence.
         """
         super().__init__(hparams, **kwargs)
         onnx_model = onnx.load(path_to_onnx)

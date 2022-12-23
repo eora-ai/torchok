@@ -35,8 +35,9 @@ task:
           iou_threshold: 0.5
         max_per_img: 100
     inputs:
+#      - shape: [3, &height 800, &width 1344]
       - shape: [3, &height 400, &width 672]
-        dtype: &input_dtype float32
+        dtype: &input_dtype float16
 
 joint_loss:
   normalize_weights: false
@@ -45,7 +46,7 @@ joint_loss:
       tag: loss_cls
       weight: 1.0
       params:
-        use_sigmoid: True
+        use_sigmoid: true
         gamma: 2.0
         alpha: 0.25
       mapping:
@@ -64,7 +65,7 @@ joint_loss:
       tag: loss_centerness
       weight: 1.0
       params:
-        use_sigmoid: True
+        use_sigmoid: true
       mapping:
         cls_score: pos_centerness
         label: pos_centerness_targets
@@ -83,12 +84,12 @@ optimization:
     scheduler:
       name: MultiStepLR
       params:
-        milestones: [20]
+        milestones: [16]
 
 data:
   TRAIN:
     - dataloader:
-        batch_size: &bs 16
+        batch_size: &bs 8
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
@@ -97,9 +98,9 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/coco_detection/data
           input_dtype: *input_dtype
-          bbox_dtype: *input_dtype
+          bbox_dtype: float32
           channel_order: 'rgb'
         augment:
           - name: HorizontalFlip
@@ -122,7 +123,7 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 1
+        batch_size: *bs
         num_workers: *n_workers
         drop_last: false
         shuffle: false
@@ -133,36 +134,36 @@ data:
           download: true
           data_folder: *data_folder
           input_dtype: *input_dtype
-          bbox_dtype: *input_dtype
+          bbox_dtype: float32
           channel_order: 'rgb'
         transform:
           - *resize
           - *normalize
-          - name: PadIfNeeded
-            params:
-              min_height: null
-              min_width: null
-              border_mode: 0
-              pad_height_divisor: 32
-              pad_width_divisor: 32
-              value: 0
+          - *pad
           - *totensor
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 21
-  precision: 32
+  max_epochs: 24
+  precision: 16
+  gradient_clip_val: 35
+  gradient_clip_algorithm: norm
   num_sanity_val_steps: 2
 
 logger:
-  log_dir: '${oc.env:HOME}/coco_detection/logs'
-  experiment_name: fcos_swsl_resnet50_x800_1344
+  name: MLFlowLoggerX
+  experiment_name: coco_detection
+  log_dir: '${oc.env:HOME}/.cache/torchok/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
-  name: TensorBoardLogger
+  params:
+#    run_name: fcos_swsl_resnet50_x800_1344_f16
+    run_name: fcos_swsl_resnet50_x400_672_f16
+    tracking_uri: '${oc.env:DB_URI}'
+    artifact_location: 's3://experiments/mlflow'
 
 hydra:
   run:
-    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
 
 callbacks:
   - name: ModelCheckpoint
@@ -178,10 +179,6 @@ callbacks:
       freeze_modules:
         - module_name: backbone
           stages: 1
-        - module_name: backbone
-          module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
-          bn_requires_grad: false
-          bn_track_running_stats: false
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:

@@ -46,7 +46,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/cifar10/data
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
         transform:
           - &resize
             name: Resize
@@ -94,14 +94,13 @@ seed_params:
 # For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
 # if it isn't define it will be gotten from MLFLOW_TRACKING_URI - environment variable
 logger:
-  experiment_name: cifar10
-  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
   name: MLFlowLoggerX
+  experiment_name: cifar10
+  log_dir: '${oc.env:HOME}/.cache/torchok/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
     run_name: resnet18
-    tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
-    save_dir: '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
+    tracking_uri: '${oc.env:DB_URI}'
     artifact_location: 's3://experiments/mlflow'
 
 hydra:

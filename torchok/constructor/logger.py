@@ -1,27 +1,60 @@
+import os
+from argparse import Namespace
 from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, MutableMapping
 
-from pytorch_lightning.loggers.logger import Logger
+from omegaconf import DictConfig
+from omegaconf.listconfig import ListConfig
 from pytorch_lightning.loggers.csv_logs import CSVLogger
+from pytorch_lightning.loggers.logger import Logger
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.loggers.mlflow import rank_zero_only
-from pytorch_lightning.utilities import rank_zero_warn
 from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.utilities import rank_zero_warn
 from pytorch_lightning.utilities.logger import _convert_params
 
-from argparse import Namespace
-from omegaconf.listconfig import ListConfig
+
+def create_logger(logger_config: DictConfig) -> Logger:
+    """
+    Create logger based on logger config.
+    """
+    if logger_config is not None:
+        if logger_config.name == 'MLFlowLoggerX':
+            run_name = logger_config.params.run_name
+        else:
+            run_name = logger_config.experiment_name
+
+        full_outputs_path = create_outputs_path(log_dir=logger_config.log_dir,
+                                                run_name=run_name,
+                                                timestamp=logger_config.timestamp)
+
+        run_path = Path(logger_config.log_dir) / run_name
+        experiment_subdir = str(full_outputs_path.relative_to(run_path))
+
+        logger = build_logger(logger_class_name=logger_config.name,
+                              logger_class_params=logger_config.params,
+                              outputs_path=logger_config.log_dir,
+                              experiment_name=logger_config.experiment_name,
+                              experiment_subdir=experiment_subdir,
+                              full_outputs_path=full_outputs_path)
+
+        # Prevent creation of duplicate folders in case of DDP.
+        # LOCAL_RANK is None in case of non-DDP training.
+        if os.environ.get('LOCAL_RANK') is not None:
+            full_outputs_path.rmdir()
+
+        return logger
 
 
-def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = None) -> Path:
+def create_outputs_path(log_dir: str, run_name: str, timestamp: str = None) -> Path:
     """Create directory for saving checkpoints and logging metrics.
 
     Args:
         log_dir: Base path.
-        experiment_name: Sub directory for log_dir.
+        run_name: Sub directory for log_dir.
         timestamp: If specified, create log_dir/experiment_name/%Y-%m-%d/%H-%M-%S folder, otherwise
             log_dir/experiment_name/ folders.
 
@@ -30,7 +63,7 @@ def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = Non
     """
 
     log_dir = Path(log_dir)
-    full_outputs_path = log_dir / experiment_name
+    full_outputs_path = log_dir / run_name
 
     if timestamp is not None:
         full_outputs_path = full_outputs_path / timestamp
@@ -41,7 +74,7 @@ def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = Non
 
 
 def _flatten_dict(
-    params: MutableMapping[Any, Any], delimiter: str = "/", parent_key: str = ""
+        params: MutableMapping[Any, Any], delimiter: str = "/", parent_key: str = ""
 ) -> Dict[str, Any]:
     """Flatten hierarchical dict, e.g. ``{'a': {'b': 'c'}} -> {'a/b': 'c'}``.
     Args:
@@ -64,7 +97,7 @@ def _flatten_dict(
         if isinstance(v, Namespace):
             v = vars(v)
         elif isinstance(v, MutableMapping) or (
-            isinstance(v, ListConfig) and len(v) and isinstance(v[0], MutableMapping)
+                isinstance(v, ListConfig) and len(v) and isinstance(v[0], MutableMapping)
         ):
             result = {
                 **result,
@@ -76,24 +109,22 @@ def _flatten_dict(
 
 
 class MLFlowLoggerX(MLFlowLogger):
-    """This logger completely repeats the functionality of Pytorch Lightning MLFlowLogger. But unlike the Lightning
-    logger it uploads *.onnx and *.ckpt artifacts to artifact_location path.
+    """This logger completely repeats the functionality of Pytorch Lightning MLFlowLogger.
+    But unlike the Lightning logger it uploads `*.onnx` and `*.ckpt` artifacts to artifact_location path.
 
     Args:
         experiment_name: The name of the experiment
-        tracking_uri: Address of local or remote tracking server.
-            If not provided, defaults to `file:<save_dir>`.
+        tracking_uri: Address of local or remote tracking server. If not provided, defaults to `file:<save_dir>`.
         tags: A dictionary tags for the experiment.
         save_dir: A path to a local directory where the MLflow runs get saved.
-            Defaults to `./mlflow` if `tracking_uri` is not provided.
-            Has no effect if `tracking_uri` is provided.
+            Defaults to `./mlflow` if `tracking_uri` is not provided. Has no effect if `tracking_uri` is provided.
         prefix: A string to put at the beginning of metric keys.
         artifact_location: The location to store run artifacts. If not provided, the server picks an appropriate
             default.
+        run_id: The run identifier of the experiment. If not provided, a new run is started.
 
     Raises:
-        ImportError:
-            If required MLFlow package is not installed on the device.
+        ImportError: If required MLFlow package is not installed on the device.
     """
 
     def __init__(self,
@@ -103,14 +134,20 @@ class MLFlowLoggerX(MLFlowLogger):
                  tags: Optional[Dict[str, Any]] = None,
                  save_dir: Optional[str] = './mlruns',
                  prefix: str = '',
-                 artifact_location: Optional[str] = None):
-        super().__init__(experiment_name=experiment_name, run_name=run_name, tracking_uri=tracking_uri,
-                         tags=tags, save_dir=save_dir, prefix=prefix, artifact_location=artifact_location)
+                 artifact_location: Optional[str] = None,
+                 run_id: int = None):
+        super().__init__(experiment_name=experiment_name, run_name=run_name, tracking_uri=tracking_uri, tags=tags,
+                         save_dir=save_dir, prefix=prefix, artifact_location=artifact_location, run_id=run_id)
         self._save_dir = Path(save_dir)
 
     @rank_zero_only
-    def finalize(self, status: str = 'FINISHED') -> None:
-        """Call finalize of pytorch lightning MlFlowLogger and logs *.ckpt and *.onnx artifacts in artifact_location."""
+    def finalize(self, status: str = 'FINISHED'):
+        """
+        Call finalize of pytorch lightning MlFlowLogger and logs `*.ckpt` and `*.onnx` artifacts in artifact_location.
+
+        Args:
+            status: A string value of :py:class:`mlflow.entities.RunStatus`. Defaults to "FINISHED".
+        """
         upload_file_paths = chain(self._save_dir.glob('*.ckpt'), self._save_dir.glob('*.onnx'))
         for file_path in upload_file_paths:
             self.experiment.log_artifact(self.run_id, file_path.as_posix())
@@ -131,9 +168,9 @@ class MLFlowLoggerX(MLFlowLogger):
             self.experiment.log_param(self.run_id, k, v)
 
 
-def create_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
-                  experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
-                  full_outputs_path: Union[str, Path]) -> Logger:
+def build_logger(logger_class_name: str, logger_class_params: Dict, outputs_path: Union[str, Path],
+                 experiment_name: Union[str, Path], experiment_subdir: Union[str, Path],
+                 full_outputs_path: Union[str, Path]) -> Logger:
     """Create logger.
 
     Args:

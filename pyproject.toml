@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "torchok"
-version = "0.4.11"
+version = "0.4.12"
 description = "The toolkit for fast Deep Learning experiments in Computer Vision"
 readme = "README.md"
 authors = [
@@ -39,7 +39,7 @@ pandas = [
 parameterized = "~0.8"
 pillow = "~9.1"
 python = ">=3.7,<3.11"
-pytorch-lightning = "~1.8"
+pytorch-lightning = "1.8.4.post0"
 ranx = "~0.2"
 torch = "1.12.1"
 torchvision = "0.13.1"

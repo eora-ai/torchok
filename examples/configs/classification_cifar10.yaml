@@ -43,7 +43,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/cifar10/data
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
         transform:
           - &resize
             name: Resize
@@ -89,7 +89,7 @@ seed_params:
   workers: true
 
 logger:
-  log_dir: '${oc.env:HOME}/cifar10/logs'
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
   experiment_name: resnet18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger

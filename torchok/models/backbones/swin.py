@@ -1,6 +1,6 @@
 """TorchOK Swin Transformer V2
 A PyTorch implementation of `Swin Transformer V2: Scaling Up Capacity and Resolution`
-    - https://arxiv.org/abs/2111.09883
+- https://arxiv.org/abs/2111.09883
 
 Adapted from https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer_v2.py
 (Copyright (c) 2022 Microsoft)

@@ -14,7 +14,7 @@ class MetricWithUtils(nn.Module):
     """Union class for metric and metric utils parameters."""
 
     def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
-        """Initalize MetricWithUtils.
+        """Initialize MetricWithUtils.
 
         Args:
             metric: Metric written with TorchMetrics.
@@ -29,7 +29,7 @@ class MetricWithUtils(nn.Module):
     def update(self, *args, **kwargs):
         """Update metric states.
 
-        Add *args and **kwargs (usually it is batch) to current state.
+        Add `*args` and `**kwargs` (usually it is batch) to current state.
         """
         self.metric.update(*args, **kwargs)
 

@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.bbox_utils import convert_bboxes_to_albumentations, \
-    convert_bboxes_from_albumentations, filter_bboxes
+    convert_bboxes_from_albumentations, filter_bboxes as alb_filter_bboxes
 from albumentations.core.composition import BasicTransform
 from torch.utils.data._utils.collate import default_collate
 
@@ -108,6 +108,8 @@ class DetectionDataset(ImageDataset):
             self.df = pd.read_pickle(self.data_folder / annotation_path)
         else:
             raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
+        self.df[self.bbox_column] = self.df[self.bbox_column].apply(np.array)
+        self.df[self.target_column] = self.df[self.target_column].apply(np.array)
 
         bbox_params = BboxParams(format=self.bbox_format, label_fields=['label'],
                                  min_area=min_area, min_visibility=min_visibility)
@@ -132,7 +134,7 @@ class DetectionDataset(ImageDataset):
             bboxes = record[self.bbox_column]
 
             if len(bboxes):
-                bboxes, labels = self.filter_bboxes(bboxes, labels, image.shape[:2])
+                bboxes, labels = self.filter_bboxes(bboxes, labels, *image.shape[:2])
             sample['label'] = labels
             sample['bboxes'] = bboxes
 
@@ -140,11 +142,22 @@ class DetectionDataset(ImageDataset):
 
         return sample
 
-    def filter_bboxes(self, bboxes, labels, shape):
-        lbox = np.hstack([bboxes, np.array(labels)[..., None]])
-        alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, *shape)
-        alb_lbox_fixed = filter_bboxes(alb_lbox, *shape)
-        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, *shape))
+    def filter_bboxes(self, bboxes: np.ndarray, labels: np.ndarray, rows: int, cols: int) -> [np.ndarray, np.ndarray]:
+        """Filter empty bounding boxes.
+
+        Args:
+            bboxes: List of bounding box.
+            labels: array of bbox labels
+            rows: Image height.
+            cols: Image width.
+
+        Returns:
+            numpy array of bounding boxes and numpy array of labels of these boxes.
+        """
+        lbox = np.hstack([bboxes, labels[..., None]])
+        alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, rows, cols)
+        alb_lbox_fixed = alb_filter_bboxes(alb_lbox, rows, cols)
+        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
         return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
     def __getitem__(self, idx: int) -> dict:
@@ -155,7 +168,7 @@ class DetectionDataset(ImageDataset):
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['bboxes'] - Target bboxes, dtype=bbox_dtype.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
