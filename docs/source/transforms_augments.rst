@@ -1,5 +1,5 @@
-Transforms and Augmentations
-############################
+Transformations & Augmentations
+###############################
 
 We support nearly all transformations and augmentations available in `Albumentations`_
 
