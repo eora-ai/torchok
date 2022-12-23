@@ -70,5 +70,5 @@ class SegmentationTask(BaseTask):
         return output
 
     def as_module(self) -> nn.Sequential:
-        """Method for model representation as sequential of modules(need for checkpointing)."""
+        """Method for model representation as sequential of modules (required for checkpointing)."""
         return nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.head)
