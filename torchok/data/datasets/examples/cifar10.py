@@ -122,7 +122,7 @@ class CIFAR10(ImageDataset):
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations.
             sample['target'] - Target class or labels.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         image = self.images[idx]
         sample = {"image": image, 'index': idx}
@@ -140,7 +140,7 @@ class CIFAR10(ImageDataset):
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)

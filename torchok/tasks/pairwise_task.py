@@ -56,7 +56,12 @@ class PairwiseLearnTask(ClassificationTask):
         """Forward with ground truth labels.
 
         Args:
-            batch: Dataloader batch.
+            batch: Dictionary with the following keys and values:
+
+                - `image` (torch.Tensor):
+                    tensor of shape (B, C, H, W), representing input images.
+                - `target` (torch.Tensor):
+                    tensor of shape (B), target class or labels per each image.
 
         Returns:
             Dictionary with the following keys and values
@@ -81,7 +86,7 @@ class PairwiseLearnTask(ClassificationTask):
 
     def calc_relevance_matrix(self, y: Tensor) -> Tensor:
         """
-        Calculates binary relevance matrix given multi-label matrice y.
+        Calculates binary relevance matrix given multi-label matrix y.
 
         Args:
             y: Multi-label matrix of shape (N, L) representing labels for N samples, where L - number of classes.
@@ -93,8 +98,7 @@ class PairwiseLearnTask(ClassificationTask):
         """
         if y.ndim == 1:
             bs = y.shape[0]
-            nc = self.num_classes
-            input_label = torch.zeros(bs, nc, device=y.device)
+            input_label = torch.zeros(bs, self.num_classes, device=y.device)
             y = input_label.scatter_(1, y[:, None], 1)
 
         intersections = torch.matmul(y, y.transpose(1, 0))

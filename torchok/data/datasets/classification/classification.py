@@ -106,7 +106,7 @@ class ImageClassificationDataset(ImageDataset):
             sample: dict, where
             sample['image'] - np.array, representing image after augmentations.
             sample['target'] - Target class or labels.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         record = self.csv.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
@@ -129,7 +129,7 @@ class ImageClassificationDataset(ImageDataset):
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
