@@ -68,7 +68,7 @@ class ClassificationTask(BaseTask):
         """Forward method.
 
         Args:
-            x: torch.Tensor of shape [B, C, H, W]. Batch of input images
+            x: torch.Tensor of shape [B, C, H, W]. Batch of input images.
 
         Returns:
             torch.Tensor of shape [B, num_classes], representing logits per each image.
@@ -83,15 +83,19 @@ class ClassificationTask(BaseTask):
         """Forward with ground truth labels.
 
         Args:
-            batch: dict, where
-            batch['image'] - torch.Tensor of shape [B, C, H, W], representing input images.
-            batch['target'] - torch.Tensor of shape [B], target class or labels per each image.
+            batch: Dictionary with the following keys and values:
+
+                - `image` (torch.Tensor):
+                    tensor of shape (B, C, H, W), representing input images.
+                - `target` (torch.Tensor):
+                    tensor of shape (B), target class or labels per each image.
 
         Returns:
-            output: dict, where
-            output['embeddings'] - torch.Tensor of shape [B, num_features], representing embeddings per each image.
-            output['prediction'] - torch.Tensor of shape [B, num_classes], representing logits per each image.
-            output['target'] - torch.Tensor of shape [B], target class or labels per each image. May absent.
+            Dictionary with the following keys and values
+
+            - 'embeddings': torch.Tensor of shape (B, num_features), representing embeddings per each image.
+            - 'prediction': torch.Tensor of shape (B, num_classes), representing logits per each image.
+            - 'target': torch.Tensor of shape (B), target class or labels per each image. May absent.
         """
         input_data = batch.get('image')
         target = batch.get('target')

@@ -68,14 +68,18 @@ class SegmentationTask(BaseTask):
         """Forward with ground truth labels.
 
         Args:
-            batch: dict, where
-            batch['image'] - torch.Tensor of shape [B, C, H, W], representing input images.
-            batch['target'] - torch.Tensor of shape [B, H, W], target class or labels masks per each image.
+            batch: Dictionary with the following keys and values:
+
+                - `image` (torch.Tensor):
+                    tensor of shape (B, C, H, W), representing input images.
+                - `target` (torch.Tensor):
+                    tensor of shape [B, H, W], target class or labels masks per each image.
 
         Returns:
-            output: dict, where
-            output['prediction'] - torch.Tensor of shape [B, num_classes], representing logits masks per each image.
-            output['target'] - torch.Tensor of shape [B, H, W], target class or labels masks per each image. May absent.
+            Dictionary with the following keys and values
+
+            - 'prediction': torch.Tensor of shape [B, num_classes], representing logits masks per each image.
+            - 'target': torch.Tensor of shape [B, H, W], target class or labels masks per each image. May absent.
         """
         input_data = batch.get('image')
         target = batch.get('target')

@@ -56,25 +56,25 @@ class FreezeUnfreeze(BaseFinetuning):
         """Init FreezeUnfreeze.
 
         Args:
-            freeze_modules: List with dictionaries of models to be frozen-unfrozen.
-            Possible keys of dictionaries are
-                `module_name` (str):
+            freeze_modules: List with dictionaries of models to be frozen-unfrozen with possible keys of dictionaries:
+
+                - `module_name` (str):
                     module name relative to the task on which freeze will be applied.
                     For example `backbone.layer1`. Empty string in the `module_name` stands for the whole model.
-                `epoch` (int, optional):
+                - `epoch` (int, optional):
                     number of epochs when module to be frozen. If not specified then module will be frozen forever.
-                `stages` (int, optional):
+                - `stages` (int, optional):
                     if specified with module_name that has ``get_stage(int)`` attribute,
                     apply freeze only on modules returned from ``get_stage(int)``. Usually used with
                     a backbone: stage 0 refers to stem layer, stage `i` refers to `i-1` model layer block and all
                     preceding blocks. If not specified, all blocks will be frozen.
-                `module_class` (str, optional):
+                - `module_class` (str, optional):
                     if specified apply freeze only on the modules of the same type or
                     successors of specified type.
-                `bn_requires_grad` (bool, optional):
+                - `bn_requires_grad` (bool, optional):
                     if specified batch norms' gradients will be set up separately
                     from other blocks. If not specified processed as the other modules.
-                `bn_track_running_stats` (bool, optional):
+                - `bn_track_running_stats` (bool, optional):
                     if specified batch norms train mode will be set up
                     separately from other blocks. If not specified processed as the other modules.
             top_down_freeze_order: If true freeze policy will be applied firstly on top modules, e.g. `aa` > `aa.bb`.
