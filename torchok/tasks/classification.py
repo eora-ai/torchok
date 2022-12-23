@@ -24,7 +24,7 @@ class ClassificationTask(BaseTask):
             neck_params: dict = None,
             pooling_params: dict = None,
             head_params: dict = None,
-            **kwargs
+            inputs: dict = None
     ):
         """Init ClassificationTask.
 
@@ -42,7 +42,7 @@ class ClassificationTask(BaseTask):
             head_params: parameters for head constructor. `in_channels` will be set automatically based on neck.
             inputs: information about input model shapes and dtypes.
         """
-        super().__init__(hparams, **kwargs)
+        super().__init__(hparams, inputs)
         # BACKBONE
         backbones_params = backbone_params or dict()
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
