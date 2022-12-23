@@ -48,7 +48,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:DATA_DIR}/.cache/torchok/data/sweet_pepper
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/sweet_pepper/data
         transform:
           - &resize
             name: Resize
@@ -132,8 +132,8 @@ trainer:
   log_every_n_steps: 1000
 
 logger:
-  log_dir: '${oc.env:DATA_DIR}/.cache/torchok/logs/'
-  experiment_name: sweet_pepper
+  log_dir: '${oc.env:HOME}/.cache/torchok/sweet_pepper/logs'
+  experiment_name: hrnet_w18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 

@@ -45,7 +45,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:DATA_DIR}/.cache/torchok/data/sop
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/sop/data
         transform:
           - &resize
             name: Resize
@@ -129,8 +129,8 @@ trainer:
   num_sanity_val_steps: 0
 
 logger:
-  log_dir: '${oc.env:DATA_DIR}/.cache/torchok/logs/'
-  experiment_name: sop
+  log_dir: '${oc.env:HOME}/.cache/torchok/sop/logs/'
+  experiment_name: semnasnet_100
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 

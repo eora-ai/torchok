@@ -98,7 +98,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:DATA_DIR}/coco_detection/data
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: float32
           channel_order: 'rgb'
@@ -153,12 +153,12 @@ trainer:
 logger:
   name: MLFlowLoggerX
   experiment_name: coco_detection
-  log_dir: '${oc.env:DATA_DIR}/${logger.experiment_name}/logs'
+  log_dir: '${oc.env:HOME}/.cache/torchok/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
 #    run_name: fcos_swsl_resnet50_x800_1344_f16
     run_name: fcos_swsl_resnet50_x400_672_f16
-    tracking_uri: 'mysql+pymysql://${oc.env:DB_USER}:${oc.env:DB_PASSWORD}@${oc.env:DB_HOST}/mlflow'
+    tracking_uri: '${oc.env:DB_URI}'
     artifact_location: 's3://experiments/mlflow'
 
 hydra:

@@ -50,7 +50,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:DATA_DIR}/.cache/torchok/data/sop
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/sop/data
           input_dtype: *input_dtype
         transform:
           - &resize
@@ -119,8 +119,8 @@ trainer:
   log_every_n_steps: 10
 
 logger:
-  log_dir: '${oc.env:DATA_DIR}/.cache/torchok/logs/'
-  experiment_name: pairwise_sop
+  log_dir: '${oc.env:HOME}/.cache/torchok/sop/logs'
+  experiment_name: pairwise_resnet18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
