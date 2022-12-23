@@ -28,11 +28,11 @@ def create_logger(logger_config: DictConfig) -> Logger:
             run_name = logger_config.experiment_name
 
         full_outputs_path = create_outputs_path(log_dir=logger_config.log_dir,
-                                                experiment_name=run_name,
+                                                run_name=run_name,
                                                 timestamp=logger_config.timestamp)
 
-        experiment_path = Path(logger_config.log_dir) / run_name
-        experiment_subdir = str(full_outputs_path.relative_to(experiment_path))
+        run_path = Path(logger_config.log_dir) / run_name
+        experiment_subdir = str(full_outputs_path.relative_to(run_path))
 
         logger = build_logger(logger_class_name=logger_config.name,
                               logger_class_params=logger_config.params,
@@ -41,19 +41,20 @@ def create_logger(logger_config: DictConfig) -> Logger:
                               experiment_subdir=experiment_subdir,
                               full_outputs_path=full_outputs_path)
 
-        # Prevent creation of duplicate folders in case of DDP
+        # Prevent creation of duplicate folders in case of DDP.
+        # LOCAL_RANK is None in case of non-DDP training.
         if os.environ.get('LOCAL_RANK') is not None:
             full_outputs_path.rmdir()
 
         return logger
 
 
-def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = None) -> Path:
+def create_outputs_path(log_dir: str, run_name: str, timestamp: str = None) -> Path:
     """Create directory for saving checkpoints and logging metrics.
 
     Args:
         log_dir: Base path.
-        experiment_name: Sub directory for log_dir.
+        run_name: Sub directory for log_dir.
         timestamp: If specified, create log_dir/experiment_name/%Y-%m-%d/%H-%M-%S folder, otherwise
             log_dir/experiment_name/ folders.
 
@@ -62,7 +63,7 @@ def create_outputs_path(log_dir: str, experiment_name: str, timestamp: str = Non
     """
 
     log_dir = Path(log_dir)
-    full_outputs_path = log_dir / experiment_name
+    full_outputs_path = log_dir / run_name
 
     if timestamp is not None:
         full_outputs_path = full_outputs_path / timestamp

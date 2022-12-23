@@ -87,18 +87,18 @@ class TRIPLET_SOP(ImageDataset):
         """Get item sample.
 
         Returns:
-            output: dict, where
-            output['anchor'] - Anchor.
-            output['positive'] - Positive.
-            output['negative'] - Negative.
-            sample['index'] - Index.
+            sample: dict, where
+            sample['anchor'] - Anchor.
+            sample['positive'] - Positive.
+            sample['negative'] - Negative.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
-        output = {'anchor': self._image_preparation(idx, self.anchor_column),
+        sample = {'anchor': self._image_preparation(idx, self.anchor_column),
                   'positive': self._image_preparation(idx, self.positive_column),
                   'negative': self._image_preparation(idx, self.negative_column),
                   'index': idx}
 
-        return output
+        return sample
 
     def _image_preparation(self, idx: int, column_name: str, apply_transform: bool = True) -> Dict[str, Tensor]:
         record = self.csv.iloc[idx]
@@ -119,14 +119,14 @@ class TRIPLET_SOP(ImageDataset):
             sample: dict, where
             sample['image'] - Tensor, representing image after augmentations.
             sample['target'] - Target class or labels.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
-        output = {'anchor': self._image_preparation(idx, self.anchor_column, apply_transform=False),
+        sample = {'anchor': self._image_preparation(idx, self.anchor_column, apply_transform=False),
                   'positive': self._image_preparation(idx, self.positive_column, apply_transform=False),
                   'negative': self._image_preparation(idx, self.negative_column, apply_transform=False),
                   'index': idx}
 
-        return output
+        return sample
 
     def __len__(self) -> int:
         """Dataset length."""

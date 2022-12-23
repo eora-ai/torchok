@@ -1,11 +1,11 @@
-import pandas as pd
-from pycocotools.coco import COCO
 from pathlib import Path
 from typing import Optional, Union
 
+import pandas as pd
 import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
+from pycocotools.coco import COCO
 from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.constructor import DATASETS
@@ -201,7 +201,7 @@ class COCODetection(DetectionDataset):
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['bboxes'] - Target bboxes, dtype=bbox_dtype.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)

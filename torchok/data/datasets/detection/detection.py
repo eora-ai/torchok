@@ -168,7 +168,7 @@ class DetectionDataset(ImageDataset):
             sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['target'] - Target class or labels, dtype=target_dtype.
             sample['bboxes'] - Target bboxes, dtype=bbox_dtype.
-            sample['index'] - Index of the sample.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
