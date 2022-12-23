@@ -90,7 +90,7 @@ class PairwiseLearnTask(ClassificationTask):
 
         Args:
             y: Multi-label matrix of shape (N, L) representing labels for N samples, where L - number of classes.
-                Values are either 0 or 1, where y1[i, k] = 1 indicate that i-th sample belongs to k-th class.
+            Values are either 0 or 1, where y1[i, k] = 1 indicate that i-th sample belongs to k-th class.
 
         Returns:
             Binary relevance matrix R of shape (N, M) where R[i, j] = 1 means that samples i and j are relevant
