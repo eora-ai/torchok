@@ -106,9 +106,6 @@ class FreezeUnfreeze(BaseFinetuning):
         Args:
             modules: A given module or an iterable of modules
             module_dict: If True, leave the BatchNorm layers in training mode
-
-        Returns:
-            None
         """
         modules = BaseFinetuning.flatten_modules(modules)
         for mod in modules:
