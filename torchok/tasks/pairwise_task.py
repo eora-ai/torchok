@@ -58,7 +58,7 @@ class PairwiseLearnTask(ClassificationTask):
         Args:
             batch: Dataloader batch.
 
-        Returns: 
+        Returns:
             Dictionary with the following keys and values
 
             - 'emb1': model forward method output.
