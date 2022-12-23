@@ -109,25 +109,22 @@ def _flatten_dict(
 
 
 class MLFlowLoggerX(MLFlowLogger):
-    """This logger completely repeats the functionality of Pytorch Lightning MLFlowLogger. But unlike the Lightning
-    logger it uploads *.onnx and *.ckpt artifacts to artifact_location path.
+    """This logger completely repeats the functionality of Pytorch Lightning MLFlowLogger.
+    But unlike the Lightning logger it uploads `*.onnx` and `*.ckpt` artifacts to artifact_location path.
 
     Args:
         experiment_name: The name of the experiment
-        tracking_uri: Address of local or remote tracking server.
-            If not provided, defaults to `file:<save_dir>`.
+        tracking_uri: Address of local or remote tracking server. If not provided, defaults to `file:<save_dir>`.
         tags: A dictionary tags for the experiment.
         save_dir: A path to a local directory where the MLflow runs get saved.
-            Defaults to `./mlflow` if `tracking_uri` is not provided.
-            Has no effect if `tracking_uri` is provided.
+            Defaults to `./mlflow` if `tracking_uri` is not provided. Has no effect if `tracking_uri` is provided.
         prefix: A string to put at the beginning of metric keys.
         artifact_location: The location to store run artifacts. If not provided, the server picks an appropriate
             default.
         run_id: The run identifier of the experiment. If not provided, a new run is started.
 
     Raises:
-        ImportError:
-            If required MLFlow package is not installed on the device.
+        ImportError: If required MLFlow package is not installed on the device.
     """
 
     def __init__(self,
@@ -144,8 +141,13 @@ class MLFlowLoggerX(MLFlowLogger):
         self._save_dir = Path(save_dir)
 
     @rank_zero_only
-    def finalize(self, status: str = 'FINISHED') -> None:
-        """Call finalize of pytorch lightning MlFlowLogger and logs *.ckpt and *.onnx artifacts in artifact_location."""
+    def finalize(self, status: str = 'FINISHED'):
+        """
+        Call finalize of pytorch lightning MlFlowLogger and logs `*.ckpt` and `*.onnx` artifacts in artifact_location.
+
+        Args:
+            status: A string value of :py:class:`mlflow.entities.RunStatus`. Defaults to "FINISHED".
+        """
         upload_file_paths = chain(self._save_dir.glob('*.ckpt'), self._save_dir.glob('*.onnx'))
         for file_path in upload_file_paths:
             self.experiment.log_artifact(self.run_id, file_path.as_posix())

@@ -40,14 +40,15 @@ class PairwiseLearnTask(ClassificationTask):
 
     def calc_relevance_matrix(self, y: Tensor) -> Tensor:
         """
-        Calculates binary relevance matrix given multi-label matrice y
+        Calculates binary relevance matrix given multi-label matrix y.
+
         Args:
             y: Multi-label matrix of shape (N, L) representing labels for N samples, where L - number of classes.
-                Values are either 0 or 1, where y1[i, k] = 1 indicate that i-th sample belongs to k-th class
+            Values are either 0 or 1, where y1[i, k] = 1 indicate that i-th sample belongs to k-th class.
 
         Returns:
             Binary relevance matrix R of shape (N, M) where R[i, j] = 1 means that
-                samples i and j are relevant to each other, dtype=float32
+            samples i and j are relevant to each other, dtype=float32
         """
         if y.ndim == 1:
             bs = y.shape[0]

@@ -11,6 +11,8 @@ from torchok.tasks.base import BaseTask
 
 @TASKS.register_class
 class SegmentationTask(BaseTask):
+    """A class for image segmentation task."""
+
     def __init__(
             self,
             hparams: DictConfig,
