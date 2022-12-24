@@ -13,16 +13,18 @@ from torchok.constructor.config_structure import MetricParams, Phase
 class MetricWithUtils(nn.Module):
     """Union class for metric and metric utils parameters."""
 
-    def __init__(self, metric: Metric, mapping: Dict[str, str], log_name: str):
+    def __init__(self, metric: Metric, dataloader_idxs: List[int], mapping: Dict[str, str], log_name: str):
         """Initialize MetricWithUtils.
 
         Args:
             metric: Metric written with TorchMetrics.
+            dataloader_idxs: Dataloader indexes on which metrics are calculated.
             mapping: Dictionary for mapping Metric forward input keys with Task output dictionary keys.
             log_name: The metric name used in logs.
         """
         super().__init__()
         self.metric = metric
+        self.dataloader_idxs = dataloader_idxs
         self.mapping = mapping
         self.log_name = log_name
 
@@ -79,19 +81,21 @@ class MetricsManager(nn.Module):
             metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
             log_name = metric_params.name if metric_params.tag is None else metric_params.tag
+            dataloader_idxs = metric_params.dataloader_idxs
             if log_name in added_log_names:
                 raise ValueError(f'Got two metrics with identical names: {log_name}. '
                                  f'Please, set different prefixes for identical metrics in the config file.')
             else:
                 added_log_names.append(log_name)
 
-            metrics.append(MetricWithUtils(metric=metric, mapping=mapping, log_name=log_name))
+            metrics.append(MetricWithUtils(metric=metric, mapping=mapping,
+                                           log_name=log_name, dataloader_idxs=dataloader_idxs))
 
         metrics = nn.ModuleList(metrics)
 
         return metrics
 
-    def update(self, phase: Phase, *args, **kwargs):
+    def update(self, phase: Phase, dataloader_idx: int = 0, *args, **kwargs):
         """Update states of all metrics on phase loop.
 
         MetricsManager update method use only update method of metrics. Because metric forward method
@@ -103,6 +107,8 @@ class MetricsManager(nn.Module):
         args = list(args)
 
         for metric_with_utils in self.phase2metrics[phase.name]:
+            if dataloader_idx not in metric_with_utils.dataloader_idxs:
+                continue
             targeted_kwargs = self.map_arguments(metric_with_utils.mapping, kwargs)
             metric_with_utils.update(*args, **targeted_kwargs)
 
