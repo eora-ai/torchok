@@ -54,32 +54,32 @@ class SegmentationTask(BaseTask):
         """Forward method.
 
         Args:
-            x: torch.Tensor of shape [B, C, H, W]. Batch of input images
+            x: torch.Tensor of shape `(B, C, H, W)`. Batch of input images
 
         Returns:
-            torch.Tensor of shape [B, num_classes, H, W], representing logits masks per each image.
+            torch.Tensor of shape `(B, num_classes, H, W)`, representing logits masks per each image.
         """
         x = self.backbone.forward_features(x)
         x = self.neck(x)
         x = self.head(x)
         return x
 
-    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, torch.Tensor]:
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Forward with ground truth labels.
 
         Args:
             batch: Dictionary with the following keys and values:
 
                 - `image` (torch.Tensor):
-                    tensor of shape (B, C, H, W), representing input images.
+                    tensor of shape `(B, C, H, W)`, representing input images.
                 - `target` (torch.Tensor):
-                    tensor of shape [B, H, W], target class or labels masks per each image.
+                    tensor of shape `(B, H, W)`, target class or labels masks per each image.
 
         Returns:
             Dictionary with the following keys and values
 
-            - 'prediction': torch.Tensor of shape [B, num_classes], representing logits masks per each image.
-            - 'target': torch.Tensor of shape [B, H, W], target class or labels masks per each image. May absent.
+            - 'prediction': torch.Tensor of shape `(B, num_classes)`, representing logits masks per each image.
+            - 'target': torch.Tensor of shape `(B, H, W)`, target class or labels masks per each image. May absent.
         """
         input_data = batch.get('image')
         target = batch.get('target')
