@@ -111,7 +111,7 @@ class MetricsManager(nn.Module):
             metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
             dataloader_idxs = metric_params.dataloader_idxs
-            # create base log name, it would be use as log name if metric compute for one dataloder 
+            # create base log name, it would be use as log name if metric compute for one dataloder
             base_log_name = metric_params.name if metric_params.tag is None else metric_params.tag
             # but if metric compute for many dataloders -> log name = '{base_log_name}_{dataloader_idx}'
             if len(dataloader_idxs) > 1:
@@ -122,14 +122,14 @@ class MetricsManager(nn.Module):
             for log_name in log_names:
                 if log_name in added_log_names:
                     raise ValueError(f'Got two metrics with identical names: {log_name}. '
-                                    f'Please, set different prefixes for identical metrics in the config file.')
+                                     f'Please, set different prefixes for identical metrics in the config file.')
                 else:
                     added_log_names.append(log_name)
 
             # add metric for each dataloader index
             for dataloader_idx, log_name in zip(dataloader_idxs, log_names):
                 metrics.append(MetricWithUtils(metric=metric, mapping=mapping,
-                                            log_name=log_name, dataloader_idx=dataloader_idx))
+                                               log_name=log_name, dataloader_idx=dataloader_idx))
 
         metrics = nn.ModuleList(metrics)
 
