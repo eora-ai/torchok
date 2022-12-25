@@ -1,7 +1,7 @@
 from albumentations import (Normalize, Resize, HorizontalFlip, VerticalFlip, Affine, CenterCrop, CoarseDropout, Crop,
                             CropAndPad, CropNonEmptyMaskIfExists, ElasticTransform, Flip, GridDistortion, GridDropout,
                             Lambda, LongestMaxSize, MaskDropout, NoOp, OpticalDistortion, PadIfNeeded, Perspective,
-                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropFromBorders, RandomCropNearBBox, 
+                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropFromBorders, RandomCropNearBBox,
                             RandomGridShuffle,
                             RandomResizedCrop, RandomRotate90, RandomScale, RandomSizedBBoxSafeCrop, RandomSizedCrop,
                             Rotate, SafeRotate, ShiftScaleRotate, SmallestMaxSize, Transpose, AdvancedBlur, Blur,
