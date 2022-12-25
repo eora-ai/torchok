@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -79,7 +79,7 @@ class ClassificationTask(BaseTask):
         x = self.head(x)
         return x
 
-    def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Tensor]:
         """Forward with ground truth labels.
 
         Args:

@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict
 
 import torch
 from omegaconf import DictConfig
@@ -52,7 +52,7 @@ class PairwiseLearnTask(ClassificationTask):
                          backbone_params, neck_params, pooling_params, head_params, inputs)
         self.num_classes = num_classes
 
-    def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Tensor]:
         """Forward with ground truth labels.
 
         Args:
