@@ -86,11 +86,11 @@ class SingleStageDetectionTask(BaseTask):
 
                 - `image` (torch.Tensor):
                     tensor of shape `(B, C, H, W)`, representing input images.
-                - `bboxes` (torch.Tensor):
-                    tensor of shape `(N, 4)`, where N is the number of bboxes on the image, may be different for
-                    each image and even may be 0. Each box is form `[x_left, y_top, x_right, y_bottom]`. May absent.
-                - `labels` (torch.Tensor):
-                    tensor of shape `(N)`, containing class label of each bbox. May absent.
+                - `bboxes` (List[torch.Tensor]):
+                    list of B tensors of shape `(N, 4)`, where N is the number of bboxes on the image, may be different
+                    for each image and even may be 0. Each box is form `[x_left, y_top, x_right, y_bottom]`. May absent.
+                - `labels` (List[torch.Tensor]):
+                    list of B tensors of shape `(N)`, containing class label of each bbox. May absent.
 
         Returns:
             Dictionary with the keys related to specific detection head, input image shape

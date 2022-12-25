@@ -80,7 +80,7 @@ class ONNXTask(BaseTask):
             Dictionary with the output items that are specified in model onnx file.
         """
 
-        batch_dim = 1
+        batch_dim = None
         for model_input in self.model_inputs:
             # TODO: Hardcode device_id check that it doesn't matter
             input_tensor = batch[self.keys_mapping_onnx2dataset[model_input['name']]]
