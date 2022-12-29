@@ -1,0 +1,269 @@
+# Config for pairwise learning on trademarks with XBM and 
+# validation on pairwise NFT dataset with AP calculation (binary classification)
+task:
+  name: SimCLR
+  params:
+    backbone_name: resnet50
+    backbone_params:
+      block_args:
+        no_downsample_stages: [0, 4]
+      pretrained: true
+      in_chans: 3
+    pooling_name: MultiPooling
+    pooling_params:
+      poolings:
+        - name: 'avg'
+        - name: 'gem'
+          params:
+            p: 3
+        - name: 'spoc'
+    head_name: CGD_Head
+    head_params:
+      branch_out_channels: 64
+      normalize: true
+    inputs:
+      - shape: [3, &height 224, &width 224]
+        dtype: &input_dtype float32
+
+
+joint_loss:
+  losses:
+    - name: NT_Xent
+      params:
+        temperature: 0.1
+      mapping:
+        emb1 : emb1
+        emb2 : emb2
+
+optimization:
+  - optimizer: 
+      name: SGD
+      params:
+        lr: 0.001
+        weight_decay: 0.0001
+        momentum: 0.9
+        nesterov: true
+    scheduler:
+      name: OneCycleLR
+      params:
+        max_lr: 0.08 # should be 0.1 * sqrt(batch_size) if trained with very big batch size
+        total_steps: 300150
+        pct_start: 0.1
+        anneal_strategy: 'cos'
+        div_factor: 25
+        final_div_factor: 10000
+      pl_params:
+        interval: 'step'
+
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: 96
+        num_workers: 8
+        drop_last: true
+        shuffle: true
+      dataset:
+        name: UnsupervisedContrastiveDataset
+        params:
+          input_dtype: *input_dtype
+          data_folder: '/workdir'
+          csv_path: 'train_unsupervised.csv'
+        transform:
+          - &normalize
+            name: Normalize
+            params:
+              mean: [0.485, 0.456, 0.406]
+              std: [0.229, 0.224, 0.225]
+          - &totensor
+            name: ToTensorV2
+        augment:
+          - name: Compose
+            params:
+              p: 0.2
+              transforms:
+                - name: Resize
+                  params:
+                    height: 32
+                    width: 32
+                    interpolation: 1
+                    p: 1.0
+                - name: Posterize
+                  params:
+                    num_bits: 8
+                    p: 1.0
+                - name: Resize
+                  params:
+                    height: 224
+                    width: 224
+                    interpolation: 1
+                    p: 1.0
+          - name: ChannelShuffle
+            params:
+              p: 0.2
+          - name: ColorJitter
+            params:
+              brightness: 0.25
+              contrast: 0.25
+              hue: 0.25
+              saturation: 0.25
+              p: 0.2
+          - name: GaussianBlur
+            params:
+              blur_limit: [7, 15]
+              sigma_limit: [0.1, 2.0]
+              p: 0.2
+          - name: RandomCropFromBorders
+            params:
+              crop_bottom: 0.3
+              crop_left: 0.3
+              crop_right: 0.3
+              crop_top: 0.3
+              p: 0.2
+          - name: LongestMaxSize
+            params:
+              max_size: *height
+              interpolation: 2
+          - name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+              border_mode: 0
+              value: [ 255, 255, 255 ]
+              p: 1.0
+          - name: HorizontalFlip
+          - name: Rotate
+            params:
+              limit: 45
+              border_mode: 0
+              value: 0
+              p: 0.2
+
+  VALID:
+    - dataloader:
+        batch_size: 96
+        num_workers: 8
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: UnsupervisedContrastiveDataset
+        params:
+          data_folder: '/workdir'
+          csv_path: 'valid_unsupervised.csv'
+        transform:
+          - &resize
+            name: Resize
+            params:
+              height: 224
+              width: 224
+              interpolation: 1
+          - *normalize
+          - *totensor
+        augment:
+          - name: Compose
+            params:
+              p: 1.0
+              transforms:
+                - name: Resize
+                  params:
+                    height: 4
+                    width: 4
+                    interpolation: 1
+                    p: 1.0
+                - name: Posterize
+                  params:
+                    num_bits: 8
+                    p: 1.0
+                - name: Resize
+                  params:
+                    height: 224
+                    width: 224
+                    interpolation: 1
+                    p: 1.0
+          - name: ChannelShuffle
+            params:
+              p: 0.2
+          - name: ColorJitter
+            params:
+              brightness: 0.25
+              contrast: 0.25
+              hue: 0.25
+              saturation: 0.25
+              p: 0.2
+          - name: GaussianBlur
+            params:
+              blur_limit: [7, 15]
+              sigma_limit: [0.1, 2.0]
+              p: 0.2
+          - name: RandomCropFromBorders
+            params:
+              crop_bottom: 0.3
+              crop_left: 0.3
+              crop_right: 0.3
+              crop_top: 0.3
+              p: 0.2
+          - name: LongestMaxSize
+            params:
+              max_size: *height
+              interpolation: 2
+          - name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+              border_mode: 0
+              value: [ 255, 255, 255 ]
+              p: 1.0
+          - name: HorizontalFlip
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 30
+  log_every_n_steps: 100
+  precision: 32
+  num_sanity_val_steps: 0
+  # limit_train_batches: 200
+  deterministic: true
+
+seed_params:
+  seed: 42
+  workers: true
+
+logger:
+  log_dir: 'logs/'
+  experiment_name: unsupervised
+  name: MLFlowLoggerX
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  params:
+    run_name: SimCLR_met_copymint_nft_with_pretrained
+    tracking_uri: ${oc.env:CV_MLFLOW_TRACKING_URI}
+    artifact_location: 's3://nft-experiments/mlflow'
+    save_dir: '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
+# logger:
+#   log_dir: '/workdir/logs/'
+#   experiment_name: unsupervised-all
+#   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+#   name: TensorBoardLogger
+
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/loss
+      save_top_k: 10
+      save_last: true
+      mode: min
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+#        The whole backbone will be frozen during the first 2 epochs.
+          - module_name: backbone
+            epoch: 1
