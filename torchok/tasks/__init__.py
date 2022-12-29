@@ -1,4 +1,5 @@
 import torchok.tasks.classification
+import torchok.tasks.simclr_task
 import torchok.tasks.onnx
 import torchok.tasks.segmentation
 import torchok.tasks.triplet_task
