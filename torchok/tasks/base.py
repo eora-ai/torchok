@@ -109,8 +109,8 @@ class BaseTask(LightningModule, ABC):
                 # TODO: create logger and print a warning instead
                 raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
-    def on_train_start(self) -> None:
-        if self.current_epoch == 0 and self._hparams.task.load_checkpoint is not None:
+    def on_fit_start(self) -> None:
+        if self._hparams.task.load_checkpoint is not None:
             load_checkpoint(self, **self._hparams.task.load_checkpoint)
 
     def on_test_start(self) -> None:
