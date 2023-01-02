@@ -108,7 +108,6 @@ class MetricsManager(nn.Module):
         for metric_params in params:
             if phase not in metric_params.phases:
                 continue
-            metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
 
             # create base log name, it would be use as log name if metric compute for one dataloder
@@ -118,7 +117,7 @@ class MetricsManager(nn.Module):
             dataloader_idxs = metric_params.val_dataloader_idxs if phase == Phase.VALID else [0]
             if phase == Phase.VALID and len(dataloader_idxs) > 1:
                 # but if metric compute for many dataloders -> log name = '{base_log_name}_{dataloader_idx}'
-                log_names = [f'{base_log_name}_{dataloader_idx}' for dataloader_idx in dataloader_idxs]
+                log_names = [f'{base_log_name}_dataloader_{dataloader_idx}' for dataloader_idx in dataloader_idxs]
             else:
                 log_names = [base_log_name]
 
@@ -131,6 +130,7 @@ class MetricsManager(nn.Module):
 
             # add metric for each dataloader index
             for dataloader_idx, log_name in zip(dataloader_idxs, log_names):
+                metric = METRICS.get(metric_params.name)(**metric_params.params)
                 metrics.append(MetricWithUtils(metric=metric, mapping=mapping,
                                                log_name=log_name, dataloader_idx=dataloader_idx))
 
