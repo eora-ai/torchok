@@ -106,8 +106,7 @@ seed_params:
   workers: true
 
 logger:
-  # log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
-  log_dir: '/workdir/cifar10/logs'
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
   experiment_name: resnet18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
