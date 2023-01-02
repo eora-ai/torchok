@@ -113,9 +113,15 @@ class MetricsManager(nn.Module):
             # create base log name, it would be use as log name if metric compute for one dataloder
             base_log_name = metric_params.name if metric_params.tag is None else metric_params.tag
 
-            # Metric manager support many dataloaders only for Validation Phase
-            dataloader_idxs = metric_params.val_dataloader_idxs if phase == Phase.VALID else [0]
-            if phase == Phase.VALID and len(dataloader_idxs) > 1:
+            # Metric manager support many dataloaders only for Validation and Test Phases
+            if phase == Phase.VALID:
+                dataloader_idxs = metric_params.val_dataloader_idxs
+            elif phase == Phase.TEST:
+                dataloader_idxs = metric_params.test_dataloader_idxs
+            else:
+                dataloader_idxs = [0]
+
+            if phase in [Phase.VALID, Phase.TEST] and len(dataloader_idxs) > 1:
                 # but if metric compute for many dataloders -> log name = '{base_log_name}_{dataloader_idx}'
                 log_names = [f'{base_log_name}_dataloader_{dataloader_idx}' for dataloader_idx in dataloader_idxs]
             else:
