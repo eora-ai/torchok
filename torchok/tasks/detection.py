@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict, List
 
 import torch
 import torch.nn as nn
@@ -56,20 +56,49 @@ class SingleStageDetectionTask(BaseTask):
         head_params = head_params or dict()
         self.bbox_head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method."""
-        x = self.backbone.forward_features(x)[-self.num_scales:]
-        with torch.cuda.amp.autocast(dtype=torch.float32):
-            x = self.neck(x)
-        x = self.bbox_head(x)
-        return x
+    def forward(self, x: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
+        """Forward method.
 
-    def forward_with_gt(self, batch: Dict[str, Union[torch.Tensor, int]]) -> Dict[str, Any]:
-        """Forward with ground truth labels."""
+        Args:
+            x: tensor of shape `(B, C, H, W)`. Batch of input images.
+
+        Returns:
+            List of length B containing dicts with two items `bboxes` and `labels`.
+
+            - `bboxes` (torch.Tensor):
+                tensor of shape `(N, 5)`, where N is the number of bboxes on the image, may be different for
+                each image and even may be 0. Each box is form `[x1, y1, x2, y2, confidence]`.
+            - `labels` (torch.Tensor):
+                tensor of shape `(N)`, containing class label of each bbox.
+        """
+        features = self.backbone.forward_features(x)[-self.num_scales:]
+        features = self.neck(features)
+        features = self.bbox_head(features)
+        output = self.bbox_head.format_dict(features)
+        output = self.bbox_head.get_bboxes(**output, image_shape=x.shape[-2:])
+        return output
+
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Any]:
+        """Forward with ground truth labels.
+
+        Args:
+            batch: Dictionary with the following keys and values:
+
+                - `image` (torch.Tensor):
+                    tensor of shape `(B, C, H, W)`, representing input images.
+                - `bboxes` (List[torch.Tensor]):
+                    list of B tensors of shape `(N, 4)`, where N is the number of bboxes on the image, may be different
+                    for each image and even may be 0. Each box is form `[x_left, y_top, x_right, y_bottom]`. May absent.
+                - `labels` (List[torch.Tensor]):
+                    list of B tensors of shape `(N)`, containing class label of each bbox. May absent.
+
+        Returns:
+            Dictionary with the keys related to specific detection head, input image shape
+            and ground truth values if present.
+        """
         input_data = batch.get('image')
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
-        with torch.cuda.amp.autocast(dtype=torch.float32):
-            neck_out = self.neck(features)
+        neck_out = self.neck(features)
         prediction = self.bbox_head(neck_out)
         output = self.bbox_head.format_dict(prediction)
         output['image_shape'] = input_data.shape[-2:]
@@ -84,7 +113,7 @@ class SingleStageDetectionTask(BaseTask):
         """Method for model representation as sequential of modules(need for checkpointing)."""
         return nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.bbox_head)
 
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
         output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.bbox_head.loss(self.losses, **output)
@@ -96,8 +125,8 @@ class SingleStageDetectionTask(BaseTask):
         output_dict.update(tagged_loss_values)
         return output_dict
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]],
-                        batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int,
+                        dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.bbox_head.loss(self.losses, **output)
@@ -109,14 +138,14 @@ class SingleStageDetectionTask(BaseTask):
         output_dict.update(tagged_loss_values)
         return output_dict
 
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
+    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         output['prediction'] = self.bbox_head.get_bboxes(**output)
         output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
         self.metrics_manager.update(Phase.TEST, **output)
 
-    def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def predict_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
         output['prediction'] = self.bbox_head.get_bboxes(**output)

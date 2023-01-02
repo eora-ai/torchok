@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict
 
 import torch
 from omegaconf import DictConfig
@@ -52,16 +52,16 @@ class PairwiseLearnTask(ClassificationTask):
                          backbone_params, neck_params, pooling_params, head_params, inputs)
         self.num_classes = num_classes
 
-    def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Tensor]:
         """Forward with ground truth labels.
 
         Args:
             batch: Dictionary with the following keys and values:
 
                 - `image` (torch.Tensor):
-                    tensor of shape (B, C, H, W), representing input images.
+                    tensor of shape `(B, C, H, W)`, representing input images.
                 - `target` (torch.Tensor):
-                    tensor of shape (B), target class or labels per each image.
+                    tensor of shape `(B)`, target class or labels per each image.
 
         Returns:
             Dictionary with the following keys and values
@@ -86,14 +86,14 @@ class PairwiseLearnTask(ClassificationTask):
 
     def calc_relevance_matrix(self, y: Tensor) -> Tensor:
         """
-        Calculates binary relevance matrix given multi-label matrix y.
+        Calculates binary relevance matrix given multi-label matrix `y`.
 
         Args:
-            y: Multi-label matrix of shape (N, L) representing labels for N samples, where L - number of classes.
-                Values are either 0 or 1, where y1[i, k] = 1 indicate that i-th sample belongs to k-th class.
+            y: Multi-label matrix of shape `(N, L)` representing labels for N samples, where L - number of classes.
+            Values are either 0 or 1, where y1[i, k] = 1 indicate that i-th sample belongs to k-th class.
 
         Returns:
-            Binary relevance matrix R of shape (N, M) where R[i, j] = 1 means that samples i and j are relevant
+            Binary relevance matrix R of shape `(N, M)` where `R[i, j] = 1` means that samples i and j are relevant
             to each other, dtype=float32.
         """
         if y.ndim == 1:

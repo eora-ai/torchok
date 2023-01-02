@@ -43,7 +43,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/cifar10
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
         transform:
           - &resize
             name: Resize
@@ -78,9 +78,9 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 30
-  limit_train_batches: 10
-  limit_val_batches: 10
-  log_every_n_steps: 1000
+#  limit_train_batches: 10
+#  limit_val_batches: 10
+#  log_every_n_steps: 1000
   precision: 16
   num_sanity_val_steps: 0
 
@@ -89,8 +89,8 @@ seed_params:
   workers: true
 
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: cifar10
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
+  experiment_name: resnet18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 

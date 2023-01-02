@@ -1,10 +1,11 @@
-import pandas as pd
-from pycocotools.coco import COCO
 from pathlib import Path
 from typing import Optional, Union
 
+import pandas as pd
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
+from pycocotools.coco import COCO
 from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.constructor import DATASETS
@@ -191,3 +192,24 @@ class COCODetection(DetectionDataset):
                                          md5=self.valid_data_hash, remove_finished=True)
             download_and_extract_archive(self.annotations_url, self.path.as_posix(), filename=self.annotations_filename,
                                          md5=self.annotations_hash, remove_finished=True)
+
+    def __getitem__(self, idx: int) -> dict:
+        """Get item sample.
+
+        Returns:
+            sample: dict, where
+            sample['image'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
+            sample['target'] - Target class or labels, dtype=target_dtype.
+            sample['bboxes'] - Target bboxes, dtype=bbox_dtype.
+            sample['index'] - Index of the sample, the same as input `idx`.
+        """
+        sample = self.get_raw(idx)
+        sample = self._apply_transform(self.transform, sample)
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
+
+        if not self.test_mode:
+            sample['label'] = torch.tensor(sample['label']).type(torch.__dict__[self.target_dtype]) - 1
+            sample['bboxes'] = torch.tensor(sample['bboxes']).type(torch.__dict__[self.bbox_dtype]).reshape(-1, 4)
+            sample['bboxes'][:, 2:4] += sample['bboxes'][:, :2]
+
+        return sample
