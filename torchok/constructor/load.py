@@ -7,7 +7,7 @@ import torch
 from pytorch_lightning.utilities.cloud_io import load
 
 
-def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Callable, torch.device]] = 'cpu'):
+def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Callable, torch.device]] = "cpu"):
     """Loads a checkpoint state_dict.
 
     Args:
@@ -18,8 +18,8 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
         state_dict: Downloaded state dict.
     """
     checkpoint = load(checkpoint_path, map_location=map_location)
-    if 'state_dict' in checkpoint:
-        state_dict = checkpoint['state_dict']
+    if "state_dict" in checkpoint:
+        state_dict = checkpoint["state_dict"]
     else:
         state_dict = checkpoint
     return state_dict
@@ -42,7 +42,7 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
     depth2override_state_dicts = defaultdict(list)
 
     for override_key, override_state_dict in override_name2state_dict.items():
-        depth = len(override_key.split('.')) - 1
+        depth = len(override_key.split(".")) - 1
         depth2override_state_dicts[depth].append(override_state_dict)
 
     # Sort depth2override_state_dicts by it key - depth
@@ -62,8 +62,8 @@ def get_state_dict_with_prefix(prefix: str, state_dict: Dict[str, torch.Tensor])
     """
     state_dict_with_prefix = dict()
     # Remove spaces and dots
-    prefix = prefix.strip(' .')
-    prefix = prefix + '.'
+    prefix = prefix.strip(" .")
+    prefix = prefix + "."
     for key, value in state_dict.items():
         if not key.startswith(prefix):
             key = prefix + key
@@ -90,12 +90,13 @@ def get_absolute_keys(require_key: str, model_keys: List[str]) -> List[str]:
     return absolute_keys
 
 
-def generate_required_state_dict(base_state_dict: Dict[str, torch.Tensor],
-                                 overridden_name2state_dict: Dict[str, Dict[str, torch.Tensor]],
-                                 exclude_keys: List[str],
-                                 model_keys: List[str],
-                                 initial_state_dict: Dict[str, torch.Tensor]
-                                 ) -> Dict[str, torch.Tensor]:
+def generate_required_state_dict(
+    base_state_dict: Dict[str, torch.Tensor],
+    overridden_name2state_dict: Dict[str, Dict[str, torch.Tensor]],
+    exclude_keys: List[str],
+    model_keys: List[str],
+    initial_state_dict: Dict[str, torch.Tensor],
+) -> Dict[str, torch.Tensor]:
     """Generate state dict, which should be loaded from 4 main components: base state dict, overridden state dicts,
     exclude keys and model_keys.
 
@@ -176,7 +177,7 @@ def generate_required_state_dict(base_state_dict: Dict[str, torch.Tensor],
     for exclude_key in exclude_keys:
         absolute_keys = get_absolute_keys(exclude_key, model_keys)
         if len(absolute_keys) == 0:
-            raise ValueError(f'Load checkpoint. Found exclude key {exclude_key} which not in model_keys.')
+            raise ValueError(f"Load checkpoint. Found exclude key {exclude_key} which not in model_keys.")
         absolute_exclude_keys += absolute_keys
 
     # Create exclude state dict
@@ -190,9 +191,13 @@ def generate_required_state_dict(base_state_dict: Dict[str, torch.Tensor],
     return required_state_dict
 
 
-def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = None,
-                    overridden_name2ckpt_path: Optional[Dict[str, str]] = None,
-                    exclude_keys: Optional[List[str]] = None, strict: bool = True):
+def load_checkpoint(
+    model: pl.LightningModule,
+    base_ckpt_path: Optional[str] = None,
+    overridden_name2ckpt_path: Optional[Dict[str, str]] = None,
+    exclude_keys: Optional[List[str]] = None,
+    strict: bool = True,
+):
     """Load checkpoint to model.
 
     Args:
@@ -203,8 +208,10 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
     """
     # If no checkpoints to load
     if base_ckpt_path is None and overridden_name2ckpt_path is None:
-        logging.info('Load checkpoint function. You wrote checkpoint parameters in yaml config without base '
-                     'checkpoint path and overridden checkpoint paths!')
+        logging.info(
+            "Load checkpoint function. You wrote checkpoint parameters in yaml config without base "
+            "checkpoint path and overridden checkpoint paths!"
+        )
         return
     initial_state_dict = model.state_dict()
     model_keys = list(initial_state_dict.keys())
@@ -213,15 +220,17 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
         exclude_keys = list()
 
     # Load base state dict
-    base_state_dict = load_state_dict(base_ckpt_path, map_location='cpu') if base_ckpt_path is not None else dict()
+    base_state_dict = load_state_dict(base_ckpt_path, map_location="cpu") if base_ckpt_path is not None else dict()
 
     # Load overridden state dicts
     if overridden_name2ckpt_path is None:
         overridden_name2state_dict = dict()
     else:
-        overridden_name2state_dict = {name: load_state_dict(ckpt_path)
-                                      for name, ckpt_path in overridden_name2ckpt_path.items()}
-    required_state_dict = generate_required_state_dict(base_state_dict, overridden_name2state_dict,
-                                                       exclude_keys, model_keys, initial_state_dict)
+        overridden_name2state_dict = {
+            name: load_state_dict(ckpt_path) for name, ckpt_path in overridden_name2ckpt_path.items()
+        }
+    required_state_dict = generate_required_state_dict(
+        base_state_dict, overridden_name2state_dict, exclude_keys, model_keys, initial_state_dict
+    )
 
     model.load_state_dict(required_state_dict, strict=strict)
