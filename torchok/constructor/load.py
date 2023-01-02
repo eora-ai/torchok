@@ -46,7 +46,7 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
         depth2override_state_dicts[depth].append(override_state_dict)
 
     # Sort depth2override_state_dicts by it key - depth
-    depth2override_state_dicts = sorted(depth2override_state_dicts.items())
+    depth2override_state_dicts = dict(sorted(depth2override_state_dicts.items()))
     return depth2override_state_dicts
 
 
