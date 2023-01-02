@@ -130,7 +130,7 @@ class BaseTask(LightningModule, ABC):
                         batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        self.metrics_manager.update(Phase.VALID, **output)
+        self.metrics_manager.update(Phase.VALID, dataloader_idx, **output)
 
         # In arcface classification task, if we try to compute loss on test dataset with different number
         # of classes we will crash the train study.
@@ -143,10 +143,10 @@ class BaseTask(LightningModule, ABC):
 
         return output_dict
 
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
+    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int, dataloader_idx: int = 0) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        self.metrics_manager.update(Phase.TEST, **output)
+        self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
     def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> torch.Tensor:
         """Complete predict loop."""

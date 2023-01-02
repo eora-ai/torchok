@@ -1,7 +1,8 @@
 from albumentations import (Normalize, Resize, HorizontalFlip, VerticalFlip, Affine, CenterCrop, CoarseDropout, Crop,
                             CropAndPad, CropNonEmptyMaskIfExists, ElasticTransform, Flip, GridDistortion, GridDropout,
                             Lambda, LongestMaxSize, MaskDropout, NoOp, OpticalDistortion, PadIfNeeded, Perspective,
-                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropNearBBox, RandomGridShuffle,
+                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropFromBorders, RandomCropNearBBox,
+                            RandomGridShuffle,
                             RandomResizedCrop, RandomRotate90, RandomScale, RandomSizedBBoxSafeCrop, RandomSizedCrop,
                             Rotate, SafeRotate, ShiftScaleRotate, SmallestMaxSize, Transpose, AdvancedBlur, Blur,
                             CLAHE, ChannelDropout, ChannelShuffle, ColorJitter, Downscale, Emboss, Equalize, FDA,
@@ -48,6 +49,7 @@ TRANSFORMS.register_class(Perspective)
 TRANSFORMS.register_class(PiecewiseAffine)
 TRANSFORMS.register_class(PixelDropout)
 TRANSFORMS.register_class(RandomCrop)
+TRANSFORMS.register_class(RandomCropFromBorders)
 TRANSFORMS.register_class(RandomCropNearBBox)
 TRANSFORMS.register_class(RandomGridShuffle)
 TRANSFORMS.register_class(RandomResizedCrop)
