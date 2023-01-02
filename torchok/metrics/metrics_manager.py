@@ -110,11 +110,14 @@ class MetricsManager(nn.Module):
                 continue
             metric = METRICS.get(metric_params.name)(**metric_params.params)
             mapping = metric_params.mapping
-            dataloader_idxs = metric_params.dataloader_idxs
+
             # create base log name, it would be use as log name if metric compute for one dataloder
             base_log_name = metric_params.name if metric_params.tag is None else metric_params.tag
-            # but if metric compute for many dataloders -> log name = '{base_log_name}_{dataloader_idx}'
-            if len(dataloader_idxs) > 1:
+
+            # Metric manager support many dataloaders only for Validation Phase
+            dataloader_idxs = metric_params.val_dataloader_idxs if phase == Phase.VALID else [0]
+            if phase == Phase.VALID and len(dataloader_idxs) > 1:
+                # but if metric compute for many dataloders -> log name = '{base_log_name}_{dataloader_idx}'
                 log_names = [f'{base_log_name}_{dataloader_idx}' for dataloader_idx in dataloader_idxs]
             else:
                 log_names = [base_log_name]

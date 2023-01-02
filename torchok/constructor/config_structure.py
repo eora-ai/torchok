@@ -94,7 +94,7 @@ class MetricParams:
     mapping: Dict[str, str]
     params: Optional[Dict] = field(default_factory=dict)
     phases: Optional[List[Phase]] = field(default_factory=lambda: [Phase.TRAIN, Phase.VALID, Phase.TEST, Phase.PREDICT])
-    dataloader_idxs: Optional[List[int]] = field(default_factory=lambda: [0])
+    val_dataloader_idxs: Optional[List[int]] = field(default_factory=lambda: [0])
     tag: Optional[str] = None
 
 
