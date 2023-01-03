@@ -4,7 +4,7 @@ from torchok.constructor import LOSSES
 
 
 @LOSSES.register_class
-class NT_Xent(Module):
+class NT_XentLoss(Module):
     """
     Unsupervised loss for task-agnostic part of the SimCLR v2 approach described in paper
     `Big Self-Supervised Models are Strong Semi-Supervised Learners`_
