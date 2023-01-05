@@ -10,7 +10,7 @@ Licensed under Apache License 2.0 [see LICENSE for details]
 """
 
 from functools import partial
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Any, Mapping
 
 import torch
 import torch.nn as nn
@@ -65,11 +65,13 @@ class GlobalContextVit(BaseBackbone):
             norm_layer: str = 'layernorm2d',
             norm_layer_cl: str = 'layernorm',
             norm_eps: float = 1e-5,
+            load_relative_position_bias_table: bool = True
     ):
         num_stages = len(depths)
         super().__init__(in_channels=in_channels, out_channels=int(embed_dim * 2 ** (num_stages - 1)))
         self.encoder_channels = [int(embed_dim * 2 ** i) for i in range(num_stages)]
         self._out_encoder_channels = self.encoder_channels
+        self.load_relative_position_bias_table = load_relative_position_bias_table
         act_layer = get_act_layer(act_layer)
         norm_layer = partial(get_norm_layer(norm_layer), eps=norm_eps)
         norm_layer_cl = partial(get_norm_layer(norm_layer_cl), eps=norm_eps)
@@ -162,6 +164,14 @@ class GlobalContextVit(BaseBackbone):
         x = self.stem(x)
         x = self.stages(x)
         return x
+
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        if not self.load_relative_position_bias_table:
+            state_dict = dict(state_dict)
+            for k in list(state_dict.keys()):
+                if "relative_position_bias_table" in k:
+                    state_dict.pop(k)
+        return super(GlobalContextVit, self).load_state_dict(state_dict, strict)
 
     def get_stages(self, stage: int) -> nn.Module:
         """Return modules corresponding the given model stage and all previous stages.
