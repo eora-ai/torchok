@@ -10,7 +10,7 @@ Licensed under Apache License 2.0 [see LICENSE for details]
 """
 
 from functools import partial
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import torch
 import torch.nn as nn
@@ -46,9 +46,7 @@ default_cfgs = {
 class GlobalContextVit(BaseBackbone):
     def __init__(
             self,
-            in_chans: int = 3,
-            num_classes: int = 1000,
-            global_pool: str = 'avg',
+            in_channels: int = 3,
             img_size: Tuple[int, int] = 224,
             window_ratio: Tuple[int, ...] = (32, 32, 16, 32),
             window_size: Tuple[int, ...] = None,
@@ -68,18 +66,17 @@ class GlobalContextVit(BaseBackbone):
             norm_layer_cl: str = 'layernorm',
             norm_eps: float = 1e-5,
     ):
-        super().__init__()
+        num_stages = len(depths)
+        super().__init__(in_channels=in_channels, out_channels=int(embed_dim * 2 ** (num_stages - 1)))
+        self.encoder_channels = [int(embed_dim * 2 ** i) for i in range(num_stages)]
+        self._out_encoder_channels = self.encoder_channels
         act_layer = get_act_layer(act_layer)
         norm_layer = partial(get_norm_layer(norm_layer), eps=norm_eps)
         norm_layer_cl = partial(get_norm_layer(norm_layer_cl), eps=norm_eps)
 
         img_size = to_2tuple(img_size)
         feat_size = tuple(d // 4 for d in img_size)  # stem reduction by 4
-        self.global_pool = global_pool
-        self.num_classes = num_classes
         self.drop_rate = drop_rate
-        num_stages = len(depths)
-        self.num_features = int(embed_dim * 2 ** (num_stages - 1))
         if window_size is not None:
             window_size = to_ntuple(num_stages)(window_size)
         else:
@@ -87,7 +84,7 @@ class GlobalContextVit(BaseBackbone):
             window_size = tuple([(img_size[0] // r, img_size[1] // r) for r in to_ntuple(num_stages)(window_ratio)])
 
         self.stem = Stem(
-            in_chs=in_chans,
+            in_chs=in_channels,
             out_chs=embed_dim,
             act_layer=act_layer,
             norm_layer=norm_layer
@@ -118,8 +115,10 @@ class GlobalContextVit(BaseBackbone):
             ))
         self.stages = nn.Sequential(*stages)
 
-        if weight_init:
-            named_apply(partial(self._init_weights, scheme=weight_init), self)
+        self.init_weights(scheme=weight_init)
+
+    def init_weights(self, scheme=''):
+        named_apply(partial(self._init_weights, scheme=scheme), self)
 
     def _init_weights(self, module, name, scheme='vit'):
         # note Conv2d left as default init
@@ -151,14 +150,28 @@ class GlobalContextVit(BaseBackbone):
         )
         return matcher
 
-    def forward_features(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
+        features = [x]
+        x = self.stem(x)
+        for stage in self.stages:
+            x = stage(x)
+            features.append(x)
+        return features
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.stem(x)
         x = self.stages(x)
         return x
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.forward_features(x)
-        return x
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        return nn.ModuleList([self.stem, *self.stages[:stage]])
 
 
 def _create_gcvit(variant, pretrained=False, **kwargs):

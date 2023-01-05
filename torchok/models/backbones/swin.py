@@ -105,7 +105,7 @@ class SwinTransformerV2(BaseBackbone):
     """
 
     def __init__(
-            self, img_size: int = 224, patch_size: int = 4, in_channels: int = 3,
+            self, img_size: int = 256, patch_size: int = 4, in_channels: int = 3,
             embed_dim: int = 96, depths: List[int] = (2, 2, 6, 2), num_heads: List[int] = (3, 6, 12, 24),
             window_size: int = 7, mlp_ratio: float = 4., qkv_bias: bool = True,
             drop_rate: float = 0., attn_drop_rate: float = 0., drop_path_rate: float = 0.1,
