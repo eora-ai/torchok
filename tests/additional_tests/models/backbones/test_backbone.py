@@ -1,7 +1,7 @@
+import gc
 import unittest
 
 import torch
-import gc
 from parameterized import parameterized
 
 from torchok.constructor import BACKBONES
@@ -178,5 +178,29 @@ class TestSwin(AbstractTestBackboneCorrectness, unittest.TestCase):
         super().test_forward_feature_output_shape(backbone_name, expected_shapes)
 
     @parameterized.expand(['swinv2_tiny_window16_256'])
+    def test_torchscript_conversion(self, backbone_name):
+        super().test_torchscript_conversion(backbone_name)
+
+
+class TestGlobalContextVit(AbstractTestBackboneCorrectness, unittest.TestCase):
+    def setUp(self) -> None:
+        self.input = torch.rand(2, 3, 224, 224, device=self.device)
+
+    @parameterized.expand(['gcvit_xxtiny'])
+    def test_load_pretrained(self, backbone_name):
+        super().test_load_pretrained(backbone_name)
+
+    @parameterized.expand([['gcvit_xxtiny', (2, 512, 7, 7)]])
+    def test_forward_output_shape(self, backbone_name, expected_shape):
+        super().test_forward_output_shape(backbone_name, expected_shape)
+
+    @parameterized.expand(
+        [['gcvit_xxtiny', [(2, 3, 224, 224), (2, 64, 56, 56),
+                           (2, 128, 28, 28), (2, 256, 14, 14), (2, 512, 7, 7)]]]
+    )
+    def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
+        super().test_forward_feature_output_shape(backbone_name, expected_shapes)
+
+    @parameterized.expand(['gcvit_xxtiny'])
     def test_torchscript_conversion(self, backbone_name):
         super().test_torchscript_conversion(backbone_name)

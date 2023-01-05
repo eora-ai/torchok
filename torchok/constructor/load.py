@@ -1,5 +1,5 @@
 import logging
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from typing import Callable, Dict, List, Optional, Union
 
 import pytorch_lightning as pl
@@ -25,7 +25,7 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
     return state_dict
 
 
-def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[Dict[str, torch.Tensor]]]:
+def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> Dict[int, Dict[str, torch.Tensor]]:
     """Generate sorted by depth list of state dict list with the current depth.
     Where depth is calculated as the number of dots in the dictionary key.
 
@@ -46,7 +46,7 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
         depth2override_state_dicts[depth].append(override_state_dict)
 
     # Sort depth2override_state_dicts by it key - depth
-    depth2override_state_dicts = sorted(depth2override_state_dicts.items())
+    depth2override_state_dicts = OrderedDict(sorted(depth2override_state_dicts.items()))
     return depth2override_state_dicts
 
 

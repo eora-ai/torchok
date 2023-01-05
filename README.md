@@ -64,7 +64,7 @@ tensorboard --logdir ~/.cache/torchok/logs/cifar10
 ### Find learning rate
 To automatically find the initial learning rate, we use Pytorch Lightning tuner which algorithm based on [Cyclical Learning Rates for Training Neural Networks](https://arxiv.org/abs/1506.01186) the article.
 ```bash
-python -m torchok -cp ../examples/configs -cn classification_cifar10 +entrypoint=find_lr
+python -m torchok -cp ../examples/configs -cn classification_cifar10 +mode=find_lr
 ```
 
 ### Export to ONNX
@@ -75,12 +75,12 @@ But first we need to define the field `path_to_onnx`.
 
 **To test ONNX model:**
 ```bash
-python test.py -cp examples/configs -cn onnx_infer +entrypoint=test
+python test.py -cp examples/configs -cn onnx_infer +mode=test
 ```
 
 **To predict ONNX model:**
 ```bash
-python test.py -cp examples/configs -cn onnx_infer +entrypoint=predict
+python test.py -cp examples/configs -cn onnx_infer +mode=predict
 ```
 
 ## Run tests

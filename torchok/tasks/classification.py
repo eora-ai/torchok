@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -68,10 +68,10 @@ class ClassificationTask(BaseTask):
         """Forward method.
 
         Args:
-            x: torch.Tensor of shape [B, C, H, W]. Batch of input images.
+            x: torch.Tensor of shape `(B, C, H, W)`. Batch of input images.
 
         Returns:
-            torch.Tensor of shape [B, num_classes], representing logits per each image.
+            torch.Tensor of shape `(B, num_classes)`, representing logits per each image.
         """
         x = self.backbone(x)
         x = self.neck(x)
@@ -79,23 +79,23 @@ class ClassificationTask(BaseTask):
         x = self.head(x)
         return x
 
-    def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Tensor]:
         """Forward with ground truth labels.
 
         Args:
             batch: Dictionary with the following keys and values:
 
                 - `image` (torch.Tensor):
-                    tensor of shape (B, C, H, W), representing input images.
+                    tensor of shape `(B, C, H, W)`, representing input images.
                 - `target` (torch.Tensor):
-                    tensor of shape (B), target class or labels per each image.
+                    tensor of shape `(B)`, target class or labels per each image.
 
         Returns:
             Dictionary with the following keys and values
 
-            - 'embeddings': torch.Tensor of shape (B, num_features), representing embeddings per each image.
-            - 'prediction': torch.Tensor of shape (B, num_classes), representing logits per each image.
-            - 'target': torch.Tensor of shape (B), target class or labels per each image. May absent.
+            - 'embeddings': torch.Tensor of shape `(B, num_features)`, representing embeddings per each image.
+            - 'prediction': torch.Tensor of shape `(B, num_classes)`, representing logits per each image.
+            - 'target': torch.Tensor of shape `(B)`, target class or labels per each image. May absent.
         """
         input_data = batch.get('image')
         target = batch.get('target')

@@ -159,7 +159,7 @@ logger:
 #    run_name: fcos_swsl_resnet50_x800_1344_f16
     run_name: fcos_swsl_resnet50_x400_672_f16
     tracking_uri: '${oc.env:DB_URI}'
-    artifact_location: 's3://experiments/mlflow'
+    artifact_location: '${oc.env:S3_ARTIFACT_BUCKET}'
 
 hydra:
   run:

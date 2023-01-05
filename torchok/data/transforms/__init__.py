@@ -1,16 +1,17 @@
 from albumentations import (Normalize, Resize, HorizontalFlip, VerticalFlip, Affine, CenterCrop, CoarseDropout, Crop,
                             CropAndPad, CropNonEmptyMaskIfExists, ElasticTransform, Flip, GridDistortion, GridDropout,
                             Lambda, LongestMaxSize, MaskDropout, NoOp, OpticalDistortion, PadIfNeeded, Perspective,
-                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropNearBBox, RandomGridShuffle,
-                            RandomResizedCrop, RandomRotate90, RandomScale, RandomSizedBBoxSafeCrop, RandomSizedCrop,
-                            Rotate, SafeRotate, ShiftScaleRotate, SmallestMaxSize, Transpose, AdvancedBlur, Blur,
-                            CLAHE, ChannelDropout, ChannelShuffle, ColorJitter, Downscale, Emboss, Equalize, FDA,
-                            FancyPCA, FromFloat, GaussNoise, GaussianBlur, GlassBlur, HistogramMatching, ISONoise,
-                            HueSaturationValue, ImageCompression, InvertImg, MedianBlur, MotionBlur, Posterize,
-                            MultiplicativeNoise, PixelDistributionAdaptation, RGBShift, RandomBrightnessContrast,
-                            RandomFog, RandomGamma, RandomRain, RandomShadow, RandomSunFlare, RandomSnow, Sharpen,
-                            RandomToneCurve, RingingOvershoot, TemplateTransform, Superpixels, Solarize, ToFloat,
-                            ToGray, ToSepia, UnsharpMask)
+                            PiecewiseAffine, PixelDropout, RandomCrop, RandomCropFromBorders, RandomCropNearBBox,
+                            RandomGridShuffle, RandomResizedCrop, RandomRotate90, RandomScale, RandomSizedBBoxSafeCrop,
+                            RandomSizedCrop, Rotate, SafeRotate, ShiftScaleRotate, SmallestMaxSize, Transpose,
+                            AdvancedBlur, Blur, CLAHE, ChannelDropout, ChannelShuffle, ColorJitter, Downscale,
+                            Emboss, Equalize, FDA, FancyPCA, FromFloat, GaussNoise, GaussianBlur, GlassBlur,
+                            HistogramMatching, ISONoise, HueSaturationValue, ImageCompression, InvertImg, MedianBlur,
+                            MotionBlur, ZoomBlur, Posterize, BBoxSafeRandomCrop, MultiplicativeNoise,
+                            PixelDistributionAdaptation, RGBShift, RandomBrightness, RandomBrightnessContrast,
+                            RandomContrast, Spatter, Defocus, Cutout, RandomFog, RandomGamma, RandomRain, RandomShadow,
+                            RandomSunFlare, RandomSnow, Sharpen, RandomToneCurve, RingingOvershoot, TemplateTransform,
+                            Superpixels, Solarize, ToFloat, ToGray, ToSepia, UnsharpMask, JpegCompression)
 
 from albumentations.pytorch.transforms import ToTensorV2
 from albumentations.core.composition import Compose, OneOf
@@ -29,6 +30,7 @@ TRANSFORMS.register_class(Resize)
 TRANSFORMS.register_class(HorizontalFlip)
 TRANSFORMS.register_class(VerticalFlip)
 TRANSFORMS.register_class(Affine)
+TRANSFORMS.register_class(BBoxSafeRandomCrop)
 TRANSFORMS.register_class(CenterCrop)
 TRANSFORMS.register_class(CoarseDropout)
 TRANSFORMS.register_class(Crop)
@@ -48,6 +50,7 @@ TRANSFORMS.register_class(Perspective)
 TRANSFORMS.register_class(PiecewiseAffine)
 TRANSFORMS.register_class(PixelDropout)
 TRANSFORMS.register_class(RandomCrop)
+TRANSFORMS.register_class(RandomCropFromBorders)
 TRANSFORMS.register_class(RandomCropNearBBox)
 TRANSFORMS.register_class(RandomGridShuffle)
 TRANSFORMS.register_class(RandomResizedCrop)
@@ -66,7 +69,9 @@ TRANSFORMS.register_class(Blur)
 TRANSFORMS.register_class(CLAHE)
 TRANSFORMS.register_class(ChannelDropout)
 TRANSFORMS.register_class(ChannelShuffle)
+TRANSFORMS.register_class(Cutout)
 TRANSFORMS.register_class(ColorJitter)
+TRANSFORMS.register_class(Defocus)
 TRANSFORMS.register_class(Downscale)
 TRANSFORMS.register_class(Emboss)
 TRANSFORMS.register_class(Equalize)
@@ -87,7 +92,9 @@ TRANSFORMS.register_class(MultiplicativeNoise)
 TRANSFORMS.register_class(PixelDistributionAdaptation)
 TRANSFORMS.register_class(Posterize)
 TRANSFORMS.register_class(RGBShift)
+TRANSFORMS.register_class(RandomBrightness)
 TRANSFORMS.register_class(RandomBrightnessContrast)
+TRANSFORMS.register_class(RandomContrast)
 TRANSFORMS.register_class(RandomFog)
 TRANSFORMS.register_class(RandomGamma)
 TRANSFORMS.register_class(RandomRain)
@@ -104,3 +111,6 @@ TRANSFORMS.register_class(ToFloat)
 TRANSFORMS.register_class(ToGray)
 TRANSFORMS.register_class(ToSepia)
 TRANSFORMS.register_class(UnsharpMask)
+TRANSFORMS.register_class(ZoomBlur)
+TRANSFORMS.register_class(Spatter)
+TRANSFORMS.register_class(JpegCompression)
