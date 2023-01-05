@@ -16,11 +16,13 @@ from torchok.constructor.load import load_checkpoint
 class BaseTask(LightningModule, ABC):
     """An abstract class that represent main methods of tasks."""
 
-    def __init__(self, hparams: DictConfig):
+    # ToDo: write documentation for the task parameters
+    def __init__(self, hparams: DictConfig, inputs=None, **kwargs):
         """Init BaseTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            inputs: information about input model shapes and dtypes.
         """
         super().__init__()
         self.save_hyperparameters(hparams)
@@ -31,7 +33,6 @@ class BaseTask(LightningModule, ABC):
         self.example_input_array = []
 
         # `inputs` key in yaml used for model checkpointing.
-        inputs = hparams.task.params.get('inputs')
         if inputs is not None:
             for i, input_params in enumerate(inputs):
                 input_tensor_name = f"input_tensors_{i}"
@@ -72,7 +73,7 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        self.__check_drop_last_params(data_params, Phase.VALID.value)
+        self._check_drop_last_params(data_params, Phase.VALID.value)
 
         data_loader = self._constructor.create_dataloaders(Phase.VALID)
         return data_loader
@@ -84,7 +85,7 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        self.__check_drop_last_params(data_params, Phase.TEST.value)
+        self._check_drop_last_params(data_params, Phase.TEST.value)
 
         data_loader = self._constructor.create_dataloaders(Phase.TEST)
         return data_loader
@@ -96,23 +97,27 @@ class BaseTask(LightningModule, ABC):
         if data_params is None:
             return None
 
-        self.__check_drop_last_params(data_params, Phase.PREDICT.value)
+        self._check_drop_last_params(data_params, Phase.PREDICT.value)
 
         data_loader = self._constructor.create_dataloaders(Phase.PREDICT)
         return data_loader
 
-    def __check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
+    def _check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
         for data_param in data_params:
             drop_last = data_param['dataloader'].get('drop_last', False)
             if drop_last:
                 # TODO: create logger and print a warning instead
                 raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
-    def on_train_start(self) -> None:
-        if self.current_epoch == 0 and self._hparams.task.load_checkpoint is not None:
+    def on_fit_start(self) -> None:
+        if self._hparams.task.load_checkpoint is not None:
             load_checkpoint(self, **self._hparams.task.load_checkpoint)
 
     def on_test_start(self) -> None:
+        if self._hparams.task.load_checkpoint is not None:
+            load_checkpoint(self, **self._hparams.task.load_checkpoint)
+
+    def on_predict_start(self) -> None:
         if self._hparams.task.load_checkpoint is not None:
             load_checkpoint(self, **self._hparams.task.load_checkpoint)
 
@@ -129,7 +134,7 @@ class BaseTask(LightningModule, ABC):
                         batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        self.metrics_manager.update(Phase.VALID, **output)
+        self.metrics_manager.update(Phase.VALID, dataloader_idx, **output)
 
         # In arcface classification task, if we try to compute loss on test dataset with different number
         # of classes we will crash the train study.
@@ -142,10 +147,10 @@ class BaseTask(LightningModule, ABC):
 
         return output_dict
 
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> None:
+    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int, dataloader_idx: int = 0) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
-        self.metrics_manager.update(Phase.TEST, **output)
+        self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
     def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> torch.Tensor:
         """Complete predict loop."""

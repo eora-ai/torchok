@@ -8,10 +8,6 @@ from torchok.constructor.config_structure import ConfigParams
 from torchok.constructor.runner import create_trainer
 from torchok.constructor.auto_lr_find import find_lr
 
-# Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
-# (more info: https://github.com/pytorch/pytorch/issues/1355)
-cv2.setNumThreads(0)
-
 
 @hydra.main(version_base=None, config_path=None, config_name=None)
 def entrypoint(config: DictConfig):
@@ -33,10 +29,10 @@ def entrypoint(config: DictConfig):
     # Merge structure with config
     config = OmegaConf.merge(schema, config)
     # Seed everything
-    if config.task.seed_params is not None:
-        seed_everything(**config.task.seed_params)
+    if config.seed_params is not None:
+        seed_everything(**config.seed_params)
     # Create task
-    model = torchok.TASKS.get(config.task.name)(config)
+    model = torchok.TASKS.get(config.task.name)(config, **config.task.params)
     trainer = create_trainer(config)
     if mode == 'train':
         trainer.fit(model, ckpt_path=config.resume_path)
@@ -52,4 +48,7 @@ def entrypoint(config: DictConfig):
 
 
 if __name__ == '__main__':
+    # Hack to fix multiprocessing deadlock when PyTorch's DataLoader is used
+    # (more info: https://github.com/pytorch/pytorch/issues/1355)
+    cv2.setNumThreads(0)
     entrypoint()

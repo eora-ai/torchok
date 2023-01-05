@@ -12,9 +12,6 @@ task:
     inputs:
       - shape: [3, &height 32, &width 32]
         dtype: &input_dtype float16
-#  load_checkpoint:
-#    base_ckpt_path: 's3://checkpoints/resnet18.ckpt'
-#    strict: false
 
 joint_loss:
   losses:
@@ -61,6 +58,7 @@ data:
           - &totensor
             name: ToTensorV2
   VALID:
+    # There are 2 validation datasets, for first Accuracy metric would be calculated and for the second F1Score.
     - dataloader:
         batch_size: 128
         num_workers: 8
@@ -71,7 +69,23 @@ data:
         params:
           input_dtype: *input_dtype
           train: false
-          download: true
+          download: false
+          data_folder: *data_folder
+        transform:
+          - *resize
+          - *normalize
+          - *totensor
+    - dataloader:
+        batch_size: 64
+        num_workers: 4
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: CIFAR10
+        params:
+          input_dtype: *input_dtype
+          train: false
+          download: false
           data_folder: *data_folder
         transform:
           - *resize
@@ -91,21 +105,15 @@ seed_params:
   seed: 42
   workers: true
 
-# For MLFlowLogger and MLFlowLoggerX need to define tracking_uri in params - address of local or remote tracking server,
-# if it isn't define it will be gotten from MLFLOW_TRACKING_URI - environment variable
 logger:
-  name: MLFlowLoggerX
-  experiment_name: cifar10
-  log_dir: '${oc.env:HOME}/.cache/torchok/${logger.experiment_name}/logs'
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
+  experiment_name: resnet18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
-  params:
-    run_name: resnet18
-    tracking_uri: '${oc.env:DB_URI}'
-    artifact_location: 's3://experiments/mlflow'
+  name: TensorBoardLogger
 
 hydra:
   run:
-    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
 
 callbacks:
   - name: ModelCheckpoint
@@ -116,6 +124,25 @@ callbacks:
       save_last: true
       mode: max
       save_weights_only: False
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+#        The whole backbone will be frozen during the first 2 epochs.
+          - module_name: backbone
+            epoch: 2
+#        Stem and the first layer of the backbone will be frozen forever during the training.
+          - module_name: backbone
+            stages: 1
+#        Only the modules of type `_BatchNorm` that attached to the backbone will be frozen
+#         with the specific policy: requires_grad of all batch norms will be set to false but
+#         these modules will track
+          - module_name: backbone
+            module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+            bn_requires_grad: false
+            bn_track_running_stats: false
+#        All dropouts in the network will be disabled forever during the training
+#          - module_name: ""
+#            module_class: Dropout
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
@@ -129,6 +156,8 @@ metrics:
     mapping:
       preds: prediction
       target: target
+    # indicate that for validation step this metric would be compute only for first Validation Dataloader 
+    val_dataloader_idxs: [0]
   - name: F1Score
     params:
       task: multiclass
@@ -136,3 +165,5 @@ metrics:
     mapping:
       preds: prediction
       target: target
+    # indicate that for validation step this metric would be compute only for second Validation Dataloader 
+    val_dataloader_idxs: [1]

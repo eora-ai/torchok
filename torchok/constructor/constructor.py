@@ -32,7 +32,7 @@ class Constructor:
             - losses
             - metrics
         """
-        self.__hparams = hparams
+        self._hparams = hparams
 
     def configure_optimizers(self, modules: Union[Module, List[Union[Module]]],
                              optim_idx: int = -1) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
@@ -62,7 +62,7 @@ class Constructor:
         .. _their documentation:
         https://pytorch-lightning.readthedocs.io/en/1.6.2/common/lightning_module.html#configure-optimizers
         """
-        optims_params = self.__hparams.optimization
+        optims_params = self._hparams.optimization
         if 0 <= optim_idx < len(optims_params):
             optims_params = [optims_params[optim_idx]]
         elif optim_idx >= len(optims_params):
@@ -106,15 +106,15 @@ class Constructor:
           layers and offset layers of DCN).
         - ``bias_decay_mult`` (float): It will be multiplied to the weight
           decay for all bias parameters (except for those in
-          normalization layers, depthwise conv layers, offset layers of DCN).
+          normalization layers, depth-wise conv layers, offset layers of DCN).
         - ``norm_decay_mult`` (float): It will be multiplied to the weight
           decay for all weight and bias parameters of normalization
           layers.
         - ``dwconv_decay_mult`` (float): It will be multiplied to the weight
-          decay for all weight and bias parameters of depthwise conv
+          decay for all weight and bias parameters of depth-wise conv
           layers.
         - ``dcn_offset_lr_mult`` (float): It will be multiplied to the learning
-          rate for parameters of offset layer in the deformable convs
+          rate for parameters of offset layer in the deformable convolutions
           of a model.
 
         Note:
@@ -357,7 +357,7 @@ class Constructor:
 
         Returns: MetricManager module.
         """
-        return MetricsManager(self.__hparams.metrics)
+        return MetricsManager(self._hparams.metrics)
 
     def configure_losses(self) -> JointLoss:
         """Create list of loss modules wrapping them into a JointLoss module.
@@ -365,14 +365,14 @@ class Constructor:
         Returns: JointLoss module
         """
         loss_modules, mappings, tags, weights = [], [], [], []
-        for loss_config in self.__hparams.joint_loss.losses:
+        for loss_config in self._hparams.joint_loss.losses:
             loss_module = LOSSES.get(loss_config.name)(**loss_config.params)
             loss_modules.append(loss_module)
             mappings.append(loss_config.mapping)
             tags.append(loss_config.tag)
             weights.append(loss_config.weight)
 
-        normalize_weights = self.__hparams.joint_loss.normalize_weights
+        normalize_weights = self._hparams.joint_loss.normalize_weights
 
         return JointLoss(loss_modules, mappings, tags, weights, normalize_weights)
 
@@ -387,4 +387,4 @@ class Constructor:
                 - losses
                 - metrics
         """
-        return self.__hparams
+        return self._hparams
