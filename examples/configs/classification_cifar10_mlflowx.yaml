@@ -101,7 +101,7 @@ logger:
   params:
     run_name: resnet18
     tracking_uri: '${oc.env:DB_URI}'
-    artifact_location: 's3://experiments/mlflow'
+    artifact_location: '${oc.env:S3_ARTIFACT_BUCKET}'
 
 hydra:
   run:
