@@ -229,11 +229,11 @@ class SwinTransformerV2(BaseBackbone):
         # B L C
         if normalize:
             x = self.feature_norms[layer_number](x)
-        H = self.input_resolutions[layer_number][0]
-        W = self.input_resolutions[layer_number][1]
-        C = self.encoder_channels[layer_number]
+        h = self.input_resolutions[layer_number][0]
+        w = self.input_resolutions[layer_number][1]
+        c = self.encoder_channels[layer_number]
         # B C H W
-        x = x.view(-1, H, W, C).permute(0, 3, 1, 2).contiguous()
+        x = x.view(-1, h, w, c).permute(0, 3, 1, 2).contiguous()
         return x
 
     def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:

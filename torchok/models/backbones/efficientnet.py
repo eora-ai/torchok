@@ -494,8 +494,9 @@ class EfficientNet(BaseBackbone):
 
 
 def _create_effnet(variant, pretrained=False, **kwargs):
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans'])
     return build_model_with_cfg(EfficientNet, variant, pretrained, pretrained_strict=False,
-                                kwargs_filter=('num_classes', 'global_pool', 'in_chans'), **kwargs)
+                                kwargs_filter=kwargs_filter, **kwargs)
 
 
 def _gen_mnasnet_a1(variant, channel_multiplier=1.0, pretrained=False, **kwargs):
