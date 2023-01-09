@@ -108,8 +108,8 @@ class DetectionDataset(ImageDataset):
             self.df = pd.read_pickle(self.data_folder / annotation_path)
         else:
             raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
-        self.df[self.bbox_column] = self.df[self.bbox_column].apply(np.array)
-        self.df[self.target_column] = self.df[self.target_column].apply(np.array)
+        self.df[self.bbox_column] = self.df[self.bbox_column].apply(torch.tensor)
+        self.df[self.target_column] = self.df[self.target_column].apply(torch.tensor)
 
         bbox_params = BboxParams(format=self.bbox_format, label_fields=['label'],
                                  min_area=min_area, min_visibility=min_visibility)
@@ -154,10 +154,10 @@ class DetectionDataset(ImageDataset):
         Returns:
             numpy array of bounding boxes and numpy array of labels of these boxes.
         """
-        lbox = np.hstack([bboxes, labels[..., None]])
+        lbox = torch.hstack([bboxes, labels[..., None]])
         alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, rows, cols)
         alb_lbox_fixed = alb_filter_bboxes(alb_lbox, rows, cols)
-        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
+        lbox_fixed = torch.tensor(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
         return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
     def __getitem__(self, idx: int) -> dict:

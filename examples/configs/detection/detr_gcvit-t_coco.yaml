@@ -1,84 +1,98 @@
 task:
   name: SingleStageDetectionTask
   params:
-    backbone_name: MMResNet
+    backbone_name: gcvit_tiny
     backbone_params:
-        depth: 50
-        num_stages: 4
-        out_indices: [3]
-        frozen_stages: 1
-        norm_cfg:
-          type: 'BN'
-          requires_grad: false
-        norm_eval: true
-        style: 'pytorch'
-        init_cfg:
-          type: Pretrained
-          checkpoint: https://download.openmmlab.com/pretrain/third_party/resnet50_caffe-788b5fa3.pth
+      pretrained: true
+      in_channels: 3
+      img_size: [&height 512, &width 512]
+      load_relative_position_bias_table: false
     num_scales: 4
-    neck_name: FPN
-    neck_params:
-      out_channels: 256
-      start_level: 1
-      add_extra_convs: on_output
-      num_outs: 5
-      relu_before_extra_convs: true
-    head_name: FCOSHead
+    head_name: DETRHead
     head_params:
       num_classes: &num_classes 80
-      strides: [8, 16, 32, 64, 128]
-      feat_channels: 256
-      stacked_convs: 4
+      transformer:
+        type: Transformer
+        encoder:
+          type: DetrTransformerEncoder
+          num_layers: 6
+          transformerlayers:
+            type: BaseTransformerLayer
+            attn_cfgs:
+              - type: MultiheadAttention
+                embed_dims: 256
+                num_heads: 8
+                dropout: 0.1
+            feedforward_channels: 2048
+            ffn_dropout: 0.1
+            operation_order: ['self_attn', 'norm', 'ffn', 'norm']
+        decoder:
+          type: DetrTransformerDecoder
+          return_intermediate: true
+          num_layers: 6
+          transformerlayers:
+            type: DetrTransformerDecoderLayer
+            attn_cfgs:
+              type: MultiheadAttention
+              embed_dims: 256
+              num_heads: 8
+              dropout: 0.1
+            feedforward_channels: 2048
+            ffn_dropout: 0.1
+            operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+      positional_encoding:
+        type: SinePositionalEncoding
+        num_feats: 128
+        normalize: true
       train_cfg:
         assigner:
-          type: MaxIoUAssigner
-          pos_iou_thr: 0.5
-          neg_iou_thr: 0.4
-          min_pos_iou: 0
-          ignore_iof_thr: -1
+          type: HungarianAssigner
+          cls_cost:
+            type: ClassificationCost
+            weight: 1.0
+          reg_cost:
+            type: BBoxL1Cost
+            weight: 5.0
+            box_format: xywh
+          iou_cost:
+            type: IoUCost
+            iou_mode: giou
+            weight: 2.0
       test_cfg:
-        nms_pre: 1000
-        min_bbox_size: 0
-        score_thr: 0.05
-        nms:
-          type: nms
-          iou_threshold: 0.5
         max_per_img: 100
     inputs:
-      - shape: [3, &height 800, &width 1344]
+      - shape: [3, *height, *width]
         dtype: &input_dtype float32
 
 joint_loss:
   normalize_weights: false
   losses:
-    - name: MMFocalLoss
+    - name: MMCrossEntropyLoss
       tag: loss_cls
       weight: 1.0
       params:
-        use_sigmoid: True
-        gamma: 2.0
-        alpha: 0.25
-      mapping:
-        pred: flatten_cls_scores
-        target: flatten_labels
-        avg_factor: num_pos
-    - name: MMIoULoss
+        use_sigmoid: false
+        bg_cls_weight: 0.1
+        class_weight: 1.0
+#      mapping:
+#        pred: flatten_cls_scores
+#        target: flatten_labels
+#        avg_factor: num_pos
+    - name: MML1Loss
       tag: loss_bbox
-      weight: 1.0
-      mapping:
-        pred: pos_decoded_bbox_preds
-        target: pos_decoded_target_preds
-        weight: pos_centerness_targets
-        avg_factor: centerness_denorm
-    - name: MMCrossEntropyLoss
-      tag: loss_centerness
-      weight: 1.0
-      params:
-        use_sigmoid: True
-      mapping:
-        cls_score: pos_centerness
-        label: pos_centerness_targets
-        avg_factor: num_pos
+      weight: 5.0
+#      mapping:
+#        pred: pos_decoded_bbox_preds
+#        target: pos_decoded_target_preds
+#        weight: pos_centerness_targets
+#        avg_factor: centerness_denorm
+    - name: MMGIoULoss
+      tag: loss_iou
+      weight: 2.0
+#      mapping:
+#        cls_score: pos_centerness
+#        label: pos_centerness_targets
+#        avg_factor: num_pos
 
 optimization:
   - optimizer:

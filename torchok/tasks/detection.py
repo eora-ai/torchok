@@ -17,7 +17,7 @@ class SingleStageDetectionTask(BaseTask):
             hparams: DictConfig,
             backbone_name: str,
             head_name: str,
-            neck_name: str,
+            neck_name: str = None,
             num_scales: int = None,
             backbone_params: dict = None,
             neck_params: dict = None,
@@ -48,13 +48,17 @@ class SingleStageDetectionTask(BaseTask):
         self.num_scales = num_scales or len(self.backbone.out_encoder_channels)
 
         # NECK
-        neck_params = neck_params or dict()
-        neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
-        self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+        if neck_name is not None:
+            neck_params = neck_params or dict()
+            neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
+            self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+            head_in_channels = self.neck.out_channels
+        else:
+            head_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
 
         # HEAD
         head_params = head_params or dict()
-        self.bbox_head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
+        self.bbox_head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
         """Forward method.
