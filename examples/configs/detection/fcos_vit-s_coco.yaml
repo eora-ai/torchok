@@ -1,12 +1,11 @@
 task:
   name: SingleStageDetectionTask
   params:
-    backbone_name: gcvit_tiny
+    backbone_name: vit_small_patch16_384
     backbone_params:
       pretrained: true
       in_channels: 3
       img_size: [&height 512, &width 512]
-      load_relative_position_bias_table: false
     num_scales: 4
     neck_name: FPN
     neck_params:
@@ -183,15 +182,10 @@ callbacks:
       save_last: true
       mode: max
       save_weights_only: False
-#  - name: FreezeUnfreeze
-#    params:
-#      freeze_modules:
-#        - module_name: backbone
-#          stages: 1
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 1
+      refresh_rate: 400
 
 metrics:
   - name: MMDetectionMAP
