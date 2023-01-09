@@ -94,7 +94,8 @@ default_cfgs = {
         url='',  # no official model weights for this combo, only for in21k
     ),
     'vit_large_patch32_384': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_large_p32_384-9b920ba8.pth',
+        url='https://github.com/rwightman/pytorch-image-models/'
+            'releases/download/v0.1-vitjx/jx_vit_large_p32_384-9b920ba8.pth',
         input_size=(3, 384, 384), crop_pct=1.0),
     'vit_large_patch16_224': _cfg(
         url='https://storage.googleapis.com/vit_models/augreg/'
@@ -111,21 +112,29 @@ default_cfgs = {
 
     # patch models, imagenet21k (weights from official Google JAX impl)
     'vit_tiny_patch16_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/Ti_16-i21k-300ep-lr_0.001-aug_none-wd_0.03-do_0.0-sd_0.0.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'Ti_16-i21k-300ep-lr_0.001-aug_none-wd_0.03-do_0.0-sd_0.0.npz'),
     'vit_small_patch32_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/S_32-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'S_32-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0.npz'),
     'vit_small_patch16_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'S_16-i21k-300ep-lr_0.001-aug_light1-wd_0.03-do_0.0-sd_0.0.npz'),
     'vit_base_patch32_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/B_32-i21k-300ep-lr_0.001-aug_medium1-wd_0.03-do_0.0-sd_0.0.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'B_32-i21k-300ep-lr_0.001-aug_medium1-wd_0.03-do_0.0-sd_0.0.npz'),
     'vit_base_patch16_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0.npz'),
     'vit_base_patch8_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/B_8-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'B_8-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0.npz'),
     'vit_large_patch32_224_in21k': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_large_patch32_224_in21k-9046d2e7.pth'),
+        url='https://github.com/rwightman/pytorch-image-models/'
+            'releases/download/v0.1-vitjx/jx_vit_large_patch32_224_in21k-9046d2e7.pth'),
     'vit_large_patch16_224_in21k': _cfg(
-        url='https://storage.googleapis.com/vit_models/augreg/L_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.1-sd_0.1.npz'),
+        url='https://storage.googleapis.com/vit_models/augreg/'
+            'L_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.1-sd_0.1.npz'),
     'vit_huge_patch14_224_in21k': _cfg(
         url='https://storage.googleapis.com/vit_models/imagenet21k/ViT-H_14.npz',
         hf_hub_id='timm/vit_huge_patch14_224_in21k'),
@@ -152,16 +161,19 @@ default_cfgs = {
 
     # ViT ImageNet-21K-P pretraining by MILL
     'vit_base_patch16_224_miil_in21k': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tresnet/vit_base_patch16_224_in21k_miil-887286df.pth',
+        url='https://github.com/rwightman/pytorch-image-models/'
+            'releases/download/v0.1-tresnet/vit_base_patch16_224_in21k_miil-887286df.pth',
         mean=(0., 0., 0.), std=(1., 1., 1.), crop_pct=0.875, interpolation='bilinear', num_classes=11221),
     'vit_base_patch16_224_miil': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tresnet/vit_base_patch16_224_1k_miil_84_4-2deb18e3.pth',
+        url='https://github.com/rwightman/pytorch-image-models/'
+            'releases/download/v0.1-tresnet/vit_base_patch16_224_1k_miil_84_4-2deb18e3.pth',
         mean=(0., 0., 0.), std=(1., 1., 1.), crop_pct=0.875, interpolation='bilinear'),
 
     'vit_base_patch16_rpn_224': _cfg(
-        url='https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-tpu-weights/vit_base_patch16_rpn_224-sw-3b07e89d.pth'),
+        url='https://github.com/rwightman/pytorch-image-models/'
+            'releases/download/v0.1-tpu-weights/vit_base_patch16_rpn_224-sw-3b07e89d.pth'),
 
-    # experimental (may be removed)
+    # experimental
     'vit_base_patch32_plus_256': _cfg(url='', input_size=(3, 256, 256), crop_pct=0.95),
     'vit_base_patch16_plus_240': _cfg(url='', input_size=(3, 240, 240), crop_pct=0.95),
     'vit_small_patch16_36x1_224': _cfg(url=''),
