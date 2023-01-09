@@ -38,16 +38,11 @@ default_cfgs = {
 
 
 class PatchEmbed(nn.Module):
-    """ 2D Image to Patch Embedding
-    """
+    """2D Image to Patch Embedding."""
 
-    def __init__(
-            self,
-            patch_size=16,
-            in_channels=3,
-            embed_dim=96,
-            overlapped=False):
-        """
+    def __init__(self, patch_size: int = 16, in_channels: int = 3, embed_dim: int = 96, overlapped: bool = False):
+        """Init PatchEmbed.
+
         Args:
             patch_size: Patch size.
             in_channels: Input channels.
@@ -449,7 +444,7 @@ class DaViT(BaseBackbone):
                         window_size=window_size,
                     ) if attention_type == 'spatial' else None
                     for attention_id, attention_type in enumerate(self.attention_types)]
-                              ) for layer_id, item in enumerate(block_param)
+                ) for layer_id, item in enumerate(block_param)
             ])
             main_blocks.append(block)
         self.main_blocks = nn.ModuleList(main_blocks)
