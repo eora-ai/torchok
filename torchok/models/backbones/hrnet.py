@@ -108,7 +108,8 @@ class HighResolutionNet(BaseBackbone):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def __make_transition_layer(self, num_channels_pre_layer: List[int],
+    @staticmethod
+    def __make_transition_layer(num_channels_pre_layer: List[int],
                                 num_channels_cur_layer: List[int]) -> nn.Module:
         num_branches_cur = len(num_channels_cur_layer)
         num_branches_pre = len(num_channels_pre_layer)
@@ -136,7 +137,8 @@ class HighResolutionNet(BaseBackbone):
 
         return nn.ModuleList(transition_layers)
 
-    def __make_layer(self, block: Union[Bottleneck, BasicBlock], in_channels: int,
+    @staticmethod
+    def __make_layer(block: Union[Bottleneck, BasicBlock], in_channels: int,
                      out_channels: int, num_blocks: int, stride: int = 1) -> nn.Module:
         """The method creates layer in the HRNet.
 
@@ -162,8 +164,9 @@ class HighResolutionNet(BaseBackbone):
 
         return nn.Sequential(*layers)
 
-    def __make_stage(self, layer_config: Dict[str, Any], in_channels: List[int],
-                     multi_scale_output: bool = True) -> nn.Module:
+    @staticmethod
+    def __make_stage(layer_config: Dict[str, Any], in_channels: List[int],
+                     multi_scale_output: bool = True) -> [nn.Module, int]:
         """The method creates stage in the HRNet.
 
         Args:
@@ -260,9 +263,9 @@ def _create_hrnet(variant: str, pretrained: bool = False, **model_kwargs):
         pretrained: If True the pretrained weights will be loaded.
         model_kwargs: Kwargs for model (for example in_channels).
     """
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans'])
     return build_model_with_cfg(HighResolutionNet, variant, pretrained, model_cfg=cfg_cls[variant],
-                                pretrained_strict=False, kwargs_filter=('num_classes', 'global_pool', 'in_chans'),
-                                **model_kwargs)
+                                pretrained_strict=False, kwargs_filter=kwargs_filter, **model_kwargs)
 
 
 @BACKBONES.register_class
