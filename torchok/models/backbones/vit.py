@@ -32,7 +32,6 @@ from timm.models.helpers import build_model_with_cfg, resolve_pretrained_cfg, na
 from timm.models.layers import PatchEmbed, trunc_normal_
 from timm.models.vision_transformer import Block, ResPostBlock, ParallelBlock, init_weights_vit_timm, \
     get_init_weights_vit, resize_pos_embed, adapt_input_conv, checkpoint_filter_fn
-from torch.nn import Module
 
 from torchok.constructor import BACKBONES
 from torchok.models.backbones import BaseBackbone
