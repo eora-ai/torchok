@@ -7,7 +7,6 @@ see original source above for pre-training models and procedure.
 
 Modifications by / Copyright 2021 Ross Wightman, original copyrights below
 """
-import logging
 # --------------------------------------------------------
 # BEIT: BERT Pre-Training of Image Transformers (https://arxiv.org/abs/2106.08254)
 # Github source: https://github.com/microsoft/unilm/tree/master/beit
@@ -19,6 +18,7 @@ import logging
 # https://github.com/facebookresearch/deit/
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
+import logging
 import math
 from functools import partial
 
@@ -26,8 +26,7 @@ import torch
 import torch.nn as nn
 from timm.models.beit import Block, RelativePositionBias
 from timm.models.helpers import build_model_with_cfg
-from timm.models.layers import PatchEmbed, trunc_normal_
-from timm.models.layers.helpers import to_2tuple
+from timm.models.layers import PatchEmbed, trunc_normal_, to_2tuple
 from timm.models.vision_transformer import checkpoint_filter_fn
 
 from torchok.constructor import BACKBONES
@@ -177,7 +176,7 @@ class Beit(BaseBackbone):
         for i in range(len(features)):
             features[i] = ops[i](features[i])
 
-        return tuple([input_image, features])
+        return tuple([input_image, *features])
 
     def forward(self, x):
         x = self.patch_embed(x)
