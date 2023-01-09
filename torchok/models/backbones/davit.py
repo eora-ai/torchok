@@ -4,15 +4,15 @@ Adapted from https://github.com/dingmyu/davit/blob/main/mmseg/mmseg/models/backb
 Licensed under MIT License [see LICENSE for details]
 """
 import itertools
-from typing import List, Optional, Tuple
 import logging
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg
-from timm.models.layers import DropPath, trunc_normal_
+from timm.models.layers import DropPath, trunc_normal_, to_2tuple
 from torch import Tensor
 
 from torchok.constructor import BACKBONES
@@ -38,11 +38,16 @@ default_cfgs = {
 
 
 class PatchEmbed(nn.Module):
-    """2D Image to Patch Embedding."""
+    """ 2D Image to Patch Embedding
+    """
 
-    def __init__(self, patch_size: int = 16, in_channels: int = 3, embed_dim: int = 96, overlapped: bool = False):
-        """Init PatchEmbed.
-
+    def __init__(
+            self,
+            patch_size=16,
+            in_channels=3,
+            embed_dim=96,
+            overlapped=False):
+        """
         Args:
             patch_size: Patch size.
             in_channels: Input channels.
@@ -50,38 +55,39 @@ class PatchEmbed(nn.Module):
             overlapped: Overlapping.
         """
         super().__init__()
+        patch_size = to_2tuple(patch_size)
         self.patch_size = patch_size
 
-        if patch_size == 4:
+        if patch_size[0] == 4:
             self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=(7, 7), stride=patch_size, padding=(3, 3))
             self.norm = nn.LayerNorm(embed_dim)
-        elif patch_size == 2:
-            kernel = 3 if overlapped else 2
-            pad = 1 if overlapped else 0
+        if patch_size[0] == 2:
+            kernel = to_2tuple(3 if overlapped else 2)
+            pad = to_2tuple(1 if overlapped else 0)
             self.proj = nn.Conv2d(in_channels, embed_dim, kernel_size=kernel, stride=patch_size, padding=pad)
             self.norm = nn.LayerNorm(in_channels)
 
-    def forward(self, x: Tensor, size: Tuple[int]) -> Tuple[Tensor, Tuple[int]]:
+    def forward(self, x: Tensor, size: Tuple[int, int]) -> Tuple[Tensor, Tuple[int, int]]:
         """Forward method."""
-        H, W = size
+        h, w = size
         dim = len(x.shape)
         if dim == 3:
-            B, HW, C = x.shape
+            b, hw, c = x.shape
             x = self.norm(x)
-            x = x.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+            x = x.reshape(b, h, w, c).permute(0, 3, 1, 2).contiguous()
 
-        B, C, H, W = x.shape
-        if W % self.patch_size != 0:
-            x = F.pad(x, (0, self.patch_size - W % self.patch_size[1]))
-        if H % self.patch_size != 0:
-            x = F.pad(x, (0, 0, 0, self.patch_size - H % self.patch_size[0]))
+        b, c, h, w = x.shape
+        if w % self.patch_size[1] != 0:
+            x = F.pad(x, (0, (-w) % self.patch_size[1]))
+        if h % self.patch_size[0] != 0:
+            x = F.pad(x, (0, 0, 0, (-h) % self.patch_size[0]))
 
         x = self.proj(x)
-        newsize = (x.size(2), x.size(3))
+        new_size = (x.size(2), x.size(3))
         x = x.flatten(2).transpose(1, 2)
         if dim == 4:
             x = self.norm(x)
-        return x, newsize
+        return x, new_size
 
 
 class ConvPosEnc(nn.Module):
@@ -112,10 +118,10 @@ class ConvPosEnc(nn.Module):
 
     def forward(self, x: Tensor, size: Tuple[int, int]) -> Tensor:
         """Forward method."""
-        B, N, C = x.shape
-        H, W = size
+        b, n, c = x.shape
+        h, w = size
 
-        feat = x.transpose(1, 2).view(B, C, H, W)
+        feat = x.transpose(1, 2).view(b, c, h, w)
         feat = self.proj(feat)
         if self.norm_layer == 'batch':
             feat = self.norm(feat).flatten(2).transpose(1, 2)
@@ -150,16 +156,16 @@ class ChannelAttention(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         """Forward method."""
-        B, N, C = x.shape
+        b, n, c = x.shape
 
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        qkv = self.qkv(x).reshape(b, n, 3, self.num_heads, c // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         k = k * self.scale
         attention = k.transpose(-1, -2) @ v
         attention = attention.softmax(dim=-1)
         x = (attention @ q.transpose(-1, -2)).transpose(-1, -2)
-        x = x.transpose(1, 2).reshape(B, N, C)
+        x = x.transpose(1, 2).reshape(b, n, c)
         x = self.proj(x)
         return x
 
@@ -194,15 +200,15 @@ class WindowAttention(nn.Module):
         Args:
             x: Input tensor.
         """
-        B_, N, C = x.shape
-        qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        b, n, c = x.shape
+        qkv = self.qkv(x).reshape(b, n, 3, self.num_heads, c // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
 
         q = q * self.scale
         attn = (q @ k.transpose(-2, -1))
         attn = self.softmax(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B_, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(b, n, c)
         x = self.proj(x)
         return x
 
@@ -303,21 +309,21 @@ class SpatialBlock(nn.Module):
     def forward(self, inputs):
         """Forward method."""
         x, size = inputs
-        H, W = size
-        B, L, C = x.shape
+        h, w = size
+        b, l, c = x.shape
 
         shortcut = self.cpe[0](x, size)
         x = self.norm1(shortcut)
-        x = x.view(B, H, W, C)
+        x = x.view(b, h, w, c)
 
         pad_l = pad_t = 0
-        pad_r = (self.window_size - W % self.window_size) % self.window_size
-        pad_b = (self.window_size - H % self.window_size) % self.window_size
+        pad_r = (self.window_size - w % self.window_size) % self.window_size
+        pad_b = (self.window_size - h % self.window_size) % self.window_size
         x = F.pad(x, (0, 0, pad_l, pad_r, pad_t, pad_b))
-        _, Hp, Wp, _ = x.shape
+        _, h_pad, w_pad, _ = x.shape
 
         x_windows = self._window_partition(x, self.window_size)
-        x_windows = x_windows.view(-1, self.window_size * self.window_size, C)
+        x_windows = x_windows.view(-1, self.window_size * self.window_size, c)
 
         # W-MSA/SW-MSA
         attn_windows = self.attn(x_windows)
@@ -326,14 +332,14 @@ class SpatialBlock(nn.Module):
         attn_windows = attn_windows.view(-1,
                                          self.window_size,
                                          self.window_size,
-                                         C)
+                                         c)
 
-        x = self._window_reverse(attn_windows, self.window_size, Hp, Wp)
+        x = self._window_reverse(attn_windows, self.window_size, h_pad, w_pad)
 
         if pad_r > 0 or pad_b > 0:
-            x = x[:, :H, :W, :].contiguous()
+            x = x[:, :h, :w, :].contiguous()
 
-        x = x.view(B, H * W, C)
+        x = x.view(b, h * w, c)
         x = shortcut + self.drop_path(x)
 
         x = self.cpe[1](x, size)
@@ -341,7 +347,8 @@ class SpatialBlock(nn.Module):
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x, size
 
-    def _window_partition(self, x: Tensor, window_size: int) -> Tensor:
+    @staticmethod
+    def _window_partition(x: Tensor, window_size: int) -> Tensor:
         """
         Args:
             x: (B, H, W, C)
@@ -350,25 +357,26 @@ class SpatialBlock(nn.Module):
         Returns:
             windows: (num_windows*B, window_size, window_size, C)
         """
-        B, H, W, C = x.shape
-        x = x.view(B, H // window_size, window_size, W // window_size, window_size, C)
-        windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, C)
+        b, h, w, c = x.shape
+        x = x.view(b, h // window_size, window_size, w // window_size, window_size, c)
+        windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(-1, window_size, window_size, c)
         return windows
 
-    def _window_reverse(self, windows: Tensor, window_size: int, H: int, W: int) -> Tensor:
+    @staticmethod
+    def _window_reverse(windows: Tensor, window_size: int, h: int, w: int) -> Tensor:
         """
         Args:
             windows: (num_windows*B, window_size, window_size, C)
-            window_size (int): Window size
-            H (int): Height of image
-            W (int): Width of image
+            window_size: Window size
+            h: Height of image
+            w: Width of image
 
         Returns:
             x: (B, H, W, C)
         """
-        B = int(windows.shape[0] / (H * W / window_size / window_size))
-        x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
-        x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
+        b = int(windows.shape[0] / (h * w / window_size / window_size))
+        x = windows.view(b, h // window_size, w // window_size, window_size, window_size, -1)
+        x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(b, h, w, -1)
         return x
 
 
@@ -441,7 +449,7 @@ class DaViT(BaseBackbone):
                         window_size=window_size,
                     ) if attention_type == 'spatial' else None
                     for attention_id, attention_type in enumerate(self.attention_types)]
-                ) for layer_id, item in enumerate(block_param)
+                              ) for layer_id, item in enumerate(block_param)
             ])
             main_blocks.append(block)
         self.main_blocks = nn.ModuleList(main_blocks)
@@ -503,8 +511,8 @@ class DaViT(BaseBackbone):
         for i in range(self.num_stages):
             norm_layer = getattr(self, f'norm{i}')
             x_out = norm_layer(features[i])
-            H, W = sizes[i]
-            out = x_out.view(-1, H, W, self.embed_dims[i]).permute(0, 3, 1, 2).contiguous()
+            h, w = sizes[i]
+            out = x_out.view(-1, h, w, self.embed_dims[i]).permute(0, 3, 1, 2).contiguous()
             outs.append(out)
 
         return [input_tensor, *outs]
@@ -516,8 +524,8 @@ class DaViT(BaseBackbone):
 
         norm_layer = getattr(self, f'norm{last_stage}')
         x_out = norm_layer(features[last_stage])
-        H, W = sizes[last_stage]
-        out = x_out.view(-1, H, W, self.embed_dims[last_stage]).permute(0, 3, 1, 2).contiguous()
+        h, w = sizes[last_stage]
+        out = x_out.view(-1, h, w, self.embed_dims[last_stage]).permute(0, 3, 1, 2).contiguous()
 
         return out
 
@@ -541,7 +549,7 @@ def _create_davit(variant: str, pretrained: bool = False, **kwargs):
         pretrained: If True the pretrained weights will be loaded.
         kwargs: Kwargs for model (for example in_chans).
     """
-    kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans'])
     return build_model_with_cfg(DaViT, variant, pretrained, pretrained_strict=False,
                                 pretrained_cfg=default_cfgs[variant], kwargs_filter=kwargs_filter, **kwargs)
 

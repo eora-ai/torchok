@@ -7,3 +7,4 @@ import torchok.models.backbones.hrnet
 import torchok.models.backbones.mobilenetv3
 import torchok.models.backbones.resnet
 import torchok.models.backbones.swin
+import torchok.models.backbones.vit

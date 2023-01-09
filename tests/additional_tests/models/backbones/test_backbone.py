@@ -204,3 +204,27 @@ class TestGlobalContextVit(AbstractTestBackboneCorrectness, unittest.TestCase):
     @parameterized.expand(['gcvit_xxtiny'])
     def test_torchscript_conversion(self, backbone_name):
         super().test_torchscript_conversion(backbone_name)
+
+
+class TestVit(AbstractTestBackboneCorrectness, unittest.TestCase):
+    def setUp(self) -> None:
+        self.input = torch.rand(2, 3, 224, 224, device=self.device)
+
+    @parameterized.expand(['vit_tiny_patch16_224'])
+    def test_load_pretrained(self, backbone_name):
+        super().test_load_pretrained(backbone_name)
+
+    @parameterized.expand([['vit_tiny_patch16_224', (2, 192)]])
+    def test_forward_output_shape(self, backbone_name, expected_shape):
+        super().test_forward_output_shape(backbone_name, expected_shape)
+
+    @parameterized.expand(
+        [['vit_tiny_patch16_224', [(2, 3, 224, 224), (2, 192, 14, 14),
+                                   (2, 192, 14, 14), (2, 192, 14, 14), (2, 192, 14, 14)]]]
+    )
+    def test_forward_feature_output_shape(self, backbone_name, expected_shapes):
+        super().test_forward_feature_output_shape(backbone_name, expected_shapes)
+
+    @parameterized.expand(['vit_tiny_patch16_224'])
+    def test_torchscript_conversion(self, backbone_name):
+        super().test_torchscript_conversion(backbone_name)
