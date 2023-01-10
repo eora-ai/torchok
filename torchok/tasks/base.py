@@ -25,7 +25,7 @@ class BaseTask(LightningModule, ABC):
             inputs: information about input model shapes and dtypes.
         """
         super().__init__()
-        self.save_hyperparameters(hparams)
+        self.save_hyperparameters(hparams, logger=False)
         self._constructor = Constructor(hparams)
         self.input_tensor_names = []
         self.losses = self._constructor.configure_losses() if hparams.get('joint_loss') is not None else None
@@ -160,13 +160,13 @@ class BaseTask(LightningModule, ABC):
     def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
         for tag, value in output_dict.items():
-            self.log(f'train/{tag}', value, on_step=False, on_epoch=True)
+            self.log(f'train/{tag}', value, on_step=False, on_epoch=True, batch_size=len(outputs))
         return output_dict
 
     def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
         for tag, value in output_dict.items():
-            self.log(f'valid/{tag}', value, on_step=False, on_epoch=True)
+            self.log(f'valid/{tag}', value, on_step=False, on_epoch=True, batch_size=len(outputs))
         return output_dict
 
     def training_epoch_end(self, training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:

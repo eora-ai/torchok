@@ -101,6 +101,7 @@ data:
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
+        persistent_workers: true
       dataset:
         name: COCODetection
         params:
@@ -135,6 +136,7 @@ data:
         num_workers: *n_workers
         drop_last: false
         shuffle: false
+        persistent_workers: true
       dataset:
         name: COCODetection
         params:
@@ -154,7 +156,6 @@ trainer:
   accelerator: 'gpu'
   max_epochs: 25
   precision: 16
-#  limit_train_batches: 5000
   gradient_clip_val: 35
   gradient_clip_algorithm: norm
   num_sanity_val_steps: 2
