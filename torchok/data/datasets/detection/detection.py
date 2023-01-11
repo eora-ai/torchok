@@ -116,8 +116,8 @@ class DetectionDataset(ImageDataset):
             labels = [torch.tensor(row) for row in df[self.target_column]]
             bboxes = [torch.tensor(row) for row in df[self.bbox_column]]
 
-            for i, (path, bbox, label) in enumerate(zip(self.data_folder / self.image_paths, bboxes, labels)):
-                width, height = imagesize.get(path)
+            for i, (path, bbox, label) in enumerate(zip(self.image_paths, bboxes, labels)):
+                width, height = imagesize.get(self.data_folder / path)
                 if len(bbox):
                     bbox, label = self.filter_bboxes(bbox, label, height, width)
                     labels[i] = label
