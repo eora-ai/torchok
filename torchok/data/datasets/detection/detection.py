@@ -3,13 +3,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Union
 
-import numpy as np
+import imagesize
 import pandas as pd
 import torch
 from albumentations import BaseCompose, Compose, BboxParams
 from albumentations.core.bbox_utils import convert_bboxes_to_albumentations, \
     convert_bboxes_from_albumentations, filter_bboxes as alb_filter_bboxes
 from albumentations.core.composition import BasicTransform
+from torch import Tensor
 from torch.utils.data._utils.collate import default_collate
 
 from torchok.constructor import DATASETS
@@ -101,15 +102,30 @@ class DetectionDataset(ImageDataset):
         self.bbox_format = bbox_format
 
         if annotation_path.endswith('csv'):
-            self.df = pd.read_csv(self.data_folder / annotation_path)
-            self.df[self.bbox_column] = self.df[self.bbox_column].apply(json.loads)
-            self.df[self.target_column] = self.df[self.target_column].apply(json.loads)
+            df = pd.read_csv(self.data_folder / annotation_path)
+            df[self.bbox_column] = df[self.bbox_column].apply(json.loads)
+            df[self.target_column] = df[self.target_column].apply(json.loads)
         elif annotation_path.endswith('pkl'):
-            self.df = pd.read_pickle(self.data_folder / annotation_path)
+            df = pd.read_pickle(self.data_folder / annotation_path)
         else:
             raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
-        self.df[self.bbox_column] = self.df[self.bbox_column].apply(np.array)
-        self.df[self.target_column] = self.df[self.target_column].apply(np.array)
+
+        self.image_paths = df.pop(self.input_column)
+
+        if not self.test_mode:
+            labels = [torch.tensor(row) for row in df[self.target_column]]
+            bboxes = [torch.tensor(row) for row in df[self.bbox_column]]
+
+            for i, (path, bbox, label) in enumerate(zip(self.image_paths, bboxes, labels)):
+                width, height = imagesize.get(self.data_folder / path)
+                if len(bbox):
+                    bbox, label = self.filter_bboxes(bbox, label, height, width)
+                    labels[i] = label
+                    bboxes[i] = bbox
+
+            self.lengths = torch.cumsum(torch.tensor([len(i) for i in labels]), dim=0)
+            self.labels = torch.cat(labels)
+            self.bboxes = torch.cat(bboxes)
 
         bbox_params = BboxParams(format=self.bbox_format, label_fields=['label'],
                                  min_area=min_area, min_visibility=min_visibility)
@@ -121,28 +137,25 @@ class DetectionDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.df)
+        return len(self.image_paths)
 
     def get_raw(self, idx: int) -> dict:
-        record = self.df.iloc[idx]
-        image_path = self.data_folder / record[self.input_column]
+        image_path = self.data_folder / self.image_paths.iloc[idx]
         image = self._read_image(image_path)
         sample = {'image': image, 'index': idx}
 
         if not self.test_mode:
-            labels = record[self.target_column]
-            bboxes = record[self.bbox_column]
+            region_end = self.lengths[idx]
+            region_start = self.lengths[idx - 1] if idx else 0
 
-            if len(bboxes):
-                bboxes, labels = self.filter_bboxes(bboxes, labels, *image.shape[:2])
-            sample['label'] = labels
-            sample['bboxes'] = bboxes
+            sample['label'] = self.labels[region_start:region_end]
+            sample['bboxes'] = self.bboxes[region_start:region_end]
 
         sample = self._apply_transform(self.augment, sample)
 
         return sample
 
-    def filter_bboxes(self, bboxes: np.ndarray, labels: np.ndarray, rows: int, cols: int) -> [np.ndarray, np.ndarray]:
+    def filter_bboxes(self, bboxes: Tensor, labels: Tensor, rows: int, cols: int) -> [Tensor, Tensor]:
         """Filter empty bounding boxes.
 
         Args:
@@ -154,10 +167,10 @@ class DetectionDataset(ImageDataset):
         Returns:
             numpy array of bounding boxes and numpy array of labels of these boxes.
         """
-        lbox = np.hstack([bboxes, labels[..., None]])
+        lbox = torch.hstack([bboxes, labels[..., None]])
         alb_lbox = convert_bboxes_to_albumentations(lbox, self.bbox_format, rows, cols)
         alb_lbox_fixed = alb_filter_bboxes(alb_lbox, rows, cols)
-        lbox_fixed = np.array(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
+        lbox_fixed = torch.tensor(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
         return lbox_fixed[:, :4], lbox_fixed[:, 4]
 
     def __getitem__(self, idx: int) -> dict:
