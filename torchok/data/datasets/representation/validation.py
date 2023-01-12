@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Union, Tuple
 
-import torch
 import pandas as pd
-
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
@@ -65,8 +64,8 @@ class RetrievalDataset(ImageDataset):
                  gallery_list_csv_path: Optional[str] = None,
                  use_query_without_relevants: bool = False,
                  input_dtype: str = 'float32',
-                 channel_order: str = 'rgb',
-                 grayscale: bool = False):
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0):
         """Init RetrievalDataset class.
 
         Args:
@@ -84,8 +83,8 @@ class RetrievalDataset(ImageDataset):
             gallery_list_csv_path: Path to mapping image identifiers to image paths. Format: id | path.
             use_query_without_relevants: If True, use query without relevants.
             input_dtype: Data type of the torch tensors related to the image.
-            channel_order: Order of channel, candidates are `bgr` and `rgb`.
-            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
 
         Raises:
             ValueError: if gallery_folder `True`, but `gallery_list_csv_path` is `None`.
@@ -94,8 +93,8 @@ class RetrievalDataset(ImageDataset):
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
-            channel_order=channel_order,
-            grayscale=grayscale
+            image_format=image_format,
+            rgba_layout_color=rgba_layout_color
         )
         self.data_folder = Path(data_folder)
         self.use_query_without_relevants = use_query_without_relevants
@@ -109,7 +108,7 @@ class RetrievalDataset(ImageDataset):
         self.use_scores = 'scores' in self.matches.columns
         self.use_group_labels = 'label' in self.img_paths.columns
 
-        self.n_not_query, self.n_queries, self.index2imgid, self.imgid2index,\
+        self.n_not_query, self.n_queries, self.index2imgid, self.imgid2index, \
             self.index2label, self.relevant_arr, self.relevance_scores = self._parse_match_csv()
 
         self.imgid2path = dict(zip(self.img_paths['id'],

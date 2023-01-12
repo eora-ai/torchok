@@ -33,7 +33,7 @@ class TestImageDataset:
         self.assertTupleEqual(ds[0]['image'].shape, (3, 224, 224))
 
     def test_shape_when_grayscale(self):
-        self.dataset_kwargs['grayscale'] = True
+        self.dataset_kwargs['image_format'] = 'gray'
         ds = self.create_dataset()
         self.assertTupleEqual(ds[0]['image'].shape, (1, 224, 224))
 
@@ -44,7 +44,7 @@ class TestImageDataset:
 
     def test_augment_not_none_and_grayscale(self):
         self.dataset_kwargs['augment'] = self.augment
-        self.dataset_kwargs['grayscale'] = True
+        self.dataset_kwargs['image_format'] = 'gray'
         ds = self.create_dataset()
         self.assertTupleEqual(ds[0]['image'].shape, (1, 224, 224))
 

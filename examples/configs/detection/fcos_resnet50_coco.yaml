@@ -101,7 +101,7 @@ data:
           data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: float32
-          channel_order: 'rgb'
+          image_format: 'rgb'
         augment:
           - name: HorizontalFlip
         transform:
@@ -135,7 +135,7 @@ data:
           data_folder: *data_folder
           input_dtype: *input_dtype
           bbox_dtype: float32
-          channel_order: 'rgb'
+          image_format: 'rgb'
         transform:
           - *resize
           - *normalize

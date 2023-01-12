@@ -24,7 +24,7 @@ class TestUnsupervisedContrastiveDataset(TestImageDataset, unittest.TestCase):
         self.assertTupleEqual(ds[0]['image_0'].shape, (3, 224, 224))
 
     def test_shape_when_grayscale(self):
-        self.dataset_kwargs['grayscale'] = True
+        self.dataset_kwargs['image_format'] = 'gray'
         ds = self.create_dataset()
         self.assertTupleEqual(ds[0]['image_0'].shape, (1, 224, 224))
 
@@ -36,7 +36,7 @@ class TestUnsupervisedContrastiveDataset(TestImageDataset, unittest.TestCase):
 
     def test_augment_not_none_and_grayscale(self):
         self.dataset_kwargs['augment'] = self.augment
-        self.dataset_kwargs['grayscale'] = True
+        self.dataset_kwargs['image_format'] = 'gray'
         ds = self.create_dataset()
         self.assertTupleEqual(ds[0]['image_0'].shape, (1, 224, 224))
         self.assertTupleEqual(ds[0]['image_1'].shape, (1, 224, 224))

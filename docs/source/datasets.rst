@@ -17,8 +17,8 @@ to be implemented. Follow the general principles when you implement your dataset
                 transform: Optional[Union[BasicTransform, BaseCompose]],
                 augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                 input_dtype: str = 'float32',
-                channel_order: str = 'rgb',
-                grayscale: bool = False,
+                image_format: str = 'rgb',
+                rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                 test_mode: bool = False):
         # Use transforms and augments for two different purposes: augmentations should be applied to get a randomly 
         # manipulated image version while transformations are used to get a fixed transformation of each input image 
