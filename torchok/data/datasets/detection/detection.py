@@ -1,7 +1,7 @@
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import imagesize
 import pandas as pd
@@ -40,8 +40,8 @@ class DetectionDataset(ImageDataset):
                  bbox_dtype: str = 'float32',
                  target_column: str = 'label',
                  target_dtype: str = 'long',
-                 grayscale: bool = False,
-                 channel_order: str = 'rgb',
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False,
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
@@ -64,8 +64,8 @@ class DetectionDataset(ImageDataset):
             bbox_dtype: Data type of the torch tensors related to the bboxes.
             target_column: Column name containing bboxes labels.
             target_dtype: Data type of the torch tensors related to the bboxes labels.
-            channel_order: Order of channel, candidates are `bgr` and `rgb`.
-            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
             bbox_format: Bboxes format, for albumentations transform. Supports the following formats:
                 pascal_voc - [x_min, y_min, x_max, y_max] = [98, 345, 420, 462]
@@ -87,9 +87,9 @@ class DetectionDataset(ImageDataset):
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
-            grayscale=grayscale,
-            test_mode=test_mode,
-            channel_order=channel_order
+            image_format=image_format,
+            rgba_layout_color=rgba_layout_color,
+            test_mode=test_mode
         )
         self.data_folder = Path(data_folder)
 

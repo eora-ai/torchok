@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import cv2
+from PIL.Image import open as imopen
 import numpy as np
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
@@ -15,8 +16,8 @@ class ImageDataset(Dataset, ABC):
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
-                 channel_order: str = 'rgb',
-                 grayscale: bool = False,
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False):
         """Init ImageDataset.
 
@@ -26,16 +27,16 @@ class ImageDataset(Dataset, ABC):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
-            channel_order: Order of channel, candidates are `bgr` and `rgb`.
-            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
         """
         self.test_mode = test_mode
         self.transform = transform
         self.augment = augment
         self.input_dtype = input_dtype
-        self.grayscale = grayscale
-        self.channel_order = channel_order
+        self.image_format = image_format
+        self.rgba_layout_color = rgba_layout_color
 
     def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Is transformations based on API of albumentations library.
@@ -55,15 +56,42 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        image = cv2.imread(str(image_path), int(not self.grayscale))
+        image = np.array(imopen(image_path))
 
-        if image is None:
-            raise ValueError(f'{image_path} image does not exist')
+        if self.image_format == 'rgb':
+            if image.ndim == 2:  # Gray
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            elif image.shape[2] == 4:  # RGBA
+                alpha = image[..., 3:4] / 255
+                image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
+                image = image.astype('uint8')
+        elif self.image_format == 'rgba':
+            if image.ndim == 2:  # Gray
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGBA)
+            elif image.shape[2] == 3:  # RGB
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
+        elif self.image_format == 'bgr':
+            if image.ndim == 2:  # Gray
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            elif image.shape[2] == 4:  # RGBA
+                alpha = image[..., 3:4] / 255
+                image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
+                image = cv2.cvtColor(image.astype('uint8'), cv2.COLOR_RGB2BGR)
+            elif image.shape[2] == 3:  # RGB
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        elif self.image_format == 'gray':
+            if image.ndim == 3 and image.shape[2] == 4:  # RGBA
+                alpha = image[..., 3:4] / 255
+                image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
+                image = image.astype('uint8')
 
-        if self.grayscale:
-            image = image[..., None]
-        elif self.channel_order == 'rgb':
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            if image.ndim == 3 and image.shape[2] == 3:  # RGB
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+            if image.ndim == 2:  # Gray
+                image = image[..., None]
+        else:
+            raise ValueError(f'Unsupported image format `{self.image_format}`')
 
         return image
 

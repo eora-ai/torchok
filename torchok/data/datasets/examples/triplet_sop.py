@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, Optional, Dict
+from typing import Union, Optional, Dict, Tuple
 
 import torch
 import pandas as pd
@@ -38,8 +38,8 @@ class TRIPLET_SOP(ImageDataset):
                  positive_column: str = 'positive',
                  negative_column: str = 'negative',
                  input_dtype: str = 'float32',
-                 channel_order: str = 'rgb',
-                 grayscale: bool = False,
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False):
         """Init TRIPLET SOP.
 
@@ -53,16 +53,16 @@ class TRIPLET_SOP(ImageDataset):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
-            channel_order: Order of channel, candidates are `bgr` and `rgb`.
-            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
         """
         super().__init__(
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
-            channel_order=channel_order,
-            grayscale=grayscale,
+            image_format=image_format,
+            rgba_layout_color=rgba_layout_color,
             test_mode=test_mode
         )
         self.data_folder = Path(data_folder)
