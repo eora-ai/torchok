@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union, Tuple
 
 import cv2
-from PIL.Image import open as imopen
 import numpy as np
+from PIL.Image import open as imopen
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from torch.utils.data import Dataset

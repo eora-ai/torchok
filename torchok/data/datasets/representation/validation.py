@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import Optional, Tuple, Union, Tuple
+from typing import Optional, Union, Tuple
 
-import torch
 import pandas as pd
-
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
@@ -109,7 +108,7 @@ class RetrievalDataset(ImageDataset):
         self.use_scores = 'scores' in self.matches.columns
         self.use_group_labels = 'label' in self.img_paths.columns
 
-        self.n_not_query, self.n_queries, self.index2imgid, self.imgid2index,\
+        self.n_not_query, self.n_queries, self.index2imgid, self.imgid2index, \
             self.index2label, self.relevant_arr, self.relevance_scores = self._parse_match_csv()
 
         self.imgid2path = dict(zip(self.img_paths['id'],

@@ -1,15 +1,15 @@
 from pathlib import Path
 from typing import Union, Optional, Dict, Tuple
 
-import torch
 import pandas as pd
-from torch import Tensor
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
+from torch import Tensor
 from torchvision.datasets.utils import download_and_extract_archive
 
-from torchok.data.datasets.base import ImageDataset
 from torchok.constructor import DATASETS
+from torchok.data.datasets.base import ImageDataset
 
 
 @DATASETS.register_class

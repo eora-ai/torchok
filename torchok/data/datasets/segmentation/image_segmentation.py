@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Any, Union, Optional, Dict, Tuple
 
 import cv2
-import torch
 import numpy as np
 import pandas as pd
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
@@ -23,6 +23,7 @@ class ImageSegmentationDataset(ImageDataset):
         image2.png, mask2.png
         image3.png, mask3.png
     """
+
     def __init__(self,
                  data_folder: Union[Path, str],
                  csv_path: str,
