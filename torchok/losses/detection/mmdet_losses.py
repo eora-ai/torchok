@@ -1,6 +1,7 @@
 import types
 
 from mmdet.models.builder import LOSSES as MMLOSSES
+from mmdet.models.losses import GIoULoss
 
 from torchok.constructor import LOSSES
 

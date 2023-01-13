@@ -1,32 +1,22 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-from typing import Dict, List, Tuple
+from typing import Dict, List
+from fractions import Fraction as Fr
 
 import torch
+import torch.nn.functional as F
 from mmcv import ConfigDict
+from mmcv.cnn import build_activation_layer
+from mmcv.cnn.bricks.transformer import build_positional_encoding
 from mmcv.runner import force_fp32
-from mmdet.core import reduce_mean
-from mmdet.models.dense_heads import fcos_head
-from mmdet.models.dense_heads.anchor_free_head import AnchorFreeHead
+from mmdet.core import (bbox_cxcywh_to_xyxy, build_assigner, build_sampler, reduce_mean)
 from mmdet.models.dense_heads import detr_head
+from mmdet.models.dense_heads.anchor_free_head import AnchorFreeHead
+from mmdet.models.utils import build_transformer
 from omegaconf import OmegaConf, DictConfig
 from torch import Tensor
 
 from torchok.constructor import HEADS
 from torchok.losses.base import JointLoss
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from mmcv.cnn import Conv2d, Linear, build_activation_layer
-from mmcv.cnn.bricks.transformer import FFN, build_positional_encoding
-from mmcv.runner import force_fp32
-
-from mmdet.core import (bbox_cxcywh_to_xyxy, bbox_xyxy_to_cxcywh,
-                        build_assigner, build_sampler, multi_apply,
-                        reduce_mean)
-from mmdet.models.utils import build_transformer
-from ..builder import HEADS, build_loss
-from .anchor_free_head import AnchorFreeHead
 
 
 @HEADS.register_module()
@@ -65,24 +55,18 @@ class DETRHead(detr_head.DETRHead):
     _version = 2
 
     def __init__(self,
+                 joint_loss,
                  num_classes,
                  in_channels,
                  num_query=100,
                  num_reg_fcs=2,
+                 bg_cls_weight=0.1,
                  transformer=None,
                  sync_cls_avg_factor=False,
                  positional_encoding=dict(
                      type='SinePositionalEncoding',
                      num_feats=128,
                      normalize=True),
-                 loss_cls=dict(
-                     type='CrossEntropyLoss',
-                     bg_cls_weight=0.1,
-                     use_sigmoid=False,
-                     loss_weight=1.0,
-                     class_weight=1.0),
-                 loss_bbox=dict(type='L1Loss', loss_weight=5.0),
-                 loss_iou=dict(type='GIoULoss', loss_weight=2.0),
                  train_cfg=dict(
                      assigner=dict(
                          type='HungarianAssigner',
@@ -96,110 +80,63 @@ class DETRHead(detr_head.DETRHead):
         # NOTE here use `AnchorFreeHead` instead of `TransformerHead`,
         # since it brings inconvenience when the initialization of
         # `AnchorFreeHead` is called.
+        kwargs['norm_cfg'] = transformer
+        kwargs['conv_cfg'] = positional_encoding
+        kwargs['train_cfg'] = train_cfg
+        kwargs['test_cfg'] = test_cfg
+        kwargs['init_cfg'] = init_cfg
+
+        for k, v in kwargs.items():
+            if isinstance(v, DictConfig):
+                kwargs[k] = ConfigDict(OmegaConf.to_container(v, resolve=True))
+
         super(AnchorFreeHead, self).__init__(init_cfg)
-        self.bg_cls_weight = 0
+        self.bg_cls_weight = bg_cls_weight
         self.sync_cls_avg_factor = sync_cls_avg_factor
-        class_weight = loss_cls.get('class_weight', None)
+        class_weight = joint_loss['loss_cls'].class_weight
         if class_weight is not None and (self.__class__ is DETRHead):
-            assert isinstance(class_weight, float), 'Expected ' \
-                f'class_weight to have type float. Found {type(class_weight)}.'
             # NOTE following the official DETR rep0, bg_cls_weight means
             # relative classification weight of the no-object class.
-            bg_cls_weight = loss_cls.get('bg_cls_weight', class_weight)
-            assert isinstance(bg_cls_weight, float), f'Expected ' \
-                f'bg_cls_weight to have type float. Found {type(bg_cls_weight)}.'
             class_weight = torch.ones(num_classes + 1) * class_weight
             # set background class as the last index
             class_weight[num_classes] = bg_cls_weight
-            loss_cls.update({'class_weight': class_weight})
-            if 'bg_cls_weight' in loss_cls:
-                loss_cls.pop('bg_cls_weight')
+            joint_loss['loss_cls'].class_weight = class_weight
             self.bg_cls_weight = bg_cls_weight
 
         if train_cfg:
-            assert 'assigner' in train_cfg, 'assigner should be provided when train_cfg is set.'
+            if 'assigner' not in train_cfg:
+                raise ValueError("assigner should be provided when train_cfg is set.")
             assigner = train_cfg['assigner']
-            assert loss_cls['loss_weight'] == assigner['cls_cost']['weight'], \
-                'The classification weight for loss and matcher should be exactly the same.'
-            assert loss_bbox['loss_weight'] == assigner['reg_cost']['weight'], \
-                'The regression L1 weight for loss and matcher should be exactly the same.'
-            assert loss_iou['loss_weight'] == assigner['iou_cost']['weight'], \
-                'The regression iou weight for loss and matcher should be exactly the same.'
             self.assigner = build_assigner(assigner)
             # DETR sampling=False, so use PseudoSampler
-            sampler_cfg = dict(type='PseudoSampler')
-            self.sampler = build_sampler(sampler_cfg, context=self)
+            self.sampler = build_sampler(dict(type='PseudoSampler'), context=self)
+
         self.num_query = num_query
         self.num_classes = num_classes
         self.in_channels = in_channels
         self.num_reg_fcs = num_reg_fcs
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
-        self.fp16_enabled = False
-        self.loss_cls = build_loss(loss_cls)
-        self.loss_bbox = build_loss(loss_bbox)
-        self.loss_iou = build_loss(loss_iou)
 
-        if self.loss_cls.use_sigmoid:
-            self.cls_out_channels = num_classes
-        else:
-            self.cls_out_channels = num_classes + 1
-        self.act_cfg = transformer.get('act_cfg',
-                                       dict(type='ReLU', inplace=True))
+        self.act_cfg = transformer.get('act_cfg', dict(type='ReLU', inplace=True))
         self.activate = build_activation_layer(self.act_cfg)
         self.positional_encoding = build_positional_encoding(positional_encoding)
         self.transformer = build_transformer(transformer)
         self.embed_dims = self.transformer.embed_dims
-        assert 'num_feats' in positional_encoding
         num_feats = positional_encoding['num_feats']
-        assert num_feats * 2 == self.embed_dims, 'embed_dims should' \
-            f' be exactly 2 times of num_feats. Found {self.embed_dims}' \
-            f' and {num_feats}.'
+        if num_feats * 2 != self.embed_dims:
+            raise ValueError(
+                f'embed_dims should be exactly 2 times of num_feats. Found {self.embed_dims} and {num_feats}.')
         self._init_layers()
 
         self.init_weights()
 
-    def init_weights(self):
-        """Initialize weights of the transformer head."""
-        # The initialization for transformer is important
-        self.transformer.init_weights()
-
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
-        """load checkpoints."""
-        # NOTE here use `AnchorFreeHead` instead of `TransformerHead`,
-        # since `AnchorFreeHead._load_from_state_dict` should not be
-        # called here. Invoking the default `Module._load_from_state_dict`
-        # is enough.
-
-        # Names of some parameters in has been changed.
-        version = local_metadata.get('version', None)
-        if (version is None or version < 2) and self.__class__ is DETRHead:
-            convert_dict = {
-                '.self_attn.': '.attentions.0.',
-                '.ffn.': '.ffns.0.',
-                '.multihead_attn.': '.attentions.1.',
-                '.decoder.norm.': '.decoder.post_norm.'
-            }
-            state_dict_keys = list(state_dict.keys())
-            for k in state_dict_keys:
-                for ori_key, convert_key in convert_dict.items():
-                    if ori_key in k:
-                        convert_key = k.replace(ori_key, convert_key)
-                        state_dict[convert_key] = state_dict[k]
-                        del state_dict[k]
-
-        super(AnchorFreeHead,
-              self)._load_from_state_dict(state_dict, prefix, local_metadata,
-                                          strict, missing_keys,
-                                          unexpected_keys, error_msgs)
-
-    def forward(self, features, image_shape, **kwargs):
+    def forward(self, features, img_metas, **kwargs):
         """Forward function.
 
         Args:
             features (tuple[Tensor]): Features from the upstream network, each is a 4D-tensor.
-            image_shape (Tuple[int, int, int]): size of the input image.
+            img_metas (list[dict]): List of image information.
 
         Returns:
             all_cls_scores (Tensor): Outputs from the classification head,
@@ -212,10 +149,11 @@ class DETRHead(detr_head.DETRHead):
         features = features[-1]
 
         batch_size = features.size(0)
-        input_img_h, input_img_w = img_metas[0]['batch_input_shape']
+        input_img_h, input_img_w, _ = img_metas[0]['img_shape']
         masks = features.new_ones((batch_size, input_img_h, input_img_w))
         for img_id in range(batch_size):
-            img_h, img_w, _ = img_metas[img_id]['img_shape']
+            img_meta = img_metas[img_id]
+            img_h, img_w = self.get_fit_image_size(img_meta['img_shape'], img_meta['orig_img_shape'])
             masks[img_id, :img_h, :img_w] = 0
 
         x = self.input_proj(features)
@@ -230,27 +168,31 @@ class DETRHead(detr_head.DETRHead):
         all_bbox_preds = self.fc_reg(self.activate(self.reg_ffn(outs_dec))).sigmoid()
         return all_cls_scores, all_bbox_preds
 
-    def forward_single(self, x, img_metas):
-        """Forward function for a single feature level.
+    @staticmethod
+    def get_fit_image_size(fit_size, image_size):
+        h, w = fit_size[:2]
+        aspect_ratio = Fr(h, w)
 
-        Args:
-            x (Tensor): Input feature from backbone's single stage, shape
-                [bs, c, h, w].
-            img_metas (list[dict]): List of image information.
+        im_h, im_w = image_size[:2]
+        image_aspect_ratio = Fr(im_h, im_w)
 
+        den = (max if im_h > im_w else min)(im_h, im_w)
+        en = h if image_aspect_ratio >= aspect_ratio else w
+        scale = en / den
 
-        """
-        # construct binary masks which used for the transformer.
-        # NOTE following the official DETR repo, non-zero values representing
-        # ignored positions, while zero values means valid positions.
+        return im_h * scale, im_w * scale
 
-    @force_fp32(apply_to=('all_cls_scores_list', 'all_bbox_preds_list'))
-    def loss(self,
-             all_cls_scores_list,
-             all_bbox_preds_list,
+    @staticmethod
+    def format_dict(head_output):
+        return dict(zip(['all_cls_scores', 'all_bbox_preds'], head_output))
+
+    @force_fp32(apply_to=('all_cls_scores', 'all_bbox_preds'))
+    def loss(self, joint_loss: JointLoss,
+             all_cls_scores,
+             all_bbox_preds,
              gt_bboxes_list,
              gt_labels_list,
-             image_shape,
+             img_metas,
              **kwargs):
         """Loss function.
 
@@ -258,10 +200,11 @@ class DETRHead(detr_head.DETRHead):
         losses by default.
 
         Args:
-            all_cls_scores_list (list[Tensor]): Classification outputs
+            joint_loss: An instance of JointLoss class.
+            all_cls_scores (list[Tensor]): Classification outputs
                 for each feature level. Each is a 4D-tensor with shape
                 [nb_dec, bs, num_query, cls_out_channels].
-            all_bbox_preds_list (list[Tensor]): Sigmoid regression
+            all_bbox_preds (list[Tensor]): Sigmoid regression
                 outputs for each feature level. Each is a 4D-tensor with
                 normalized coordinate format (cx, cy, w, h) and shape
                 [nb_dec, bs, num_query, 4].
@@ -269,23 +212,76 @@ class DETRHead(detr_head.DETRHead):
                 with shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
             gt_labels_list (list[Tensor]): Ground truth class indices for each
                 image with shape (num_gts, ).
-            image_shape (tuple[int]): List of image shape information.
+            img_metas (list[dict]): List of image meta information.
 
         Returns:
             dict[str, Tensor]: A dictionary of loss components.
         """
-        # NOTE by default only the outputs from the last feature scale is used.
-        all_cls_scores = all_cls_scores_list[-1]
-        all_bbox_preds = all_bbox_preds_list[-1]
+        losses_cls = []
+        losses_bbox = []
+        losses_iou = []
 
-        num_dec_layers = len(all_cls_scores)
-        all_gt_bboxes_list = [gt_bboxes_list for _ in range(num_dec_layers)]
-        all_gt_labels_list = [gt_labels_list for _ in range(num_dec_layers)]
-        image_shape_list = [image_shape for _ in range(num_dec_layers)]
+        for cls_scores, bbox_preds in zip(all_cls_scores, all_bbox_preds):
+            num_imgs = cls_scores.size(0)
+            cls_scores_list = [cls_scores[i] for i in range(num_imgs)]
+            bbox_preds_list = [bbox_preds[i] for i in range(num_imgs)]
+            cls_reg_targets = self.get_targets(cls_scores_list, bbox_preds_list,
+                                               gt_bboxes_list, gt_labels_list, img_metas)
+            (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
+             num_total_pos, num_total_neg) = cls_reg_targets
+            labels = torch.cat(labels_list, 0)
+            label_weights = torch.cat(label_weights_list, 0)
+            bbox_targets = torch.cat(bbox_targets_list, 0)
+            bbox_weights = torch.cat(bbox_weights_list, 0)
 
-        losses_cls, losses_bbox, losses_iou = multi_apply(
-            self.loss_single, all_cls_scores, all_bbox_preds,
-            all_gt_bboxes_list, all_gt_labels_list, image_shape_list)
+            # classification loss
+            cls_scores = cls_scores.reshape(-1, self.cls_out_channels)
+            # construct weighted avg_factor to match with the official DETR repo
+            cls_avg_factor = num_total_pos * 1.0 + num_total_neg * self.bg_cls_weight
+            if self.sync_cls_avg_factor:
+                cls_avg_factor = reduce_mean(cls_scores.new_tensor([cls_avg_factor]))
+            cls_avg_factor = max(cls_avg_factor, 1)
+
+            # Compute the average number of gt boxes across all gpus, for
+            # normalization purposes
+            num_total_pos = torch.clamp(reduce_mean(num_total_pos), min=1).item()
+
+            # construct factors used for rescale bboxes
+            factors = []
+            for bbox_pred, img_meta in zip(bbox_preds, img_metas):
+                img_h, img_w, _ = img_meta['img_shape']
+                factor = bbox_pred.new_tensor([img_w, img_h, img_w, img_h]).unsqueeze(0).repeat(bbox_pred.size(0), 1)
+                factors.append(factor)
+            factors = torch.cat(factors, 0)
+
+            # DETR regress the relative position of boxes (cxcywh) in the image,
+            # thus the learning target is normalized by the image size. So here
+            # we need to re-scale them for calculating IoU loss
+            bbox_preds = bbox_preds.reshape(-1, 4)
+            bboxes = bbox_cxcywh_to_xyxy(bbox_preds) * factors
+            bboxes_gt = bbox_cxcywh_to_xyxy(bbox_targets) * factors
+
+            loss_cls = self.loss_cls(cls_scores, labels, label_weights, avg_factor=cls_avg_factor)
+
+            # regression IoU loss, by default GIoU loss
+            loss_iou = self.loss_iou(bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos)
+
+            # regression L1 loss
+            loss_bbox = self.loss_bbox(bbox_preds, bbox_targets, bbox_weights, avg_factor=num_total_pos)
+
+            joint_loss(
+                cls_scores=cls_scores,
+                labels=labels,
+                label_weights=label_weights,
+                cls_avg_factor=cls_avg_factor,
+                bboxes=bboxes,
+                bboxes_gt=bboxes_gt,
+                bbox_weights=bbox_weights,
+                bbox_preds=bbox_preds,
+                bbox_targets=bbox_targets,
+            )
+
+            return loss_cls, loss_bbox, loss_iou
 
         loss_dict = dict()
         # loss from the last decoder layer
@@ -293,97 +289,19 @@ class DETRHead(detr_head.DETRHead):
         loss_dict['loss_bbox'] = losses_bbox[-1]
         loss_dict['loss_iou'] = losses_iou[-1]
         # loss from other decoder layers
-        num_dec_layer = 0
-        for loss_cls_i, loss_bbox_i, loss_iou_i in zip(losses_cls[:-1],
-                                                       losses_bbox[:-1],
-                                                       losses_iou[:-1]):
+
+        zi = enumerate(zip(losses_cls[:-1], losses_bbox[:-1], losses_iou[:-1]))
+        for num_dec_layer, (loss_cls_i, loss_bbox_i, loss_iou_i) in zi:
             loss_dict[f'd{num_dec_layer}.loss_cls'] = loss_cls_i
             loss_dict[f'd{num_dec_layer}.loss_bbox'] = loss_bbox_i
             loss_dict[f'd{num_dec_layer}.loss_iou'] = loss_iou_i
-            num_dec_layer += 1
         return loss_dict
-
-    def loss_single(self,
-                    cls_scores,
-                    bbox_preds,
-                    gt_bboxes_list,
-                    gt_labels_list,
-                    image_shape,
-                    **kwargs):
-        """Loss function for outputs from a single decoder layer of a single
-        feature level.
-
-        Args:
-            cls_scores (Tensor): Box score logits from a single decoder layer
-                for all images. Shape [bs, num_query, cls_out_channels].
-            bbox_preds (Tensor): Sigmoid outputs from a single decoder layer
-                for all images, with normalized coordinate (cx, cy, w, h) and
-                shape [bs, num_query, 4].
-            gt_bboxes_list (list[Tensor]): Ground truth bboxes for each image
-                with shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
-            gt_labels_list (list[Tensor]): Ground truth class indices for each
-                image with shape (num_gts, ).
-            image_shape (Tuple[int, int, int]): size of the input image.
-
-        Returns:
-            dict[str, Tensor]: A dictionary of loss components for outputs from
-                a single decoder layer.
-        """
-        num_imgs = cls_scores.size(0)
-        pseudo_meta = [dict(img_shape=image_shape, scale_factor=1) for i in range(num_imgs)]
-        cls_scores_list = [cls_scores[i] for i in range(num_imgs)]
-        bbox_preds_list = [bbox_preds[i] for i in range(num_imgs)]
-        cls_reg_targets = self.get_targets(cls_scores_list, bbox_preds_list,
-                                           gt_bboxes_list, gt_labels_list, pseudo_meta)
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         num_total_pos, num_total_neg) = cls_reg_targets
-        labels = torch.cat(labels_list, 0)
-        label_weights = torch.cat(label_weights_list, 0)
-        bbox_targets = torch.cat(bbox_targets_list, 0)
-        bbox_weights = torch.cat(bbox_weights_list, 0)
-
-        # classification loss
-        cls_scores = cls_scores.reshape(-1, self.cls_out_channels)
-        # construct weighted avg_factor to match with the official DETR repo
-        cls_avg_factor = num_total_pos * 1.0 + num_total_neg * self.bg_cls_weight
-        if self.sync_cls_avg_factor:
-            cls_avg_factor = reduce_mean(cls_scores.new_tensor([cls_avg_factor]))
-        cls_avg_factor = max(cls_avg_factor, 1)
-
-        loss_cls = self.loss_cls(cls_scores, labels, label_weights, avg_factor=cls_avg_factor)
-
-        # Compute the average number of gt boxes across all gpus, for
-        # normalization purposes
-        num_total_pos = loss_cls.new_tensor([num_total_pos])
-        num_total_pos = torch.clamp(reduce_mean(num_total_pos), min=1).item()
-
-        # construct factors used for rescale bboxes
-        factors = []
-        for bbox_pred in zip(bbox_preds):
-            img_h, img_w, _ = image_shape
-            factor = bbox_pred.new_tensor([img_w, img_h, img_w, img_h]).unsqueeze(0).repeat(bbox_pred.size(0), 1)
-            factors.append(factor)
-        factors = torch.cat(factors, 0)
-
-        # DETR regress the relative position of boxes (cxcywh) in the image,
-        # thus the learning target is normalized by the image size. So here
-        # we need to re-scale them for calculating IoU loss
-        bbox_preds = bbox_preds.reshape(-1, 4)
-        bboxes = bbox_cxcywh_to_xyxy(bbox_preds) * factors
-        bboxes_gt = bbox_cxcywh_to_xyxy(bbox_targets) * factors
-
-        # regression IoU loss, by default GIoU loss
-        loss_iou = self.loss_iou(bboxes, bboxes_gt, bbox_weights, avg_factor=num_total_pos)
-
-        # regression L1 loss
-        loss_bbox = self.loss_bbox(bbox_preds, bbox_targets, bbox_weights, avg_factor=num_total_pos)
-        return loss_cls, loss_bbox, loss_iou
 
     @force_fp32(apply_to=('all_cls_scores_list', 'all_bbox_preds_list'))
     def get_bboxes(self,
                    all_cls_scores_list: torch.Tensor,
                    all_bbox_preds_list: torch.Tensor,
-                   image_shape: Tuple[int, int, int],
+                   img_metas: List[Dict],
                    **kwargs):
         """Transform network outputs for a batch into bbox predictions.
 
@@ -393,7 +311,7 @@ class DETRHead(detr_head.DETRHead):
             all_bbox_preds_list: Sigmoid regression outputs the last feature level.
                 Each is a 4D-tensor with normalized coordinate format (cx, cy, w, h)
                 and shape [nb_dec, bs, num_query, 4].
-            image_shape: size of the input image.
+            img_metas (list[dict]): List of image meta information.
 
         Returns:
             list[Dict[str, Tensor]]: Each item is adict with two items. \
@@ -406,13 +324,12 @@ class DETRHead(detr_head.DETRHead):
         # NOTE by default only the outputs from the last decoder layer is used.
         cls_scores = all_cls_scores_list[-1]
         bbox_preds = all_bbox_preds_list[-1]
-        bs = len(cls_scores[0])
 
         result = []
-        for img_id in range(bs):
+        for img_id, img_meta in enumerate(img_metas):
             cls_score = cls_scores[img_id]
             bbox_pred = bbox_preds[img_id]
-            det_bboxes, det_labels = self._get_bboxes_single(cls_score, bbox_pred, image_shape)
+            det_bboxes, det_labels = self._get_bboxes_single(cls_score, bbox_pred, img_meta)
             result.append(dict(bboxes=det_bboxes, labels=det_labels))
 
         return result
@@ -420,7 +337,7 @@ class DETRHead(detr_head.DETRHead):
     def _get_bboxes_single(self,
                            cls_score,
                            bbox_pred,
-                           img_shape,
+                           img_meta,
                            **kwargs):
         """Transform outputs from the last decoder layer into bbox predictions
         for each image.
@@ -431,7 +348,7 @@ class DETRHead(detr_head.DETRHead):
             bbox_pred (Tensor): Sigmoid outputs from the last decoder layer
                 for each image, with coordinate format (cx, cy, w, h) and
                 shape [num_query, 4].
-            image_shape (Tuple[int, int, int]): size of the input image.
+            img_meta (dict): List of image meta information.
 
         Returns:
             tuple[Tensor]: Results of detected bboxes and labels.
@@ -457,6 +374,7 @@ class DETRHead(detr_head.DETRHead):
             scores, bbox_index = scores.topk(max_per_img)
             bbox_pred = bbox_pred[bbox_index]
             det_labels = det_labels[bbox_index]
+        img_shape = img_meta['img_shape'][-2:]
 
         det_bboxes = bbox_cxcywh_to_xyxy(bbox_pred)
         det_bboxes[:, 0::2] = det_bboxes[:, 0::2] * img_shape[1]

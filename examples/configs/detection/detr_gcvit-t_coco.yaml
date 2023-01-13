@@ -11,6 +11,7 @@ task:
     head_name: DETRHead
     head_params:
       num_classes: &num_classes 80
+      bg_cls_weight: 0.1
       transformer:
         type: Transformer
         encoder:
@@ -49,15 +50,15 @@ task:
           type: HungarianAssigner
           cls_cost:
             type: ClassificationCost
-            weight: 1.0
+            weight: &cls_loss_weight 1.0
           reg_cost:
             type: BBoxL1Cost
-            weight: 5.0
+            weight: &reg_loss_weight 5.0
             box_format: xywh
           iou_cost:
             type: IoUCost
             iou_mode: giou
-            weight: 2.0
+            weight: &iou_loss_weight 2.0
       test_cfg:
         max_per_img: 100
     inputs:
@@ -69,45 +70,52 @@ joint_loss:
   losses:
     - name: MMCrossEntropyLoss
       tag: loss_cls
-      weight: 1.0
+      weight: *cls_loss_weight
       params:
         use_sigmoid: false
-        bg_cls_weight: 0.1
         class_weight: 1.0
-#      mapping:
-#        pred: flatten_cls_scores
-#        target: flatten_labels
-#        avg_factor: num_pos
+      mapping:
+        cls_score: cls_scores
+        label: labels
+        weight: label_weights
+        avg_factor: cls_avg_factor
     - name: MML1Loss
       tag: loss_bbox
-      weight: 5.0
-#      mapping:
-#        pred: pos_decoded_bbox_preds
-#        target: pos_decoded_target_preds
-#        weight: pos_centerness_targets
-#        avg_factor: centerness_denorm
+      weight: *reg_loss_weight
+      mapping:
+        pred: bboxes
+        target: bboxes_gt
+        weight: bbox_weights
+        avg_factor: num_total_pos
     - name: MMGIoULoss
       tag: loss_iou
-      weight: 2.0
-#      mapping:
-#        cls_score: pos_centerness
-#        label: pos_centerness_targets
-#        avg_factor: num_pos
+      weight: *iou_loss_weight
+      mapping:
+        pred: bbox_preds
+        target: bbox_targets
+        weight: bbox_weights
+        avg_factor: num_total_pos
 
 optimization:
   - optimizer:
-      name: SGD
+      name: AdamW
       params:
-        lr: &base_lr 0.001
-        momentum: 0.9
-        weight_decay: 0.0001
+        lr: &base_lr 0.0001
+        weight_decay: 0.05
       paramwise_cfg:
         bias_lr_mult: 2.0
         bias_decay_mult: 0.0
+        custom_keys:
+          "rel_pos.mlp":
+            decay_mult: 0.0
+          relative_position_bias_table:
+            decay_mult: 0.0
+          norm:
+            decay_mult: 0.0
     scheduler:
       name: MultiStepLR
       params:
-        milestones: [23]
+        milestones: [20]
 
 data:
   TRAIN:
@@ -135,10 +143,6 @@ data:
               max_width: *width
           - &normalize
             name: Normalize
-            params:
-              mean: [102.9801, 115.9465, 122.7717]
-              std: [1.0, 1.0, 1.0]
-              max_pixel_value: 1.0
           - &pad
             name: PadIfNeeded
             params:
