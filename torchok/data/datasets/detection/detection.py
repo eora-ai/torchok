@@ -127,7 +127,7 @@ class DetectionDataset(ImageDataset):
         record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         image = self._read_image(image_path)
-        sample = {'image': image, 'index': idx}
+        sample = {'image': image, 'index': idx, "image_shape": image.shape}
 
         if not self.test_mode:
             labels = record[self.target_column]

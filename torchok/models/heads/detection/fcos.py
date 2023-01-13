@@ -203,7 +203,7 @@ class FCOSHead(fcos_head.FCOSHead):
             bbox_preds (list[Tensor]): Box energies / deltas for all
                 scale levels, each is a 4D-tensor, has shape
                 (batch_size, num_priors * 4, H, W).
-            image_shape (Tuple[int, int]): size of the input image.
+            image_shape (Tuple[int, int, int]): size of the input image.
 
         Returns:
             list[list[Tensor, Tensor]]: Each item in result_list is 2-tuple.

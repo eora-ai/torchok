@@ -105,7 +105,7 @@ class SingleStageDetectionTask(BaseTask):
         neck_out = self.neck(features)
         prediction = self.bbox_head(neck_out)
         output = self.bbox_head.format_dict(prediction)
-        output['image_shape'] = input_data.shape[-2:]
+        output['image_shape'] = (*input_data.shape[-2:], input_data.shape[-3:])
 
         if 'bboxes' in batch:
             output['gt_bboxes'] = batch.get('bboxes')
