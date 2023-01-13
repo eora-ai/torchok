@@ -1,12 +1,12 @@
-import cv2
-import pandas as pd
-import numpy as np
-from pycocotools.coco import COCO
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
+import cv2
+import numpy as np
+import pandas as pd
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
+from pycocotools.coco import COCO
 from torchvision.datasets.utils import download_and_extract_archive
 
 from torchok.constructor import DATASETS
@@ -74,8 +74,8 @@ class COCOSegmentation(ImageSegmentationDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_dtype: str = 'float32',
                  target_dtype: str = 'long',
-                 channel_order: str = 'rgb',
-                 grayscale: bool = False,
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False,
                  ):
         """Init SweetPepper.
@@ -90,8 +90,8 @@ class COCOSegmentation(ImageSegmentationDataset):
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
             target_dtype: Data type of the torch tensors related to the target mask.
-            channel_order: Order of channel, candidates are `bgr` and `rgb`.
-            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
         """
         self.data_folder = Path(data_folder)
@@ -126,12 +126,13 @@ class COCOSegmentation(ImageSegmentationDataset):
             augment=augment,
             input_dtype=input_dtype,
             target_dtype=target_dtype,
-            channel_order=channel_order,
-            grayscale=grayscale,
+            image_format=image_format,
+            rgba_layout_color=rgba_layout_color,
             test_mode=test_mode,
         )
 
-    def create_annotation(self, json_path: str, mask_folder: str, save_df_path: str):
+    def create_annotation(self, json_path: Union[str, Path], mask_folder: Union[str, Path],
+                          save_df_path: Union[str, Path]):
         """Create train-valid csv for loaded COCO dataset.
 
         Args:
@@ -139,6 +140,7 @@ class COCOSegmentation(ImageSegmentationDataset):
             mask_folder: COCO mask save folder.
             save_df_path: Pickle save name.
         """
+        mask_folder = Path(mask_folder)
         image_paths = []
         mask_paths = []
         coco = COCO(json_path)

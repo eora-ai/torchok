@@ -18,17 +18,16 @@ Modifications by / Copyright 2021 Ross Wightman, original copyrights below
 # https://github.com/facebookresearch/deit/
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
+import logging
 import math
 from functools import partial
-import logging
 
 import torch
 import torch.nn as nn
 from timm.models.beit import Block, RelativePositionBias
 from timm.models.helpers import build_model_with_cfg
-from timm.models.layers import PatchEmbed, trunc_normal_
+from timm.models.layers import PatchEmbed, trunc_normal_, to_2tuple
 from timm.models.vision_transformer import checkpoint_filter_fn
-from timm.models.layers.helpers import to_2tuple
 
 from torchok.constructor import BACKBONES
 from torchok.models.backbones import BaseBackbone
@@ -154,9 +153,9 @@ class Beit(BaseBackbone):
 
     def forward_features(self, x):
         input_image = x
-        B, C, H, W = x.shape
+        b, c, h, w = x.shape
         x = self.patch_embed(x)
-        Hp, Wp = self.patch_embed.grid_size
+        h_pad, w_pad = self.patch_embed.grid_size
         batch_size, seq_len, _ = x.size()
 
         cls_tokens = self.cls_token.expand(batch_size, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
@@ -170,14 +169,14 @@ class Beit(BaseBackbone):
         for i, blk in enumerate(self.blocks):
             x = blk(x, rel_pos_bias)
             if i in self.out_indices:
-                xp = x[:, 1:, :].permute(0, 2, 1).reshape(B, -1, Hp, Wp)
+                xp = x[:, 1:, :].permute(0, 2, 1).reshape(b, -1, h_pad, w_pad)
                 features.append(xp.contiguous())
 
         ops = [self.fpn1, self.fpn2, self.fpn3, self.fpn4]
         for i in range(len(features)):
             features[i] = ops[i](features[i])
 
-        return (input_image, *features)
+        return tuple([input_image, *features])
 
     def forward(self, x):
         x = self.patch_embed(x)
@@ -205,7 +204,7 @@ class Beit(BaseBackbone):
 
 
 def _create_beit(variant, pretrained=False, **kwargs):
-    kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans'])
     model = build_model_with_cfg(Beit, variant, pretrained, pretrained_filter_fn=checkpoint_filter_fn,
                                  pretrained_strict=False, kwargs_filter=kwargs_filter, **kwargs)
     return model

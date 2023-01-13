@@ -171,8 +171,9 @@ class MobileNetV3(BaseBackbone):
 
 
 def _create_mnv3(variant, pretrained=False, **kwargs):
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans', 'head_bias'])
     return build_model_with_cfg(MobileNetV3, variant, pretrained, pretrained_strict=False,
-                                kwargs_filter=('num_classes', 'global_pool', 'in_chans', 'head_bias'), **kwargs)
+                                kwargs_filter=kwargs_filter, **kwargs)
 
 
 def _gen_mobilenet_v3_rw(variant, channel_multiplier=1.0, pretrained=False, **kwargs):

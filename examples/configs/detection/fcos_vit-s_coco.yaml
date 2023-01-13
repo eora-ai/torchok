@@ -1,10 +1,11 @@
 task:
   name: SingleStageDetectionTask
   params:
-    backbone_name: swsl_resnet50
+    backbone_name: vit_small_patch16_384
     backbone_params:
       pretrained: true
       in_channels: 3
+      img_size: [&height 512, &width 512]
     num_scales: 4
     neck_name: FPN
     neck_params:
@@ -35,8 +36,7 @@ task:
           iou_threshold: 0.5
         max_per_img: 100
     inputs:
-#      - shape: [3, &height 800, &width 1344]
-      - shape: [3, &height 400, &width 672]
+      - shape: [3, *height, *width]
         dtype: &input_dtype float16
 
 joint_loss:
@@ -73,18 +73,26 @@ joint_loss:
 
 optimization:
   - optimizer:
-      name: SGD
+      name: AdamW
       params:
-        lr: &base_lr 0.001
-        momentum: 0.9
-        weight_decay: 0.0001
+        lr: &base_lr 0.0001
+        weight_decay: 0.1
       paramwise_cfg:
         bias_lr_mult: 2.0
         bias_decay_mult: 0.0
+        custom_keys:
+          pos_embed:
+            decay_mult: 0.0
+          cls_token:
+            decay_mult: 0.0
+          norm:
+            decay_mult: 0.0
+          dist_token:
+            decay_mult: 0.0
     scheduler:
       name: MultiStepLR
       params:
-        milestones: [16]
+        milestones: [20]
 
 data:
   TRAIN:
@@ -93,12 +101,13 @@ data:
         num_workers: &n_workers 8
         drop_last: false
         shuffle: true
+        persistent_workers: true
       dataset:
         name: COCODetection
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/coco_detection/data
+          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: float32
           image_format: 'rgb'
@@ -127,6 +136,7 @@ data:
         num_workers: *n_workers
         drop_last: false
         shuffle: false
+        persistent_workers: true
       dataset:
         name: COCODetection
         params:
@@ -144,7 +154,7 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 24
+  max_epochs: 25
   precision: 16
   gradient_clip_val: 35
   gradient_clip_algorithm: norm
@@ -153,11 +163,10 @@ trainer:
 logger:
   name: MLFlowLoggerX
   experiment_name: coco_detection
-  log_dir: '${oc.env:HOME}/.cache/torchok/${logger.experiment_name}/logs'
+  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   params:
-#    run_name: fcos_swsl_resnet50_x800_1344_f16
-    run_name: fcos_swsl_resnet50_x400_672_f16
+    run_name: fcos_vit_small_x512_f16
     tracking_uri: '${oc.env:DB_URI}'
     artifact_location: '${oc.env:S3_ARTIFACT_BUCKET}'
 
@@ -174,15 +183,10 @@ callbacks:
       save_last: true
       mode: max
       save_weights_only: False
-  - name: FreezeUnfreeze
-    params:
-      freeze_modules:
-        - module_name: backbone
-          stages: 1
   - name: FinalizeLogger
   - name: TQDMProgressBar
     params:
-      refresh_rate: 200
+      refresh_rate: 400
 
 metrics:
   - name: MMDetectionMAP
