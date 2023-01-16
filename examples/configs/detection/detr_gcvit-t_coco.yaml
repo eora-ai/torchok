@@ -178,6 +178,7 @@ trainer:
   accelerator: 'gpu'
   max_epochs: 25
   precision: bf16
+  limit_train_batches: 5000
   gradient_clip_val: 35
   gradient_clip_algorithm: norm
   num_sanity_val_steps: 2
