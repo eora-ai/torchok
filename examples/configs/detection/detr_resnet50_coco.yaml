@@ -1,0 +1,234 @@
+task:
+  name: SingleStageDetectionTask
+  params:
+    backbone_name: swsl_resnet50
+    backbone_params:
+      pretrained: true
+      in_channels: 3
+    num_scales: 1
+    head_name: DETRHead
+    head_params:
+      num_classes: &num_classes 80
+      bg_cls_weight: 0.1
+      sync_cls_avg_factor: false
+      transformer:
+        type: Transformer
+        encoder:
+          type: DetrTransformerEncoder
+          num_layers: 6
+          transformerlayers:
+            type: BaseTransformerLayer
+            attn_cfgs:
+              - type: MultiheadAttention
+                embed_dims: 256
+                num_heads: 8
+                dropout: 0.1
+            feedforward_channels: 2048
+            ffn_dropout: 0.1
+            operation_order: ['self_attn', 'norm', 'ffn', 'norm']
+        decoder:
+          type: DetrTransformerDecoder
+          return_intermediate: true
+          num_layers: 6
+          transformerlayers:
+            type: DetrTransformerDecoderLayer
+            attn_cfgs:
+              type: MultiheadAttention
+              embed_dims: 256
+              num_heads: 8
+              dropout: 0.1
+            feedforward_channels: 2048
+            ffn_dropout: 0.1
+            operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+      positional_encoding:
+        type: SinePositionalEncoding
+        num_feats: 128
+        normalize: true
+      train_cfg:
+        assigner:
+          type: HungarianAssigner
+          cls_cost:
+            type: ClassificationCost
+            weight: &cls_loss_weight 1.0
+          reg_cost:
+            type: BBoxL1Cost
+            weight: &reg_loss_weight 5.0
+            box_format: xywh
+          iou_cost:
+            type: IoUCost
+            iou_mode: giou
+            weight: &iou_loss_weight 2.0
+      test_cfg:
+        max_per_img: 100
+    inputs:
+#      - shape: [3, *height, *width]
+      - shape: [3, &height 400, &width 672]
+        dtype: &input_dtype bfloat16
+
+joint_loss:
+  normalize_weights: false
+  losses:
+    - name: MMCrossEntropyLoss
+      tag: loss_cls
+      weight: *cls_loss_weight
+      params:
+        use_sigmoid: false
+        class_weight: 1.0
+      mapping:
+        cls_score: cls_scores
+        label: labels
+        weight: label_weights
+        avg_factor: cls_avg_factor
+    - name: MMGIoULoss
+      tag: loss_iou
+      weight: *iou_loss_weight
+      mapping:
+        pred: bboxes
+        target: bboxes_gt
+        weight: bbox_weights
+        avg_factor: num_total_pos
+    - name: MML1Loss
+      tag: loss_bbox
+      weight: *reg_loss_weight
+      mapping:
+        pred: bbox_preds
+        target: bbox_targets
+        weight: bbox_weights
+        avg_factor: num_total_pos
+
+optimization:
+  - optimizer:
+      name: AdamW
+      params:
+        lr: &base_lr 0.0001
+        weight_decay: 0.05
+      paramwise_cfg:
+        bias_lr_mult: 2.0
+        bias_decay_mult: 0.0
+        custom_keys:
+          backbone:
+            lr_mult: 0.1
+            decay_mult: 0.002
+    scheduler:
+      name: MultiStepLR
+      params:
+        milestones: [20]
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: &bs 8
+        num_workers: &n_workers 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: COCODetection
+        params:
+          train: true
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
+          input_dtype: *input_dtype
+          bbox_dtype: *input_dtype
+          image_format: 'rgb'
+        augment:
+          - name: HorizontalFlip
+        transform:
+          - &resize
+            name: FitResize
+            params:
+              max_height: *height
+              max_width: *width
+          - &normalize
+            name: Normalize
+          - &pad
+            name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+              border_mode: 0
+              value: 0
+          - &totensor
+            name: ToTensorV2
+  VALID:
+    - dataloader:
+        batch_size: *bs
+        num_workers: *n_workers
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: COCODetection
+        params:
+          train: false
+          download: true
+          data_folder: *data_folder
+          input_dtype: *input_dtype
+          bbox_dtype: *input_dtype
+          image_format: 'rgb'
+        transform:
+          - *resize
+          - *normalize
+          - *pad
+          - *totensor
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 24
+  precision: bf16
+  num_sanity_val_steps: 2
+
+logger:
+  name: MLFlowLoggerX
+  experiment_name: coco_detection
+  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  params:
+    run_name: detr_resnet50_x400_672_bf16
+    tracking_uri: '${oc.env:DB_URI}'
+    artifact_location: '${oc.env:S3_ARTIFACT_BUCKET}'
+
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/MMDetMAP_50
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 200
+
+metrics:
+  - name: MMDetectionMAP
+    tag: MMDetMAP_50
+    params:
+      iou_thr: 0.5
+      num_classes: *num_classes
+    mapping:
+      preds: prediction
+      target: target
+    phases: [VALID, TEST]
+  - name: MMDetectionMAP
+    tag: MMDetMAP_75
+    params:
+      iou_thr: 0.75
+      num_classes: *num_classes
+    mapping:
+      preds: prediction
+      target: target
+    phases: [ VALID, TEST ]
+  - name: CocoEvalMAP
+    tag: CEMAP
+    params:
+      compute_on_step: false
+      displayed_metrics: ["map", "map_small", "map_medium", "map_large"]
+    mapping:
+      preds: prediction
+      target: target
+    phases: [VALID, TEST]

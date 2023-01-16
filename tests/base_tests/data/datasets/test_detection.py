@@ -16,7 +16,7 @@ class TestDetectionDataset(TestImageDataset, unittest.TestCase):
         self.dataset_kwargs['data_folder'] = root
         self.dataset_kwargs['annotation_path'] = 'coco_valid.pkl'
         self.ds_len = 5
-        self.output_format = ['image', 'index', 'label', 'bboxes']
+        self.output_format = ['image', 'index', 'orig_img_shape', 'label', 'bboxes']
 
     def test_len(self):
         super().test_len()
