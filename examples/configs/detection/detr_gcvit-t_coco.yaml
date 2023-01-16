@@ -12,6 +12,7 @@ task:
     head_params:
       num_classes: &num_classes 80
       bg_cls_weight: 0.1
+      sync_cls_avg_factor: false
       transformer:
         type: Transformer
         encoder:
@@ -63,7 +64,7 @@ task:
         max_per_img: 100
     inputs:
       - shape: [3, *height, *width]
-        dtype: &input_dtype float32
+        dtype: &input_dtype bfloat16
 
 joint_loss:
   normalize_weights: false
@@ -79,17 +80,17 @@ joint_loss:
         label: labels
         weight: label_weights
         avg_factor: cls_avg_factor
-    - name: MML1Loss
-      tag: loss_bbox
-      weight: *reg_loss_weight
+    - name: MMGIoULoss
+      tag: loss_iou
+      weight: *iou_loss_weight
       mapping:
         pred: bboxes
         target: bboxes_gt
         weight: bbox_weights
         avg_factor: num_total_pos
-    - name: MMGIoULoss
-      tag: loss_iou
-      weight: *iou_loss_weight
+    - name: MML1Loss
+      tag: loss_bbox
+      weight: *reg_loss_weight
       mapping:
         pred: bbox_preds
         target: bbox_targets
@@ -101,7 +102,7 @@ optimization:
       name: AdamW
       params:
         lr: &base_lr 0.0001
-        weight_decay: 0.05
+        weight_decay: 0.0001
       paramwise_cfg:
         bias_lr_mult: 2.0
         bias_decay_mult: 0.0
@@ -132,7 +133,7 @@ data:
           data_folder: &data_folder ${oc.env:HOME}/coco_detection/data
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
-          channel_order: 'bgr'
+          image_format: 'rgb'
         augment:
           - name: HorizontalFlip
         transform:
@@ -166,36 +167,34 @@ data:
           data_folder: *data_folder
           input_dtype: *input_dtype
           bbox_dtype: *input_dtype
-          channel_order: 'bgr'
+          image_format: 'rgb'
         transform:
           - *resize
           - *normalize
           - *pad
-#          - name: PadIfNeeded
-#            params:
-#              min_height: null
-#              min_width: null
-#              border_mode: 0
-#              pad_height_divisor: 32
-#              pad_width_divisor: 32
-#              value: 0
           - *totensor
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 24
-  precision: 32
+  max_epochs: 25
+  precision: bf16
+  gradient_clip_val: 35
+  gradient_clip_algorithm: norm
   num_sanity_val_steps: 2
 
 logger:
-  log_dir: '${oc.env:HOME}/coco_detection/logs'
-  experiment_name: fcos_mmresnet50_x800_1344
+  name: MLFlowLoggerX
+  experiment_name: coco_detection
+  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
-  name: TensorBoardLogger
+  params:
+    run_name: detr_gcvit_tiny_x512_bf16
+    tracking_uri: '${oc.env:DB_URI}'
+    artifact_location: '${oc.env:S3_ARTIFACT_BUCKET}'
 
 hydra:
   run:
-    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
 
 callbacks:
   - name: ModelCheckpoint
@@ -234,7 +233,7 @@ metrics:
     tag: CEMAP
     params:
       compute_on_step: false
-      displayed_metrics: ["map", "map_50", "map_75", "map_small", "map_medium", "map_large"]
+      displayed_metrics: ["map", "map_small", "map_medium", "map_large"]
     mapping:
       preds: prediction
       target: target

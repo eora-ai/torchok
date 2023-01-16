@@ -102,6 +102,7 @@ class FCOSHead(fcos_head.FCOSHead):
             if isinstance(v, DictConfig):
                 kwargs[k] = ConfigDict(OmegaConf.to_container(v, resolve=True))
         AnchorFreeHead.__init__(self, num_classes, in_channels, **kwargs)
+        self.requires_meta_in_forward = False
 
         self.init_weights()
 

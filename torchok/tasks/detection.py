@@ -51,15 +51,15 @@ class SingleStageDetectionTask(BaseTask):
         if neck_name is not None:
             neck_params = neck_params or dict()
             neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
-            self.neck = DETECTION_NECKS.get(neck_name)(joint_loss=self.losses, in_channels=neck_in_channels,
-                                                       **neck_params)
+            self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
             head_in_channels = self.neck.out_channels
         else:
+            self.neck = nn.Identity()
             head_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
 
         # HEAD
         head_params = head_params or dict()
-        self.bbox_head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
+        self.bbox_head = HEADS.get(head_name)(joint_loss=self.losses, in_channels=head_in_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
         """Forward method.
@@ -80,7 +80,7 @@ class SingleStageDetectionTask(BaseTask):
         features = self.neck(features)
         features = self.bbox_head(features)
         output = self.bbox_head.format_dict(features)
-        output = self.bbox_head.get_bboxes(**output, image_shape=x.shape[-2:])
+        output = self.bbox_head.get_bboxes(**output, img_metas=[dict(img_shape=x.shape[-2:])] * x.shape[0])
         return output
 
     def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Any]:
@@ -102,13 +102,17 @@ class SingleStageDetectionTask(BaseTask):
             and ground truth values if present.
         """
         input_data = batch.get('image')
+        img_shape = (*input_data.shape[-2:], input_data.shape[-3])
+        img_metas = [dict(orig_img_shape=orig_shape, img_shape=img_shape) for orig_shape in batch.get("orig_img_shape")]
+
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
         neck_out = self.neck(features)
-        prediction = self.bbox_head(neck_out)
+        if self.bbox_head.requires_meta_in_forward:
+            prediction = self.bbox_head(neck_out, img_metas)
+        else:
+            prediction = self.bbox_head(neck_out)
         output = self.bbox_head.format_dict(prediction)
 
-        img_shape = (*input_data.shape[-2:], input_data.shape[-3:])
-        img_metas = [dict(orig_img_shape=orig_shape, img_shape=img_shape) for orig_shape in batch.get("orig_img_shape")]
         output['img_metas'] = img_metas
 
         if 'bboxes' in batch:
