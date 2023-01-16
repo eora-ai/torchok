@@ -14,7 +14,6 @@ from mmdet.models.dense_heads import detr_head
 from mmdet.models.dense_heads.anchor_free_head import AnchorFreeHead
 from mmdet.models.utils import build_transformer
 from omegaconf import OmegaConf, DictConfig
-from torch import Tensor
 
 from torchok.constructor import HEADS
 from torchok.losses.base import JointLoss
