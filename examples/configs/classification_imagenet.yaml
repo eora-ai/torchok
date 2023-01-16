@@ -1,0 +1,157 @@
+task:
+  name: ClassificationTask
+  params:
+    backbone_name: resnet18
+    backbone_params:
+      pretrained: false
+      in_channels: 3
+      zero_init_last: False
+
+    pooling_name: Pooling
+    head_name: ClassificationHead
+    head_params:
+      num_classes: &num_classes 1000
+    inputs:
+      - shape: [3, &height 224, &width 224]
+        dtype: &input_dtype float32
+
+seed_params:
+  seed: 42
+  workers: true
+
+joint_loss:
+  losses:
+    - name: CrossEntropyLoss
+      mapping:
+          input: prediction
+          target: target
+
+optimization:
+  - optimizer:
+      name: SGD
+      params:
+        lr: 0.1
+        weight_decay: 0.0001
+        momentum: 0.9
+    scheduler:
+      name: ReduceLROnPlateau
+      params:
+        mode: max
+        factor: 0.1
+        patience: 5
+      pl_params:
+        monitor: valid/Accuracy
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: &batch_size 256
+        num_workers: 8
+        drop_last: true
+        shuffle: true
+      dataset:
+        name: ImageClassificationDataset
+        params:
+          input_dtype: *input_dtype
+          data_folder: &data_folder '${oc.env:HOME}/dataset/imagenet/ILSVRC'
+          csv_path: &csv_path ILSVRC_train.csv
+          multilabel: false
+          num_classes: *num_classes
+          lazy_init: true
+        transform:
+          - &normalize
+            name: Normalize
+            params:
+              mean: [ 0.485, 0.456, 0.406 ]
+              std: [ 0.229, 0.224, 0.225 ]
+          - &totensor
+            name: ToTensorV2
+        augment:
+          - name: Resize
+            params:
+              height: 256
+              width: 256
+          - name: FancyPCA
+            params:
+              alpha: 0.1
+              p: 0.5
+          - name: HorizontalFlip
+            params:
+              p: 0.5
+          - name: RandomCrop
+            params:
+              p: 1
+              height: *height
+              width: *width
+
+  VALID:
+    - dataloader:
+        batch_size: *batch_size
+        num_workers: 8
+        drop_last: false
+        shuffle: false
+      dataset:
+        name: ImageClassificationDataset
+        params:
+          input_dtype: *input_dtype
+          data_folder: *data_folder
+          csv_path: ILSVRC_val.csv
+          multilabel: false
+          num_classes: *num_classes
+          lazy_init: true
+        transform:
+          - name: Resize
+            params:
+              height: 256
+              width: 256
+          - name: CenterCrop
+            params:
+              p: 1
+              height: *height
+              width: *width
+          - *normalize
+          - *totensor
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 100
+  log_every_n_steps: 250
+  precision: 16
+  num_sanity_val_steps: 0
+  devices: 4
+  strategy: ddp
+
+
+hydra:
+  run:
+    dir:  &logs_dir '${logger.log_dir}/${logger.experiment_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}'
+
+logger:
+  log_dir: '${oc.env:HOME}/logs'
+  experiment_name: imagenet1k_resnet18
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  name: TensorBoardLogger
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/Accuracy
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
+
+metrics:
+  - name: Accuracy
+    mapping:
+      preds: prediction
+      target: target
+    params:
+      task: 'multiclass'
+      num_classes: *num_classes
