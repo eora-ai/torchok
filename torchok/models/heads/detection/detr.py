@@ -55,27 +55,27 @@ class DETRHead(detr_head.DETRHead):
     _version = 2
 
     def __init__(self,
-                 joint_loss,
-                 num_classes,
+                 joint_loss: JointLoss,
+                 num_classes: int,
                  in_channels: Union[int, List],
-                 num_query=100,
-                 num_reg_fcs=2,
-                 bg_cls_weight=0.1,
-                 transformer=None,
-                 sync_cls_avg_factor=False,
-                 positional_encoding=dict(
+                 num_query: int = 100,
+                 num_reg_fcs: int = 2,
+                 bg_cls_weight: float = 0.1,
+                 transformer: Dict = None,
+                 sync_cls_avg_factor: bool = False,
+                 positional_encoding: Dict = dict(
                      type='SinePositionalEncoding',
                      num_feats=128,
                      normalize=True),
-                 train_cfg=dict(
+                 train_cfg: Dict = dict(
                      assigner=dict(
                          type='HungarianAssigner',
                          cls_cost=dict(type='ClassificationCost', weight=1.),
                          reg_cost=dict(type='BBoxL1Cost', weight=5.0),
                          iou_cost=dict(
                              type='IoUCost', iou_mode='giou', weight=2.0))),
-                 test_cfg=dict(max_per_img=100),
-                 init_cfg=None,
+                 test_cfg: Dict = dict(max_per_img=100),
+                 init_cfg: Dict = None,
                  **kwargs):
         # NOTE here use `AnchorFreeHead` instead of `TransformerHead`,
         # since it brings inconvenience when the initialization of
@@ -143,20 +143,18 @@ class DETRHead(detr_head.DETRHead):
 
         self.init_weights()
 
-    def forward(self, features, img_metas: List[Dict] = None):
+    def forward(self, features: List[torch.Tensor], img_metas: List[Dict] = None):
         """Forward function.
 
         Args:
-            features (tuple[Tensor]): Features from the upstream network, each is a 4D-tensor.
+            features: Features from the upstream network, each is a 4D-tensor.
             img_metas: List of image information.
 
         Returns:
-            all_cls_scores (Tensor): Outputs from the classification head,
-                shape [nb_dec, bs, num_query, cls_out_channels]. Note
-                cls_out_channels should include background.
-            all_bbox_preds (Tensor): Sigmoid outputs from the regression
-                head with normalized coordinate format (cx, cy, w, h).
-                Shape [nb_dec, bs, num_query, 4].
+            all_cls_scores (torch.Tensor): Outputs from the classification head,
+                shape [nb_dec, bs, num_query, cls_out_channels]. Note cls_out_channels should include background.
+            all_bbox_preds (torch.Tensor): Sigmoid outputs from the regression
+                head with normalized coordinate format (cx, cy, w, h). Shape [nb_dec, bs, num_query, 4].
         """
         features = features[-1]
 
@@ -211,11 +209,11 @@ class DETRHead(detr_head.DETRHead):
 
     @force_fp32(apply_to=('all_cls_scores', 'all_bbox_preds'))
     def loss(self, joint_loss: JointLoss,
-             all_cls_scores,
-             all_bbox_preds,
-             gt_bboxes,
-             gt_labels,
-             img_metas,
+             all_cls_scores: List[torch.Tensor],
+             all_bbox_preds: List[torch.Tensor],
+             gt_bboxes: List[torch.Tensor],
+             gt_labels: List[torch.Tensor],
+             img_metas: List[Dict],
              **kwargs):
         """Loss function.
 
@@ -224,18 +222,13 @@ class DETRHead(detr_head.DETRHead):
 
         Args:
             joint_loss: An instance of JointLoss class.
-            all_cls_scores (list[Tensor]): Classification outputs
-                for each feature level. Each is a 4D-tensor with shape
-                [nb_dec, bs, num_query, cls_out_channels].
-            all_bbox_preds (list[Tensor]): Sigmoid regression
-                outputs for each feature level. Each is a 4D-tensor with
-                normalized coordinate format (cx, cy, w, h) and shape
-                [nb_dec, bs, num_query, 4].
-            gt_bboxes (list[Tensor]): Ground truth bboxes for each image
-                with shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
-            gt_labels (list[Tensor]): Ground truth class indices for each
-                image with shape (num_gts, ).
-            img_metas (list[dict]): List of image meta information.
+            all_cls_scores: Classification outputs for each feature level.
+                Each is a 4D-tensor with shape [nb_dec, bs, num_query, cls_out_channels].
+            all_bbox_preds: Sigmoid regression outputs for each feature level. Each is a 4D-tensor
+                with normalized coordinate format (cx, cy, w, h) and shape [nb_dec, bs, num_query, 4].
+            gt_bboxes: Ground truth bboxes for each image with shape (num_gts, 4) in [tl_x, tl_y, br_x, br_y] format.
+            gt_labels: Ground truth class indices for each image with shape (num_gts, ).
+            img_metas: List of image meta information.
 
         Returns:
             dict[str, Tensor]: A dictionary of loss components.
@@ -313,15 +306,13 @@ class DETRHead(detr_head.DETRHead):
             all_bbox_preds: Sigmoid regression outputs the last feature level.
                 Each is a 4D-tensor with normalized coordinate format (cx, cy, w, h)
                 and shape [nb_dec, bs, num_query, 4].
-            img_metas (list[dict]): List of image meta information.
+            img_metas : List of image meta information.
 
         Returns:
-            list[Dict[str, Tensor]]: Each item is adict with two items. \
-                The first item is an (n, 5) tensor, where the first 4 columns \
-                are bounding box positions (tl_x, tl_y, br_x, br_y) and the \
-                5-th column is a score between 0 and 1. The second item is a \
-                (n,) tensor where each item is the predicted class label of \
-                the corresponding box.
+            list[Dict[str, Tensor]]: Each item is adict with two items. The first item is an (n, 5) tensor,
+                where the first 4 columns are bounding box positions (tl_x, tl_y, br_x, br_y) and
+                the 5-th column is a score between 0 and 1. The second item is a (n,) tensor where
+                each item is the predicted class label of the corresponding box.
         """
         # NOTE by default only the outputs from the last decoder layer is used.
         cls_scores = all_cls_scores[-1]
@@ -337,20 +328,17 @@ class DETRHead(detr_head.DETRHead):
         return result
 
     def _get_bboxes_single(self,
-                           cls_score,
-                           bbox_pred,
-                           img_meta,
+                           cls_score: torch.Tensor,
+                           bbox_pred: torch.Tensor,
+                           img_meta: Dict,
                            **kwargs):
-        """Transform outputs from the last decoder layer into bbox predictions
-        for each image.
+        """Transform outputs from the last decoder layer into bbox predictions for each image.
 
         Args:
-            cls_score (Tensor): Box score logits from the last decoder layer
-                for each image. Shape [num_query, cls_out_channels].
-            bbox_pred (Tensor): Sigmoid outputs from the last decoder layer
-                for each image, with coordinate format (cx, cy, w, h) and
-                shape [num_query, 4].
-            img_meta (dict): List of image meta information.
+            cls_score: Box score logits from the last decoder layer for each image. Shape [num_query, cls_out_channels].
+            bbox_pred: Sigmoid outputs from the last decoder layer for each image,
+                with coordinate format (cx, cy, w, h) and shape [num_query, 4].
+            img_meta: List of image meta information.
 
         Returns:
             tuple[Tensor]: Results of detected bboxes and labels.
