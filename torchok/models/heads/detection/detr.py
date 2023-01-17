@@ -172,7 +172,7 @@ class DETRHead(detr_head.DETRHead):
                 dh = input_img_h - img_h
                 dw = input_img_w - img_w
 
-                masks[img_id, dh // 2:input_img_h - dh // 2, dw // 2: input_img_w - dw // 2] = 0
+                masks[img_id, dh // 2:input_img_h + (-dh) // 2, dw // 2: input_img_w + (-dw) // 2] = 0
             # interpolate masks to have the same spatial shape with x
             masks = F.interpolate(masks.unsqueeze(1), size=x.shape[-2:]).to(torch.bool).squeeze(1)
         else:
@@ -376,7 +376,7 @@ class DETRHead(detr_head.DETRHead):
             scores, bbox_index = scores.topk(max_per_img)
             bbox_pred = bbox_pred[bbox_index]
             det_labels = det_labels[bbox_index]
-        img_shape = img_meta['img_shape'][-2:]
+        img_shape = img_meta['img_shape']
 
         det_bboxes = bbox_cxcywh_to_xyxy(bbox_pred)
         det_bboxes[:, 0::2] = det_bboxes[:, 0::2] * img_shape[1]
