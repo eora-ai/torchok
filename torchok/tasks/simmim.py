@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from omegaconf import DictConfig
+from timm.models.layers import trunc_normal_
 from torch import Tensor
 
 from torchok.constructor import BACKBONES, POOLINGS, TASKS
@@ -15,24 +16,44 @@ from torchok.tasks.base import BaseTask
 class SimMIMTask(BaseTask):
     """A class for image classification task."""
 
-    def __init__(self, hparams: DictConfig):
+    def __init__(
+            self,
+            hparams: DictConfig,
+            backbone_name: str,
+            pooling_name: str,
+            backbone_params: dict = None,
+            pooling_params: dict = None,
+            encoder_stride: int = 32,
+            mask_patch_size: int = 32,
+            mask_ratio: float = 0.6,
+            inputs: dict = None
+    ):
         """Init ClassificationTask.
 
         Args:
             hparams: Hyperparameters that set in yaml file.
+            backbone_name: name of the backbone architecture in the BACKBONES registry.
+            pooling_name: name of the backbone architecture in the POOLINGS registry.
+            backbone_params: parameters for backbone constructor.
+            pooling_params: parameters for neck constructor. `in_channels` will be set automatically based on neck or
+                backbone if neck is absent.
+            encoder_stride:
+            mask_patch_size:
+            mask_ratio:
+            inputs: information about input model shapes and dtypes.
         """
-        super().__init__(hparams)
+        super().__init__(hparams, inputs)
+
         # BACKBONE
-        backbone_name = self._hparams.task.params.get('backbone_name')
-        backbones_params = self._hparams.task.params.get('backbone_params', dict())
+        backbones_params = backbone_params or dict()
         self.backbone = BACKBONES.get(backbone_name)(**backbones_params)
-        self.backbone_stride = self._hparams.task.params.get('encoder_stride', 32)
-        self.mask_patch_size = self._hparams.task.params.get('mask_patch_size', 32)
-        self.mask_ratio = self._hparams.task.params.get('mask_ratio', 0.6)
+
+        self.backbone_stride = encoder_stride
+        self.mask_patch_size = mask_patch_size
+        self.mask_ratio = mask_ratio
 
         # POOLING
-        pooling_params = self._hparams.task.params.get('pooling_params', dict())
-        pooling_name = self._hparams.task.params.get('pooling_name')
+        pooling_params = pooling_params or dict()
         self.pooling = POOLINGS.get(pooling_name)(in_channels=self.backbone.out_channels, **pooling_params)
 
         self.decoder = nn.Sequential(
@@ -53,18 +74,7 @@ class SimMIMTask(BaseTask):
 
         self.hook_handle = self.backbone.patch_embed.register_forward_hook(self.hook)
         self.backbone.patch_embed.mask_token = nn.Parameter(torch.zeros(1, 1, self.backbone.embed_dim))
-
-    @torch.jit.ignore
-    def no_weight_decay(self):
-        if hasattr(self.backbone, 'no_weight_decay'):
-            return {'backbone.' + i for i in self.backbone.no_weight_decay()}
-        return {}
-
-    @torch.jit.ignore
-    def no_weight_decay_keywords(self):
-        if hasattr(self.backbone, 'no_weight_decay_keywords'):
-            return {'backbone.' + i for i in self.backbone.no_weight_decay_keywords()}
-        return {}
+        trunc_normal_(self.backbone.patch_embed.mask_token, mean=0., std=.02)
 
     def hook(self, module, inp, out):
         B, L, _ = out.shape
