@@ -178,7 +178,7 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 25
+  max_epochs: 30
   precision: bf16
   limit_train_batches: 5000
   num_sanity_val_steps: 2
