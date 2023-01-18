@@ -1,16 +1,18 @@
 from pathlib import Path
-from typing import Any, Union, Optional, Dict
+from typing import Any, Union, Optional, Dict, Tuple
 
 import cv2
-import torch
 import numpy as np
 import pandas as pd
+import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
+from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
 
 
+@DATASETS.register_class
 class ImageSegmentationDataset(ImageDataset):
     """A dataset for image segmentation task.
 
@@ -21,6 +23,7 @@ class ImageSegmentationDataset(ImageDataset):
         image2.png, mask2.png
         image3.png, mask3.png
     """
+
     def __init__(self,
                  data_folder: Union[Path, str],
                  csv_path: str,
@@ -30,7 +33,8 @@ class ImageSegmentationDataset(ImageDataset):
                  input_dtype: str = 'float32',
                  target_column: str = 'mask_path',
                  target_dtype: str = 'int64',
-                 grayscale: bool = False,
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False):
         """Init ImageSegmentationDataset.
 
@@ -46,10 +50,18 @@ class ImageSegmentationDataset(ImageDataset):
             input_column: column name containing paths to the images.
             input_dtype: Data type of the torch tensors related to the image.
             target_dtype: Data type of the torch tensors related to the target.
-            grayscale: If True, image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
         """
-        super().__init__(transform, augment, input_dtype, grayscale, test_mode)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            image_format=image_format,
+            rgba_layout_color=rgba_layout_color,
+            test_mode=test_mode
+        )
 
         self.data_folder = Path(data_folder)
         self.csv_path = csv_path

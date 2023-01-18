@@ -1,14 +1,16 @@
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 import pandas as pd
 import torch
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 
+from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
 
 
+@DATASETS.register_class
 class UnsupervisedContrastiveDataset(ImageDataset):
     """A dataset for unsupervised contrastive task.
 
@@ -28,7 +30,8 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
-                 grayscale: bool = False):
+                 image_format: str = 'rgb',
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0):
         """Init UnsupervisedContrastiveDataset.
 
         Args:
@@ -41,9 +44,16 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                 This should have the interface of transforms in `albumentations` library.
             input_column: column name containing paths to the images.
             input_dtype: data type of the torch tensors related to the image.
-            grayscale: if True image will be read as grayscale otherwise as RGB.
+            image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
+            rgba_layout_color: color of the background during conversion from `rgba`.
         """
-        super().__init__(transform, augment, input_dtype, grayscale)
+        super().__init__(
+            transform=transform,
+            augment=augment,
+            input_dtype=input_dtype,
+            image_format=image_format,
+            rgba_layout_color=rgba_layout_color,
+        )
         self.data_folder = Path(data_folder)
         self.csv_path = csv_path
         self.input_column = input_column
@@ -56,7 +66,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             sample: dict, where
             sample['image_0'] - Tensor, representing image after augmentations.
             sample['image_1'] - Tensor, representing image after augmentations.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         record = self.csv.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
@@ -75,7 +85,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             sample: dict, where
             sample['image_0'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
             sample['image_1'] - Tensor, representing image after augmentations and transformations, dtype=input_dtype.
-            sample['index'] - Index.
+            sample['index'] - Index of the sample, the same as input `idx`.
         """
         sample = self.get_raw(idx)
 

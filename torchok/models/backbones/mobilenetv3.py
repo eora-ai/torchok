@@ -19,7 +19,7 @@ from timm.models.helpers import build_model_with_cfg
 from timm.models.layers import create_conv2d
 
 from torchok.constructor import BACKBONES
-from torchok.models.backbones.base_backbone import BaseBackbone
+from torchok.models.backbones import BaseBackbone
 
 
 def _cfg(url='', **kwargs):
@@ -158,10 +158,22 @@ class MobileNetV3(BaseBackbone):
         x = self.blocks(x)
         return x
 
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        output = [self.conv_stem, self.bn1, self.act1]
+        return nn.ModuleList(output + list(self.blocks[:stage]))
+
 
 def _create_mnv3(variant, pretrained=False, **kwargs):
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans', 'head_bias'])
     return build_model_with_cfg(MobileNetV3, variant, pretrained, pretrained_strict=False,
-                                kwargs_filter=('num_classes', 'global_pool', 'in_chans', 'head_bias'), **kwargs)
+                                kwargs_filter=kwargs_filter, **kwargs)
 
 
 def _gen_mobilenet_v3_rw(variant, channel_multiplier=1.0, pretrained=False, **kwargs):

@@ -16,15 +16,6 @@ task:
       - shape: [3, &height 256, &width 256]
         dtype: &input_dtype float32
 
-callbacks:
-  - name: FreezeUnfreeze
-    params:
-      epoch2module_names:
-        5: ['backbone.layers.3']
-        10: ['backbone.layers.2']
-        15: ['backbone.layers.1']
-        20: ['backbone']
-
 joint_loss:
   losses:
     - name: CrossEntropyLoss
@@ -54,7 +45,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sop
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/sop/data
         transform:
           - &resize
             name: Resize
@@ -132,28 +123,55 @@ data:
           - *totensor
 
 trainer:
-  gpus: [0]
+  accelerator: 'gpu'
   max_epochs: 30
   precision: 32
   num_sanity_val_steps: 0
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
-
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: sop
+  log_dir: '${oc.env:HOME}/.cache/torchok/sop/logs/'
+  experiment_name: semnasnet_100
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/HitAtKMeter
-  save_last: true
-  mode: max
-  save_top_k: 2
-  export_to_onnx: true
-  remove_head: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+#        The whole backbone will be frozen during the first 2 epochs.
+        - module_name: backbone
+          epoch: 2
+#        Stem and the first layer of the backbone will be frozen forever during the training.
+        - module_name: backbone
+          stage: 1
+#        Only the modules of type `_BatchNorm` that attached to the backbone will be frozen
+#         with the specific policy: requires_grad of all batch norms will be set to false but
+#         these modules will track
+        - module_name: backbone
+          module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+          bn_requires_grad: false
+          bn_track_running_stats: false
+#        All dropouts in the network will be disabled forever during the training
+        - module_name: ""
+          module_class: Dropout
+  - name: ModelCheckpointWithOnnx
+    params:
+      dirpath: *logs_dir
+      monitor: valid/HitAtKMeter
+      save_top_k: 2
+      save_last: true
+      mode: min
+      save_weights_only: False
+      export_to_onnx: true
+      remove_head: true
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: Accuracy
@@ -170,5 +188,5 @@ metrics:
       search_batch_size: 256
     mapping:
       vectors: embeddings
-      targets: target
+      group_labels: target
     phases: [VALID]

@@ -48,7 +48,7 @@ data:
         params:
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/sweet_pepper
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/sweet_pepper/data
         transform:
           - &resize
             name: Resize
@@ -129,26 +129,34 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 30
-  max_steps: 5
   log_every_n_steps: 1000
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
-
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: sweet_pepper
+  log_dir: '${oc.env:HOME}/.cache/torchok/sweet_pepper/logs'
+  experiment_name: hrnet_w18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/JaccardIndex
-  save_last: true
-  mode: max
-  export_to_onnx: true
-  onnx_params:
-    opset_version: 16
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpointWithOnnx
+    params:
+      dirpath: *logs_dir
+      monitor: valid/JaccardIndex
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+      export_to_onnx: true
+      onnx_params:
+        opset_version: 16
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: JaccardIndex

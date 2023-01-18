@@ -13,19 +13,4 @@ BACKBONES = Registry('backbones')
 POOLINGS = Registry('poolings')
 HEADS = Registry('heads')
 NECKS = Registry('necks')
-
-
-__all__ = [
-    'DATASETS',
-    'TRANSFORMS',
-    'OPTIMIZERS',
-    'SCHEDULERS',
-    'LOSSES',
-    'METRICS',
-    'CALLBACKS',
-    'TASKS',
-    'BACKBONES',
-    'POOLINGS',
-    'HEADS',
-    'NECKS',
-]
+DETECTION_NECKS = Registry('detection_necks')

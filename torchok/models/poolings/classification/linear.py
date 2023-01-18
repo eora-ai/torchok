@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 from torchok.constructor import POOLINGS
-from torchok.models.poolings.classification import Pooling
+from torchok.models.poolings.classification.pooling import Pooling
 
 
 @POOLINGS.register_class
@@ -14,7 +14,7 @@ class PoolingLinear(Pooling):
         self.init_weights()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        super().forward(x)
+        x = super().forward(x)
         x = self.fc(x)
         return x
 

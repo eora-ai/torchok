@@ -1,7 +1,7 @@
 task:
   name: ClassificationTask
   params:
-    backbone_name: semnasnet_100
+    backbone_name: resnet18
     backbone_params:
       pretrained: true
       in_channels: 3
@@ -43,7 +43,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder C:\\Users\\Vyacheslav\\Documents\\datasets\\cifar10
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
         transform:
           - &resize
             name: Resize
@@ -78,34 +78,71 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 30
-  limit_train_batches: 10
-  limit_val_batches: 10
-  log_every_n_steps: 1000
+#  limit_train_batches: 10
+#  limit_val_batches: 10
+#  log_every_n_steps: 1000
   precision: 16
   num_sanity_val_steps: 0
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+seed_params:
+  seed: 42
+  workers: true
 
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: cifar10
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
+  experiment_name: resnet18
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/F1Score
-  save_last: true
-  mode: max
-  export_to_onnx: true
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: valid/F1Score
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FreezeUnfreeze
+    params:
+      freeze_modules:
+#        The whole backbone will be frozen during the first 2 epochs.
+          - module_name: backbone
+            epoch: 2
+#        Stem and the first layer of the backbone will be frozen forever during the training.
+          - module_name: backbone
+            stages: 1
+#        Only the modules of type `_BatchNorm` that attached to the backbone will be frozen
+#         with the specific policy: requires_grad of all batch norms will be set to false but
+#         these modules will track
+          - module_name: backbone
+            module_class: _BatchNorm  # or `BatchNorm2d` for certain type of batch norm
+            bn_requires_grad: false
+            bn_track_running_stats: false
+#        All dropouts in the network will be disabled forever during the training
+#          - module_name: ""
+#            module_class: Dropout
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: Accuracy
-    mapping: 
+    params:
+      task: multiclass
+      num_classes: 10
+    mapping:
       preds: prediction
       target: target
   - name: F1Score
-    mapping: 
+    params:
+      task: multiclass
+      num_classes: 10
+    mapping:
       preds: prediction
       target: target

@@ -1,5 +1,5 @@
 import logging
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from typing import Callable, Dict, List, Optional, Union
 
 import pytorch_lightning as pl
@@ -25,7 +25,7 @@ def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Call
     return state_dict
 
 
-def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[List[Dict[str, torch.Tensor]]]:
+def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> Dict[int, Dict[str, torch.Tensor]]:
     """Generate sorted by depth list of state dict list with the current depth.
     Where depth is calculated as the number of dots in the dictionary key.
 
@@ -36,13 +36,17 @@ def sort_state_dict_by_depth(override_name2state_dict: Dict[str, str]) -> List[L
         depth2override_state_dicts: Sorted by depth dict, where key - depth, value - list of all state dicts with
             current depth.
     """
+    if len(override_name2state_dict) == 0:
+        return dict()
+
     depth2override_state_dicts = defaultdict(list)
 
     for override_key, override_state_dict in override_name2state_dict.items():
         depth = len(override_key.split('.')) - 1
         depth2override_state_dicts[depth].append(override_state_dict)
+
     # Sort depth2override_state_dicts by it key - depth
-    depth2override_state_dicts = sorted(depth2override_state_dicts.items())
+    depth2override_state_dicts = OrderedDict(sorted(depth2override_state_dicts.items()))
     return depth2override_state_dicts
 
 
@@ -188,7 +192,7 @@ def generate_required_state_dict(base_state_dict: Dict[str, torch.Tensor],
 
 def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = None,
                     overridden_name2ckpt_path: Optional[Dict[str, str]] = None,
-                    exclude_keys: Optional[List[str]] = None):
+                    exclude_keys: Optional[List[str]] = None, strict: bool = True):
     """Load checkpoint to model.
 
     Args:
@@ -202,7 +206,6 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
         logging.info('Load checkpoint function. You wrote checkpoint parameters in yaml config without base '
                      'checkpoint path and overridden checkpoint paths!')
         return
-
     initial_state_dict = model.state_dict()
     model_keys = list(initial_state_dict.keys())
 
@@ -218,8 +221,7 @@ def load_checkpoint(model: pl.LightningModule, base_ckpt_path: Optional[str] = N
     else:
         overridden_name2state_dict = {name: load_state_dict(ckpt_path)
                                       for name, ckpt_path in overridden_name2ckpt_path.items()}
-
     required_state_dict = generate_required_state_dict(base_state_dict, overridden_name2state_dict,
                                                        exclude_keys, model_keys, initial_state_dict)
 
-    model.load_state_dict(required_state_dict, strict=True)
+    model.load_state_dict(required_state_dict, strict=strict)

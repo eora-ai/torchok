@@ -1,13 +1,14 @@
+.. _tasks:
+
 Tasks
 #####
 
-ClassificationTask
-******************
-.. autoclass:: torchok.ClassificationTask
+.. toctree::
+  :maxdepth: 2
 
-
-How to create your own Task
-***************************
-
-.. autoclass:: torchok.BaseTask
-    
+  tasks/classification
+  tasks/segmentation
+  tasks/representation
+  tasks/detection
+  tasks/inference
+  tasks/custom

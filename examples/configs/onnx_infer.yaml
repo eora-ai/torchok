@@ -18,7 +18,7 @@ data:
         params:
           train: false
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/data/cifar10
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
         transform:
           - &resize
             name: Resize
@@ -56,20 +56,21 @@ trainer:
   accelerator: "gpu"
   max_epochs: 1
 
-hydra:
-  run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
-
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
   experiment_name: cifar10
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: valid/F1Score
-  save_last: true
-  mode: max
+hydra:
+  run:
+    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
 metrics:
   - name: Accuracy

@@ -1,6 +1,6 @@
 """TorchOK Swin Transformer V2
 A PyTorch implementation of `Swin Transformer V2: Scaling Up Capacity and Resolution`
-    - https://arxiv.org/abs/2111.09883
+- https://arxiv.org/abs/2111.09883
 
 Adapted from https://github.com/microsoft/Swin-Transformer/blob/main/models/swin_transformer_v2.py
 (Copyright (c) 2022 Microsoft)
@@ -9,7 +9,7 @@ and from https://github.com/rwightman/pytorch-image-models/blob/master/timm/mode
 Licensed under Apache License 2.0 [see LICENSE for details]
 """
 
-from typing import List
+from typing import List, Mapping, Any
 
 import torch
 import torch.nn as nn
@@ -101,15 +101,16 @@ class SwinTransformerV2(BaseBackbone):
             ape: If True, add absolute position embedding to the patch embedding.
             patch_norm: If True, add normalization after patch embedding.
             pretrained_window_sizes: Pretrained window sizes of each layer.
+            load_attn_mask: If False drop `attn_mask` in layers when load pretrained weights.
     """
 
     def __init__(
-            self, img_size: int = 224, patch_size: int = 4, in_channels: int = 3,
+            self, img_size: int = 256, patch_size: int = 4, in_channels: int = 3,
             embed_dim: int = 96, depths: List[int] = (2, 2, 6, 2), num_heads: List[int] = (3, 6, 12, 24),
             window_size: int = 7, mlp_ratio: float = 4., qkv_bias: bool = True,
             drop_rate: float = 0., attn_drop_rate: float = 0., drop_path_rate: float = 0.1,
             norm_layer: nn.Module = nn.LayerNorm, ape: bool = False, patch_norm: bool = True,
-            pretrained_window_sizes: List[int] = (0, 0, 0, 0)):
+            pretrained_window_sizes: List[int] = (0, 0, 0, 0), load_attn_mask: bool = True):
         super().__init__(in_channels=in_channels)
         self.img_size = img_size
         self.num_layers = len(depths)
@@ -119,6 +120,7 @@ class SwinTransformerV2(BaseBackbone):
         self.encoder_channels = [int(embed_dim * 2 ** i) for i in range(self.num_layers)]
         self._out_channels = self.encoder_channels[-1]
         self._out_encoder_channels = self.encoder_channels
+        self.load_attn_mask = load_attn_mask
 
         # split image into non-overlapping patches
         self.patch_embed = PatchEmbed(
@@ -227,11 +229,11 @@ class SwinTransformerV2(BaseBackbone):
         # B L C
         if normalize:
             x = self.feature_norms[layer_number](x)
-        H = self.input_resolutions[layer_number][0]
-        W = self.input_resolutions[layer_number][1]
-        C = self.encoder_channels[layer_number]
+        h = self.input_resolutions[layer_number][0]
+        w = self.input_resolutions[layer_number][1]
+        c = self.encoder_channels[layer_number]
         # B C H W
-        x = x.view(-1, H, W, C).permute(0, 3, 1, 2).contiguous()
+        x = x.view(-1, h, w, c).permute(0, 3, 1, 2).contiguous()
         return x
 
     def forward_features(self, x: torch.Tensor) -> List[torch.Tensor]:
@@ -252,9 +254,28 @@ class SwinTransformerV2(BaseBackbone):
         x = self._normalize_with_bhwc_reshape(x, -1)
         return x
 
+    def load_state_dict(self, state_dict: Mapping[str, Any], strict: bool = True):
+        if not self.load_attn_mask:
+            state_dict = dict(state_dict)
+            for k in list(state_dict.keys()):
+                if "attn_mask" in k:
+                    state_dict.pop(k)
+        return super(SwinTransformerV2, self).load_state_dict(state_dict, strict)
+
+    def get_stages(self, stage: int) -> nn.Module:
+        """Return modules corresponding the given model stage and all previous stages.
+        For example, `0` must stand for model stem. `1` must stand for models stem and
+        the first global layer of the model (`layer1` in the resnet), etc.
+
+        Args:
+            stage: index of the models stage.
+        """
+        output = [self.patch_embed, self.pos_drop]
+        return nn.ModuleList(output + list(self.layers[:stage]))
+
 
 def _create_swin_transformer_v2(variant, pretrained=False, **kwargs):
-    kwargs_filter = ('num_classes', 'global_pool', 'in_chans')
+    kwargs_filter = tuple(['num_classes', 'global_pool', 'in_chans'])
     model = build_model_with_cfg(SwinTransformerV2, variant, pretrained, pretrained_strict=False,
                                  kwargs_filter=kwargs_filter, pretrained_filter_fn=checkpoint_filter_fn, **kwargs)
     return model

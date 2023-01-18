@@ -7,6 +7,9 @@
 </div>
 
 ## A day-to-day Computer Vision Engineer backpack
+
+[![Build Status](https://github.com/eora-ai/torchok/actions/workflows/flake8_checks.yaml/badge.svg?branch=main)](https://github.com/eora-ai/torchok/actions/workflows/flake8_checks.yaml)
+
 TorchOk is based on [PyTorch](https://github.com/pytorch/pytorch) and utilizes [PyTorch Lightning](https://github.com/PyTorchLightning/pytorch-lightning) for training pipeline routines.
 
 The toolkit consists of:
@@ -58,6 +61,12 @@ During the training you can access the training and validation logs by starting 
 ```bash
 tensorboard --logdir ~/.cache/torchok/logs/cifar10
 ```
+### Find learning rate
+To automatically find the initial learning rate, we use Pytorch Lightning tuner which algorithm based on [Cyclical Learning Rates for Training Neural Networks](https://arxiv.org/abs/1506.01186) the article.
+```bash
+python -m torchok -cp ../examples/configs -cn classification_cifar10 +mode=find_lr
+```
+
 ### Export to ONNX
 TODO
 ### Run ONNX model
@@ -66,12 +75,12 @@ But first we need to define the field `path_to_onnx`.
 
 **To test ONNX model:**
 ```bash
-python test.py -cp examples/configs -cn onnx_infer +entrypoint=test
+python test.py -cp examples/configs -cn onnx_infer +mode=test
 ```
 
 **To predict ONNX model:**
 ```bash
-python test.py -cp examples/configs -cn onnx_infer +entrypoint=predict
+python test.py -cp examples/configs -cn onnx_infer +mode=predict
 ```
 
 ## Run tests
@@ -80,35 +89,21 @@ python -m unittest discover -s tests/ -p "test_*.py"
 ```
 ## To be added soon (TODO)
 Tasks
-- MOBY (unsupervised training)
-- DetectionTask
-- InstanceSegmentationTask
-
-Backbones
-- Swin-v2
-- HRNet
-- ViT
-- EfficientNet
-- MobileNetV3
-
-Segmentation models
-- HRNet neck + OCR head
-- U-Net neck
+=====
+* MOBY (unsupervised training)
+* InstanceSegmentationTask
 
 Detection models
-- YOLOR neck + head
-- DETR neck + head
+================
+* YOLOR neck + head
+* DETR neck + head
 
 Datasets
-- Stanford Online Products
-- Cityscapes
-- COCO
+========
+* ImageNet
+* Cityscapes
 
 Losses
-- Pytorch Metric Learning losses
-- NT-ext (for unsupervised training)
-
-Metrics
-- Segmentation IoU
-- Segmentation Dice
-- Detection metrics
+======
+* Pytorch Metric Learning losses
+* NT-ext (for unsupervised training)
