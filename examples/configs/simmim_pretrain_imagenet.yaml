@@ -1,16 +1,20 @@
 task:
   name: SimMIMTask
   params:
-    backbone_name: swinv2_tiny_window16_256
+    backbone_name: swinv2_custom
     backbone_params:
       pretrained: false
       in_channels: 3
+      embed_dim: 128
+      depths: [ 2, 2, 18, 2 ]
+      num_heads: [ 4, 8, 16, 32 ]
+      window_size: 6
     pooling_name: Pooling
     mask_patch_size: 32
     mask_ratio: 0.6
     encoder_stride: 32
     inputs:
-      - shape: [3, &height 256, &width 256]
+      - shape: [3, &height 192, &width 192]
         dtype: &input_dtype bfloat16
 
 joint_loss:
@@ -127,9 +131,7 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 100
-#  limit_train_batches: 10
   limit_val_batches: 10
-#  log_every_n_steps: 1000
   precision: bf16
   num_sanity_val_steps: 0
   accumulate_grad_batches: 4

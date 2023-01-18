@@ -35,6 +35,7 @@ def _cfg(url='', **kwargs):
 
 url_base_path = 'https://github.com/SwinTransformer/storage/releases/download/v2.0.0/'
 default_cfgs = {
+    'swinv2_custom': _cfg(url="", input_size=None),
     'swinv2_tiny_window8_256': _cfg(url=f'{url_base_path}/swinv2_tiny_patch4_window8_256.pth',
                                     input_size=(3, 256, 256)),
     'swinv2_tiny_window16_256': _cfg(url=f'{url_base_path}/swinv2_tiny_patch4_window16_256.pth',
@@ -279,6 +280,13 @@ def _create_swin_transformer_v2(variant, pretrained=False, **kwargs):
     model = build_model_with_cfg(SwinTransformerV2, variant, pretrained, pretrained_strict=False,
                                  kwargs_filter=kwargs_filter, pretrained_filter_fn=checkpoint_filter_fn, **kwargs)
     return model
+
+
+@BACKBONES.register_class
+def swinv2_custom(pretrained=False, **kwargs):
+    """
+    """
+    return _create_swin_transformer_v2('swinv2_custom', pretrained=pretrained, **kwargs)
 
 
 @BACKBONES.register_class
