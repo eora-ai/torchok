@@ -116,9 +116,16 @@ optimization:
           norm:
             decay_mult: 0.0
     scheduler:
-      name: MultiStepLR
+      name: OneCycleLR
       params:
-        milestones: [20]
+        epochs: &num_epochs 100
+        div_factor: 100
+        steps_per_epoch: &num_steps 5000
+        max_lr: *base_lr
+        pct_start: 0.01
+        final_div_factor: 100
+      pl_params:
+        interval: step
 
 data:
   TRAIN:
@@ -178,9 +185,9 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 30
+  max_epochs: *num_epochs
   precision: bf16
-  limit_train_batches: 5000
+  limit_train_batches: *num_steps
   num_sanity_val_steps: 2
 
 logger:
