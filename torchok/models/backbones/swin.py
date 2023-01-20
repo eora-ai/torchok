@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.utils.checkpoint as checkpoint
 from timm.data import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.helpers import build_model_with_cfg
-from timm.models.layers import trunc_normal_
+from timm.models.layers import trunc_normal_, to_2tuple
 from timm.models.swin_transformer_v2 import BasicLayer as SwinBasicLayer, checkpoint_filter_fn, PatchEmbed, PatchMerging
 
 from torchok.constructor import BACKBONES
@@ -113,7 +113,7 @@ class SwinTransformerV2(BaseBackbone):
             norm_layer: nn.Module = nn.LayerNorm, ape: bool = False, patch_norm: bool = True,
             pretrained_window_sizes: List[int] = (0, 0, 0, 0), load_attn_mask: bool = True):
         super().__init__(in_channels=in_channels)
-        self.img_size = img_size
+        self.img_size = to_2tuple(img_size)
         self.num_layers = len(depths)
         self.embed_dim = embed_dim
         self.ape = ape

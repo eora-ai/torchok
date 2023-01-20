@@ -5,6 +5,7 @@ task:
     backbone_params:
       pretrained: false
       in_channels: 3
+      img_size: 192
       embed_dim: 128
       depths: [ 2, 2, 18, 2 ]
       num_heads: [ 4, 8, 16, 32 ]
@@ -41,7 +42,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 128
+        batch_size: 32
         num_workers: 8
         drop_last: true
         shuffle: true
@@ -51,7 +52,7 @@ data:
           input_dtype: *input_dtype
           train: true
           download: true
-          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
+          data_folder: &data_folder ${oc.env:HOME}/cifar10
         transform:
           - &resize
             name: Resize
@@ -67,7 +68,7 @@ data:
             name: ToTensorV2
   VALID:
     - dataloader:
-        batch_size: 128
+        batch_size: 32
         num_workers: 8
         drop_last: false
         shuffle: false
@@ -93,17 +94,25 @@ trainer:
 
 hydra:
   run:
-    dir: '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
 
 logger:
-  log_dir: '${oc.env:HOME}/.cache/torchok/logs/'
-  experiment_name: cifar10
+  log_dir: '${oc.env:HOME}/logs/'
+  experiment_name: simmim_cifar10
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 
-checkpoint:
-  monitor: train/loss
-  save_last: true
-  mode: min
-  export_to_onnx: false
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: train/loss
+      save_top_k: 1
+      save_last: true
+      mode: max
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 5
 
