@@ -59,6 +59,8 @@ class SingleStageDetectionTask(BaseTask):
 
         # HEAD
         head_params = head_params or dict()
+        # MMDet detection heads may change losses, but they don't attach JointLoss instance internally.
+        # Therefore, it is required to provide JointLoss instance to bbox_head.loss function.
         self.bbox_head = HEADS.get(head_name)(joint_loss=self.losses, in_channels=head_in_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
