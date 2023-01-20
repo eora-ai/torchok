@@ -152,6 +152,7 @@ class MetricsManager(nn.Module):
 
         Args:
             phase: Phase Enum.
+            dataloader_idx: index of the dataloader
         """
         for metric_with_utils in self.phase2metrics[phase.name]:
             metric_with_utils.update(dataloader_idx, **kwargs)

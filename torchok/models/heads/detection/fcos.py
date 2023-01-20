@@ -64,6 +64,7 @@ class FCOSHead(fcos_head.FCOSHead):
     """  # noqa: E501
 
     def __init__(self,
+                 joint_loss,
                  num_classes,
                  in_channels,
                  regress_ranges=((-1, 64), (64, 128), (128, 256), (256, 512), (512, INF)),
@@ -101,6 +102,7 @@ class FCOSHead(fcos_head.FCOSHead):
             if isinstance(v, DictConfig):
                 kwargs[k] = ConfigDict(OmegaConf.to_container(v, resolve=True))
         AnchorFreeHead.__init__(self, num_classes, in_channels, **kwargs)
+        self.requires_meta_in_forward = False
 
         self.init_weights()
 
@@ -129,7 +131,6 @@ class FCOSHead(fcos_head.FCOSHead):
         Returns:
             Total loss, Dict of losses per eachA dictionary of loss components.
         """
-        assert len(cls_scores) == len(bbox_preds) == len(centernesses)
         featmap_sizes = [featmap.size()[-2:] for featmap in cls_scores]
         all_level_points = self.prior_generator.grid_priors(
             featmap_sizes,
@@ -157,8 +158,7 @@ class FCOSHead(fcos_head.FCOSHead):
         flatten_labels = torch.cat(labels)
         flatten_bbox_targets = torch.cat(bbox_targets)
         # repeat points to align with bbox_preds
-        flatten_points = torch.cat(
-            [points.repeat(num_imgs, 1) for points in all_level_points])
+        flatten_points = torch.cat([points.repeat(num_imgs, 1) for points in all_level_points])
 
         # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
         bg_class_ind = self.num_classes
@@ -189,7 +189,7 @@ class FCOSHead(fcos_head.FCOSHead):
         )
 
     @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
-    def get_bboxes(self, cls_scores, bbox_preds, image_shape, **kwargs):
+    def get_bboxes(self, cls_scores, bbox_preds, img_metas, **kwargs):
         """Transform network outputs of a batch into bbox results.
 
         Note: When score_factors is not None, the cls_scores are
@@ -203,7 +203,7 @@ class FCOSHead(fcos_head.FCOSHead):
             bbox_preds (list[Tensor]): Box energies / deltas for all
                 scale levels, each is a 4D-tensor, has shape
                 (batch_size, num_priors * 4, H, W).
-            image_shape (Tuple[int, int]): size of the input image.
+            img_metas (list[dict]): List of image information.
 
         Returns:
             list[list[Tensor, Tensor]]: Each item in result_list is 2-tuple.
@@ -213,8 +213,9 @@ class FCOSHead(fcos_head.FCOSHead):
                 (n,) tensor where each item is the predicted class label of
                 the corresponding box.
         """
-        pseudo_meta = [dict(img_shape=image_shape, scale_factor=1) for i in range(len(cls_scores[0]))]
+        for img_meta in img_metas:
+            img_meta["scale_factor"] = 1
         result = super().get_bboxes(cls_scores=cls_scores, bbox_preds=bbox_preds,
-                                    img_metas=pseudo_meta, **kwargs)
+                                    img_metas=img_metas, **kwargs)
         result = [dict(bboxes=bboxes, labels=labels) for bboxes, labels in result]
         return result

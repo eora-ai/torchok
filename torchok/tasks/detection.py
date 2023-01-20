@@ -17,7 +17,7 @@ class SingleStageDetectionTask(BaseTask):
             hparams: DictConfig,
             backbone_name: str,
             head_name: str,
-            neck_name: str,
+            neck_name: str = None,
             num_scales: int = None,
             backbone_params: dict = None,
             neck_params: dict = None,
@@ -48,13 +48,20 @@ class SingleStageDetectionTask(BaseTask):
         self.num_scales = num_scales or len(self.backbone.out_encoder_channels)
 
         # NECK
-        neck_params = neck_params or dict()
-        neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
-        self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+        if neck_name is not None:
+            neck_params = neck_params or dict()
+            neck_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
+            self.neck = DETECTION_NECKS.get(neck_name)(in_channels=neck_in_channels, **neck_params)
+            head_in_channels = self.neck.out_channels
+        else:
+            self.neck = nn.Identity()
+            head_in_channels = self.backbone.out_encoder_channels[-self.num_scales:][::-1]
 
         # HEAD
         head_params = head_params or dict()
-        self.bbox_head = HEADS.get(head_name)(in_channels=self.neck.out_channels, **head_params)
+        # MMDet detection heads may change losses, but they don't attach JointLoss instance internally.
+        # Therefore, it is required to provide JointLoss instance to bbox_head.loss function.
+        self.bbox_head = HEADS.get(head_name)(joint_loss=self.losses, in_channels=head_in_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> List[Dict[str, torch.Tensor]]:
         """Forward method.
@@ -75,7 +82,7 @@ class SingleStageDetectionTask(BaseTask):
         features = self.neck(features)
         features = self.bbox_head(features)
         output = self.bbox_head.format_dict(features)
-        output = self.bbox_head.get_bboxes(**output, image_shape=x.shape[-2:])
+        output = self.bbox_head.get_bboxes(**output, img_metas=[dict(img_shape=x.shape[-2:])] * x.shape[0])
         return output
 
     def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Any]:
@@ -97,11 +104,18 @@ class SingleStageDetectionTask(BaseTask):
             and ground truth values if present.
         """
         input_data = batch.get('image')
+        img_shape = (*input_data.shape[-2:], input_data.shape[-3])
+        img_metas = [dict(orig_img_shape=orig_shape, img_shape=img_shape) for orig_shape in batch.get("orig_img_shape")]
+
         features = self.backbone.forward_features(input_data)[-self.num_scales:]
         neck_out = self.neck(features)
-        prediction = self.bbox_head(neck_out)
+        if self.bbox_head.requires_meta_in_forward:
+            prediction = self.bbox_head(neck_out, img_metas)
+        else:
+            prediction = self.bbox_head(neck_out)
         output = self.bbox_head.format_dict(prediction)
-        output['image_shape'] = input_data.shape[-2:]
+
+        output['img_metas'] = img_metas
 
         if 'bboxes' in batch:
             output['gt_bboxes'] = batch.get('bboxes')
@@ -129,21 +143,26 @@ class SingleStageDetectionTask(BaseTask):
                         dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
-        total_loss, tagged_loss_values = self.bbox_head.loss(self.losses, **output)
 
         output['prediction'] = self.bbox_head.get_bboxes(**output)
         output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
-        self.metrics_manager.update(Phase.VALID, **output)
-        output_dict = {'loss': total_loss}
-        output_dict.update(tagged_loss_values)
+        self.metrics_manager.update(Phase.VALID, dataloader_idx, **output)
+
+        if self._hparams.task.compute_loss_on_valid:
+            total_loss, tagged_loss_values = self.bbox_head.loss(self.losses, **output)
+            output_dict = {'loss': total_loss}
+            output_dict.update(tagged_loss_values)
+        else:
+            output_dict = {}
+
         return output_dict
 
-    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
+    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int, dataloader_idx: int = 0) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         output['prediction'] = self.bbox_head.get_bboxes(**output)
         output['target'] = [dict(bboxes=bb, labels=la) for bb, la in zip(output['gt_bboxes'], output['gt_labels'])]
-        self.metrics_manager.update(Phase.TEST, **output)
+        self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
     def predict_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete predict loop."""

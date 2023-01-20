@@ -45,7 +45,8 @@ class DetectionDataset(ImageDataset):
                  test_mode: bool = False,
                  bbox_format: str = 'coco',
                  min_area: float = 0.0,
-                 min_visibility: float = 0.0):
+                 min_visibility: float = 0.0,
+                 filter_bboxes_on_start: bool = False):
         """Init DetectionDataset.
 
         Args:
@@ -79,6 +80,8 @@ class DetectionDataset(ImageDataset):
                 of the bounding box before augmentation becomes smaller than min_visibility,
                 Albumentations will drop that box. So if the augmentation process cuts the most of the bounding box,
                 that box won't be present in the returned list of the augmented bounding boxes.
+            filter_bboxes_on_start: if True apply `filter_bboxes` function on the whole dataset at the init
+                otherwise apply in `get_raw`
 
         Raises:
             RuntimeError: if annotation_path is not in `pkl` or `csv` format.
@@ -98,6 +101,7 @@ class DetectionDataset(ImageDataset):
         self.target_dtype = target_dtype
         self.bbox_column = bbox_column
         self.bbox_dtype = bbox_dtype
+        self.filter_bboxes_on_start = filter_bboxes_on_start
 
         self.bbox_format = bbox_format
 
@@ -116,12 +120,13 @@ class DetectionDataset(ImageDataset):
             labels = [torch.tensor(row) for row in df[self.target_column]]
             bboxes = [torch.tensor(row) for row in df[self.bbox_column]]
 
-            for i, (path, bbox, label) in enumerate(zip(self.image_paths, bboxes, labels)):
-                width, height = imagesize.get(self.data_folder / path)
-                if len(bbox):
-                    bbox, label = self.filter_bboxes(bbox, label, height, width)
-                    labels[i] = label
-                    bboxes[i] = bbox
+            if filter_bboxes_on_start:
+                for i, (path, bbox, label) in enumerate(zip(self.image_paths, bboxes, labels)):
+                    if len(bbox):
+                        width, height = imagesize.get(self.data_folder / path)
+                        bbox, label = self.filter_bboxes(bbox, label, height, width)
+                        labels[i] = label
+                        bboxes[i] = bbox
 
             self.lengths = torch.cumsum(torch.tensor([len(i) for i in labels]), dim=0)
             self.labels = torch.cat(labels)
@@ -134,26 +139,6 @@ class DetectionDataset(ImageDataset):
             self.augment = Compose(self.augment.transforms, bbox_params=bbox_params)
 
         self.transform = Compose(self.transform.transforms, bbox_params=bbox_params)
-
-    def __len__(self) -> int:
-        """Dataset length."""
-        return len(self.image_paths)
-
-    def get_raw(self, idx: int) -> dict:
-        image_path = self.data_folder / self.image_paths.iloc[idx]
-        image = self._read_image(image_path)
-        sample = {'image': image, 'index': idx}
-
-        if not self.test_mode:
-            region_end = self.lengths[idx]
-            region_start = self.lengths[idx - 1] if idx else 0
-
-            sample['label'] = self.labels[region_start:region_end]
-            sample['bboxes'] = self.bboxes[region_start:region_end]
-
-        sample = self._apply_transform(self.augment, sample)
-
-        return sample
 
     def filter_bboxes(self, bboxes: Tensor, labels: Tensor, rows: int, cols: int) -> [Tensor, Tensor]:
         """Filter empty bounding boxes.
@@ -172,6 +157,31 @@ class DetectionDataset(ImageDataset):
         alb_lbox_fixed = alb_filter_bboxes(alb_lbox, rows, cols)
         lbox_fixed = torch.tensor(convert_bboxes_from_albumentations(alb_lbox_fixed, self.bbox_format, rows, cols))
         return lbox_fixed[:, :4], lbox_fixed[:, 4]
+
+    def __len__(self) -> int:
+        """Dataset length."""
+        return len(self.image_paths)
+
+    def get_raw(self, idx: int) -> dict:
+        image_path = self.data_folder / self.image_paths.iloc[idx]
+        image = self._read_image(image_path)
+        sample = {'image': image, 'index': idx, 'orig_img_shape': torch.tensor(image.shape)}
+
+        if not self.test_mode:
+            region_end = self.lengths[idx]
+            region_start = self.lengths[idx - 1] if idx else 0
+            labels = self.labels[region_start:region_end]
+            bboxes = self.bboxes[region_start:region_end]
+
+            if not self.filter_bboxes_on_start and len(bboxes):
+                bboxes, labels = self.filter_bboxes(bboxes, labels, *image.shape[:2])
+
+            sample['label'] = labels
+            sample['bboxes'] = bboxes
+
+        sample = self._apply_transform(self.augment, sample)
+
+        return sample
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.

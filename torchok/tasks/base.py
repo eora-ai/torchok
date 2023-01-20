@@ -147,12 +147,12 @@ class BaseTask(LightningModule, ABC):
 
         return output_dict
 
-    def test_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int, dataloader_idx: int = 0) -> None:
+    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int, dataloader_idx: int = 0) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
-    def predict_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> torch.Tensor:
+    def predict_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
         return output

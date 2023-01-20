@@ -1,4 +1,4 @@
-from torch.nn import (BCELoss, BCEWithLogitsLoss, CosineEmbeddingLoss, CrossEntropyLoss, CTCLoss, GaussianNLLLoss,
+from torch.nn import (BCELoss, CosineEmbeddingLoss, CrossEntropyLoss, CTCLoss, GaussianNLLLoss,
                       HingeEmbeddingLoss, HuberLoss, KLDivLoss, L1Loss, MarginRankingLoss, MSELoss,
                       MultiLabelMarginLoss, MultiLabelSoftMarginLoss, MultiMarginLoss, NLLLoss, NLLLoss2d,
                       PoissonNLLLoss, SmoothL1Loss, SoftMarginLoss, TripletMarginLoss, TripletMarginWithDistanceLoss)
