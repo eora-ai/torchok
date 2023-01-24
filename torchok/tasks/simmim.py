@@ -80,8 +80,7 @@ class SimMIMTask(BaseTask):
         B, L, _ = out.shape
         mask_tokens = module.mask_token.expand(B, L, -1)
         w = self.mask.type_as(mask_tokens).flatten()[None, :, None]
-        out.mul_(1. - w)
-        out.add_(mask_tokens * w)
+        return out * (1. - w) + mask_tokens * out
 
     def forward(self, x: torch.Tensor) -> Tuple[float, torch.Tensor]:
         """Forward method."""

@@ -42,7 +42,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 32
+        batch_size: 64
         num_workers: 8
         drop_last: true
         shuffle: true
@@ -53,12 +53,15 @@ data:
           train: true
           download: true
           data_folder: &data_folder ${oc.env:HOME}/cifar10
-        transform:
-          - &resize
-            name: Resize
+        augment:
+          - name: HorizontalFlip
+          - name: RandomResizedCrop
             params:
               height: *height
               width: *width
+              scale: [0.67, 1.0]
+              ratio: [0.75, 1.33]
+        transform:
           - &normalize
             name: Normalize
             params:
@@ -80,17 +83,19 @@ data:
           download: true
           data_folder: *data_folder
         transform:
-          - *resize
+          - name: Resize
+            params:
+              height: *height
+              width: *width
           - *normalize
           - *totensor
 
 trainer:
   accelerator: 'gpu'
   max_epochs: 100
-  limit_val_batches: 10
+  limit_val_batches: 0
   precision: bf16
   num_sanity_val_steps: 0
-  accumulate_grad_batches: 4
 
 hydra:
   run:
