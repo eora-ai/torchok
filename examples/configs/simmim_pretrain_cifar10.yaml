@@ -69,26 +69,6 @@ data:
               std: [ 0.229, 0.224, 0.225 ]
           - &totensor
             name: ToTensorV2
-  VALID:
-    - dataloader:
-        batch_size: 32
-        num_workers: 8
-        drop_last: false
-        shuffle: false
-      dataset:
-        name: CIFAR10
-        params:
-          input_dtype: *input_dtype
-          train: false
-          download: true
-          data_folder: *data_folder
-        transform:
-          - name: Resize
-            params:
-              height: *height
-              width: *width
-          - *normalize
-          - *totensor
 
 trainer:
   accelerator: 'gpu'

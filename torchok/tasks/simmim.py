@@ -77,23 +77,21 @@ class SimMIMTask(BaseTask):
         trunc_normal_(self.backbone.patch_embed.mask_token, mean=0., std=.02)
 
     def hook(self, module, inp, out):
-        B, L, _ = out.shape
-        mask_tokens = module.mask_token.expand(B, L, -1)
-        w = self.mask.type_as(mask_tokens).flatten()[None, :, None]
-        return out * (1. - w) + mask_tokens * out
+        if self.mask is not None:
+            B, L, _ = out.shape
+            mask_tokens = module.mask_token.expand(B, L, -1)
+            w = self.mask.type_as(mask_tokens).flatten()[None, :, None]
+            return out * (1. - w) + mask_tokens * out
+        else:
+            return out
 
     def forward(self, x: torch.Tensor) -> Tuple[float, torch.Tensor]:
         """Forward method."""
-        mask = self._prepare_mask()
+        self.mask = None
         z = self.backbone(x)
         embeddings = self.pooling(z)
-        x_rec = self.decoder(z)
 
-        mask = mask.repeat_interleave(self.patch_size, dim=0).repeat_interleave(self.patch_size, dim=1)
-        mask = mask[None, None].contiguous()
-        loss_recon = F.l1_loss(x, x_rec, reduction='none')
-        loss = (loss_recon * mask).sum() / ((mask.sum() + 1e-5) * self.backbone.in_channels * x.size(0))
-        return loss, embeddings
+        return embeddings
 
     def _prepare_mask(self):
         mask_idx = torch.randperm(self.token_count)[:self.mask_count]
@@ -110,7 +108,16 @@ class SimMIMTask(BaseTask):
         input_data = batch.get('image')
         target = batch.get('target')
 
-        loss, embeddings = self.forward(input_data)
+        mask = self._prepare_mask()
+        z = self.backbone(input_data)
+        embeddings = self.pooling(z)
+        x_rec = self.decoder(z)
+
+        mask = mask.repeat_interleave(self.patch_size, dim=0).repeat_interleave(self.patch_size, dim=1)
+        mask = mask[None, None].contiguous()
+        loss_recon = F.l1_loss(input_data, x_rec, reduction='none')
+        loss = (loss_recon * mask).sum() / ((mask.sum() + 1e-5) * self.backbone.in_channels * input_data.size(0))
+
         output = {'embeddings': embeddings, 'loss': loss}
 
         if target is not None:
