@@ -77,7 +77,7 @@ class SimMIMTask(BaseTask):
         trunc_normal_(self.backbone.patch_embed.mask_token, mean=0., std=.02)
 
     def hook(self, module, inp, out):
-        if self.mask is not None:
+        if self.training:
             B, L, _ = out.shape
             mask_tokens = module.mask_token.expand(B, L, -1)
             w = self.mask.type_as(mask_tokens).flatten()[None, :, None]
@@ -87,7 +87,6 @@ class SimMIMTask(BaseTask):
 
     def forward(self, x: torch.Tensor) -> Tuple[float, torch.Tensor]:
         """Forward method."""
-        self.mask = None
         z = self.backbone(x)
         embeddings = self.pooling(z)
 
@@ -105,8 +104,7 @@ class SimMIMTask(BaseTask):
 
     def forward_with_gt(self, batch: Dict[str, Union[Tensor, int]]) -> Dict[str, Tensor]:
         """Forward with ground truth labels."""
-        input_data = batch.get('image')
-        target = batch.get('target')
+        input_data = batch.pop('image')
 
         mask = self._prepare_mask()
         z = self.backbone(input_data)
@@ -119,9 +117,7 @@ class SimMIMTask(BaseTask):
         loss = (loss_recon * mask).sum() / ((mask.sum() + 1e-5) * self.backbone.in_channels * input_data.size(0))
 
         output = {'embeddings': embeddings, 'loss': loss}
-
-        if target is not None:
-            output['target'] = target
+        output.update(batch)
 
         return output
 

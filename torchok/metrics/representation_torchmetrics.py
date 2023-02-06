@@ -39,8 +39,8 @@ class TorchMetricBaseMetr(IndexBasedMeter):
                                      relevants_idxs: np.ndarray, query_col_idxs: np.ndarray,
                                      scores: np.ndarray, k: int) -> List:
         preds = torch.tensor(closest_scores)
-        target = torch.tensor([np.isin(closest_idxs[i], relevants_idxs[i]) for i in range(len(closest_idxs))],
-                              dtype=torch.long)
+        target = np.stack([np.isin(closest_idxs[i], relevants_idxs[i]) for i in range(len(closest_idxs))])
+        target = torch.from_numpy(target).long()
         if self.use_batching_search:
             indexes = torch.tile(torch.arange(len(target), dtype=torch.long)[:, None], (1, target.shape[1]))
         else:
