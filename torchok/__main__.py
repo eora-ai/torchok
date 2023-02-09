@@ -3,6 +3,7 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import seed_everything
 from torch.multiprocessing import set_start_method
 
+import torch
 import torchok
 from torchok.constructor.auto_lr_find import find_lr
 from torchok.constructor.config_structure import ConfigParams
