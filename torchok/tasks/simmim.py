@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 from timm.models.layers import trunc_normal_
 from torch import Tensor
 
+from torchok.constructor.config_structure import Phase
 from torchok.constructor import BACKBONES, POOLINGS, TASKS
 from torchok.tasks.base import BaseTask
 
@@ -76,6 +77,10 @@ class SimMIMTask(BaseTask):
         self.backbone.patch_embed.mask_token = nn.Parameter(torch.zeros(1, 1, self.backbone.embed_dim))
         trunc_normal_(self.backbone.patch_embed.mask_token, mean=0., std=.02)
 
+        mask = torch.zeros(self.rand_size, self.rand_size, dtype=torch.bool, device=self.device, requires_grad=False)
+        mask = mask.repeat_interleave(self.scale, dim=0).repeat_interleave(self.scale, dim=1)
+        self.register_buffer('mask', mask)
+
     def hook(self, module, inp, out):
         if self.training:
             B, L, _ = out.shape
@@ -93,9 +98,10 @@ class SimMIMTask(BaseTask):
         return embeddings
 
     def _prepare_mask(self):
-        mask_idx = torch.randperm(self.token_count)[:self.mask_count]
         mask = torch.zeros(self.token_count, dtype=torch.bool, device=self.device, requires_grad=False)
-        mask[mask_idx] = True
+        if self.training:
+            mask_idx = torch.randperm(self.token_count)[:self.mask_count]
+            mask[mask_idx] = True
 
         mask = mask.reshape((self.rand_size, self.rand_size))
         mask = mask.repeat_interleave(self.scale, dim=0).repeat_interleave(self.scale, dim=1)
@@ -120,6 +126,15 @@ class SimMIMTask(BaseTask):
         output.update(batch)
 
         return output
+
+    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int, dataloader_idx: int = 0) -> None:
+        """Complete test loop."""
+        input_data = batch.pop('image')
+        embeddings = self(input_data)
+
+        output = {'embeddings': embeddings}
+        output.update(batch)
+        self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
     def as_module(self) -> nn.Sequential:
         """Method for model representation as sequential of modules(need for checkpointing)."""
