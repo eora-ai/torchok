@@ -190,7 +190,8 @@ class IndexBasedMeter(Metric, ABC):
         # split query by group_label if metric compute target averaging
         if self.group_averaging:
             uniq_group_labels = np.unique(group_labels)
-            group_indexes_split = np.array([np.where(group_labels == label)[0] for label in uniq_group_labels])
+            group_indexes_split = np.array([np.where(group_labels == label)[0] for label in uniq_group_labels],
+                                            dtype=object)
         else:
             group_indexes_split = np.arange(len(group_labels))[None]
 
@@ -217,6 +218,8 @@ class IndexBasedMeter(Metric, ABC):
                                              curr_query_as_relevant, k,
                                              scores, curr_query_col_idxs)
             for batch_size, args in generator:
+                if min(args[0].shape) == 0:
+                    continue
                 curr_target_metric += batch_size * self.metric_func(*args).mean()
 
             curr_target_metric /= len(curr_query_row_idxs)
@@ -319,7 +322,7 @@ class IndexBasedMeter(Metric, ABC):
                 curr_relevant_idxs = curr_relevant_idxs[sort_indexes[::-1]]
                 relevant_idxs.append(curr_relevant_idxs)
 
-        relevant_idxs = np.array(relevant_idxs)
+        relevant_idxs = np.array(relevant_idxs, dtype=object)
         return relevant_idxs, faiss_vector_idxs, query_column_idxs, query_row_idxs, query_as_relevant
 
     def prepare_classification_data(self, targets: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
