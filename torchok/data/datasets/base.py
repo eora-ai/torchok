@@ -65,11 +65,21 @@ class ImageDataset(Dataset, ABC):
                 alpha = image[..., 3:4] / 255
                 image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype('uint8')
+            elif image.shape[2] == 2:
+                gray = image[..., 0]
+                alpha = image[..., 1] / 255
+                image_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+                image = np.clip(image_rgb * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
         elif self.image_format == 'rgba':
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGBA)
             elif image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2RGBA)
+            elif image.shape[2] == 2:
+                gray = image[..., 0]
+                alpha = image[..., 1] / 255
+                image_rgb = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+                image = np.concatenate([image_rgb, alpha[..., None]], axis=-1)
         elif self.image_format == 'bgr':
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
@@ -79,17 +89,25 @@ class ImageDataset(Dataset, ABC):
                 image = cv2.cvtColor(image.astype('uint8'), cv2.COLOR_RGB2BGR)
             elif image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            elif image.shape[2] == 2:
+                gray = image[..., 0]
+                alpha = image[..., 1] / 255
+                image_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+                image = np.clip(image_bgr * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
         elif self.image_format == 'gray':
-            if image.ndim == 3 and image.shape[2] == 4:  # RGBA
+            if image.ndim == 2:  # Gray
+                image = image[..., None]
+            elif image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
                 image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype('uint8')
-
-            if image.ndim == 3 and image.shape[2] == 3:  # RGB
+            elif image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            elif image.shape[2] == 2:
+                gray = image[..., 0]
+                alpha = image[..., 1] / 255
+                image = np.clip(gray * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
 
-            if image.ndim == 2:  # Gray
-                image = image[..., None]
         else:
             raise ValueError(f'Unsupported image format `{self.image_format}`')
 
