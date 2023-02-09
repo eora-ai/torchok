@@ -191,7 +191,7 @@ class IndexBasedMeter(Metric, ABC):
         if self.group_averaging:
             uniq_group_labels = np.unique(group_labels)
             group_indexes_split = np.array([np.where(group_labels == label)[0] for label in uniq_group_labels],
-                                            dtype=object)
+                                           dtype=object)
         else:
             group_indexes_split = np.arange(len(group_labels))[None]
 
