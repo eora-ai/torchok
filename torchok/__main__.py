@@ -31,6 +31,8 @@ def entrypoint(config: DictConfig):
     # Seed everything
     if config.seed_params is not None:
         seed_everything(**config.seed_params)
+    # Use float32 datatype for the internal precision of float32 matrix multiplications.
+    torch.set_float32_matmul_precision("highest")
     # Create task
     model = torchok.TASKS.get(config.task.name)(config, **config.task.params)
     trainer = create_trainer(config)

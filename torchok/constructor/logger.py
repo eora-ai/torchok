@@ -4,6 +4,7 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, MutableMapping
 
+from lightning_fabric.utilities.logger import _convert_params
 from omegaconf import DictConfig
 from omegaconf.listconfig import ListConfig
 from pytorch_lightning.loggers.csv_logs import CSVLogger
@@ -14,7 +15,6 @@ from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning.utilities import rank_zero_warn
-from pytorch_lightning.utilities.logger import _convert_params
 
 
 def create_logger(logger_config: DictConfig) -> Logger:
