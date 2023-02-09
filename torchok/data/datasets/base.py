@@ -3,10 +3,14 @@ from typing import Optional, Union, Tuple
 
 import cv2
 import numpy as np
+from PIL import Image
 from PIL.Image import open as imopen
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from torch.utils.data import Dataset
+
+
+Image.MAX_IMAGE_PIXELS = 933120000
 
 
 class ImageDataset(Dataset, ABC):
