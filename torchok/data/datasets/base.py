@@ -60,7 +60,12 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        image = np.array(imopen(image_path))
+        pil_image = imopen(image_path)
+        mode = pil_image.mode
+        image = np.array(pil_image)
+
+        if mode == "I":  # from 16-bit image to 8-bit image
+            image = image // 256
 
         if self.image_format == 'rgb':
             if image.ndim == 2:  # Gray
