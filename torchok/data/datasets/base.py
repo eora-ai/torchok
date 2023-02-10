@@ -65,7 +65,7 @@ class ImageDataset(Dataset, ABC):
         image = np.array(pil_image)
 
         if mode == "I":  # from 16-bit image to 8-bit image
-            image = image // 256
+            image = (image // 256).astype('uint8')
 
         if self.image_format == 'rgb':
             if image.ndim == 2:  # Gray
