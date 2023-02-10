@@ -218,6 +218,8 @@ class IndexBasedMeter(Metric, ABC):
                                              curr_query_as_relevant, k,
                                              scores, curr_query_col_idxs)
             for batch_size, args in generator:
+                if min(args[0].shape) == 0:
+                    continue
                 curr_target_metric += batch_size * self.metric_func(*args).mean()
 
             curr_target_metric /= len(curr_query_row_idxs)
