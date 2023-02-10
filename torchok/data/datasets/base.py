@@ -85,7 +85,6 @@ class ImageDataset(Dataset, ABC):
                 alpha = image[..., 1:2]
                 rgb_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
                 image = np.concatenate([rgb_image, alpha], axis=-1)
-                image = image.astype('uint8')
         elif self.image_format == 'bgr':
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
