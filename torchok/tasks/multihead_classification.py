@@ -1,8 +1,7 @@
 from typing import Dict, List, Any
 
-from torch import nn
-import torch
 from omegaconf import DictConfig
+from torch import nn
 
 from torchok.constructor import BACKBONES, HEADS, NECKS, POOLINGS, TASKS
 from torchok.tasks.base import BaseTask
