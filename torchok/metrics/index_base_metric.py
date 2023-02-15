@@ -7,7 +7,7 @@ import faiss
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import normalize
+
 from torchmetrics import Metric
 
 
@@ -176,7 +176,7 @@ class IndexBasedMeter(Metric, ABC):
         """
         vectors = self.vectors.cpu().numpy()
         if self.normalize_vectors:
-            vectors = normalize(vectors)
+            vectors /= np.linalg.norm(vectors, axis=0)
 
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
