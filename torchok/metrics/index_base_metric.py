@@ -178,6 +178,8 @@ class IndexBasedMeter(Metric, ABC):
         if self.normalize_vectors:
             vectors /= np.linalg.norm(vectors, axis=0)
 
+        print(f'vectors shape = {vectors.shape}')
+
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
             group_labels = self.group_labels.cpu().numpy()
@@ -191,8 +193,11 @@ class IndexBasedMeter(Metric, ABC):
         else:
             # if representation dataset
             scores = self.scores.cpu().numpy()
+            print(f'scores shape = {scores.shape}')
             query_idxs = self.query_idxs.cpu().numpy()
+            print(f'query_idxs shape = {query_idxs.shape}')
             group_labels = self.group_labels.cpu().numpy()
+            print(f'group_labels shape = {group_labels.shape}')
             # prepare data
             (
                 relevant_idxs,
