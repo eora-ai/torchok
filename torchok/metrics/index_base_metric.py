@@ -109,15 +109,15 @@ class IndexBasedMeter(Metric, ABC):
         # but in metric compute study, k must not change
         self.metric_compute_k = k
 
-        self.add_state("vectors", default=torch.empty(0), dist_reduce_fx=None)
+        self.add_state("vectors", default=torch.empty(0), dist_reduce_fx="cat")
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
-            self.add_state("group_labels", default=torch.empty(0, dtype=torch.long), dist_reduce_fx=None)
+            self.add_state("group_labels", default=torch.empty(0, dtype=torch.long), dist_reduce_fx="cat")
         else:
             # if representation dataset
-            self.add_state("query_idxs", default=torch.empty(0, dtype=torch.long), dist_reduce_fx=None)
-            self.add_state("scores", default=torch.empty(0), dist_reduce_fx=None)
-            self.add_state("group_labels", default=torch.empty(0, dtype=torch.long), dist_reduce_fx=None)
+            self.add_state("query_idxs", default=torch.empty(0, dtype=torch.long), dist_reduce_fx="cat")
+            self.add_state("scores", default=torch.empty(0), dist_reduce_fx="cat")
+            self.add_state("group_labels", default=torch.empty(0, dtype=torch.long), dist_reduce_fx="cat")
 
     def update(
         self,
@@ -178,8 +178,6 @@ class IndexBasedMeter(Metric, ABC):
         if self.normalize_vectors:
             vectors /= np.linalg.norm(vectors, axis=0)
 
-        print(f'vectors shape = {vectors.shape}')
-
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
             group_labels = self.group_labels.cpu().numpy()
@@ -193,11 +191,9 @@ class IndexBasedMeter(Metric, ABC):
         else:
             # if representation dataset
             scores = self.scores.cpu().numpy()
-            print(f'scores shape = {scores.shape}')
             query_idxs = self.query_idxs.cpu().numpy()
-            print(f'query_idxs shape = {query_idxs.shape}')
             group_labels = self.group_labels.cpu().numpy()
-            print(f'group_labels shape = {group_labels.shape}')
+
             # prepare data
             (
                 relevant_idxs,
