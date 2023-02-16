@@ -179,11 +179,18 @@ class IndexBasedMeter(Metric, ABC):
         Returns:
             metric: Metric value.
         """
+        if isinstance(self.vectors, list):
+            self.vectors = torch.cat(self.vectors)
+            if self.dataset_type == DatasetType.CLASSIFICATION:
+                self.group_labels = torch.cat(self.group_labels)
+            else:
+                self.scores = torch.cat(self.scores)
+                self.query_idxs = torch.cat(self.query_idxs)
+                self.group_labels = torch.cat(self.group_labels)
+
         vectors = self.vectors.cpu().numpy()
         if self.normalize_vectors:
             vectors /= np.linalg.norm(vectors, axis=0)
-
-        print(f'vectors shape = {vectors.shape}')
 
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
@@ -198,11 +205,8 @@ class IndexBasedMeter(Metric, ABC):
         else:
             # if representation dataset
             scores = self.scores.cpu().numpy()
-            print(f'scores shape = {scores.shape}')
             query_idxs = self.query_idxs.cpu().numpy()
-            print(f'query_idxs shape = {query_idxs.shape}')
             group_labels = self.group_labels.cpu().numpy()
-            print(f'group_labels shape = {group_labels.shape}')
             # prepare data
             (
                 relevant_idxs,
