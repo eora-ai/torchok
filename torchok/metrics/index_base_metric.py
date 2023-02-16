@@ -109,15 +109,15 @@ class IndexBasedMeter(Metric, ABC):
         # but in metric compute study, k must not change
         self.metric_compute_k = k
 
-        self.add_state("vectors", default=torch.empty(0), dist_reduce_fx="cat")
+        self.add_state("vectors", default=[], dist_reduce_fx="cat")
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
-            self.add_state("group_labels", default=torch.empty(0, dtype=torch.long), dist_reduce_fx="cat")
+            self.add_state("group_labels", default=[], dist_reduce_fx="cat")
         else:
             # if representation dataset
-            self.add_state("query_idxs", default=torch.empty(0, dtype=torch.long), dist_reduce_fx="cat")
-            self.add_state("scores", default=torch.empty(0), dist_reduce_fx="cat")
-            self.add_state("group_labels", default=torch.empty(0, dtype=torch.long), dist_reduce_fx="cat")
+            self.add_state("query_idxs", default=[], dist_reduce_fx="cat")
+            self.add_state("scores", default=[], dist_reduce_fx="cat")
+            self.add_state("group_labels", default=[], dist_reduce_fx="cat")
 
     def update(
         self,
@@ -141,12 +141,14 @@ class IndexBasedMeter(Metric, ABC):
                 type and at least one of scores or query_idxs is None.
         """
         vectors = vectors.detach()
-        self.vectors = torch.concat([self.vectors, vectors], axis=0)
+        self.vectors.append(vectors)
+        # self.vectors = torch.concat([self.vectors, vectors], axis=0)
         if self.dataset_type == DatasetType.CLASSIFICATION:
             if group_labels is None:
                 raise ValueError("In classification dataset group_labels must be not None.")
             group_labels = group_labels.detach()
-            self.group_labels = torch.concat([self.group_labels, group_labels], axis=0)
+            # self.group_labels = torch.concat([self.group_labels, group_labels], axis=0)
+            self.group_labels.append(group_labels)
         else:
             if query_idxs is None:
                 raise ValueError("In representation dataset query_numbers must be not None.")
@@ -154,13 +156,16 @@ class IndexBasedMeter(Metric, ABC):
                 raise ValueError("In representation dataset scores must be not None")
 
             query_idxs = query_idxs.detach()
-            self.query_idxs = torch.concat([self.query_idxs, query_idxs], axis=0)
+            # self.query_idxs = torch.concat([self.query_idxs, query_idxs], axis=0)
+            self.query_idxs.append(query_idxs)
 
             scores = scores.detach()
-            self.scores = torch.concat([self.scores, scores], axis=0)
+            # self.scores = torch.concat([self.scores, scores], axis=0)
+            self.scores.append(scores)
 
             group_labels = group_labels.detach()
-            self.group_labels = torch.concat([self.group_labels, group_labels], axis=0)
+            # self.group_labels = torch.concat([self.group_labels, group_labels], axis=0)
+            self.group_labels.append(group_labels)
 
     def compute(self) -> float:
         """Compute metric value.
@@ -178,6 +183,8 @@ class IndexBasedMeter(Metric, ABC):
         if self.normalize_vectors:
             vectors /= np.linalg.norm(vectors, axis=0)
 
+        print(f'vectors shape = {vectors.shape}')
+
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
             group_labels = self.group_labels.cpu().numpy()
@@ -191,9 +198,11 @@ class IndexBasedMeter(Metric, ABC):
         else:
             # if representation dataset
             scores = self.scores.cpu().numpy()
+            print(f'scores shape = {scores.shape}')
             query_idxs = self.query_idxs.cpu().numpy()
+            print(f'query_idxs shape = {query_idxs.shape}')
             group_labels = self.group_labels.cpu().numpy()
-
+            print(f'group_labels shape = {group_labels.shape}')
             # prepare data
             (
                 relevant_idxs,
