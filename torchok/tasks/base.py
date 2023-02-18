@@ -28,7 +28,7 @@ class BaseTask(LightningModule, ABC):
         self.save_hyperparameters(hparams)
         self._constructor = Constructor(hparams)
         self.input_tensor_names = []
-        self.losses = self._constructor.configure_losses() if hparams.get("joint_loss") is not None else None
+        self.losses = self._constructor.configure_losses() if hparams.get('joint_loss') is not None else None
         self.metrics_manager = self._constructor.configure_metrics_manager()
         self.example_input_array = []
 
@@ -37,7 +37,7 @@ class BaseTask(LightningModule, ABC):
             for i, input_params in enumerate(inputs):
                 input_tensor_name = f"input_tensors_{i}"
                 self.input_tensor_names.append(input_tensor_name)
-                input_tensor = torch.rand(1, *input_params["shape"]).type(torch.__dict__[input_params["dtype"]])
+                input_tensor = torch.rand(1, *input_params['shape']).type(torch.__dict__[input_params['dtype']])
                 self.example_input_array.append(input_tensor)
                 self.register_buffer(input_tensor_name, input_tensor)
 
@@ -58,7 +58,7 @@ class BaseTask(LightningModule, ABC):
 
     def train_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or more PyTorch DataLoaders for training."""
-        data_params = self._hparams["data"].get(Phase.TRAIN, None)
+        data_params = self._hparams['data'].get(Phase.TRAIN, None)
 
         if data_params is None:
             return None
@@ -68,7 +68,7 @@ class BaseTask(LightningModule, ABC):
 
     def val_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
-        data_params = self._hparams["data"].get(Phase.VALID, None)
+        data_params = self._hparams['data'].get(Phase.VALID, None)
 
         if data_params is None:
             return None
@@ -80,7 +80,7 @@ class BaseTask(LightningModule, ABC):
 
     def test_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for testing."""
-        data_params = self._hparams["data"].get(Phase.TEST, None)
+        data_params = self._hparams['data'].get(Phase.TEST, None)
 
         if data_params is None:
             return None
@@ -92,7 +92,7 @@ class BaseTask(LightningModule, ABC):
 
     def predict_dataloader(self) -> Optional[List[DataLoader]]:
         """Implement one or multiple PyTorch DataLoaders for prediction."""
-        data_params = self._hparams["data"].get(Phase.PREDICT, None)
+        data_params = self._hparams['data'].get(Phase.PREDICT, None)
 
         if data_params is None:
             return None
@@ -104,10 +104,10 @@ class BaseTask(LightningModule, ABC):
 
     def _check_drop_last_params(self, data_params: List[Dict[str, Any]], phase: str) -> None:
         for data_param in data_params:
-            drop_last = data_param["dataloader"].get("drop_last", False)
+            drop_last = data_param['dataloader'].get('drop_last', False)
             if drop_last:
                 # TODO: create logger and print a warning instead
-                raise ValueError(f"DataLoader parameters `drop_last` must be False in {phase} phase.")
+                raise ValueError(f'DataLoader parameters `drop_last` must be False in {phase} phase.')
 
     def on_fit_start(self) -> None:
         if self._hparams.task.load_checkpoint is not None:
@@ -126,13 +126,12 @@ class BaseTask(LightningModule, ABC):
         output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.losses(**output)
         self.metrics_manager.update(Phase.TRAIN, **output)
-        output_dict = {"loss": total_loss}
+        output_dict = {'loss': total_loss}
         output_dict.update(tagged_loss_values)
         return output_dict
 
-    def validation_step(
-        self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int, dataloader_idx: int = 0
-    ) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]],
+                        batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.VALID, dataloader_idx, **output)
@@ -141,7 +140,7 @@ class BaseTask(LightningModule, ABC):
         # of classes we will crash the train study.
         if self._hparams.task.compute_loss_on_valid:
             total_loss, tagged_loss_values = self.losses(**output)
-            output_dict = {"loss": total_loss}
+            output_dict = {'loss': total_loss}
             output_dict.update(tagged_loss_values)
         else:
             output_dict = {}
@@ -161,24 +160,24 @@ class BaseTask(LightningModule, ABC):
     def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
         for tag, value in output_dict.items():
-            self.log(f"train/{tag}", value, on_step=False, on_epoch=True, batch_size=len(outputs))
+            self.log(f'train/{tag}', value, on_step=False, on_epoch=True, batch_size=len(outputs))
         return output_dict
 
     def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
         for tag, value in output_dict.items():
-            self.log(f"valid/{tag}", value, on_step=False, on_epoch=True, batch_size=len(outputs))
+            self.log(f'valid/{tag}', value, on_step=False, on_epoch=True, batch_size=len(outputs))
         return output_dict
 
     def training_epoch_end(self, training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TRAIN))
-        self.log("step", float(self.current_epoch), on_step=False, on_epoch=True)
+        self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
 
     def validation_epoch_end(self, valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.VALID))
-        self.log("step", float(self.current_epoch), on_step=False, on_epoch=True)
+        self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
 
     def test_epoch_end(self, test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
