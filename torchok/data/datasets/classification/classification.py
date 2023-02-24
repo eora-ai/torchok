@@ -122,6 +122,9 @@ class ImageClassificationDataset(ImageDataset):
 
         return sample
 
+    def get_sampler_weights(self):
+        return self.csv['weight'].values
+
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
 

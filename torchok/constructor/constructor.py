@@ -9,9 +9,9 @@ from torch.nn import Module, ModuleList
 from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.modules.instancenorm import _InstanceNorm
 from torch.optim import Optimizer
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Sampler
 
-from torchok.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from torchok.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS, SAMPLERS
 from torchok.constructor.config_structure import Phase
 from torchok.data.datasets.base import ImageDataset
 from torchok.losses.base import JointLoss
@@ -281,22 +281,41 @@ class Constructor:
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
         if phase in self.hparams.data:
-            dataloaders = [
-                self._prepare_dataloader(phase_params.dataset, phase_params.dataloader)
-                for phase_params in self.hparams.data[phase] if phase_params is not None
-            ]
+            dataloaders = []
+            for phase_params in self.hparams.data[phase]:
+                if phase_params is not None:
+                    sampler_params = phase_params.sampler if phase_params.get('sampler') else None
+                    dataloaders.append(self._prepare_dataloader(phase_params.dataset,
+                                                                phase_params.dataloader,
+                                                                sampler_params))
+
             dataloaders = dataloaders if len(dataloaders) > 1 else dataloaders[0]
             return dataloaders
         else:
             return []
 
     @staticmethod
-    def _prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:
+    def _prepare_sampler(dataset: ImageDataset, sampler_params: DictConfig) -> Sampler:
+
+        if sampler_params:
+            sampler_weights = dataset.get_sampler_weights()
+            sampler = SAMPLERS.get(sampler_params.name)(weights=sampler_weights,
+                                                        num_samples=len(dataset),
+                                                        **sampler_params.params)
+        else:
+            sampler = None
+        return sampler
+
+    @staticmethod
+    def _prepare_dataloader(dataset_params: DictConfig,
+                            dataloader_params: DictConfig,
+                            sampler_params: DictConfig) -> DataLoader:
         dataset = Constructor._create_dataset(dataset_params)
         collate_fn = dataset.collate_fn if hasattr(dataset, 'collate_fn') else None
-
+        sampler = Constructor._prepare_sampler(dataset, sampler_params)
         loader = DataLoader(dataset=dataset,
                             collate_fn=collate_fn,
+                            sampler=sampler,
                             **dataloader_params)
 
         return loader
