@@ -91,6 +91,7 @@ class ImageClassificationDataset(ImageDataset):
         self.multilabel = multilabel
         self.lazy_init = lazy_init
         self.csv_path = csv_path
+        self.weight_column = 'weight'
 
         csv_path = self.data_folder / self.csv_path
         dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
@@ -122,8 +123,10 @@ class ImageClassificationDataset(ImageDataset):
 
         return sample
 
-    def get_sampler_weights(self):
-        return self.csv['weight'].values
+    def get_sampler_weights(self, weight_column=None):
+        if weight_column is None:
+            weight_column = self.weight_column
+        return self.csv[weight_column].values
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.

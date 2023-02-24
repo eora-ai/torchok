@@ -298,7 +298,8 @@ class Constructor:
     def _prepare_sampler(dataset: ImageDataset, sampler_params: DictConfig) -> Sampler:
 
         if sampler_params:
-            sampler_weights = dataset.get_sampler_weights()
+            csv_column = sampler_params.csv_column if sampler_params.get('csv_column') else None
+            sampler_weights = dataset.get_sampler_weights(csv_column)
             sampler = SAMPLERS.get(sampler_params.name)(weights=sampler_weights,
                                                         num_samples=len(dataset),
                                                         **sampler_params.params)
