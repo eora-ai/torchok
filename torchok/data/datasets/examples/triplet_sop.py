@@ -54,7 +54,7 @@ class TRIPLET_SOP(ImageDataset):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
-            reader_library: Image reading library. Can be 'opnecv'or 'pillow'.
+            reader_library: Image reading library. Can be 'opencv'or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
