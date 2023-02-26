@@ -16,13 +16,16 @@ Image.MAX_IMAGE_PIXELS = 933120000
 class ImageDataset(Dataset, ABC):
     """An abstract class for image dataset."""
 
-    def __init__(self,
-                 transform: Optional[Union[BasicTransform, BaseCompose]],
-                 augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-                 input_dtype: str = 'float32',
-                 image_format: str = 'rgb',
-                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
-                 test_mode: bool = False):
+    def __init__(
+        self,
+        transform: Optional[Union[BasicTransform, BaseCompose]],
+        augment: Optional[Union[BasicTransform, BaseCompose]] = None,
+        input_dtype: str = "float32",
+        reader_library: str = "opencv",
+        image_format: str = "rgb",
+        rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
+        test_mode: bool = False,
+    ):
         """Init ImageDataset.
 
         Args:
@@ -31,6 +34,7 @@ class ImageDataset(Dataset, ABC):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
+            reader_library: Image reading library. Can be 'opencv'or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
@@ -39,6 +43,7 @@ class ImageDataset(Dataset, ABC):
         self.transform = transform
         self.augment = augment
         self.input_dtype = input_dtype
+        self.reader_library = reader_library
         self.image_format = image_format
         self.rgba_layout_color = rgba_layout_color
 
@@ -60,22 +65,43 @@ class ImageDataset(Dataset, ABC):
         return new_sample
 
     def _read_image(self, image_path: str) -> np.ndarray:
-        image = np.array(imopen(image_path))
+        if self.reader_library == "opencv":
+            image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+        elif self.reader_library == "pillow":
+            image = np.array(imopen(image_path))
+        else:
+            raise ValueError(f"Unsupported reader labrary format `{self.reader_library}`")
 
-        if self.image_format == 'rgb':
+        if image is None:
+            raise ValueError(f"{image_path} image does not exist")
+
+        image = self._convert_image_format(image)
+
+        return image
+
+    def _read_image_with_opencv(self, image_path: str) -> np.ndarray:
+        image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+        image = np.array(imopen(image_path))
+        if image is None:
+            raise ValueError(f"{image_path} image does not exist")
+
+        return image
+
+    def _convert_image_format(self, image: np.ndarray) -> np.ndarray:
+        if self.image_format == "rgb":
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             elif image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
                 image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
-                image = image.astype('uint8')
+                image = image.astype("uint8")
             elif image.shape[2] == 2:  # Gray with Alpha, LA mode in Pillow
                 gray = image[..., 0]
                 alpha = image[..., 1:2] / 255
                 rgb_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
                 image = np.clip(rgb_image * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
-                image = image.astype('uint8')
-        elif self.image_format == 'rgba':
+                image = image.astype("uint8")
+        elif self.image_format == "rgba":
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGBA)
             elif image.shape[2] == 3:  # RGB
@@ -85,13 +111,13 @@ class ImageDataset(Dataset, ABC):
                 alpha = image[..., 1:2]
                 rgb_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
                 image = np.concatenate([rgb_image, alpha], axis=-1)
-        elif self.image_format == 'bgr':
+        elif self.image_format == "bgr":
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
             elif image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
                 image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
-                image = cv2.cvtColor(image.astype('uint8'), cv2.COLOR_RGB2BGR)
+                image = cv2.cvtColor(image.astype("uint8"), cv2.COLOR_RGB2BGR)
             elif image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
             elif image.shape[2] == 2:  # Gray with Alpha, LA mode in Pillow
@@ -99,12 +125,12 @@ class ImageDataset(Dataset, ABC):
                 alpha = image[..., 1:2] / 255
                 bgr_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
                 image = np.clip(bgr_image * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
-                image = image.astype('uint8')
-        elif self.image_format == 'gray':
+                image = image.astype("uint8")
+        elif self.image_format == "gray":
             if image.ndim == 3 and image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
                 image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
-                image = image.astype('uint8')
+                image = image.astype("uint8")
 
             if image.ndim == 3 and image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -114,13 +140,13 @@ class ImageDataset(Dataset, ABC):
                 alpha = image[..., 1:2] / 255
                 rgb_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
                 image = np.clip(rgb_image * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
-                image = image.astype('uint8')
+                image = image.astype("uint8")
                 image = cv2.cvtColor(gray, cv2.COLOR_RGB2GRAY)
 
             if image.ndim == 2:  # Gray
                 image = image[..., None]
         else:
-            raise ValueError(f'Unsupported image format `{self.image_format}`')
+            raise ValueError(f"Unsupported image format `{self.image_format}`")
 
         return image
 
