@@ -30,6 +30,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
+                 reader_library: str = 'opnecv',
                  image_format: str = 'rgb',
                  rgba_layout_color: Union[int, Tuple[int, int, int]] = 0):
         """Init UnsupervisedContrastiveDataset.
@@ -44,6 +45,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
                 This should have the interface of transforms in `albumentations` library.
             input_column: column name containing paths to the images.
             input_dtype: data type of the torch tensors related to the image.
+            reader_library: Image reading library. Can be 'opnecv'or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
         """
@@ -51,6 +53,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
+            reader_library=reader_library,
             image_format=image_format,
             rgba_layout_color=rgba_layout_color,
         )
