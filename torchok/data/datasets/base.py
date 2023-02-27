@@ -69,9 +69,9 @@ class ImageDataset(Dataset, ABC):
             image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
 
             # convert bgr format to rgb, like in pillow
-            if image.dim == 3 and image.shape[2] == 3:
+            if image.ndim == 3 and image.shape[2] == 3:
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            elif image.dim == 3 and image.shape[2] == 4:
+            elif image.ndim == 3 and image.shape[2] == 4:
                 image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
 
         elif self.reader_library == "pillow":
