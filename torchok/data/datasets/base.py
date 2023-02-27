@@ -66,36 +66,28 @@ class ImageDataset(Dataset, ABC):
 
     def _read_image(self, image_path: str) -> np.ndarray:
         if self.reader_library == "opencv":
-            image = self._read_image_opencv(image_path)
+            image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+
+            # convert bgr format to rgb, like in pillow
+            if image.dim == 3 and image.shape[2] == 3:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            elif image.dim == 3 and image.shape[2] == 4:
+                image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
+
         elif self.reader_library == "pillow":
-            image = self._read_image_pillow(image_path)
+            # TODO check all formats for Pillow. Now P format doesnt work!
+            image = np.array(imopen(image_path))
         else:
             raise ValueError(f"Unsupported reader labrary format `{self.reader_library}`")
 
-        return image
+        if image is None:
+            raise ValueError(f"{image_path} image does not exist")
 
-    def _read_image_opencv(self, image_path: str) -> np.ndarray:
-        if self.image_format == "gray":
-            image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
-            image = image[..., None]
-        elif self.image_format == "bgr":
-            image = cv2.imread(str(image_path))
-        elif self.image_format == "rgb":
-            image = cv2.imread(str(image_path))
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        elif self.image_format == "rgba":
-            image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
-            if image.ndim == 2:  # Gray
-                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGBA)
-            elif image.shape[2] == 3:  # BGR
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
-        else:
-            raise ValueError(f"Unsupported image format `{self.image_format}`")
+        image = self._convert_image_format(image)
 
         return image
 
-    def _read_image_pillow(self, image_path: str) -> np.ndarray:
-        image = np.array(imopen(image_path))  # TODO change reading for P format and test
+    def _convert_image_format(self, image: np.ndarray) -> np.ndarray:
         if self.image_format == "rgb":
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
