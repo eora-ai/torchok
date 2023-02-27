@@ -34,7 +34,7 @@ class ImageDataset(Dataset, ABC):
             augment: Optional augment to be applied on a sample.
                 This should have the interface of transforms in `albumentations` library.
             input_dtype: Data type of the torch tensors related to the image.
-            reader_library: Image reading library. Can be 'opencv'or 'pillow'.
+            reader_library: Image reading library. Can be 'opencv' or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
@@ -66,28 +66,36 @@ class ImageDataset(Dataset, ABC):
 
     def _read_image(self, image_path: str) -> np.ndarray:
         if self.reader_library == "opencv":
-            image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+            image = self._read_image_opencv(image_path)
         elif self.reader_library == "pillow":
-            image = np.array(imopen(image_path))
+            image = self._read_image_pillow(image_path)
         else:
             raise ValueError(f"Unsupported reader labrary format `{self.reader_library}`")
 
-        if image is None:
-            raise ValueError(f"{image_path} image does not exist")
+        return image
 
-        image = self._convert_image_format(image)
+    def _read_image_opencv(self, image_path: str) -> np.ndarray:
+        if self.image_format == "gray":
+            image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+            image = image[..., None]
+        elif self.image_format == "bgr":
+            image = cv2.imread(str(image_path))
+        elif self.image_format == "rgb":
+            image = cv2.imread(str(image_path))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        elif self.image_format == "rgba":
+            image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
+            if image.ndim == 2:  # Gray
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGBA)
+            elif image.shape[2] == 3:  # BGR
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGBA)
+        else:
+            raise ValueError(f"Unsupported image format `{self.image_format}`")
 
         return image
 
-    def _read_image_with_opencv(self, image_path: str) -> np.ndarray:
-        image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
-        image = np.array(imopen(image_path))
-        if image is None:
-            raise ValueError(f"{image_path} image does not exist")
-
-        return image
-
-    def _convert_image_format(self, image: np.ndarray) -> np.ndarray:
+    def _read_image_pillow(self, image_path: str) -> np.ndarray:
+        image = np.array(imopen(image_path))  # TODO change reading for P format and test
         if self.image_format == "rgb":
             if image.ndim == 2:  # Gray
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
