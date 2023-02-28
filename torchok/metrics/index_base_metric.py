@@ -7,29 +7,26 @@ import faiss
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import normalize
+
 from torchmetrics import Metric
 
 
 class DatasetType(Enum):
-    CLASSIFICATION = 'classification'
-    REPRESENTATION = 'representation'
+    CLASSIFICATION = "classification"
+    REPRESENTATION = "representation"
 
 
 class MetricDistance(Enum):
-    IP = 'IP'
-    L2 = 'L2'
+    IP = "IP"
+    L2 = "L2"
 
 
 dataset_enum_mapping = {
-    'classification': DatasetType.CLASSIFICATION,
-    'representation': DatasetType.REPRESENTATION,
+    "classification": DatasetType.CLASSIFICATION,
+    "representation": DatasetType.REPRESENTATION,
 }
 
-distance_enum_mapping = {
-    'IP': MetricDistance.IP,
-    'L2': MetricDistance.L2
-}
+distance_enum_mapping = {"IP": MetricDistance.IP, "L2": MetricDistance.L2}
 
 
 class IndexBasedMeter(Metric, ABC):
@@ -41,13 +38,24 @@ class IndexBasedMeter(Metric, ABC):
     Compute method return generator with relevant and closest (FAISS searched) indexes. The relevant index contain
     its relevant index with scores for current query. And the closest contain the closest index with its distance.
     """
+
     full_state_update: bool = False
 
-    def __init__(self, exact_index: bool, dataset_type: str, metric_distance: str,
-                 metric_func: Callable, k_as_target_len: bool = False, k: Optional[int] = None,
-                 use_batching_search: bool = True, search_batch_size: Optional[int] = None,
-                 normalize_vectors: bool = False, group_averaging: bool = False, raise_empty_query: bool = True,
-                 **kwargs):
+    def __init__(
+        self,
+        exact_index: bool,
+        dataset_type: str,
+        metric_distance: str,
+        metric_func: Callable,
+        k_as_target_len: bool = False,
+        k: Optional[int] = None,
+        use_batching_search: bool = True,
+        search_batch_size: Optional[int] = None,
+        normalize_vectors: bool = False,
+        group_averaging: bool = False,
+        raise_empty_query: bool = True,
+        **kwargs,
+    ):
         """Initialize IndexBasedMeter.
 
         Args:
@@ -101,18 +109,23 @@ class IndexBasedMeter(Metric, ABC):
         # but in metric compute study, k must not change
         self.metric_compute_k = k
 
-        self.add_state('vectors', default=[], dist_reduce_fx=None)
+        self.add_state("vectors", default=[], dist_reduce_fx="cat")
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
-            self.add_state('group_labels', default=[], dist_reduce_fx=None)
+            self.add_state("group_labels", default=[], dist_reduce_fx="cat")
         else:
             # if representation dataset
-            self.add_state('query_idxs', default=[], dist_reduce_fx=None)
-            self.add_state('scores', default=[], dist_reduce_fx=None)
-            self.add_state('group_labels', default=[], dist_reduce_fx=None)
+            self.add_state("query_idxs", default=[], dist_reduce_fx="cat")
+            self.add_state("scores", default=[], dist_reduce_fx="cat")
+            self.add_state("group_labels", default=[], dist_reduce_fx="cat")
 
-    def update(self, vectors: torch.Tensor, group_labels: Optional[torch.Tensor] = None,
-               query_idxs: Optional[torch.Tensor] = None, scores: Optional[torch.Tensor] = None):
+    def update(
+        self,
+        vectors: torch.Tensor,
+        group_labels: Optional[torch.Tensor] = None,
+        query_idxs: Optional[torch.Tensor] = None,
+        scores: Optional[torch.Tensor] = None,
+    ):
         """Append tensors in storage.
 
         Args:
@@ -127,12 +140,14 @@ class IndexBasedMeter(Metric, ABC):
             ValueError: If dataset is of classification type and targets is None, or if dataset is of representation
                 type and at least one of scores or query_idxs is None.
         """
-        vectors = vectors.detach().cpu()
+        vectors = vectors.detach()
         self.vectors.append(vectors)
+        # self.vectors = torch.concat([self.vectors, vectors], axis=0)
         if self.dataset_type == DatasetType.CLASSIFICATION:
             if group_labels is None:
                 raise ValueError("In classification dataset group_labels must be not None.")
-            group_labels = group_labels.detach().cpu()
+            group_labels = group_labels.detach()
+            # self.group_labels = torch.concat([self.group_labels, group_labels], axis=0)
             self.group_labels.append(group_labels)
         else:
             if query_idxs is None:
@@ -140,13 +155,16 @@ class IndexBasedMeter(Metric, ABC):
             if scores is None:
                 raise ValueError("In representation dataset scores must be not None")
 
-            query_idxs = query_idxs.detach().cpu()
+            query_idxs = query_idxs.detach()
+            # self.query_idxs = torch.concat([self.query_idxs, query_idxs], axis=0)
             self.query_idxs.append(query_idxs)
 
-            scores = scores.detach().cpu()
+            scores = scores.detach()
+            # self.scores = torch.concat([self.scores, scores], axis=0)
             self.scores.append(scores)
 
-            group_labels = group_labels.detach().cpu()
+            group_labels = group_labels.detach()
+            # self.group_labels = torch.concat([self.group_labels, group_labels], axis=0)
             self.group_labels.append(group_labels)
 
     def compute(self) -> float:
@@ -161,27 +179,42 @@ class IndexBasedMeter(Metric, ABC):
         Returns:
             metric: Metric value.
         """
-        vectors = torch.cat(self.vectors).numpy()
+        if isinstance(self.vectors, list):
+            self.vectors = torch.cat(self.vectors)
+            if self.dataset_type == DatasetType.CLASSIFICATION:
+                self.group_labels = torch.cat(self.group_labels)
+            else:
+                self.scores = torch.cat(self.scores)
+                self.query_idxs = torch.cat(self.query_idxs)
+                self.group_labels = torch.cat(self.group_labels)
+
+        vectors = self.vectors.cpu().numpy()
         if self.normalize_vectors:
-            vectors = normalize(vectors)
+            vectors /= np.linalg.norm(vectors, axis=0)
 
         if self.dataset_type == DatasetType.CLASSIFICATION:
             # if classification dataset
-            group_labels = torch.cat(self.group_labels).numpy()
+            group_labels = self.group_labels.cpu().numpy()
             # prepare data
-            relevant_idxs, faiss_vector_idxs, \
-                query_row_idxs, query_as_relevant = self.prepare_classification_data(group_labels)
+            relevant_idxs, faiss_vector_idxs, query_row_idxs, query_as_relevant = self.prepare_classification_data(
+                group_labels
+            )
             # mock scores and query column indexes because it belongs to representation data
             scores = None
             query_column_idxs = None
         else:
             # if representation dataset
-            scores = torch.cat(self.scores).numpy()
-            query_idxs = torch.cat(self.query_idxs).numpy()
-            group_labels = torch.cat(self.group_labels).numpy()
+            scores = self.scores.cpu().numpy()
+            query_idxs = self.query_idxs.cpu().numpy()
+            group_labels = self.group_labels.cpu().numpy()
             # prepare data
-            relevant_idxs, faiss_vector_idxs, query_column_idxs, \
-                query_row_idxs, query_as_relevant = self.prepare_representation_data(query_idxs, scores)
+            (
+                relevant_idxs,
+                faiss_vector_idxs,
+                query_column_idxs,
+                query_row_idxs,
+                query_as_relevant,
+            ) = self.prepare_representation_data(query_idxs, scores)
 
         # build index
         vectors = vectors.astype(np.float32)
@@ -190,8 +223,9 @@ class IndexBasedMeter(Metric, ABC):
         # split query by group_label if metric compute target averaging
         if self.group_averaging:
             uniq_group_labels = np.unique(group_labels)
-            group_indexes_split = np.array([np.where(group_labels == label)[0] for label in uniq_group_labels],
-                                           dtype=object)
+            group_indexes_split = np.array(
+                [np.where(group_labels == label)[0] for label in uniq_group_labels], dtype=object
+            )
         else:
             group_indexes_split = np.arange(len(group_labels))[None]
 
@@ -213,10 +247,17 @@ class IndexBasedMeter(Metric, ABC):
                 k = self.search_k
 
             # create relevant, closest generator
-            generator = self.query_generator(index, vectors, curr_relevant_idxs,
-                                             curr_query_row_idxs, faiss_vector_idxs,
-                                             curr_query_as_relevant, k,
-                                             scores, curr_query_col_idxs)
+            generator = self.query_generator(
+                index,
+                vectors,
+                curr_relevant_idxs,
+                curr_query_row_idxs,
+                faiss_vector_idxs,
+                curr_query_as_relevant,
+                k,
+                scores,
+                curr_query_col_idxs,
+            )
             for batch_size, args in generator:
                 if min(args[0].shape) == 0:
                     continue
@@ -228,9 +269,15 @@ class IndexBasedMeter(Metric, ABC):
         metric = float(np.mean(metric))
         return metric
 
-    def process_data_for_metric_func(self, closest_scores: np.ndarray, closest_idxs: np.ndarray,
-                                     relevants_idxs: np.ndarray, query_col_idxs: np.ndarray,
-                                     scores: np.ndarray, k: int) -> List:
+    def process_data_for_metric_func(
+        self,
+        closest_scores: np.ndarray,
+        closest_idxs: np.ndarray,
+        relevants_idxs: np.ndarray,
+        query_col_idxs: np.ndarray,
+        scores: np.ndarray,
+        k: int,
+    ) -> List:
         """Process obtained data after faiss search for metric function. Output of this function will be use like
         *args for self.metric_func and will be call in self.compute() method
 
@@ -244,8 +291,9 @@ class IndexBasedMeter(Metric, ABC):
         """
         pass
 
-    def prepare_representation_data(self, query_idxs: np.ndarray, scores: np.ndarray
-                                    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def prepare_representation_data(
+        self, query_idxs: np.ndarray, scores: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Prepare data for faiss build index, and following search, in representation dataset case.
 
         Separate query and database vectors from storage vectors.
@@ -309,11 +357,13 @@ class IndexBasedMeter(Metric, ABC):
 
         relevant_idxs = []
         for query_col_idx in query_column_idxs:
-            curr_relevant_idxs = np.where(scores[:, query_col_idx] > 0.)[0]
+            curr_relevant_idxs = np.where(scores[:, query_col_idx] > 0.0)[0]
             if len(curr_relevant_idxs) == 0:
                 if self.raise_empty_query:
-                    raise ValueError('Representation metric. The dataset contains a query vector that does not '
-                                     'has relevants. Set parameter raise_empty_query to False for compute.')
+                    raise ValueError(
+                        "Representation metric. The dataset contains a query vector that does not "
+                        "has relevants. Set parameter raise_empty_query to False for compute."
+                    )
                 relevant_idxs.append([])
             else:
                 # Need to sort relevant indexes by its scores for NDCG metric
@@ -354,7 +404,7 @@ class IndexBasedMeter(Metric, ABC):
                 # need to drop from relevants index which equal query index
                 relevant = group.drop(query_idx).tolist()
                 if len(relevant) == 0 and self.raise_empty_query:
-                    raise ValueError(f'Representation metric. The class {groups.index[i]} has only one element.')
+                    raise ValueError(f"Representation metric. The class {groups.index[i]} has only one element.")
                 query_row_idxs.append(query_idx)
                 relevant_idxs.append(relevant)
 
@@ -391,11 +441,18 @@ class IndexBasedMeter(Metric, ABC):
         faiss_output[~query_as_relevant] = faiss_output_delete_last
         return faiss_output
 
-    def query_generator(self, index: Union[faiss.IndexFlatIP, faiss.IndexFlatL2],
-                        vectors: np.ndarray, relevants_idxs: np.ndarray,
-                        query_row_idxs: np.ndarray, faiss_vector_idxs: np.ndarray, query_as_relevant: np.ndarray,
-                        k: int, scores: Optional[np.ndarray] = None, query_col_idxs: Optional[np.ndarray] = None
-                        ) -> Generator[Tuple[int, List], None, None]:
+    def query_generator(
+        self,
+        index: Union[faiss.IndexFlatIP, faiss.IndexFlatL2],
+        vectors: np.ndarray,
+        relevants_idxs: np.ndarray,
+        query_row_idxs: np.ndarray,
+        faiss_vector_idxs: np.ndarray,
+        query_as_relevant: np.ndarray,
+        k: int,
+        scores: Optional[np.ndarray] = None,
+        query_col_idxs: Optional[np.ndarray] = None,
+    ) -> Generator[Tuple[int, List], None, None]:
         """Create inputs *args for metric function, by faiss index search.
 
         This function use self.search_batch_size to define how many vectors to send per one faiss search request in
@@ -453,11 +510,14 @@ class IndexBasedMeter(Metric, ABC):
             batch_closest_scores = self.clear_faiss_output(batch_closest_scores, batch_query_as_relevant)
             batch_closest_idxs = self.clear_faiss_output(batch_closest_idxs, batch_query_as_relevant)
 
-            metric_input_list = self.process_data_for_metric_func(closest_scores=batch_closest_scores,
-                                                                  closest_idxs=batch_closest_idxs,
-                                                                  relevants_idxs=batch_relevants_idxs,
-                                                                  query_col_idxs=batch_query_col_idxs,
-                                                                  scores=scores, k=k)
+            metric_input_list = self.process_data_for_metric_func(
+                closest_scores=batch_closest_scores,
+                closest_idxs=batch_closest_idxs,
+                relevants_idxs=batch_relevants_idxs,
+                query_col_idxs=batch_query_col_idxs,
+                scores=scores,
+                k=k,
+            )
             yield len(batch_idxs), list(metric_input_list)
 
     def build_index(self, vectors: np.ndarray):
@@ -476,7 +536,7 @@ class IndexBasedMeter(Metric, ABC):
         if self.exact_index:
             index = index_class(d)
         else:
-            nlist = 4 * math.ceil(n ** 0.5)
+            nlist = 4 * math.ceil(n**0.5)
             quantizer = index_class(d)
             index = faiss.IndexIVFFlat(quantizer, d, nlist, self.metric_distance.value)
             index.train(vectors)
