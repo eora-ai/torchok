@@ -15,8 +15,8 @@ class MultiHeadClassificationTask(BaseTask):
             self,
             hparams: DictConfig,
             backbone_name: str,
-            pooling_name: str,
             heads: List[Dict[str, Any]],
+            pooling_name: str = None,
             neck_name: str = None,
             backbone_params: dict = None,
             neck_params: dict = None,
@@ -69,9 +69,8 @@ class MultiHeadClassificationTask(BaseTask):
             head_type = HEADS.get(head['type'])
             head_name = head['name']
             target = head['target']
-            head['params']['in_channels'] = self.pooling.out_features
 
-            self.heads[head_name] = head_type(**head['params'])
+            self.heads[head_name] = head_type(in_channels=self.pooling.out_channels, **head['params'])
             self.target_mapping[head_name] = target
 
     def forward(self, x):
@@ -107,7 +106,7 @@ class MultiHeadClassificationTask(BaseTask):
                 `b` is less or equal than `B` and depends on `condition_*`.
         """
 
-        features = self.backbone(batch['input'])
+        features = self.backbone(batch['image'])
         features = self.pooling(features)
         output = {'embeddings': features}
         for head_name, head in self.heads.items():

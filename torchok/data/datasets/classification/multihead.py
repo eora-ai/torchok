@@ -129,6 +129,6 @@ class MultiHeadImageDataset(ImageDataset):
     def __getitem__(self, idx: int) -> dict:
         sample = self.get_raw(idx)
         sample = self._apply_transform(self.transform, sample)
-        sample['input'] = sample['input'].type(torch.__dict__[self.input_dtype])
+        sample['image'] = sample['image'].type(torch.__dict__[self.input_dtype])
 
         return sample
