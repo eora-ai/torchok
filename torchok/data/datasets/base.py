@@ -73,9 +73,7 @@ class ImageDataset(Dataset, ABC):
             image = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
 
             if image.dtype != np.uint8:
-                warnings.warn(
-                    f"Incorrect image dtype `{image.dtype}` for image: `{image_path}`"
-                )
+                warnings.warn(f"Incorrect image dtype `{image.dtype}` for image: `{image_path}`")
                 image = (image // 256).astype("uint8")
 
             # convert bgr format to rgb, like in pillow
@@ -85,13 +83,10 @@ class ImageDataset(Dataset, ABC):
                 image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
 
         elif self.reader_library == "pillow":
-            # TODO check all formats for Pillow. Now P format doesnt work!
             image = imopen(image_path)
             image = np.array(image.convert("RGBA"))
         else:
-            raise ValueError(
-                f"Unsupported reader labrary format `{self.reader_library}`"
-            )
+            raise ValueError(f"Unsupported reader labrary format `{self.reader_library}`")
 
         if image is None:
             raise ValueError(f"{image_path} image does not exist")
@@ -106,21 +101,13 @@ class ImageDataset(Dataset, ABC):
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
             elif image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
-                image = np.clip(
-                    image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha),
-                    a_min=0,
-                    a_max=255,
-                )
+                image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype("uint8")
             elif image.shape[2] == 2:  # Gray with Alpha, LA mode in Pillow
                 gray = image[..., 0]
                 alpha = image[..., 1:2] / 255
                 rgb_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
-                image = np.clip(
-                    rgb_image * alpha + self.rgba_layout_color * (1 - alpha),
-                    a_min=0,
-                    a_max=255,
-                )
+                image = np.clip(rgb_image * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype("uint8")
         elif self.image_format == "rgba":
             if image.ndim == 2:  # Gray
@@ -137,11 +124,7 @@ class ImageDataset(Dataset, ABC):
                 image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
             elif image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
-                image = np.clip(
-                    image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha),
-                    a_min=0,
-                    a_max=255,
-                )
+                image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = cv2.cvtColor(image.astype("uint8"), cv2.COLOR_RGB2BGR)
             elif image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -149,36 +132,22 @@ class ImageDataset(Dataset, ABC):
                 gray = image[..., 0]
                 alpha = image[..., 1:2] / 255
                 bgr_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-                image = np.clip(
-                    bgr_image * alpha + self.rgba_layout_color * (1 - alpha),
-                    a_min=0,
-                    a_max=255,
-                )
+                image = np.clip(bgr_image * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype("uint8")
         elif self.image_format == "gray":
             if image.ndim == 3 and image.shape[2] == 4:  # RGBA
                 alpha = image[..., 3:4] / 255
-                image = np.clip(
-                    image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha),
-                    a_min=0,
-                    a_max=255,
-                )
+                image = np.clip(image[..., :3] * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype("uint8")
 
             if image.ndim == 3 and image.shape[2] == 3:  # RGB
                 image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-            if (
-                image.ndim == 3 and image.shape[2] == 2
-            ):  # Gray with Alpha, LA mode in Pillow
+            if image.ndim == 3 and image.shape[2] == 2:  # Gray with Alpha, LA mode in Pillow
                 gray = image[..., 0]
                 alpha = image[..., 1:2] / 255
                 rgb_image = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
-                image = np.clip(
-                    rgb_image * alpha + self.rgba_layout_color * (1 - alpha),
-                    a_min=0,
-                    a_max=255,
-                )
+                image = np.clip(rgb_image * alpha + self.rgba_layout_color * (1 - alpha), a_min=0, a_max=255)
                 image = image.astype("uint8")
                 image = cv2.cvtColor(gray, cv2.COLOR_RGB2GRAY)
 
