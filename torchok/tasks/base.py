@@ -25,7 +25,7 @@ class BaseTask(LightningModule, ABC):
             inputs: information about input model shapes and dtypes.
         """
         super().__init__()
-        self.save_hyperparameters(hparams, logger=False)
+        self.save_hyperparameters(hparams)
         self._constructor = Constructor(hparams)
         self.input_tensor_names = []
         self.losses = self._constructor.configure_losses() if hparams.get('joint_loss') is not None else None
