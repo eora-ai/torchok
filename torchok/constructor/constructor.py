@@ -281,14 +281,10 @@ class Constructor:
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
         if phase in self.hparams.data:
-            dataloaders = []
-            for phase_params in self.hparams.data[phase]:
-                if phase_params is not None:
-                    sampler_params = phase_params.sampler if phase_params.get('sampler') else None
-                    dataloaders.append(self._prepare_dataloader(phase_params.dataset,
-                                                                phase_params.dataloader,
-                                                                sampler_params))
-
+            dataloaders = [
+                self._prepare_dataloader(phase_params.dataset, phase_params.dataloader)
+                for phase_params in self.hparams.data[phase] if phase_params is not None
+            ]
             dataloaders = dataloaders if len(dataloaders) > 1 else dataloaders[0]
             return dataloaders
         else:
@@ -297,9 +293,8 @@ class Constructor:
     @staticmethod
     def _prepare_sampler(dataset: ImageDataset, sampler_params: DictConfig) -> Sampler:
 
-        if sampler_params:
-            csv_column = sampler_params.csv_column if sampler_params.get('csv_column') else None
-            sampler_weights = dataset.get_sampler_weights(csv_column)
+        if sampler_params is not None:
+            sampler_weights = dataset.get_sampler_weights()
             sampler = SAMPLERS.get(sampler_params.name)(weights=sampler_weights,
                                                         num_samples=len(dataset),
                                                         **sampler_params.params)
@@ -309,10 +304,10 @@ class Constructor:
 
     @staticmethod
     def _prepare_dataloader(dataset_params: DictConfig,
-                            dataloader_params: DictConfig,
-                            sampler_params: DictConfig) -> DataLoader:
+                            dataloader_params: DictConfig) -> DataLoader:
         dataset = Constructor._create_dataset(dataset_params)
         collate_fn = dataset.collate_fn if hasattr(dataset, 'collate_fn') else None
+        sampler_params = dataset_params.get('sampler', None)
         sampler = Constructor._prepare_sampler(dataset, sampler_params)
         loader = DataLoader(dataset=dataset,
                             collate_fn=collate_fn,

@@ -40,6 +40,7 @@ class ImageClassificationDataset(ImageDataset):
                  input_dtype: str = 'float32',
                  target_column: str = 'label',
                  target_dtype: str = 'long',
+                 weight_column: str = 'weight',
                  image_format: str = 'rgb',
                  rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False,
@@ -61,6 +62,7 @@ class ImageClassificationDataset(ImageDataset):
             input_dtype: Data type of the torch tensors related to the image.
             target_column: column name containing image label.
             target_dtype: Data type of the torch tensors related to the target.
+            weight_column: column name containing weights for each image.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
@@ -91,7 +93,7 @@ class ImageClassificationDataset(ImageDataset):
         self.multilabel = multilabel
         self.lazy_init = lazy_init
         self.csv_path = csv_path
-        self.weight_column = 'weight'
+        self.weight_column = weight_column
 
         csv_path = self.data_folder / self.csv_path
         dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
@@ -123,10 +125,10 @@ class ImageClassificationDataset(ImageDataset):
 
         return sample
 
-    def get_sampler_weights(self, weight_column=None):
-        if weight_column is None:
-            weight_column = self.weight_column
-        return self.csv[weight_column].values
+    def get_sampler_weights(self):
+        if self.weight_column not in self.csv.columns:
+            raise KeyError(f"Weight column {self.weight_column} doesn't exsist in the csv file")
+        return self.csv[self.weight_column].values
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
