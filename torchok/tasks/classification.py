@@ -17,8 +17,8 @@ class ClassificationTask(BaseTask):
             self,
             hparams: DictConfig,
             backbone_name: str,
-            pooling_name: str,
-            head_name: str,
+            pooling_name: str = None,
+            head_name: str = None,
             neck_name: str = None,
             backbone_params: dict = None,
             neck_params: dict = None,
@@ -57,12 +57,20 @@ class ClassificationTask(BaseTask):
             pooling_in_channels = self.neck.out_channels
 
         # POOLING
-        pooling_params = pooling_params or dict()
-        self.pooling = POOLINGS.get(pooling_name)(in_channels=pooling_in_channels, **pooling_params)
+        if pooling_name is None:
+            self.pooling = nn.Identity()
+            head_in_channels = self.backbone.out_channels
+        else:
+            pooling_params = pooling_params or dict()
+            self.pooling = POOLINGS.get(pooling_name)(in_channels=pooling_in_channels, **pooling_params)
+            head_in_channels = self.pooling.out_channels
 
         # HEAD
-        head_params = head_params or dict()
-        self.head = HEADS.get(head_name)(in_channels=self.pooling.out_channels, **head_params)
+        if head_name is None:
+            self.head = nn.Identity()
+        else:
+            head_params = head_params or dict()
+            self.head = HEADS.get(head_name)(in_channels=head_in_channels, **head_params)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method.
