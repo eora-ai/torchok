@@ -22,7 +22,7 @@ class PairwiseLearnTask(ClassificationTask):
             hparams: DictConfig,
             num_classes: int,
             backbone_name: str,
-            pooling_name: str,
+            pooling_name: str = None,
             head_name: str = None,
             neck_name: str = None,
             backbone_params: dict = None,
