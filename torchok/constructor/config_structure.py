@@ -69,13 +69,13 @@ class DatasetParams:
     params: Dict
     transform: List[AugmentationParams]
     augment: Optional[List[AugmentationParams]] = field(default_factory=list)
-    sampler: Optional[SamplerParams] = None
 
 
 @dataclass
 class DataParams:
     dataset: DatasetParams
     dataloader: Dict
+    sampler: Optional[SamplerParams] = None
 
 
 # Losses parameters

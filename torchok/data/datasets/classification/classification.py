@@ -40,7 +40,6 @@ class ImageClassificationDataset(ImageDataset):
                  input_dtype: str = 'float32',
                  target_column: str = 'label',
                  target_dtype: str = 'long',
-                 weight_column: str = 'weight',
                  image_format: str = 'rgb',
                  rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False,
@@ -93,7 +92,6 @@ class ImageClassificationDataset(ImageDataset):
         self.multilabel = multilabel
         self.lazy_init = lazy_init
         self.csv_path = csv_path
-        self.weight_column = weight_column
 
         csv_path = self.data_folder / self.csv_path
         dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
@@ -124,11 +122,6 @@ class ImageClassificationDataset(ImageDataset):
         sample = self._apply_transform(self.augment, sample)
 
         return sample
-
-    def get_sampler_weights(self):
-        if self.weight_column not in self.csv.columns:
-            raise KeyError(f"Weight column {self.weight_column} doesn't exsist in the csv file")
-        return self.csv[self.weight_column].values
 
     def __getitem__(self, idx: int) -> dict:
         """Get item sample.
