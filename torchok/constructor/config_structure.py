@@ -58,6 +58,12 @@ class AugmentationParams:
 
 
 @dataclass
+class SamplerParams:
+    name: str
+    params: Dict = field(default_factory=dict)
+
+
+@dataclass
 class DatasetParams:
     name: str
     params: Dict
@@ -69,6 +75,7 @@ class DatasetParams:
 class DataParams:
     dataset: DatasetParams
     dataloader: Dict
+    sampler: Optional[SamplerParams] = None
 
 
 # Losses parameters

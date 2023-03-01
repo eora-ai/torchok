@@ -11,7 +11,7 @@ from torch.nn.modules.instancenorm import _InstanceNorm
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from torchok.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS
+from torchok.constructor import DATASETS, LOSSES, OPTIMIZERS, SCHEDULERS, TRANSFORMS, SAMPLERS
 from torchok.constructor.config_structure import Phase
 from torchok.data.datasets.base import ImageDataset
 from torchok.losses.base import JointLoss
@@ -282,7 +282,7 @@ class Constructor:
         """
         if phase in self.hparams.data:
             dataloaders = [
-                self._prepare_dataloader(phase_params.dataset, phase_params.dataloader)
+                self._prepare_dataloader(phase_params.dataset, phase_params.dataloader, phase_params.get('sampler'))
                 for phase_params in self.hparams.data[phase] if phase_params is not None
             ]
             dataloaders = dataloaders if len(dataloaders) > 1 else dataloaders[0]
@@ -291,12 +291,18 @@ class Constructor:
             return []
 
     @staticmethod
-    def _prepare_dataloader(dataset_params: DictConfig, dataloader_params: DictConfig) -> DataLoader:
+    def _prepare_dataloader(dataset_params: DictConfig,
+                            dataloader_params: DictConfig,
+                            sampler_params: DictConfig) -> DataLoader:
         dataset = Constructor._create_dataset(dataset_params)
         collate_fn = dataset.collate_fn if hasattr(dataset, 'collate_fn') else None
-
+        sampler = None
+        if sampler_params is not None:
+            num_samples = sampler_params.params.get('num_samples', len(dataset))
+            sampler = SAMPLERS.get(sampler_params.name)(num_samples=num_samples, **sampler_params.params)
         loader = DataLoader(dataset=dataset,
                             collate_fn=collate_fn,
+                            sampler=sampler,
                             **dataloader_params)
 
         return loader
