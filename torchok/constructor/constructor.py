@@ -284,7 +284,7 @@ class Constructor:
             dataloaders = []
             for phase_params in self.hparams.data[phase]:
                 if phase_params is not None:
-                    sampler_params = phase_params.sampler if phase_params.get('sampler') else None
+                    sampler_params = phase_params.get('sampler', None)
                     dataloaders.append(self._prepare_dataloader(phase_params.dataset,
                                                                 phase_params.dataloader,
                                                                 sampler_params))

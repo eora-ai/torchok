@@ -16,8 +16,8 @@ class WeightedSampler(WeightedRandomSampler):
     def __init__(self,
                  data_folder: str,
                  csv_path: str,
-                 weight_column: str,
                  num_samples: int,
+                 weight_column: str = "weight",
                  replacement: bool = True) -> WeightedRandomSampler:
 
         csv_path = Path(data_folder, csv_path)
