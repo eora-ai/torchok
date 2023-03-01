@@ -33,6 +33,7 @@ class ImageSegmentationDataset(ImageDataset):
                  input_dtype: str = 'float32',
                  target_column: str = 'mask_path',
                  target_dtype: str = 'int64',
+                 reader_library: str = 'opencv',
                  image_format: str = 'rgb',
                  rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False):
@@ -50,6 +51,7 @@ class ImageSegmentationDataset(ImageDataset):
             input_column: column name containing paths to the images.
             input_dtype: Data type of the torch tensors related to the image.
             target_dtype: Data type of the torch tensors related to the target.
+            reader_library: Image reading library. Can be 'opencv'or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
@@ -58,6 +60,7 @@ class ImageSegmentationDataset(ImageDataset):
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
+            reader_library=reader_library,
             image_format=image_format,
             rgba_layout_color=rgba_layout_color,
             test_mode=test_mode
