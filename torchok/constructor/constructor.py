@@ -281,13 +281,10 @@ class Constructor:
             - ValueError: When OneOrOther composition is passed that isn't supported
         """
         if phase in self.hparams.data:
-            dataloaders = []
-            for phase_params in self.hparams.data[phase]:
-                if phase_params is not None:
-                    sampler_params = phase_params.get('sampler', None)
-                    dataloaders.append(self._prepare_dataloader(phase_params.dataset,
-                                                                phase_params.dataloader,
-                                                                sampler_params))
+            dataloaders = [
+                self._prepare_dataloader(phase_params.dataset, phase_params.dataloader, phase_params.get('sampler'))
+                for phase_params in self.hparams.data[phase] if phase_params is not None
+            ]
             dataloaders = dataloaders if len(dataloaders) > 1 else dataloaders[0]
             return dataloaders
         else:
@@ -299,12 +296,10 @@ class Constructor:
                             sampler_params: DictConfig) -> DataLoader:
         dataset = Constructor._create_dataset(dataset_params)
         collate_fn = dataset.collate_fn if hasattr(dataset, 'collate_fn') else None
+        sampler = None
         if sampler_params is not None:
             num_samples = sampler_params.params.get('num_samples', len(dataset))
-        sampler = (
-            SAMPLERS.get(sampler_params.name)(num_samples=num_samples, **sampler_params.params)
-            if sampler_params is not None else None
-        )
+            sampler = SAMPLERS.get(sampler_params.name)(num_samples=num_samples, **sampler_params.params)
         loader = DataLoader(dataset=dataset,
                             collate_fn=collate_fn,
                             sampler=sampler,
