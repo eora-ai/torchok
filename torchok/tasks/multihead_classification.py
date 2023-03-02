@@ -16,8 +16,8 @@ class MultiHeadClassificationTask(BaseTask):
             hparams: DictConfig,
             backbone_name: str,
             heads: List[Dict[str, Any]],
-            pooling_name: str = None,
             neck_name: str = None,
+            pooling_name: str = None,
             backbone_params: dict = None,
             neck_params: dict = None,
             pooling_params: dict = None,
@@ -59,8 +59,13 @@ class MultiHeadClassificationTask(BaseTask):
             pooling_in_channels = self.neck.out_channels
 
         # POOLING
-        pooling_params = pooling_params or dict()
-        self.pooling = POOLINGS.get(pooling_name)(in_channels=pooling_in_channels, **pooling_params)
+        if pooling_name is None:
+            self.pooling = nn.Identity()
+            head_in_channels = self.backbone.out_channels
+        else:
+            pooling_params = pooling_params or dict()
+            self.pooling = POOLINGS.get(pooling_name)(in_channels=pooling_in_channels, **pooling_params)
+            head_in_channels = self.pooling.out_channels
 
         # HEADS
         self.heads = nn.ModuleDict()
@@ -70,7 +75,7 @@ class MultiHeadClassificationTask(BaseTask):
             head_name = head['name']
             target = head['target']
 
-            self.heads[head_name] = head_type(in_channels=self.pooling.out_channels, **head['params'])
+            self.heads[head_name] = head_type(in_channels=head_in_channels, **head['params'])
             self.target_mapping[head_name] = target
 
     def forward(self, x):
