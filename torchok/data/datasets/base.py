@@ -1,16 +1,14 @@
+import warnings
 from abc import ABC, abstractmethod
 from typing import Optional, Union, Tuple
 
 import cv2
 import numpy as np
-import warnings
-
 from PIL import Image
 from PIL.Image import open as imopen
 from albumentations import BasicTransform
 from albumentations.core.composition import BaseCompose
 from torch.utils.data import Dataset
-
 
 Image.MAX_IMAGE_PIXELS = 933120000
 
@@ -19,14 +17,14 @@ class ImageDataset(Dataset, ABC):
     """An abstract class for image dataset."""
 
     def __init__(
-        self,
-        transform: Optional[Union[BasicTransform, BaseCompose]],
-        augment: Optional[Union[BasicTransform, BaseCompose]] = None,
-        input_dtype: str = "float32",
-        reader_library: str = "opencv",
-        image_format: str = "rgb",
-        rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
-        test_mode: bool = False,
+            self,
+            transform: Optional[Union[BasicTransform, BaseCompose]],
+            augment: Optional[Union[BasicTransform, BaseCompose]] = None,
+            input_dtype: str = "float32",
+            reader_library: str = "opencv",
+            image_format: str = "rgb",
+            rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
+            test_mode: bool = False,
     ):
         """Init ImageDataset.
 
@@ -49,9 +47,7 @@ class ImageDataset(Dataset, ABC):
         self.image_format = image_format
         self.rgba_layout_color = rgba_layout_color
 
-    def _apply_transform(
-        self, transform: Union[BasicTransform, BaseCompose], sample: dict
-    ) -> dict:
+    def _apply_transform(self, transform: Union[BasicTransform, BaseCompose], sample: dict) -> dict:
         """Is transformations based on API of albumentations library.
 
         Args:

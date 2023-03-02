@@ -3,6 +3,7 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import seed_everything
 from torch.multiprocessing import set_start_method
 
+import torch
 import torchok
 from torchok.constructor.auto_lr_find import find_lr
 from torchok.constructor.config_structure import ConfigParams
@@ -31,6 +32,8 @@ def entrypoint(config: DictConfig):
     # Seed everything
     if config.seed_params is not None:
         seed_everything(**config.seed_params)
+    # Use float32 datatype for the internal precision of float32 matrix multiplications.
+    torch.set_float32_matmul_precision("highest")
     # Create task
     model = torchok.TASKS.get(config.task.name)(config, **config.task.params)
     trainer = create_trainer(config)

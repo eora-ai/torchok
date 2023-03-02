@@ -139,8 +139,6 @@ class TrainerParams:
     gradient_clip_val: Optional[float] = None
     gradient_clip_algorithm: Optional[str] = None
     num_nodes: int = 1
-    devices: Optional[Any] = None  # Union[List[int], str, int]
-    auto_select_gpus: bool = False
     enable_progress_bar: bool = True
     overfit_batches: Any = 0.0  # Union[int, float]
     track_grad_norm: Any = -1  # Union[int, float, str]
@@ -161,22 +159,21 @@ class TrainerParams:
     accelerator: Optional[str] = None
     strategy: Optional[str] = None
     sync_batchnorm: bool = False
-    precision: Any = 32  # Union[int, str]
+    precision: Any = 32  # Literal[64, 32, 16, "64", "32", "16", "bf16"]
     enable_model_summary: bool = True
     num_sanity_val_steps: int = 2
     resume_from_checkpoint: Optional[str] = None
     profiler: Optional[str] = None
     benchmark: Optional[bool] = None
-    deterministic: Optional[bool] = None
+    deterministic: Optional[bool] = None  # Optional[Union[bool, _LITERAL_WARN]]
     reload_dataloaders_every_n_epochs: int = 0
-    auto_lr_find: bool = False
+    auto_lr_find: bool = False  # Union[bool, str]
     replace_sampler_ddp: bool = True
     detect_anomaly: bool = False
-    auto_scale_batch_size: bool = False
-    amp_backend: str = "native"
-    amp_level: Optional[str] = None
+    auto_scale_batch_size: bool = False  # Union[str, bool]
     move_metrics_to_cpu: bool = False
     multiple_trainloader_mode: str = "max_size_cycle"
+    inference_mode: bool = True
 
 
 # Logger

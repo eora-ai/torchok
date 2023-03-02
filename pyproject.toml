@@ -40,7 +40,7 @@ pandas = [
 parameterized = "~0.8"
 pillow = "~9.1"
 python = ">=3.7,<3.11"
-pytorch-lightning = "1.8.4.post0"
+pytorch-lightning = "1.9.0"
 ranx = "~0.2"
 torch = "1.12.1"
 torchvision = "0.13.1"
