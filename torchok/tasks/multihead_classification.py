@@ -132,4 +132,4 @@ class MultiHeadClassificationTask(BaseTask):
 
     def as_module(self) -> nn.Sequential:
         """Method for model representation as sequential of modules(need for checkpointing)."""
-        raise NotImplemented()
+        raise NotImplementedError()
