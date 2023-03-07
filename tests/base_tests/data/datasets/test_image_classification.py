@@ -64,7 +64,7 @@ class TestClassificationDataset(TestImageDataset, unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.dataset_kwargs['data_folder'] = 'tests/base_tests/data/datasets/data'
-        self.dataset_kwargs['csv_path'] = 'multiclass_test.csv'
+        self.dataset_kwargs['annotation_path'] = 'multiclass_test.csv'
         self.ds_len = 7
         self.output_format = ['image', 'target', 'index']
 
@@ -90,7 +90,7 @@ class TestClassificationDataset(TestImageDataset, unittest.TestCase):
         super().test_output_format()
 
     def test_target_multilabel_vector_len(self):
-        self.dataset_kwargs['csv_path'] = 'multilabel_test.csv'
+        self.dataset_kwargs['annotation_path'] = 'multilabel_test.csv'
         self.dataset_kwargs['multilabel'] = True
         self.dataset_kwargs['num_classes'] = 2
 
