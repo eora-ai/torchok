@@ -1,0 +1,96 @@
+task:
+  name: TiCoTask
+  params:
+    backbone_name: resnet50
+    backbone_params:
+      pretrained: true
+      in_channels: 3
+    inputs:
+      - shape: [3, &height 32, &width 32]
+        dtype: &input_dtype float32
+
+joint_loss:
+  losses:
+    - name: TiCoLoss
+      mapping:
+          prev_cov_matrix: prev_cov_matrix
+          emb_1: emb_1
+          emb_2: emb_2
+
+optimization:
+  - optimizer: 
+      name: SGD
+      params:
+        lr: 0.06
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: 4096
+        num_workers: 8
+        drop_last: true
+        shuffle: true
+      dataset:
+        name: UnsupervisedContrastiveCIFAR10
+        params:
+          input_dtype: *input_dtype
+          train: true
+          download: true
+          data_folder: &data_folder ${oc.env:HOME}/.cache/torchok/cifar10/data
+        transform:
+          - name: RandomResizedCrop
+            params:
+              height: 32
+              width: 32
+              p: 1.0
+          - name: HorizontalFlip
+            params:
+              p: 0.5
+          - name: ColorJitter
+            params:
+              brightness: 0.4
+              contrast: 0.4
+              saturation: 0.4
+              hue: 0.1
+              p: 0.8
+          - name: ToGray
+            params:
+              p: 0.2
+          - &normalize
+            name: Normalize
+            params:
+              mean: [ 0.4914, 0.4822, 0.4465]
+              std: [ 0.2023, 0.1994, 0.2010 ]
+          - &totensor
+            name: ToTensorV2
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: 30
+  precision: 32
+  num_sanity_val_steps: 0
+
+seed_params:
+  seed: 42
+  workers: true
+
+logger:
+  log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
+  experiment_name: resnet18
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  name: TensorBoardLogger
+
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.experiment_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: train/loss
+      save_top_k: 1
+      save_last: true
+      mode: min
+      save_weights_only: False
+

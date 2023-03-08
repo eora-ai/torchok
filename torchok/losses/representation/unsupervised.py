@@ -52,3 +52,20 @@ class NT_XentLoss(Module):
         loss = self.ce(sim_mat, labels)
 
         return loss
+
+
+@LOSSES.register_class
+class TiCoLoss(Module):
+    def __init__(self, beta: float = 0.9, rho: float = 20.0):
+        super().__init__()
+
+        self.beta = beta
+        self.rho = rho
+
+    def forward(self, prev_cov_matrix, emb_1, emb_2):
+        z_1 = torch.nn.functional.normalize(emb_1, dim=-1)
+        z_2 = torch.nn.functional.normalize(emb_2, dim=-1)
+        B = torch.mm(z_1.T, z_1) / z_1.shape[0]
+        prev_cov_matrix = self.beta * prev_cov_matrix + (1 - self.beta) * B
+        loss = -(z_1 * z_2).sum(dim=1).mean() + self.rho * (torch.mm(z_1, prev_cov_matrix) * z_1).sum(dim=1).mean()
+        return loss, prev_cov_matrix
