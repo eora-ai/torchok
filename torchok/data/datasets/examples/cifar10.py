@@ -178,7 +178,7 @@ class CIFAR10(ImageDataset):
 
 
 @DATASETS.register_class
-class UnsupervisedContrastiveCIFAR10(ImageDataset):
+class UnsupervisedContrastiveCIFAR10(CIFAR10):
     def __init__(
         self,
         train: bool,

@@ -55,17 +55,92 @@ class NT_XentLoss(Module):
 
 
 @LOSSES.register_class
-class TiCoLoss(Module):
-    def __init__(self, beta: float = 0.9, rho: float = 20.0):
-        super().__init__()
+class TiCoLoss(torch.nn.Module):
+    """Implementation of the Tico Loss from Tico[0] paper.
+    This implementation takes inspiration from the code published
+    by sayannag using Lightly. [1]
+    [0] Jiachen Zhu et. al, 2022, Tico... https://arxiv.org/abs/2206.10698
+    [1] https://github.com/sayannag/TiCo-pytorch
+    Attributes:
+        Args:
+            beta:
+                Coefficient for the EMA update of the covariance
+                Defaults to 0.9 [0].
+            rho:
+                Weight for the covariance term of the loss
+                Defaults to 20.0 [0].
+            gather_distributed:
+                If True then the cross-correlation matrices from all gpus are
+                gathered and summed before the loss calculation.
+    Examples:
+        >>> # initialize loss function
+        >>> loss_fn = TiCoLoss()
+        >>>
+        >>> # generate two random transforms of images
+        >>> t0 = transforms(images)
+        >>> t1 = transforms(images)
+        >>>
+        >>> # feed through model
+        >>> out0, out1 = model(t0, t1)
+        >>>
+        >>> # calculate loss
+        >>> loss = loss_fn(out0, out1)
+    """
 
+    def __init__(
+        self,
+        beta: float = 0.9,
+        rho: float = 20.0,
+        gather_distributed: bool = False,
+        update_covariance_matrix: bool = True,
+    ):
+        super(TiCoLoss, self).__init__()
         self.beta = beta
         self.rho = rho
+        self.C = None
+        self.gather_distributed = gather_distributed
+        self.update_covariance_matrix = update_covariance_matrix
 
-    def forward(self, prev_cov_matrix, emb_1, emb_2):
-        z_1 = torch.nn.functional.normalize(emb_1, dim=-1)
-        z_2 = torch.nn.functional.normalize(emb_2, dim=-1)
-        B = torch.mm(z_1.T, z_1) / z_1.shape[0]
-        prev_cov_matrix = self.beta * prev_cov_matrix + (1 - self.beta) * B
-        loss = -(z_1 * z_2).sum(dim=1).mean() + self.rho * (torch.mm(z_1, prev_cov_matrix) * z_1).sum(dim=1).mean()
-        return loss, prev_cov_matrix
+    def forward(
+        self,
+        z_a: torch.Tensor,
+        z_b: torch.Tensor,
+    ) -> torch.Tensor:
+        """Tico Loss computation. It maximize the agreement among embeddings of different distorted versions of the same image
+        while avoiding collapse using Covariance matrix.
+        Args:
+            z_a:
+                Tensor of shape [batch_size, num_features=256]. Output of the learned backbone.
+            z_b:
+                Tensor of shape [batch_size, num_features=256]. Output of the momentum updated backbone.
+            update_covariance_matrix:
+                Parameter to update the covariance matrix at each iteration.
+        Returns:
+            The loss.
+        """
+
+        assert (
+            z_a.shape[0] > 1 and z_b.shape[0] > 1
+        ), f"z_a and z_b must have batch size > 1 but found {z_a.shape[0]} and {z_b.shape[0]}"
+        assert z_a.shape == z_b.shape, f"z_a and z_b must have same shape but found {z_a.shape} and {z_b.shape}."
+
+        # normalize image
+        z_a = torch.nn.functional.normalize(z_a, dim=1)
+        z_b = torch.nn.functional.normalize(z_b, dim=1)
+
+        # compute auxiliary matrix B
+        B = torch.mm(z_a.T, z_a) / z_a.shape[0]
+
+        # init covariance matrix
+        if self.C is None:
+            self.C = B.new_zeros(B.shape).detach()
+
+        # compute loss
+        C = self.beta * self.C + (1 - self.beta) * B
+        loss = 1 - (z_a * z_b).sum(dim=1).mean() + self.rho * (torch.mm(z_a, C) * z_a).sum(dim=1).mean()
+
+        # update covariance matrix
+        if self.update_covariance_matrix:
+            self.C = C.detach()
+
+        return loss

@@ -3,7 +3,7 @@ task:
   params:
     backbone_name: resnet50
     backbone_params:
-      pretrained: true
+      pretrained: false
       in_channels: 3
     inputs:
       - shape: [3, &height 32, &width 32]
@@ -13,9 +13,8 @@ joint_loss:
   losses:
     - name: TiCoLoss
       mapping:
-          prev_cov_matrix: prev_cov_matrix
-          emb_1: emb_1
-          emb_2: emb_2
+        z_a: emb_1
+        z_b: emb_2
 
 optimization:
   - optimizer: 
@@ -26,7 +25,7 @@ optimization:
 data:
   TRAIN:
     - dataloader:
-        batch_size: 4096
+        batch_size: 2048
         num_workers: 8
         drop_last: true
         shuffle: true
@@ -66,9 +65,10 @@ data:
 
 trainer:
   accelerator: 'gpu'
-  max_epochs: 30
+  max_epochs: 10
   precision: 32
   num_sanity_val_steps: 0
+  deterministic: true
 
 seed_params:
   seed: 42
@@ -76,7 +76,7 @@ seed_params:
 
 logger:
   log_dir: '${oc.env:HOME}/.cache/torchok/cifar10/logs'
-  experiment_name: resnet18
+  experiment_name: tico_my_implement
   timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
   name: TensorBoardLogger
 

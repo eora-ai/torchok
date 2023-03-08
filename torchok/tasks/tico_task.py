@@ -27,6 +27,8 @@ class TiCoTask(BaseTask):
         backbone_params: dict = None,
         momentum: float = 0.99,
         final_dim: int = 256,
+        beta: float = 0.9,
+        rho: float = 20.0,
         inputs: dict = None,
     ):
         """Init SimCLRTask.
@@ -46,6 +48,9 @@ class TiCoTask(BaseTask):
             inputs: information about input model shapes and dtypes.
         """
         super().__init__(hparams, inputs=inputs)
+
+        self.beta = beta
+        self.rho = rho
 
         self.backbone = BACKBONES.get(backbone_name)(**backbone_params)
 
@@ -70,10 +75,6 @@ class TiCoTask(BaseTask):
         self.max_epoch = self.hparams.trainer.max_epochs
         self.start_momentum = momentum
         self.momentum = 0
-
-        # self.register_buffer("c_prev", torch.zeros(final_dim, final_dim, requires_grad=False))
-        self.prev_cov_matrix = nn.Variable(torch.zeros(final_dim, final_dim), requires_grad=True)
-        self.prev_cov_matrix = self.C_prev.detach()
 
     def configure_optimizers(self) -> List[Dict[str, Union[Optimizer, Dict[str, Any]]]]:
         """Configure optimizers."""
@@ -136,21 +137,23 @@ class TiCoTask(BaseTask):
 
         x1, x2 = batch["image_0"], batch["image_1"]
         output = dict()
-        output["emb1"] = self.forward(x1)
-        output["emb2"] = self.forward_momentum(x2)
+        output["emb_1"] = self.forward(x1)
+        output["emb_2"] = self.forward_momentum(x2)
+
         return output
 
     def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
         """Complete training loop."""
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()  # update the key encoder
+
         output = self.forward_with_gt(batch)
+
         total_loss, tagged_loss_values = self.losses(**output)
-
-        loss, prev_cov_matrix = total_loss
-        self.prev_cov_matrix = prev_cov_matrix.detach()
-
         self.metrics_manager.update(Phase.TRAIN, **output)
-        output_dict = {"loss": loss}
+        output_dict = {"loss": total_loss}
         output_dict.update(tagged_loss_values)
         return output_dict
+
+    def as_module(self) -> nn.Sequential:
+        return nn.Sequential([self.backbone, self.projection_head])
