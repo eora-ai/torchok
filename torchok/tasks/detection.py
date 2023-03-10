@@ -124,7 +124,7 @@ class SingleStageDetectionTask(BaseTask):
         return output
 
     def as_module(self) -> nn.Sequential:
-        """Method for model representation as sequential of modules(need for checkpointing)."""
+        """Method for model representation as sequential of modules(need for onnx checkpointing)."""
         return nn.Sequential(BackboneWrapper(self.backbone), self.neck, self.bbox_head)
 
     def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:

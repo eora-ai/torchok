@@ -1,5 +1,6 @@
 from typing import Dict, List, Any
 
+import torch
 from omegaconf import DictConfig
 from torch import nn
 
@@ -78,7 +79,16 @@ class MultiHeadClassificationTask(BaseTask):
             self.heads[head_name] = head_type(in_channels=head_in_channels, **head['params'])
             self.target_mapping[head_name] = target
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """Forward method.
+
+        Args:
+            x: torch.Tensor of shape `(B, C, H, W)`. Batch of input images.
+
+        Returns:
+            Dict with string keys representing head name
+            and torch.Tensor values representing output of corresponding head.
+        """
         features = self.backbone(x)
         features = self.pooling(features)
         head_outputs = {}
@@ -86,7 +96,7 @@ class MultiHeadClassificationTask(BaseTask):
             head_outputs[head_name] = head(features)
         return head_outputs
 
-    def forward_with_gt(self, batch):
+    def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Forward with ground truth labels.
 
         Args:
@@ -131,5 +141,5 @@ class MultiHeadClassificationTask(BaseTask):
         return output
 
     def as_module(self) -> nn.Sequential:
-        """Method for model representation as sequential of modules(need for checkpointing)."""
+        """Method for model representation as sequential of modules(need for onnx checkpointing)."""
         raise NotImplementedError()

@@ -15,7 +15,7 @@ from torchok.data.datasets.classification.classification import process_multilab
 
 @DATASETS.register_class
 class MultiHeadImageDataset(ImageDataset):
-    TARGET_TYPES = ['multiclass', 'multilabel', 'feature_label']
+    TARGET_TYPES = ['multiclass', 'multilabel', 'embedding']
 
     def __init__(self,
                  data_folder: str,
@@ -36,13 +36,15 @@ class MultiHeadImageDataset(ImageDataset):
             annotation_path: Path to the .pkl or .csv file with path to images and annotations.
                 Path to images must be under column ``input_column`` and
                 annotations must be under ``target_column`` column.
-            targets: Dict containing information about heads
+            targets: List of dicts where each dict contain information about heads
 
                 - `name` (str): Name of the output target.
                 - `column` (str): Column name containing image label.
-                - `type` (str): Format of data processing. Available values: multiclass, multilabel, feature_label.
+                - `type` (str): Format of data processing. Available values: multiclass, multilabel, embedding.
                 - `num_classes` (int): Number of classes.
                 - `dtype` (str): Data type of the torch tensors related to the target.
+                - `path_to_embeddings` (str): Used only when `target_type` is 'embedding',
+                    path to .npy with embeddings per each image.
 
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations`_ library.
@@ -87,23 +89,20 @@ class MultiHeadImageDataset(ImageDataset):
                 num_classes = target.get('num_classes', None)
                 target_dtype = target.get('dtype', 'long')
 
-                if target_type in range(len(self.TARGET_TYPES)):
-                    target_type = self.TARGET_TYPES[target_type]
-
                 if target_type == 'multiclass':
                     self.heads.append((name, column, target_type, num_classes, target_dtype))
                 elif target_type == 'multilabel':
                     self.heads.append((name, column, target_type, num_classes, target_dtype))
-                    self.csv[column] = self.csv[column].fillna('')
+                    self.df[column] = self.df[column].fillna('')
                     if not self.lazy_init:
                         self.df[column] = self.df[column].apply(partial(process_multilabel, num_classes=num_classes))
-                elif target_type == 'feature_label':
+                elif target_type == 'embedding':
                     self.heads.append((name, column, target_type, num_classes, target_dtype))
-                    data = np.load(self.data_folder / target['path_to_labels'], allow_pickle=True)
-                    values = data[:, 1:].astype(self.input_dtype)
+                    data = np.load(self.data_folder / target['path_to_embeddings'], allow_pickle=True)
+                    values = data[:, 1:].astype(self.target_type)
                     paths = data[:, 0]
                     df = pd.DataFrame({'image_path': paths, column: list(values)})
-                    self.csv = self.csv.merge(df, on='image_path')
+                    self.df = self.df.merge(df, on='image_path')
                 else:
                     raise ValueError(f'This target {target_type} type is not supported')
 

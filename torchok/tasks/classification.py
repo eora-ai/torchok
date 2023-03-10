@@ -119,5 +119,5 @@ class ClassificationTask(BaseTask):
         return output
 
     def as_module(self) -> nn.Sequential:
-        """Method for model representation as sequential of modules(need for checkpointing)."""
+        """Method for model representation as sequential of modules(need for onnx checkpointing)."""
         return nn.Sequential(self.backbone, self.neck, self.pooling, self.head)

@@ -59,9 +59,9 @@ class ImageClassificationDataset(ImageDataset):
 
     def __init__(self,
                  data_folder: str,
-                 annotation_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
+                 annotation_path: str = None,
                  num_classes: int = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
@@ -72,12 +72,14 @@ class ImageClassificationDataset(ImageDataset):
                  rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False,
                  multilabel: bool = False,
-                 lazy_init: bool = False):
+                 lazy_init: bool = False,
+                 csv_path: str = None  # deprecated, will be removed later
+                 ):
         """Init ImageClassificationDataset.
 
         Args:
             data_folder: Directory with all the images.
-            annotation_path: Path to the .pkl or .csv with path to images and annotations. M
+            annotation_path: Path to the .pkl or .csv with path to images and annotations.
                 Path to images must be under column ``input_column`` and
                 annotations must be under ``target_column`` column.
             transform: Transform to be applied on a sample. This should have the
@@ -97,7 +99,9 @@ class ImageClassificationDataset(ImageDataset):
                         If False, dataset prepares targets for multiclass classification.
             lazy_init: If True, for multilabel the target variable is converted to multihot when __getitem__ is called.
                 For multiclass will check the class index to fit the range when ``__getitem__`` is called.
-
+            csv_path: DEPRECATED, Path to the .pkl or .csv with path to images and annotations.
+                Path to images must be under column ``input_column`` and
+                annotations must be under ``target_column`` column.
         .. _albumentations: https://albumentations.ai/docs/
         """
         super().__init__(
