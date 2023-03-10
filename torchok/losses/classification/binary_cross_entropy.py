@@ -46,11 +46,12 @@ class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
         super().__init__(weight=weight, reduction=reduction, pos_weight=pos_weight)
 
     def forward(self, input, target):
-        input = input[target != self.ignore_index]
+        target = target.float()
+        input = input[target != self.ignore_index].float()
         target = target[target != self.ignore_index]
 
         if input.shape[0] > 0:
-            return F.binary_cross_entropy_with_logits(input, target.to(input.dtype),
+            return F.binary_cross_entropy_with_logits(input, target,
                                                       self.weight,
                                                       pos_weight=self.pos_weight,
                                                       reduction=self.reduction)
