@@ -54,7 +54,7 @@ data:
         params:
           input_dtype: *input_dtype
           data_folder: &data_folder '${oc.env:HOME}/dataset/imagenet/ILSVRC'
-          csv_path: &csv_path ILSVRC_train.csv
+          annotation_path: &annotation_path ILSVRC_train.csv
           multilabel: false
           num_classes: *num_classes
           lazy_init: true
@@ -95,7 +95,7 @@ data:
         params:
           input_dtype: *input_dtype
           data_folder: *data_folder
-          csv_path: ILSVRC_val.csv
+          annotation_path: ILSVRC_val.csv
           multilabel: false
           num_classes: *num_classes
           lazy_init: true

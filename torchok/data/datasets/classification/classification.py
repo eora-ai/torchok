@@ -1,4 +1,5 @@
 import re
+import warnings
 from pathlib import Path
 from typing import Any, Optional, Union, Tuple
 
@@ -79,7 +80,7 @@ class ImageClassificationDataset(ImageDataset):
 
         Args:
             data_folder: Directory with all the images.
-            annotation_path: Path to the .pkl or .csv with path to images and annotations.
+            annotation_path: Path to the .pkl or .csv file with path to images and annotations.
                 Path to images must be under column ``input_column`` and
                 annotations must be under ``target_column`` column.
             transform: Transform to be applied on a sample. This should have the
@@ -99,11 +100,19 @@ class ImageClassificationDataset(ImageDataset):
                         If False, dataset prepares targets for multiclass classification.
             lazy_init: If True, for multilabel the target variable is converted to multihot when __getitem__ is called.
                 For multiclass will check the class index to fit the range when ``__getitem__`` is called.
-            csv_path: DEPRECATED, Path to the .pkl or .csv with path to images and annotations.
+            csv_path: DEPRECATED, Path to the .pkl or .csv file with path to images and annotations.
                 Path to images must be under column ``input_column`` and
                 annotations must be under ``target_column`` column.
         .. _albumentations: https://albumentations.ai/docs/
         """
+        if annotation_path is None:
+            if csv_path is not None:
+                warnings.warn("`csv_path` is deprecated and will be removed in future version. "
+                              "Use annotation_path instead.")
+                annotation_path = csv_path
+            else:
+                raise ValueError("`annotation_path` must be specified.")
+
         super().__init__(
             transform=transform,
             augment=augment,
@@ -126,9 +135,8 @@ class ImageClassificationDataset(ImageDataset):
         self.lazy_init = lazy_init
         self.annotation_path = annotation_path
 
-        dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
-
         if annotation_path.endswith('.csv'):
+            dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
             self.df = pd.read_csv(self.data_folder / annotation_path, dtype=dtype)
         elif annotation_path.endswith('.pkl'):
             self.df = pd.read_pickle(self.data_folder / annotation_path)

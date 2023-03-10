@@ -12,7 +12,7 @@ class TestUnsupervisedContrastiveDataset(TestImageDataset, unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.dataset_kwargs['data_folder'] = 'tests/base_tests/data/datasets/data/'
-        self.dataset_kwargs['csv_path'] = 'unsupervised_contrastive_test.csv'
+        self.dataset_kwargs['annotation_path'] = 'unsupervised_contrastive_test.csv'
         self.ds_len = 7
         self.output_format = ['image_0', 'image_1', 'index']
 

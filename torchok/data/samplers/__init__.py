@@ -1,2 +1,2 @@
 from torchok.constructor import SAMPLERS
-from torchok.data.samplers import WeightedSampler
+from torchok.data.samplers import weighted_sampler

@@ -119,11 +119,11 @@ class COCOSegmentation(ImageSegmentationDataset):
         if not self.path.is_dir():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
-        csv_path = self.train_csv if train else self.valid_csv
+        annotation_path = self.train_csv if train else self.valid_csv
 
         super().__init__(
             data_folder=self.path,
-            csv_path=csv_path,
+            annotation_path=annotation_path,
             transform=transform,
             augment=augment,
             input_dtype=input_dtype,
