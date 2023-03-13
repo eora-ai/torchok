@@ -16,7 +16,7 @@ data:
     - dataset:
         name: ImageClassificationDataset
         data_folder: 'cifar10'
-        csv_path: 'cifar_train.csv'
+        annotation_path: 'cifar_train.csv'
         num_classes: *num_classes
       dataloader:
         batch_size: 8

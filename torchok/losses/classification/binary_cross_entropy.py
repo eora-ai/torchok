@@ -12,7 +12,8 @@ from torchok.constructor import LOSSES
 @LOSSES.register_class
 class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
     """BCEWithLogitsLoss with ability to load pos_weights from json file (dict) or config (list)."""
-    def __init__(self, weight: torch.Tensor = None, reduction: str = 'mean', pos_weight: Union[str, list] = None):
+    def __init__(self, weight: torch.Tensor = None, reduction: str = 'mean',
+                 pos_weight: Union[str, list] = None, ignore_index: int = -1):
         """BCEWithLogitsLossX init.
 
         Args:
@@ -24,7 +25,10 @@ class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
             pos_weight: A weight of positive examples. Must be a vector with length equal to the number of classes.
                 Can be string - json file with keys - class index and value - weight, or can be list - readable from
                 yaml config with the weights.
+            ignore_index: index that will be ignored during training
         """
+        self.ignore_index = ignore_index
+
         if pos_weight is not None:
             if isinstance(pos_weight, str):
                 pos_weight_path = pos_weight
@@ -42,7 +46,14 @@ class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
         super().__init__(weight=weight, reduction=reduction, pos_weight=pos_weight)
 
     def forward(self, input, target):
-        return F.binary_cross_entropy_with_logits(input, target.float(),
-                                                  self.weight,
-                                                  pos_weight=self.pos_weight,
-                                                  reduction=self.reduction)
+        target = target.float()
+        input = input[target != self.ignore_index].float()
+        target = target[target != self.ignore_index]
+
+        if input.shape[0] > 0:
+            return F.binary_cross_entropy_with_logits(input, target,
+                                                      self.weight,
+                                                      pos_weight=self.pos_weight,
+                                                      reduction=self.reduction)
+        else:
+            return torch.zeros(1, dtype=input.dtype, device=input.device)[0]

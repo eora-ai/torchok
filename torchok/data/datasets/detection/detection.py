@@ -52,7 +52,7 @@ class DetectionDataset(ImageDataset):
 
         Args:
             data_folder: Directory with all the images.
-            annotation_path: Path to the pkl or csv file with image paths, bboxes and labels.
+            annotation_path: Path to the .pkl or .csv file with image paths, bboxes and labels.
                 Path to images must be under column `image_path`, bboxes must be under `bbox` column and bbox labels
                 must be under `label` column.
                 User can change column names, if the input_column, bbox_column or target_column is given.
@@ -108,11 +108,11 @@ class DetectionDataset(ImageDataset):
 
         self.bbox_format = bbox_format
 
-        if annotation_path.endswith('csv'):
+        if annotation_path.endswith('.csv'):
             df = pd.read_csv(self.data_folder / annotation_path)
             df[self.bbox_column] = df[self.bbox_column].apply(json.loads)
             df[self.target_column] = df[self.target_column].apply(json.loads)
-        elif annotation_path.endswith('pkl'):
+        elif annotation_path.endswith('.pkl'):
             df = pd.read_pickle(self.data_folder / annotation_path)
         else:
             raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')

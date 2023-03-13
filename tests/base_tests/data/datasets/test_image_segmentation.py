@@ -10,7 +10,7 @@ class TestSegmentationDataset(TestImageDataset, unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.dataset_kwargs['data_folder'] = 'tests/base_tests/data/datasets/data/segmentation_data'
-        self.dataset_kwargs['csv_path'] = 'segmentation_test.csv'
+        self.dataset_kwargs['annotation_path'] = 'segmentation_test.csv'
         self.dataset_kwargs['target_column'] = 'mask'
         self.ds_len = 3
         self.output_format = ['image', 'target', 'index']

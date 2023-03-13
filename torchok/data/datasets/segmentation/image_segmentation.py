@@ -26,7 +26,7 @@ class ImageSegmentationDataset(ImageDataset):
 
     def __init__(self,
                  data_folder: Union[Path, str],
-                 csv_path: str,
+                 annotation_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
                  input_column: str = 'image_path',
@@ -41,7 +41,7 @@ class ImageSegmentationDataset(ImageDataset):
 
         Args:
             data_folder: Directory with all the images.
-            csv_path: Path to the csv file with path to images and masks.
+            annotation_path: Path to the .pkl or .csv file with path to images and masks.
                 Path to images must be under column `image_path` and annotations must be under `mask` column.
                 User can change column names, if the `csv_columns_mapping` is given.
             transform: Transform to be applied on a sample. This should have the
@@ -67,16 +67,21 @@ class ImageSegmentationDataset(ImageDataset):
         )
 
         self.data_folder = Path(data_folder)
-        self.csv_path = csv_path
+        self.annotation_path = annotation_path
         self.input_column = input_column
         self.target_column = target_column
         self.target_dtype = target_dtype
 
-        self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str',
-                                                                        self.target_column: 'str'})
+        if annotation_path.endswith('.csv'):
+            dtype = {self.input_column: 'str', self.target_column: 'str'}
+            self.df = pd.read_csv(self.data_folder / annotation_path, dtype=dtype)
+        elif annotation_path.endswith('.pkl'):
+            self.df = pd.read_pickle(self.data_folder / annotation_path)
+        else:
+            raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
 
     def get_raw(self, idx: int) -> dict:
-        record = self.csv.iloc[idx]
+        record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         sample = {'image': self._read_image(image_path), 'index': idx}
 
@@ -117,4 +122,4 @@ class ImageSegmentationDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.csv)
+        return len(self.df)

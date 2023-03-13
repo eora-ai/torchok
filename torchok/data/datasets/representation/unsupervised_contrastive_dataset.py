@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Union, Tuple
+import warnings
 
 import pandas as pd
 import torch
@@ -25,19 +26,21 @@ class UnsupervisedContrastiveDataset(ImageDataset):
 
     def __init__(self,
                  data_folder: str,
-                 csv_path: str,
                  transform: Union[BasicTransform, BaseCompose],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
+                 annotation_path: str = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
                  reader_library: str = 'opencv',
                  image_format: str = 'rgb',
-                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0):
+                 rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
+                 csv_path: str = None  # deprecated, will be removed later,
+                 ):
         """Init UnsupervisedContrastiveDataset.
 
         Args:
             data_folder: Directory with all the images.
-            csv_path: Path to the csv file with path to images and annotations.
+            annotation_path: Path to the .pkl or .csv file with path to images and annotations.
                 Path to images must be under column `input_column`.
             transform: Transform to be applied on a sample. This should have the
                 interface of transforms in `albumentations` library.
@@ -48,7 +51,17 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             reader_library: Image reading library. Can be 'opencv'or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
+            csv_path: DEPRECATED, Path to the .pkl or .csv file with path to images and annotations.
+                Path to images must be under column `input_column`.
         """
+        if annotation_path is None:
+            if csv_path is not None:
+                warnings.warn("`csv_path` is deprecated and will be removed in future version. "
+                              "Use annotation_path instead.")
+                annotation_path = csv_path
+            else:
+                raise ValueError("`annotation_path` must be specified.")
+
         super().__init__(
             transform=transform,
             augment=augment,
@@ -58,9 +71,15 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             rgba_layout_color=rgba_layout_color,
         )
         self.data_folder = Path(data_folder)
-        self.csv_path = csv_path
+        self.annotation_path = annotation_path
         self.input_column = input_column
-        self.csv = pd.read_csv(self.data_folder / self.csv_path, dtype={self.input_column: 'str'})
+
+        if annotation_path.endswith('.csv'):
+            self.df = pd.read_csv(self.data_folder / annotation_path, dtype={self.input_column: 'str'})
+        elif annotation_path.endswith('.pkl'):
+            self.df = pd.read_pickle(self.data_folder / annotation_path)
+        else:
+            raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
 
     def get_raw(self, idx: int) -> dict:
         """Get item sample.
@@ -71,7 +90,7 @@ class UnsupervisedContrastiveDataset(ImageDataset):
             sample['image_1'] - Tensor, representing image after augmentations.
             sample['index'] - Index of the sample, the same as input `idx`.
         """
-        record = self.csv.iloc[idx]
+        record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         image = self._read_image(image_path)
         sample = {'image': image}
@@ -102,4 +121,4 @@ class UnsupervisedContrastiveDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.csv)
+        return len(self.df)

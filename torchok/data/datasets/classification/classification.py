@@ -1,4 +1,5 @@
 import re
+import warnings
 from pathlib import Path
 from typing import Any, Optional, Union, Tuple
 
@@ -10,6 +11,33 @@ from albumentations.core.composition import BaseCompose
 
 from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
+
+
+def process_multilabel(labels: str, num_classes: int) -> np.ndarray:
+    """Convert label to multihot representation.
+
+    Args:
+        labels: Target labels for multilabel classification.
+            The class indexes must be separated by any separator.
+        num_classes: number of classes in multilabel problem.
+
+    Returns:
+        Multihot vector.
+
+    Raises:
+        ValueError: If class label is out of range.
+    """
+    labels = list(map(int, re.findall(r'\d+', labels)))
+
+    max_label = max(labels)
+
+    if max_label < num_classes:
+        multihot = np.zeros((num_classes,), dtype=bool)
+        multihot[labels] = True
+    else:
+        raise ValueError(f'Target column contains label: {max_label}, '
+                         f'it\'s more than num_classes = {num_classes}')
+    return multihot
 
 
 @DATASETS.register_class
@@ -32,9 +60,9 @@ class ImageClassificationDataset(ImageDataset):
 
     def __init__(self,
                  data_folder: str,
-                 csv_path: str,
                  transform: Optional[Union[BasicTransform, BaseCompose]],
                  augment: Optional[Union[BasicTransform, BaseCompose]] = None,
+                 annotation_path: str = None,
                  num_classes: int = None,
                  input_column: str = 'image_path',
                  input_dtype: str = 'float32',
@@ -45,12 +73,14 @@ class ImageClassificationDataset(ImageDataset):
                  rgba_layout_color: Union[int, Tuple[int, int, int]] = 0,
                  test_mode: bool = False,
                  multilabel: bool = False,
-                 lazy_init: bool = False):
+                 lazy_init: bool = False,
+                 csv_path: str = None  # deprecated, will be removed later
+                 ):
         """Init ImageClassificationDataset.
 
         Args:
             data_folder: Directory with all the images.
-            csv_path: Path to the csv file with path to images and annotations.
+            annotation_path: Path to the .pkl or .csv file with path to images and annotations.
                 Path to images must be under column ``input_column`` and
                 annotations must be under ``target_column`` column.
             transform: Transform to be applied on a sample. This should have the
@@ -62,7 +92,7 @@ class ImageClassificationDataset(ImageDataset):
             input_dtype: Data type of the torch tensors related to the image.
             target_column: column name containing image label.
             target_dtype: Data type of the torch tensors related to the target.
-            reader_library: Image reading library. Can be 'opencv'or 'pillow'.
+            reader_library: Image reading library. Can be 'opencv' or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
@@ -70,9 +100,19 @@ class ImageClassificationDataset(ImageDataset):
                         If False, dataset prepares targets for multiclass classification.
             lazy_init: If True, for multilabel the target variable is converted to multihot when __getitem__ is called.
                 For multiclass will check the class index to fit the range when ``__getitem__`` is called.
-
+            csv_path: DEPRECATED, Path to the .pkl or .csv file with path to images and annotations.
+                Path to images must be under column ``input_column`` and
+                annotations must be under ``target_column`` column.
         .. _albumentations: https://albumentations.ai/docs/
         """
+        if annotation_path is None:
+            if csv_path is not None:
+                warnings.warn("`csv_path` is deprecated and will be removed in future version. "
+                              "Use annotation_path instead.")
+                annotation_path = csv_path
+            else:
+                raise ValueError("`annotation_path` must be specified.")
+
         super().__init__(
             transform=transform,
             augment=augment,
@@ -93,14 +133,18 @@ class ImageClassificationDataset(ImageDataset):
         self.target_dtype = target_dtype
         self.multilabel = multilabel
         self.lazy_init = lazy_init
-        self.csv_path = csv_path
+        self.annotation_path = annotation_path
 
-        csv_path = self.data_folder / self.csv_path
-        dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
+        if annotation_path.endswith('.csv'):
+            dtype = {self.input_column: 'str', self.target_column: 'str' if self.multilabel else 'int'}
+            self.df = pd.read_csv(self.data_folder / annotation_path, dtype=dtype)
+        elif annotation_path.endswith('.pkl'):
+            self.df = pd.read_pickle(self.data_folder / annotation_path)
+        else:
+            raise ValueError('Detection dataset error. Annotation path is not in `csv` or `pkl` format')
 
-        self.csv = pd.read_csv(csv_path, dtype=dtype)
         if not self.lazy_init and not self.test_mode:
-            self.csv[self.target_column] = self.csv[self.target_column].apply(self.process_function)
+            self.df[self.target_column] = self.df[self.target_column].apply(self.process_function)
 
     def get_raw(self, idx: int) -> dict:
         """Get item sample without transform application.
@@ -111,7 +155,7 @@ class ImageClassificationDataset(ImageDataset):
             sample['target'] - Target class or labels.
             sample['index'] - Index of the sample, the same as input `idx`.
         """
-        record = self.csv.iloc[idx]
+        record = self.df.iloc[idx]
         image_path = self.data_folder / record[self.input_column]
         sample = {'image': self._read_image(image_path), 'index': idx}
 
@@ -145,7 +189,7 @@ class ImageClassificationDataset(ImageDataset):
 
     def __len__(self) -> int:
         """Dataset length."""
-        return len(self.csv)
+        return len(self.df)
 
     def process_function(self, target: Any) -> Any:
         """Prepare dataset target based of classification type.
@@ -157,48 +201,9 @@ class ImageClassificationDataset(ImageDataset):
             Prepared classification labels.
         """
         if self.multilabel:
-            return self.__process_multilabel(target)
+            return process_multilabel(target, self.num_classes)
         else:
-            return self.__process_multiclass(target)
-
-    def __process_multiclass(self, class_idx: int) -> int:
-        """Check the class index to fit the range.
-
-        Args:
-            class_idx: Target class index for multiclass classification.
-
-        Returns:
-            Verified class index.
-
-        Raises:
-            ValueError: If class index is out of range.
-        """
-        if self.num_classes is not None and class_idx >= self.num_classes:
-            raise ValueError(f'Target column contains class index: {class_idx}, '
-                             f'it\'s more than num_classes = {self.num_classes}')
-        return class_idx
-
-    def __process_multilabel(self, labels: str) -> np.array:
-        """Convert label to multihot representation.
-
-        Args:
-            labels: Target labels for multilabel classification.
-                The class indexes must be separated by any separator.
-
-        Returns:
-            Multihot vector.
-
-        Raises:
-            ValueError: If class label is out of range.
-        """
-        labels = list(map(int, re.findall(r'\d+', labels)))
-
-        max_label = max(labels)
-
-        if max_label < self.num_classes:
-            multihot = np.zeros((self.num_classes,), dtype=bool)
-            multihot[labels] = True
-        else:
-            raise ValueError(f'Target column contains label: {max_label}, '
-                             f'it\'s more than num_classes = {self.num_classes}')
-        return multihot
+            if self.num_classes is not None and target >= self.num_classes:
+                raise ValueError(f'Target column contains class index: {target}, '
+                                 f'it\'s more than num_classes = {self.num_classes}')
+            return target
