@@ -107,7 +107,7 @@ class MultiHeadClassificationTask(BaseTask):
                 - `target_*` (torch.Tensor):
                     tensor of shape `(B)`, target class or labels per each image for *-named head.
                 - `condition_*` (Optional[torch.Tensor]):
-                    tensor of shape `(B)`, condition to select appropriate embeddings for the *-named head.
+                    tensor of shape `(B)`, condition to select corresponding embeddings for the *-named head.
 
         Returns:
             Dictionary with the following keys and values

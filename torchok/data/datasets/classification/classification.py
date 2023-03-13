@@ -13,7 +13,7 @@ from torchok.constructor import DATASETS
 from torchok.data.datasets.base import ImageDataset
 
 
-def process_multilabel(labels: str, num_classes: int) -> np.array:
+def process_multilabel(labels: str, num_classes: int) -> np.ndarray:
     """Convert label to multihot representation.
 
     Args:
@@ -92,7 +92,7 @@ class ImageClassificationDataset(ImageDataset):
             input_dtype: Data type of the torch tensors related to the image.
             target_column: column name containing image label.
             target_dtype: Data type of the torch tensors related to the target.
-            reader_library: Image reading library. Can be 'opencv'or 'pillow'.
+            reader_library: Image reading library. Can be 'opencv' or 'pillow'.
             image_format: format of images that will be returned from dataset. Can be `rgb`, `bgr`, `rgba`, `gray`.
             rgba_layout_color: color of the background during conversion from `rgba`.
             test_mode: If True, only image without labels will be returned.
