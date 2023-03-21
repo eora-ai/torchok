@@ -1,0 +1,33 @@
+name: Training Test
+
+on: [push]
+
+# Permissions settings used for AWS credentials
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run_training_job:
+    runs-on: ubuntu-latest
+    steps:
+      #----------------------------------------------
+      #               check-out repo
+      #----------------------------------------------
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      # TODO: add changed files check
+      # - name: TODO
+      # - run: |
+      #       image_tag=$(bash .ci/create_image_tag.sh)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: eu-west-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          registries: ${{ secrets.AWS_ACCOUNT }},763104351884
