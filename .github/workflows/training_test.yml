@@ -9,7 +9,7 @@ permissions:
   packages: write
 
 jobs:
-  run_training_job:
+  docker_build:
     runs-on: ubuntu-latest
     steps:
       #----------------------------------------------
@@ -42,3 +42,42 @@ jobs:
           file: .ci/Dockerfile
           push: true
           tags: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok:latest
+
+  start_sagemaker_jobs:
+    # needs: docker_build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      # TODO: add changed files check
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: eu-west-1
+      - name: Run SageMaker training jobs
+        run: |
+          aws --region eu-west-1 sagemaker create-training-job \
+          --training-job-name "torchok-ci-$(date +%m-%d-%Y-%H-%M-%S)" \
+          --role-arn "${{ secrets.AWS_SAGEMAKER_ROLE }}" \
+          --algorithm-specification '{
+              "TrainingInputMode": "File",
+              "TrainingImage": "${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok",
+              "ContainerArguments": ["-cp", "/app/tests/training_tests", "-cn", "cifar10_experiment"]}' \
+          --input-data-config '[{
+              "ChannelName":"train",
+              "DataSource":{
+                  "S3DataSource":{
+                      "S3DataType":"S3Prefix",
+                      "S3Uri":"${{ secrets.AWS_S3_TESTS_INPUT_PATH }}",
+                      "S3DataDistributionType":"FullyReplicated"}}}]' \
+          --output-data-config '{"S3OutputPath": "${{ secrets.AWS_S3_TESTS_OUTPUT_PATH }}"}' \
+          --vpc-config '{
+              "SecurityGroupIds": ["sg-0e6f494741bd91599"],
+              "Subnets": ["subnet-0165cee0a076d3d8d"]}' \
+          --environment '{
+              "SM_CHANNEL_TRAINING": "/opt/ml/input/data/train",
+              "CV_MLFLOW_TRACKING_URI": "${{ secrets.CV_MLFLOW_TRACKING_URI }}",
+              "CV_S3_ARTIFACT_BUCKET": "${{ secrets.AWS_S3_TESTS_OUTPUT_PATH }}/mlflow"}' \
+          --resource-config '{"VolumeSizeInGB":10,"InstanceCount":1,"InstanceType":"ml.g4dn.xlarge"}' \
+          --stopping-condition '{"MaxRuntimeInSeconds": 86400}'
