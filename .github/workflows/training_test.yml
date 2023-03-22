@@ -6,6 +6,7 @@ on: [push]
 permissions:
   id-token: write
   contents: read
+  packages: write
 
 jobs:
   run_training_job:
@@ -14,8 +15,8 @@ jobs:
       #----------------------------------------------
       #               check-out repo
       #----------------------------------------------
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      # - name: Checkout repo
+      #   uses: actions/checkout@v3
       # TODO: add changed files check
       # - name: TODO
       # - run: |
@@ -31,3 +32,13 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
         with:
           registries: ${{ secrets.AWS_ACCOUNT }},763104351884
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          file: .ci/Dockerfile
+          push: true
+          tags: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok:latest
