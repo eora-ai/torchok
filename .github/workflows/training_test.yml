@@ -12,15 +12,6 @@ jobs:
   docker_build:
     runs-on: ubuntu-latest
     steps:
-      #----------------------------------------------
-      #               check-out repo
-      #----------------------------------------------
-      # - name: Checkout repo
-      #   uses: actions/checkout@v3
-      # TODO: add changed files check
-      # - name: TODO
-      # - run: |
-      #       image_tag=$(bash .ci/create_image_tag.sh)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -42,9 +33,11 @@ jobs:
           file: .ci/Dockerfile
           push: true
           tags: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   start_sagemaker_jobs:
-    # needs: docker_build
+    needs: docker_build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
