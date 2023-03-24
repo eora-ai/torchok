@@ -1,15 +1,19 @@
-# TODO: add docs
+# This workflow is used to publish a SageMaker Docker image containing with preinstalled TorchOk as
+# well as to run SageMaker Training jobs to check for the quality degradation on defined training configurations
 name: Training Test
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     types:
       - closed
     branches:
       - main
+  push:
+    branches:
+      - main
+  release:
+    types:
+      - published
 
 # Permissions settings used for AWS credentials
 permissions:
@@ -19,8 +23,9 @@ permissions:
 
 jobs:
   docker_build:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true || github.event_name == 'push' || github.event_name == 'release'
     runs-on: ubuntu-latest
+    # Repo checkout isn't needed here as build-push-action uses Git context
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -34,10 +39,11 @@ jobs:
         with:
           registries: ${{ secrets.AWS_ACCOUNT }},763104351884
 
+      # Buildx is used in favor of ordinal docker build in order to reuse build cache for future workflow runs
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and push
+      - name: Build and push latest version
         uses: docker/build-push-action@v4
         with:
           file: .ci/Dockerfile
@@ -46,8 +52,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Build and push tagged version
+        if: github.event.release.published == true
+        uses: docker/build-push-action@v4
+        with:
+          file: .ci/Dockerfile
+          push: true
+          tags: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # We want to run SageMaker training jobs only when the impactful files are changed
   check_modified_files:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true || github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       any_changed: ${{ steps.changed-files.outputs.any_changed }}
@@ -70,8 +87,11 @@ jobs:
             echo "$file was modified"
           done
 
+  # Start SageMaker Training jobs for all training tests configurations in tests/training_tests/ directory
   start_sagemaker_jobs:
-    if: ${{ github.event.pull_request.merged == true && needs.check_modified_files.outputs.any_changed == 'true' }}
+    if: |
+      (github.event.pull_request.merged == true || github.event_name == 'push') && 
+      needs.check_modified_files.outputs.any_changed == 'true'
     needs: [docker_build, check_modified_files]
     runs-on: ubuntu-latest
     steps:
