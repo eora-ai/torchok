@@ -1,7 +1,15 @@
 # TODO: add docs
 name: Training Test
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 # Permissions settings used for AWS credentials
 permissions:
@@ -11,6 +19,7 @@ permissions:
 
 jobs:
   docker_build:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -38,6 +47,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   check_modified_files:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       any_changed: ${{ steps.changed-files.outputs.any_changed }}
@@ -61,9 +71,9 @@ jobs:
           done
 
   start_sagemaker_jobs:
+    if: ${{ github.event.pull_request.merged == true && needs.check_modified_files.outputs.any_changed == 'true' }}
     needs: [docker_build, check_modified_files]
     runs-on: ubuntu-latest
-    if: ${{ needs.check_modified_files.outputs.any_changed == 'true' }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
