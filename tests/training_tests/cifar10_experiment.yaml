@@ -78,9 +78,6 @@ data:
 trainer:
   accelerator: 'gpu'
   max_epochs: 30
-#  limit_train_batches: 10
-#  limit_val_batches: 10
-#  log_every_n_steps: 1000
   precision: 16
   num_sanity_val_steps: 0
 
