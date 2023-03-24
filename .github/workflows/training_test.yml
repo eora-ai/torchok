@@ -1,3 +1,4 @@
+# TODO: add docs
 name: Training Test
 
 on: [push]
@@ -36,13 +37,36 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  start_sagemaker_jobs:
-    # needs: docker_build
+  check_modified_files:
     runs-on: ubuntu-latest
+    outputs:
+      any_changed: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Get changed files using defaults
+        id: changed-files
+        uses: tj-actions/changed-files@v35
+        with:
+          files: |
+            pyproject.toml
+            torchok
+            .ci/Dockerfile
+            tests/training_tests
+      - name: Check what files were modified
+        run: |
+          for file in ${{ steps.changed-files.outputs.modified_files }}; do
+            echo "$file was modified"
+          done
+
+  start_sagemaker_jobs:
+    needs: [docker_build, check_modified_files]
+    runs-on: ubuntu-latest
+    if: ${{ needs.check_modified_files.outputs.any_changed == 'true' }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      # TODO: add changed files check
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
