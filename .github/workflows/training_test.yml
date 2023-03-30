@@ -3,11 +3,6 @@
 name: Training Test
 
 on:
-  pull_request:
-    types:
-      - closed
-    branches:
-      - main
   push:
     branches:
       - main
@@ -19,11 +14,10 @@ on:
 permissions:
   id-token: write
   contents: read
-  packages: write
 
 jobs:
   docker_build:
-    if: github.event.pull_request.merged == true || github.event_name == 'push' || github.event_name == 'release'
+    if: github.event_name == 'push' || github.event_name == 'release'
     runs-on: ubuntu-latest
     # Repo checkout isn't needed here as build-push-action uses Git context
     steps:
@@ -64,7 +58,7 @@ jobs:
 
   # We want to run SageMaker training jobs only when the impactful files are changed
   check_modified_files:
-    if: github.event.pull_request.merged == true || github.event_name == 'push'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       any_changed: ${{ steps.changed-files.outputs.any_changed }}
@@ -89,9 +83,7 @@ jobs:
 
   # Start SageMaker Training jobs for all training tests configurations in tests/training_tests/ directory
   start_sagemaker_jobs:
-    if: |
-      (github.event.pull_request.merged == true || github.event_name == 'push') && 
-      needs.check_modified_files.outputs.any_changed == 'true'
+    if: github.event_name == 'push' && needs.check_modified_files.outputs.any_changed == 'true'
     needs: [docker_build, check_modified_files]
     runs-on: ubuntu-latest
     steps:
