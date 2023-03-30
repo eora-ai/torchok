@@ -49,7 +49,7 @@ jobs:
           file: .ci/Dockerfile
           push: true
           tags: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok:latest
-          cache-from: type=gha
+          cache-from: type=gha,mode=max
           cache-to: type=gha,mode=max
 
       - name: Build and push tagged version
@@ -59,7 +59,7 @@ jobs:
           file: .ci/Dockerfile
           push: true
           tags: ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.eu-west-1.amazonaws.com/dl-sm-torchok:${{ github.ref_name }}
-          cache-from: type=gha
+          cache-from: type=gha,mode=max
           cache-to: type=gha,mode=max
 
   # We want to run SageMaker training jobs only when the impactful files are changed
