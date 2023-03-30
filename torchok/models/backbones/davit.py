@@ -31,9 +31,9 @@ def _cfg(url='', **kwargs):
 
 
 default_cfgs = {
-    'davit_t': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/davit-t_torchok.pth'),
-    'davit_s': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/davit-s_torchok.pth'),
-    'davit_b': _cfg(url='https://torchok-hub.s3.eu-west-1.amazonaws.com/davit-b_torchok.pth'),
+    'davit_t': _cfg(url='https://github.com/eora-ai/torchok/releases/download/v0.4.12/davit-t_torchok.pth'),
+    'davit_s': _cfg(url='https://github.com/eora-ai/torchok/releases/download/v0.4.12/davit-s_torchok.pth'),
+    'davit_b': _cfg(url='https://github.com/eora-ai/torchok/releases/download/v0.4.12/davit-b_torchok.pth'),
 }
 
 
