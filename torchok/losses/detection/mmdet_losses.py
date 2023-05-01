@@ -1,6 +1,6 @@
 import types
 
-from mmdet.models.builder import LOSSES as MMLOSSES
+from mmdet.registry import MODELS as MMLOSSES
 
 from torchok.constructor import LOSSES
 

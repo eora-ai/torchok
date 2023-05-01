@@ -4,7 +4,7 @@ from typing import Callable, Dict, List, Optional, Union
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.utilities.cloud_io import load
+from lightning_fabric.utilities.cloud_io import _load as load
 
 
 def load_state_dict(checkpoint_path: str, map_location: Optional[Union[str, Callable, torch.device]] = 'cpu'):

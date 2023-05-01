@@ -10,4 +10,5 @@ class FinalizeLogger(Callback):
     def on_exception(self, trainer, pl_module, outputs):
         # Need to save checkpoints for every exception not only isinstance(outputs, KeyboardInterrupt)
         status = 'KILLED' if type(outputs) == KeyboardInterrupt else 'FAILED'
-        trainer.logger.finalize(status)
+        if trainer.logger is not None:
+            trainer.logger.finalize(status)
