@@ -4,6 +4,7 @@ import torchok.tasks.multihead_classification
 import torchok.tasks.onnx
 import torchok.tasks.pairwise_task
 import torchok.tasks.segmentation
+import torchok.tasks.self_supervised
 import torchok.tasks.simclr_task
 import torchok.tasks.triplet_task
 from torchok.tasks.base import BaseTask

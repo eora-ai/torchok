@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 from pytorch_lightning import LightningModule
+from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
@@ -121,17 +122,18 @@ class BaseTask(LightningModule, ABC):
         if self._hparams.task.load_checkpoint is not None:
             load_checkpoint(self, **self._hparams.task.load_checkpoint)
 
-    def training_step(self, batch: Dict[str, Union[torch.Tensor, int]], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def training_step(self, batch: Dict[str, Union[Tensor, int]], batch_idx: int) -> Dict[str, Tensor]:
         """Complete training loop."""
         output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.losses(**output)
+        # self.log("loss", total_loss, prog_bar=True, on_step=True)
         self.metrics_manager.update(Phase.TRAIN, **output)
         output_dict = {'loss': total_loss}
         output_dict.update(tagged_loss_values)
         return output_dict
 
-    def validation_step(self, batch: Dict[str, Union[torch.Tensor, int]],
-                        batch_idx: int, dataloader_idx: int = 0) -> Dict[str, torch.Tensor]:
+    def validation_step(self, batch: Dict[str, Union[Tensor, int]],
+                        batch_idx: int, dataloader_idx: int = 0) -> Dict[str, Tensor]:
         """Complete validation loop."""
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.VALID, dataloader_idx, **output)
@@ -141,45 +143,58 @@ class BaseTask(LightningModule, ABC):
         if self._hparams.task.compute_loss_on_valid:
             total_loss, tagged_loss_values = self.losses(**output)
             output_dict = {'loss': total_loss}
+            # self.log("loss", total_loss, prog_bar=True, on_step=True)
             output_dict.update(tagged_loss_values)
         else:
             output_dict = {}
 
         return output_dict
 
-    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int, dataloader_idx: int = 0) -> None:
+    def test_step(self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0) -> None:
         """Complete test loop."""
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
-    def predict_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def predict_step(self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0) -> dict[str, Tensor]:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
         return output
 
-    def training_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def on_train_batch_end(
+            self,
+            outputs: Dict[str, Tensor],
+            batch: Dict[str, Tensor],
+            batch_idx: int,
+            dataloader_idx: int = 0
+    ) -> Dict[str, Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs, sync_grads=True).items()}
         for tag, value in output_dict.items():
             self.log(f'train/{tag}', value, on_step=False, on_epoch=True, batch_size=len(outputs))
         return output_dict
 
-    def validation_step_end(self, outputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def on_validation_batch_end(
+            self,
+            outputs: Dict[str, Tensor],
+            batch: Dict[str, Tensor],
+            batch_idx: int,
+            dataloader_idx: int = 0
+    ) -> Dict[str, Tensor]:
         output_dict = {tag: value.mean() for tag, value in self.all_gather(outputs).items()}
         for tag, value in output_dict.items():
             self.log(f'valid/{tag}', value, on_step=False, on_epoch=True, batch_size=len(outputs))
         return output_dict
 
-    def training_epoch_end(self, training_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def on_train_epoch_end(self) -> None:
         """It's calling at the end of the training epoch with the outputs of all training steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TRAIN))
         self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
 
-    def validation_epoch_end(self, valid_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def on_validation_epoch_end(self) -> None:
         """It's calling at the end of the validation epoch with the outputs of all validation steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.VALID))
         self.log('step', float(self.current_epoch), on_step=False, on_epoch=True)
 
-    def test_epoch_end(self, test_step_outputs: List[Dict[str, torch.Tensor]]) -> None:
+    def on_test_epoch_end(self) -> None:
         """It's calling at the end of a test epoch with the output of all test steps."""
         self.log_dict(self.metrics_manager.on_epoch_end(Phase.TEST))
 

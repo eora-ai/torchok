@@ -169,7 +169,6 @@ class TrainerParams:
     barebones: bool = False
     sync_batchnorm: bool = False
     reload_dataloaders_every_n_epochs: int = 0
-    default_root_dir: str = None
 
 
 # Logger

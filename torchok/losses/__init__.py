@@ -3,6 +3,7 @@ from torch.nn import (BCELoss, CosineEmbeddingLoss, CrossEntropyLoss, CTCLoss, G
                       MultiLabelMarginLoss, MultiLabelSoftMarginLoss, MultiMarginLoss, NLLLoss, NLLLoss2d,
                       PoissonNLLLoss, SmoothL1Loss, SoftMarginLoss, TripletMarginLoss, TripletMarginWithDistanceLoss)
 from torch.nn import Identity
+from lightly.loss import SwaVLoss
 
 import torchok.losses.detection
 import torchok.losses.segmentation
@@ -32,3 +33,5 @@ LOSSES.register_class(TripletMarginLoss)
 LOSSES.register_class(TripletMarginWithDistanceLoss)
 LOSSES.register_class(CTCLoss)
 LOSSES.register_class(Identity)
+
+LOSSES.register_class(SwaVLoss)
