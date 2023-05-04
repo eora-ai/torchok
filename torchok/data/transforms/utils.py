@@ -1,5 +1,5 @@
-from typing import List, Dict, Any, Tuple, Optional, Union
 from collections import defaultdict
+from typing import List, Dict, Any, Tuple, Optional
 
 import albumentations as alb
 from albumentations.core.composition import TransformsSeqType
@@ -23,8 +23,8 @@ class MultiView(alb.Compose):
             self,
             branch_transforms: TransformsSeqType,
             transforms: TransformsSeqType,
-            bbox_params: Optional[Union[dict, "BboxParams"]] = None,
-            keypoint_params: Optional[Union[dict, "KeypointParams"]] = None,
+            bbox_params: Optional[dict] = None,
+            keypoint_params: Optional[dict] = None,
             additional_targets: Optional[Dict[str, str]] = None,
             p: float = 1.0,
     ):
@@ -72,8 +72,8 @@ class MultiCrop(MultiView):
             crop_min_scales: Tuple[float],
             crop_max_scales: Tuple[float],
             transforms: TransformsSeqType,
-            bbox_params: Optional[Union[dict, "BboxParams"]] = None,
-            keypoint_params: Optional[Union[dict, "KeypointParams"]] = None,
+            bbox_params: Optional[dict] = None,
+            keypoint_params: Optional[dict] = None,
             additional_targets: Optional[Dict[str, str]] = None,
             p: float = 1.0,
     ):

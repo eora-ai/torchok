@@ -6,10 +6,6 @@ from torch import nn, Tensor
 
 from torchok.constructor import HEADS
 from torchok.models.base import BaseModel
-from lightly.transforms.swav_transform import SwaVTransform
-from lightly.data.multi_view_collate import MultiViewCollate
-from lightly.data import LightlyDataset
-from torchok.data.transforms.utils import MultiCrop
 
 
 @HEADS.register_class

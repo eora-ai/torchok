@@ -126,7 +126,7 @@ class BaseTask(LightningModule, ABC):
         """Complete training loop."""
         output = self.forward_with_gt(batch)
         total_loss, tagged_loss_values = self.losses(**output)
-        # self.log("loss", total_loss, prog_bar=True, on_step=True)
+        self.log("loss", total_loss, prog_bar=True, on_step=True)
         self.metrics_manager.update(Phase.TRAIN, **output)
         output_dict = {'loss': total_loss}
         output_dict.update(tagged_loss_values)
@@ -143,7 +143,7 @@ class BaseTask(LightningModule, ABC):
         if self._hparams.task.compute_loss_on_valid:
             total_loss, tagged_loss_values = self.losses(**output)
             output_dict = {'loss': total_loss}
-            # self.log("loss", total_loss, prog_bar=True, on_step=True)
+            self.log("loss", total_loss, prog_bar=True, on_step=True)
             output_dict.update(tagged_loss_values)
         else:
             output_dict = {}
