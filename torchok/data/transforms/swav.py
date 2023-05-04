@@ -56,8 +56,8 @@ class SwaVTransform(MultiCrop):
             random_gray_scale: float = 0.2,
             gaussian_blur: float = 0.5,
             sigmas: Tuple[float, float] = (0.1, 2),
-            bbox_params: Optional[Union[dict, "BboxParams"]] = None,
-            keypoint_params: Optional[Union[dict, "KeypointParams"]] = None,
+            bbox_params: Optional[dict] = None,
+            keypoint_params: Optional[dict] = None,
             additional_targets: Optional[Dict[str, str]] = None,
             p: float = 1.0,
     ):
