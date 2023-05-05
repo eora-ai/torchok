@@ -155,7 +155,7 @@ class BaseTask(LightningModule, ABC):
         output = self.forward_with_gt(batch)
         self.metrics_manager.update(Phase.TEST, dataloader_idx, **output)
 
-    def predict_step(self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0) -> dict[str, Tensor]:
+    def predict_step(self, batch: Dict[str, Tensor], batch_idx: int, dataloader_idx: int = 0) -> Dict[str, Tensor]:
         """Complete predict loop."""
         output = self.forward_with_gt(batch)
         return output
