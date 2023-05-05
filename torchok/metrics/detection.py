@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 import numpy as np
-from mmdet.core.evaluation.mean_ap import eval_map
+from mmdet.evaluation.functional import eval_map
 from torch import Tensor
 from torchmetrics import Metric
 
