@@ -30,8 +30,8 @@ class SwaVTransform(MultiCrop):
         cj_contrast: How much to jitter contrast.
         cj_sat: How much to jitter saturation.
         cj_hue: How much to jitter hue.
-        random_gray_scale: Probability of conversion to grayscale.
-        gaussian_blur: Probability of Gaussian blur.
+        gray_prob: Probability of conversion to grayscale.
+        gb_prob: Probability of Gaussian blur.
         sigmas: Tuple of min and max value from which the std of the gaussian kernel is sampled.
             Is ignored if `kernel_size` is set.
 
@@ -53,8 +53,8 @@ class SwaVTransform(MultiCrop):
             cj_contrast: float = 0.8,
             cj_sat: float = 0.8,
             cj_hue: float = 0.2,
-            random_gray_scale: float = 0.2,
-            gaussian_blur: float = 0.5,
+            gray_prob: float = 0.2,
+            gb_prob: float = 0.5,
             sigmas: Tuple[float, float] = (0.1, 2),
             bbox_params: Optional[dict] = None,
             keypoint_params: Optional[dict] = None,
@@ -73,8 +73,8 @@ class SwaVTransform(MultiCrop):
                 hue=cj_strength * cj_hue,
                 p=cj_prob
             ),
-            alb.ToGray(p=random_gray_scale),
-            alb.GaussianBlur(sigma_limit=sigmas, p=gaussian_blur)
+            alb.ToGray(p=gray_prob),
+            alb.GaussianBlur(sigma_limit=sigmas, p=gb_prob)
         ]
 
         super().__init__(

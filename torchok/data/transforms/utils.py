@@ -87,10 +87,10 @@ class MultiCrop(MultiView):
                 "Length of crop_sizes and crop_min_scales must be equal but are"
                 f" {len(crop_sizes)} and {len(crop_min_scales)}."
             )
-        if len(crop_sizes) != len(crop_min_scales):
+        if len(crop_sizes) != len(crop_max_scales):
             raise ValueError(
                 "Length of crop_sizes and crop_max_scales must be equal but are"
-                f" {len(crop_sizes)} and {len(crop_min_scales)}."
+                f" {len(crop_sizes)} and {len(crop_max_scales)}."
             )
 
         crop_transforms = []

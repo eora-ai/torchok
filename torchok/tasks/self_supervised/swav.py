@@ -73,7 +73,7 @@ class SwaVTask(ClassificationTask):
         p = self.prototypes(x)
         return p
 
-    def forward_with_gt(self, batch: Dict[str, Tensor]) -> Dict[str, List[Tensor]]:
+    def forward_with_gt(self, batch: Dict[str, List[Tensor]]) -> Dict[str, List[Tensor]]:
         """Forward with ground truth labels.
 
         Args:
@@ -85,16 +85,17 @@ class SwaVTask(ClassificationTask):
         Returns:
             Dictionary with the following keys and values
 
-            - 'high_resolution': list of torch.Tensor of shape `(B, num_features)`,
+            - 'high_resolution_features': list of torch.Tensor of shape `(B, num_features)`,
                 representing embeddings per each image view in high resolution.
-            - 'low_resolution': list of torch.Tensor of shape `(B, num_classes)`,
+            - 'low_resolution_features': list of torch.Tensor of shape `(B, num_classes)`,
                 representing logits per each image view in low resolution.
         """
         self.prototypes.normalize()
         crops = batch['image']
         multi_crop_features = [self.forward(crop) for crop in crops]
-        high_resolution = multi_crop_features[:self.num_highres_crops]
-        low_resolution = multi_crop_features[self.num_highres_crops:]
-        output = {"high_resolution": high_resolution, "low_resolution": low_resolution}
+        high_resolution_features = multi_crop_features[:self.num_highres_crops]
+        low_resolution_features = multi_crop_features[self.num_highres_crops:]
+        output = {"high_resolution_features": high_resolution_features,
+                  "low_resolution_features": low_resolution_features}
 
         return output
