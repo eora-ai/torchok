@@ -32,7 +32,7 @@ numpy = [
     {version = "~1.22", python = ">=3.8,<3.11"}
 ]
 onnx = "~1.13"
-onnxruntime-gpu = "~1.14"
+onnxruntime = "~1.14"
 opencv-python = "~4.7"
 pandas = [
     {version = "~1.4", python = ">=3.8,<3.11"}
