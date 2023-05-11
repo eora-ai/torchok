@@ -46,6 +46,7 @@ timm = "~0.6"
 torch = "~2.0"
 torchvision = "~0.15"
 torchmetrics = "~0.11"
+urllib3 = "1.26.15"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
