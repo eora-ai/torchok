@@ -2,9 +2,9 @@
 from typing import Dict, List, Tuple
 
 import torch
-from mmcv import ConfigDict
-from mmcv.runner import force_fp32
-from mmdet.core import reduce_mean
+from mmengine.config import ConfigDict
+from mmdet.utils import (ConfigType, InstanceList, MultiConfig,
+                         OptInstanceList, RangeType, reduce_mean)
 from mmdet.models.dense_heads import fcos_head
 from mmdet.models.dense_heads.anchor_free_head import AnchorFreeHead
 from omegaconf import OmegaConf, DictConfig
@@ -65,18 +65,18 @@ class FCOSHead(fcos_head.FCOSHead):
 
     def __init__(self,
                  joint_loss,
-                 num_classes,
-                 in_channels,
-                 regress_ranges=((-1, 64), (64, 128), (128, 256), (256, 512), (512, INF)),
-                 center_sampling=False,
-                 center_sample_radius=1.5,
-                 norm_on_bbox=False,
-                 centerness_on_reg=False,
-                 norm_cfg=dict(type='GN', num_groups=32, requires_grad=True),
+                 num_classes: int,
+                 in_channels: int,
+                 regress_ranges: RangeType = ((-1, 64), (64, 128), (128, 256), (256, 512), (512, INF)),
+                 center_sampling: bool = False,
+                 center_sample_radius: float = 1.5,
+                 norm_on_bbox: bool = False,
+                 centerness_on_reg: bool = False,
+                 norm_cfg: ConfigType = dict(type='GN', num_groups=32, requires_grad=True),
                  conv_cfg=None,
                  train_cfg=None,
                  test_cfg=None,
-                 init_cfg=dict(
+                 init_cfg: MultiConfig = dict(
                      type='Normal',
                      layer='Conv2d',
                      std=0.01,
@@ -85,7 +85,7 @@ class FCOSHead(fcos_head.FCOSHead):
                          name='conv_cls',
                          std=0.01,
                          bias_prob=0.01)),
-                 **kwargs):
+                 **kwargs) -> None:
         self.regress_ranges = regress_ranges
         self.center_sampling = center_sampling
         self.center_sample_radius = center_sample_radius
@@ -110,7 +110,6 @@ class FCOSHead(fcos_head.FCOSHead):
     def format_dict(head_output):
         return dict(zip(['cls_scores', 'bbox_preds', 'centernesses'], head_output))
 
-    @force_fp32(apply_to=('cls_scores', 'bbox_preds', 'centernesses'))
     def loss(self, joint_loss: JointLoss, cls_scores: List[Tensor], bbox_preds: List[Tensor],
              centernesses: List[Tensor], gt_bboxes: List[Tensor], gt_labels: List[Tensor],
              **kwargs) -> Tuple[Tensor, Dict[str, Tensor]]:
@@ -188,7 +187,6 @@ class FCOSHead(fcos_head.FCOSHead):
             pos_centerness=pos_centerness.float()
         )
 
-    @force_fp32(apply_to=('cls_scores', 'bbox_preds'))
     def get_bboxes(self, cls_scores, bbox_preds, img_metas, **kwargs):
         """Transform network outputs of a batch into bbox results.
 
