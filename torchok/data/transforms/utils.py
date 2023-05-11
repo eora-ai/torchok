@@ -31,7 +31,7 @@ class MultiView(alb.Compose):
         super().__init__(transforms, bbox_params, keypoint_params, additional_targets, p)
         self.branch_transforms = branch_transforms
 
-    def __call__(self, *args, force_apply: bool = False, **data) -> List[Dict[str, Any]]:
+    def __call__(self, *args, force_apply: bool = False, **data) -> Dict[str, List[Any]]:
         """Transforms an image into multiple views.
 
         Every transform in self.branch_transforms creates a new view.
