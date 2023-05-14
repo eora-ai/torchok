@@ -72,6 +72,54 @@ data:
             name: Normalize
           - &totensor
             name: ToTensorV2
+  VALID:
+    - dataloader:
+        batch_size: 256
+        num_workers: 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: ImageClassificationDataset
+        params:
+          data_folder: *data_folder
+          annotation_path: data_train.csv
+          input_dtype: *input_dtype
+          rgba_layout_color: 0
+        transform:
+          - name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+          - name: CenterCrop
+            params:
+              height: *height
+              width: *width
+          - *normalize
+          - *totensor
+  TEST:
+    - dataloader:
+        batch_size: 256
+        num_workers: 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: ImageClassificationDataset
+        params:
+          data_folder: *data_folder
+          annotation_path: data_valid.csv
+          input_dtype: *input_dtype
+          rgba_layout_color: 0
+        transform:
+          - name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+          - name: CenterCrop
+            params:
+              height: *height
+              width: *width
+          - *normalize
+          - *totensor
 
 trainer:
   accelerator: 'gpu'
@@ -79,7 +127,6 @@ trainer:
   precision: bf16
   num_sanity_val_steps: 0
   limit_val_batches: 0
-#  limit_train_batches: 10
 
 seed_params:
   seed: 42
