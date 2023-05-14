@@ -1,6 +1,6 @@
 from pytorch_lightning.callbacks import (BackboneFinetuning, DeviceStatsMonitor, EarlyStopping,
                                          GradientAccumulationScheduler, LearningRateMonitor, ModelCheckpoint,
-                                         ModelPruning, ModelSummary, QuantizationAwareTraining, RichModelSummary,
+                                         ModelPruning, ModelSummary, RichModelSummary,
                                          RichProgressBar, StochasticWeightAveraging, Timer, TQDMProgressBar)
 
 import torchok.callbacks.finalize_logger
@@ -21,4 +21,3 @@ CALLBACKS.register_class(RichProgressBar)
 CALLBACKS.register_class(StochasticWeightAveraging)
 CALLBACKS.register_class(Timer)
 CALLBACKS.register_class(TQDMProgressBar)
-CALLBACKS.register_class(QuantizationAwareTraining)

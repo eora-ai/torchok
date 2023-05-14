@@ -1,0 +1,163 @@
+task:
+  name: SwaVTask
+  params:
+    backbone_name: resnet18
+    backbone_params:
+      pretrained: true
+      in_channels: 3
+    pooling_name: Pooling
+    head_name: SwaVProjectionHead
+    head_params:
+      hidden_channels: 2048
+      out_channels: 128
+    n_prototypes: 3000
+    num_highres_crops: &num_highres_crops 2
+    num_lowres_crops: &num_lowres_crops 6
+    inputs:
+      - shape: [3, &height 128, &width 128]
+        dtype: &input_dtype bfloat16
+
+joint_loss:
+  losses:
+    - name: SwaVLoss
+      params:
+        temperature: 0.1
+        sinkhorn_iterations: 3
+        sinkhorn_epsilon: 0.05
+        sinkhorn_gather_distributed: false
+      mapping:
+        high_resolution_outputs: high_resolution_features
+        low_resolution_outputs: low_resolution_features
+
+optimization:
+  - optimizer:
+      name: SGD
+      params:
+        lr: &base_lr 4.8
+        weight_decay: 0.000001
+        momentum: 0.9
+    scheduler:
+      name: OneCycleLR
+      params:
+        max_lr: *base_lr
+        steps_per_epoch: 508
+        epochs: &num_epochs 200
+        pct_start: 0.05
+      pl_params:
+        interval: step
+
+
+data:
+  TRAIN:
+    - dataloader:
+        batch_size: 256
+        num_workers: 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: SwaVDataset
+        params:
+          data_folder: &data_folder /home/ubuntu/workdir/experiments/imagenet100/data
+          annotation_path: data_train.csv
+          input_dtype: *input_dtype
+          rgba_layout_color: 0
+          test_mode: true
+        augment:
+          - name: SwaVTransform
+            params:
+              crop_sizes: [*height, 96]
+              crop_counts: [*num_highres_crops, *num_lowres_crops]
+        transform:
+          - &normalize
+            name: Normalize
+          - &totensor
+            name: ToTensorV2
+  VALID:
+    - dataloader:
+        batch_size: 256
+        num_workers: 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: ImageClassificationDataset
+        params:
+          data_folder: *data_folder
+          annotation_path: data_train.csv
+          input_dtype: *input_dtype
+          rgba_layout_color: 0
+        transform:
+          - name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+          - name: CenterCrop
+            params:
+              height: *height
+              width: *width
+          - *normalize
+          - *totensor
+  TEST:
+    - dataloader:
+        batch_size: 256
+        num_workers: 8
+        drop_last: false
+        shuffle: true
+      dataset:
+        name: ImageClassificationDataset
+        params:
+          data_folder: *data_folder
+          annotation_path: data_valid.csv
+          input_dtype: *input_dtype
+          rgba_layout_color: 0
+        transform:
+          - name: PadIfNeeded
+            params:
+              min_height: *height
+              min_width: *width
+          - name: CenterCrop
+            params:
+              height: *height
+              width: *width
+          - *normalize
+          - *totensor
+
+trainer:
+  accelerator: 'gpu'
+  max_epochs: *num_epochs
+  precision: bf16
+  num_sanity_val_steps: 0
+  limit_val_batches: 0
+
+seed_params:
+  seed: 42
+  workers: true
+
+logger:
+  name: MLFlowLoggerX
+  experiment_name: imagenet100
+  log_dir: '${oc.env:HOME}/${logger.experiment_name}/logs'
+  timestamp: '${now:%Y-%m-%d}/${now:%H-%M-%S}'
+  params:
+    run_name: resnet18_swav
+    tracking_uri: '${oc.env:DB_URI}'
+    artifact_location: '${oc.env:S3_ARTIFACT_BUCKET}'
+
+hydra:
+  run:
+    dir: &logs_dir '${logger.log_dir}/${logger.params.run_name}/${logger.timestamp}'
+
+callbacks:
+  - name: ModelCheckpoint
+    params:
+      dirpath: *logs_dir
+      monitor: train/loss
+      save_top_k: 1
+      save_last: true
+      mode: min
+      save_weights_only: False
+  - name: FinalizeLogger
+  - name: TQDMProgressBar
+    params:
+      refresh_rate: 100
+
+metrics: []

@@ -5,10 +5,9 @@ from typing import Dict, List, Union
 
 import torch
 import torch.nn.functional as F
-from mmcv import ConfigDict
+from mmcv.utils.config import ConfigDict
 from mmcv.cnn import build_activation_layer
 from mmcv.cnn.bricks.transformer import build_positional_encoding
-from mmcv.runner import force_fp32
 from mmdet.core import bbox_cxcywh_to_xyxy, build_assigner, build_sampler, reduce_mean
 from mmdet.models.dense_heads import detr_head
 from mmdet.models.dense_heads.anchor_free_head import AnchorFreeHead
@@ -207,7 +206,6 @@ class DETRHead(detr_head.DETRHead):
     def format_dict(head_output):
         return dict(zip(['all_cls_scores', 'all_bbox_preds'], head_output))
 
-    @force_fp32(apply_to=('all_cls_scores', 'all_bbox_preds'))
     def loss(self, joint_loss: JointLoss,
              all_cls_scores: List[torch.Tensor],
              all_bbox_preds: List[torch.Tensor],
@@ -292,7 +290,6 @@ class DETRHead(detr_head.DETRHead):
                 tagged_loss_dict[k] += v
         return global_total_loss, tagged_loss_dict
 
-    @force_fp32(apply_to=('all_cls_scores', 'all_bbox_preds'))
     def get_bboxes(self,
                    all_cls_scores: torch.Tensor,
                    all_bbox_preds: torch.Tensor,

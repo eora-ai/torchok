@@ -1,4 +1,5 @@
 from typing import Dict, List, Any
+from collections import namedtuple
 
 import torch
 from omegaconf import DictConfig
@@ -79,14 +80,16 @@ class MultiHeadClassificationTask(BaseTask):
             self.heads[head_name] = head_type(in_channels=head_in_channels, **head['params'])
             self.target_mapping[head_name] = target
 
-    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+        self.head_tuple = namedtuple('HeadOutput', list(self.target_mapping.keys()))
+
+    def forward(self, x: torch.Tensor) -> namedtuple:
         """Forward method.
 
         Args:
             x: torch.Tensor of shape `(B, C, H, W)`. Batch of input images.
 
         Returns:
-            Dict with string keys representing head name
+            Namedtuple with string keys representing head name
             and torch.Tensor values representing output of corresponding head.
         """
         features = self.backbone(x)
@@ -94,7 +97,7 @@ class MultiHeadClassificationTask(BaseTask):
         head_outputs = {}
         for head_name, head in self.heads.items():
             head_outputs[head_name] = head(features)
-        return head_outputs
+        return self.head_tuple(**head_outputs)
 
     def forward_with_gt(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Forward with ground truth labels.

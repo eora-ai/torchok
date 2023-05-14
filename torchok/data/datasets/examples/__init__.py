@@ -1,4 +1,4 @@
-import torchok.data.datasets.examples.cifar10
+import torchok.data.datasets.examples.cifar
 import torchok.data.datasets.examples.sop
 import torchok.data.datasets.examples.triplet_sop
 import torchok.data.datasets.examples.sweet_pepper

@@ -329,10 +329,8 @@ class Constructor:
             transform_name = transform_info.name
             transform_params = transform_info.get('params', dict())
 
-            if transform_name in ['Compose', 'OneOf', 'SomeOf', 'PerChannel', 'Sequential']:
+            if 'transforms' in transform_params:
                 transform = Constructor._prepare_base_compose(transform_name, **transform_params)
-            elif transform_name == 'OneOrOther':
-                raise ValueError('OneOrOther composition is currently not supported')
             else:
                 transform = TRANSFORMS.get(transform_name)(**transform_params)
 

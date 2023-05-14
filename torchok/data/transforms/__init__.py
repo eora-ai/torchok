@@ -19,6 +19,7 @@ from albumentations.core.composition import Compose, OneOf
 from torchok.constructor import TRANSFORMS
 from torchok.data.transforms import spatial
 from torchok.data.transforms import pixelwise
+from torchok.data.transforms import swav
 
 
 TRANSFORMS.register_class(Compose)
