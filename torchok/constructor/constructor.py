@@ -329,6 +329,7 @@ class Constructor:
             transform_name = transform_info.name
             transform_params = transform_info.get('params', dict())
 
+            # All transforms with `transforms` parameter are considered as a container transformation
             if 'transforms' in transform_params:
                 transform = Constructor._prepare_base_compose(transform_name, **transform_params)
             else:
