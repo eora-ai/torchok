@@ -81,7 +81,7 @@ def run_model(metric_params: List[MetricParams]):
     trainer = Trainer(
         accelerator="cpu",
         strategy="ddp",
-        num_processes=2,
+        num_nodes=1,
         max_epochs=EPOCH,
     )
 

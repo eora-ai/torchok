@@ -134,17 +134,12 @@ class TaskParams:
 # Trainer parameters
 @dataclass
 class TrainerParams:
-    enable_checkpointing: bool = True
-    default_root_dir: Optional[str] = None
-    gradient_clip_val: Optional[float] = None
-    gradient_clip_algorithm: Optional[str] = None
+    accelerator: str = "auto"
+    strategy: str = "auto"
+    devices: str = "auto"
     num_nodes: int = 1
-    enable_progress_bar: bool = True
-    overfit_batches: Any = 0.0  # Union[int, float]
-    track_grad_norm: Any = -1  # Union[int, float, str]
-    check_val_every_n_epoch: Optional[int] = 1
+    precision: Any = 32  # Literal[64, 32, 16, "64", "32", "16", "bf16"]
     fast_dev_run: Any = False  # Union[int, bool]
-    accumulate_grad_batches: Optional[Any] = None  # Optional[Union[int, Dict[int, int]]]
     max_epochs: Optional[int] = None
     min_epochs: Optional[int] = None
     max_steps: int = -1
@@ -154,26 +149,26 @@ class TrainerParams:
     limit_val_batches: Optional[Any] = None  # Optional[Union[int, float]]
     limit_test_batches: Optional[Any] = None  # Optional[Union[int, float]]
     limit_predict_batches: Optional[Any] = None  # Optional[Union[int, float]]
+    overfit_batches: Any = 0.0  # Union[int, float]
     val_check_interval: Optional[Any] = None  # Optional[Union[int, float]]
-    log_every_n_steps: int = 50
-    accelerator: Optional[str] = None
-    strategy: Optional[str] = None
-    sync_batchnorm: bool = False
-    precision: Any = 32  # Literal[64, 32, 16, "64", "32", "16", "bf16"]
-    enable_model_summary: bool = True
-    num_sanity_val_steps: int = 2
-    resume_from_checkpoint: Optional[str] = None
-    profiler: Optional[str] = None
+    check_val_every_n_epoch: Optional[int] = 1
+    num_sanity_val_steps: Optional[int] = None
+    log_every_n_steps: Optional[int] = None
+    enable_checkpointing: Optional[bool] = None
+    enable_progress_bar: Optional[bool] = None
+    enable_model_summary: Optional[bool] = None
+    accumulate_grad_batches: int = 1
+    gradient_clip_val: Optional[float] = None
+    gradient_clip_algorithm: Optional[str] = None
+    deterministic: Optional[bool] = None
     benchmark: Optional[bool] = None
-    deterministic: Optional[bool] = None  # Optional[Union[bool, _LITERAL_WARN]]
-    reload_dataloaders_every_n_epochs: int = 0
-    auto_lr_find: bool = False  # Union[bool, str]
-    replace_sampler_ddp: bool = True
-    detect_anomaly: bool = False
-    auto_scale_batch_size: bool = False  # Union[str, bool]
-    move_metrics_to_cpu: bool = False
-    multiple_trainloader_mode: str = "max_size_cycle"
     inference_mode: bool = True
+    use_distributed_sampler: bool = True
+    profiler: Optional[str] = None
+    detect_anomaly: bool = False
+    barebones: bool = False
+    sync_batchnorm: bool = False
+    reload_dataloaders_every_n_epochs: int = 0
 
 
 # Logger
